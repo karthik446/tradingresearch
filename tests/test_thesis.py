@@ -72,6 +72,8 @@ def test_the_real_reply_gives_one_swing_thesis_and_two_no_trades():
     ({"entry_kind": "market_open"}, "not_a_thesis"),  # market_open with a price (Thesis rule 1)
     ({"setup_type": "momentum"}, "not_a_thesis"),
     ({"stop": None}, "not_a_thesis"),
+    ({"prediction": "x" * 301}, "not_a_thesis"),  # S1 bound (GUARDS-SPIKE §2.3)
+    ({"evidence": [REPLY["theses"][0]["evidence"][0]] * 2}, "not_a_thesis"),  # S3: each claim once
 ])
 def test_each_broken_rule_is_rejected_with_its_reason(changes, reason):
     checked = check([swing(**changes)])

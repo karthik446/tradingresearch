@@ -1,11 +1,11 @@
 usage: tr [-h]
-          {sessions,bars,facts,snapshot,news,screen,analyze,thesis,open,reconcile,grade,daily,report,slo,check,exp,usage,bakeoff,label,learn,split,dataset,retrieval}
+          {sessions,bars,facts,snapshot,news,screen,analyze,thesis,open,reconcile,grade,daily,report,slo,check,exp,usage,bakeoff,label,learn,split,dataset,retrieval,guards}
           ...
 
 tradingresearch: educational, not investment advice
 
 positional arguments:
-  {sessions,bars,facts,snapshot,news,screen,analyze,thesis,open,reconcile,grade,daily,report,slo,check,exp,usage,bakeoff,label,learn,split,dataset,retrieval}
+  {sessions,bars,facts,snapshot,news,screen,analyze,thesis,open,reconcile,grade,daily,report,slo,check,exp,usage,bakeoff,label,learn,split,dataset,retrieval,guards}
     sessions            NYSE sessions ending at a date
     bars                fetch and store daily bars
     facts               framed EDGAR facts for one concept
@@ -45,6 +45,8 @@ positional arguments:
     dataset             cut teacher analyses into a release; refill a public
                         one (no model call)
     retrieval           filing and headline index: build, query, recall eval
+    guards              the audit log: the last guard decisions and counts by
+                        rule (no model call)
 
 options:
   -h, --help            show this help message and exit

@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 from datetime import date
-from typing import Literal, Self
+from typing import Annotated, Literal, Self
 
 from gigai_core import CoreModel
 from gigai_core.records import Prereg
-from pydantic import AwareDatetime, model_validator
+from pydantic import AfterValidator, AwareDatetime, Field, StringConstraints, model_validator
 
 Feed = Literal["sip", "iex"]
 Horizon = Literal["day", "short", "swing"]
@@ -33,6 +33,28 @@ MIN_EMBARGO = SWING_ENTRY_SESSIONS + max(hi for _, hi in HOLD_RANGE.values())
 EMBARGO_WHY = f"entry window {SWING_ENTRY_SESSIONS} + longest hold {MIN_EMBARGO - SWING_ENTRY_SESSIONS}"
 MAX_CONTEXT_TOKENS = 14_000
 RULES_VERSION = "rules-1"  # the reconcile rules (SPIKE §6) a thesis or event is settled by; reconcile picks rules by it
+
+
+def unique_ids(ids: tuple[str, ...]) -> tuple[str, ...]:
+    """Evidence cites each claim once (GUARDS-SPIKE §2.3 S3)."""
+    if len(set(ids)) != len(ids):
+        raise ValueError("evidence repeats a claim id")
+    return ids
+
+
+# GUARDS-SPIKE §2.3 bounds, each above the longest live value (§2.1): about 1.8-2x for the thesis texts, about 1.25x
+# for the claim text and the no-trade reason. They are checked in code when a record is built (`thesis.validate` →
+# not_a_thesis, `analyze` → not_a_claim), never by a provider's json_schema (§2.4). S3's `cl_<16 hex>` id form is only
+# on the reply (`ReplyEvidence`, `evals.SchemaValid`): older fixtures store short ids.
+Price = Annotated[float, Field(gt=0)]  # S5; finite is CoreModel's
+Prediction = Annotated[str, StringConstraints(max_length=300)]  # S1
+ThesisReason = Annotated[str, StringConstraints(max_length=600)]  # S1
+InvalidationText = Annotated[str, StringConstraints(max_length=300)]  # S1
+NoTradeReason = Annotated[str, StringConstraints(max_length=400)]  # S1
+ClaimText = Annotated[str, StringConstraints(max_length=300)]  # S1
+Evidence = Annotated[tuple[str, ...], Field(min_length=1, max_length=8), AfterValidator(unique_ids)]  # S3, rule 2
+ClaimId = Annotated[str, StringConstraints(pattern=r"^cl_[0-9a-f]{16}$")]  # `new_id("cl")`
+ReplyEvidence = Annotated[tuple[ClaimId, ...], Field(min_length=1, max_length=8), AfterValidator(unique_ids)]  # S3
 
 
 def clean_route(route: str) -> bool:
@@ -68,7 +90,7 @@ class SourceRef(CoreModel):
 class Claim(CoreModel):
     claim_id: str
     analysis_id: str
-    text: str
+    text: ClaimText
     tag: ClaimTag
     value: float | None
     unit: str | None
@@ -147,7 +169,7 @@ class Analysis(CoreModel):
 
 class EntryRule(CoreModel):
     kind: Literal["market_open", "stop", "limit"]
-    price: float | None
+    price: Price | None
     window_start: AwareDatetime
     window_end: AwareDatetime
 
@@ -159,7 +181,7 @@ class EntryRule(CoreModel):
 
 
 class Thesis(CoreModel):
-    """Rules 1 (when the entry has a price), 3 and 5 (main arms) are checked here.
+    """Rules 1 (when the entry has a price), 2 (evidence, as the S3 bound), 3 and 5 (main arms) are checked here.
 
     Rules that need the Analysis (market_open reference price, evidence tags, ATR stop floor, teacher fill bound,
     arm match) are checked by `thesis.check_thesis` before a record is built.
@@ -171,16 +193,16 @@ class Thesis(CoreModel):
     horizon: Horizon
     direction: Direction
     setup_type: SetupType
-    prediction: str
-    reason: str
+    prediction: Prediction
+    reason: ThesisReason
     entry: EntryRule
-    stop: float
-    target: float
+    stop: Price
+    target: Price
     hold_sessions: int
-    invalidation_price: float
-    invalidation_text: str
-    evidence: tuple[str, ...]
-    regime: str
+    invalidation_price: Price
+    invalidation_text: InvalidationText
+    evidence: Evidence
+    regime: Regime
     arm: Literal["champion", "challenger", "teacher"]
     sample_trace_id: str
     provider_route: str
@@ -199,8 +221,6 @@ class Thesis(CoreModel):
         lo, hi = HOLD_RANGE[self.horizon]
         if not lo <= self.hold_sessions <= hi:
             raise ValueError(f"rule 3: {self.horizon} hold_sessions must be {lo}-{hi}")
-        if not self.evidence:
-            raise ValueError("rule 2: evidence is empty")
         if self.arm != "teacher" and self.entry.window_start <= self.created_at:
             raise ValueError("rule 5: entry window must start after created_at")
         return self
@@ -209,7 +229,7 @@ class Thesis(CoreModel):
 class NoTrade(CoreModel):
     analysis_id: str
     horizon: Horizon
-    reason: str
+    reason: NoTradeReason
     created_at: AwareDatetime
 
 

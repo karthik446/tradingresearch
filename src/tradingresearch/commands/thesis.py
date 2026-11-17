@@ -5,8 +5,8 @@ from __future__ import annotations
 from collections.abc import Callable
 from datetime import UTC, datetime
 
-from .. import analyze as an, journal, providers, rules, sessions, teacher as tc, thesis as th
-from ..records import Analysis, Thesis
+from .. import analyze as an, guards, journal, providers, rules, sessions, teacher as tc, thesis as th
+from ..records import Analysis, RuleChange, Thesis
 from .common import session_arg
 
 ARMS = ("champion", "challenger", "teacher")
@@ -56,8 +56,13 @@ def thesis_line(t: Thesis) -> str:
             f"evidence {','.join(t.evidence)}")
 
 
-def challenger_rule(conn, a: Analysis, args) -> tuple[str, Callable[[th.Checked], th.Checked] | None, str]:
-    """(prompt, filter, change id) of the change pending for `a`'s session, refused before any call: a challenger
+def diff_ref_of(rule: rules.Rule) -> str:
+    """The CHALLENGER_RULES key a resolved rule came from: the version a challenger filter's drops are audited at."""
+    return next((ref for ref, known in rules.CHALLENGER_RULES.items() if known is rule), "unregistered")
+
+
+def challenger_rule(conn, a: Analysis, args) -> tuple[str, Callable[[th.Checked], th.Checked] | None, RuleChange]:
+    """(prompt, filter, change) of the change pending for `a`'s session, refused before any call: a challenger
     thesis is the champion's model with that one rule changed (SPIKE §8.2)."""
     change = rules.pending_for(conn, a.session)
     if change is None:
@@ -71,7 +76,7 @@ def challenger_rule(conn, a: Analysis, args) -> tuple[str, Callable[[th.Checked]
     if args.prompt not in (th.DEFAULT_PROMPT, prompt) or args.model != th.DEFAULT_MODEL:
         raise SystemExit(f"a challenger thesis is {th.DEFAULT_MODEL} with {change.change_id}'s rule "
                          f"({change.diff_ref}) only: drop --prompt and --model")
-    return prompt, rules.post(rule, a), change.change_id
+    return prompt, rules.post(rule, a), change
 
 
 def cmd_thesis(args, cfg) -> None:
@@ -90,11 +95,12 @@ def cmd_thesis(args, cfg) -> None:
     try:
         result = th.thesis(conn, a, provider, asked=asked, arm=args.arm, model=model, max_usd=args.max_usd,
                            prices=providers.prices(cfg, role, [model]), data_dir=cfg.data_dir, prompt_version=prompt,
-                           terms=teacher.terms_class if teacher else None, post=post)
+                           terms=teacher.terms_class if teacher else None, post=post,
+                           post_version=change.diff_ref if change else guards.BUILTIN_VERSION)
     finally:
         provider.close()
     c = result.checked
-    rule = f"  change={change}" if change else ""
+    rule = f"  change={change.change_id}" if change else ""
     print(f"thesis {a.ticker} {a.session}  analysis {a.analysis_id}  arm={args.arm}{rule}  prompt={prompt}  "
           f"model={model}  asked {','.join(asked)}  spent=${result.spent_usd:.4f}")
     print(f"run={result.run_path}")

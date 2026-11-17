@@ -5,6 +5,7 @@ Headlines are written to a tmp news store with placeholder text; analyze-1 and a
 
 from __future__ import annotations
 
+import hashlib
 import json
 from dataclasses import replace
 from datetime import UTC, date, datetime
@@ -117,6 +118,14 @@ def test_headlines_join_the_input_hash_and_the_stored_sources(tmp_path):
     assert an.input_hash(ctx, "analyze-3", drop=("headlines",)) != an.input_hash(ctx, "analyze-3")
     news_refs = [s for s in ctx.cited_sources() if s.kind == "news"]
     assert [s.source_id for s in news_refs] == [row.source_id for row in ctx.table()[len(ctx.rows):]]
+
+
+def test_the_week7_normaliser_leaves_clean_headlines_and_their_hash_as_before(tmp_path):
+    """Pinned at 348b2e3, before `one_line` ran `guards.normalise` (G14a): ASCII headlines render byte for byte."""
+    ctx = with_news(tmp_path)
+    assert hashlib.sha256(an.render(ctx).encode()).hexdigest() == (
+        "8d5404ad1c2a0013d9c7f4d0f6b74ff258a33fa632737cd9d5fd02f0e4a40abd")
+    assert an.input_hash(ctx, "analyze-3") == "sha256:ff8c05903109ef356fe9efc0b5a367797ae6d2517e7c5e340d9af48efa4bad10"
 
 
 def test_dropping_headlines_removes_exactly_the_headline_rows(tmp_path):

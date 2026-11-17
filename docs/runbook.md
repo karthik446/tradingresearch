@@ -653,3 +653,42 @@ the `numeric` rows from cached companyfacts and the newest index, so rerun it af
 `TR_DATA_DIR=$PWD/data-dev uv run tr retrieval eval --retriever bm25 dense hybrid hybrid+rerank` gives the recall
 tables in ADR-009 (recall_any@5: bm25 0.60, dense 0.53, hybrid 0.60, hybrid+rerank 0.67). `experiments/retrieval.toml`
 pins that digest; its paid run (`tr exp run`) fills ADR-009's experiment table.
+
+## Guards and audit
+
+Week 7 part 1 (GUARDS-SPIKE §1-3). Code: `src/tradingresearch/guards.py`; free, no model call.
+
+- **Normaliser.** Every fetched headline and claim string that reaches a prompt cell goes through `analyze.one_line`,
+  which now runs `guards.normalise` first: NFKC, curly quotes to `'`, bar lookalikes (U+2502, U+2223, U+01C0) to `/`,
+  at most two combining marks per letter, and Cyrillic/Greek lookalikes folded only inside a mixed-script word, one
+  that also has an ASCII letter (`ignоre` → `ignore`; СССР, ΚΑΙ, ТАСС and Turkish `ı` stay as written). Hangul
+  fillers (U+115F, U+1160, U+3164, U+FFA0) are removed on that path. Clean ASCII headlines render byte for byte as
+  before, and `input_hash` never hashes rendered text, so no stored hash moves (pinned in `tests/test_headlines.py`).
+  Retrieval passages (masking.py) render exactly as before week 7 through `one_line(..., clean=False)`, pinned in
+  `tests/test_guards.py`; the guards arm (week 7 part 2) normalises them explicitly. Chunk shas are unaffected.
+- **Rules.** A rule is a class with `id`, `version`, `stage` (`fetched`: flag or drop; `thesis`: flag or reject) and
+  `check(subject, ctx) -> Violation | None`, registered with `@guards.rule`; a taken id, an unknown stage or an
+  action the stage cannot take raises at import. The shipped `thesis_rules` (`@guards.builtin`) wraps the existing
+  thesis checks and always runs; `th.thesis(..., guard_ids=...)` adds named thesis rules (none by default) and an
+  unknown id is refused before the call. `guards.scan(rows, ids)` runs fetched rules (used from week 7 part 2).
+- **Strict records.** `records.py` bounds every stored field (prediction and invalidation text ≤300, reason ≤600,
+  no-trade reason ≤400, claim text ≤300, evidence 1-8 unique ids, prices > 0, `regime` a known regime), each above
+  the longest live value: about 1.8-2× for the thesis texts, about 1.25× for the claim text and the no-trade reason.
+  A reply past a bound is rejected as `not_a_thesis` / `not_a_no_trade`, never sent to a provider as a json_schema.
+  The `cl_<16 hex>` evidence id form is checked only on the reply (`schema_valid`), because older fixtures and tests
+  store short ids.
+- **Audit log.** Every thesis rejection, flag, challenger `rule_filter` drop and `one_live` refusal of a call is one
+  line of `<data_dir>/audit.jsonl`: `audit_id, at, stage, decision, rule, rule_version, subject {kind, id, sha256},
+  ticker, session, horizon, run_id, arm, guards, input_hash, detail` (≤160 characters). Claim rejections are not
+  audited. No model-written string reaches a line: the subject is an id and a digest (a `thesis_item` by
+  `guards.sha256` of the reply item, a stored `thesis` by `hashing.digest`), the detail is fixed text plus
+  well-formed `cl_`/`pb_` ids or a `sha256:<12 hex>` prefix for anything else, an exception is shown by its type
+  and field, and a horizon outside day/short/swing is `?`. A `rule_filter` drop carries the challenger rule's
+  `diff_ref` as its `rule_version`; built-in decisions carry `1`. A failed write (disk full, unwritable data dir)
+  warns on stderr and the call carries on, so its theses are still stored. The `theses_valid` grader re-runs the
+  checks without auditing.
+- **Reading it.** `TR_DATA_DIR=$PWD/data-dev uv run tr guards [--rule ID] [--run RUN_ID] [--last N]` prints a header,
+  the last N decisions (default 20) and counts by stage, rule and decision; a missing or empty log prints the header.
+  A line that does not parse (a write torn by a crash) is skipped and counted in the header.
+- **Grader.** `schema_valid` (code) scores 1 when a reply parses and fits the strict reply models (thesis replies
+  by their `theses` key, else analyze replies), else 0 with the first failing field.

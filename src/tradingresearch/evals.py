@@ -12,8 +12,9 @@ import sqlite3
 from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Literal
 
-from gigai_core import CallBudget, CallSettings, Dataset, DatasetItem, run as run_eval
+from gigai_core import CallBudget, CallSettings, CoreModel, Dataset, DatasetItem, run as run_eval
 from gigai_core.budget import Price
 from gigai_core.graders.judge import last_json_object, llm_judge
 from gigai_core.graders.protocol import CannotGrade
@@ -27,7 +28,8 @@ from . import analyze as an, checks, journal, label, masking, thesis as th
 from .analyze import ClaimsValid, hidden_of, snapshot_rows, validate_claims
 from .hashing import new_id
 from .reconcile_run import BarSource
-from .records import Analysis, Thesis
+from .records import (Analysis, ClaimTag, ClaimText, Direction, Horizon, InvalidationText, NoTradeReason, Prediction,
+                      ReplyEvidence, SetupType, Thesis, ThesisReason, Price as PositivePrice)
 from .tools import TOOLS
 
 RUBRICS = Path(__file__).resolve().parents[2] / "evals" / "rubrics"
@@ -372,6 +374,76 @@ class LevelsCoherent:
         snap = analysis.snapshot
         return every_thesis(theses, lambda t: checks.p4_levels_coherent(t, snap.levels, snap.values["atr_14"],
                                                                        snap.values["close"]))
+
+
+class ThesisItem(CoreModel):
+    """One reply thesis under the records.py bounds plus S3's claim id form (GUARDS-SPIKE §2.3)."""
+
+    horizon: Horizon
+    direction: Direction
+    setup_type: SetupType
+    prediction: Prediction
+    reason: ThesisReason
+    entry_kind: Literal["market_open", "stop", "limit"]
+    entry_price: PositivePrice | None
+    stop: PositivePrice
+    target: PositivePrice
+    hold_sessions: int
+    invalidation_price: PositivePrice
+    invalidation_text: InvalidationText
+    evidence: ReplyEvidence
+    playbook: tuple[str, ...] | None = None  # thesis-2 only
+
+
+class NoTradeItem(CoreModel):
+    horizon: Horizon
+    reason: NoTradeReason
+
+
+class ThesisReply(CoreModel):
+    theses: tuple[ThesisItem, ...]
+    no_trade: tuple[NoTradeItem, ...]
+
+
+class ClaimItem(CoreModel):
+    """One reply claim; its local id becomes a `cl_` id only when analyze stores it."""
+
+    id: str
+    tag: ClaimTag
+    text: ClaimText
+    value: float | None
+    unit: str | None
+    source_ids: tuple[str, ...]
+    derived_from: tuple[str, ...]
+    steps: str | None
+
+
+class AnalyzeReply(CoreModel):
+    claims: tuple[ClaimItem, ...]
+
+
+@grader
+class SchemaValid:
+    """1 if the reply parses and fits the strict reply models (GUARDS-SPIKE §2.3-2.4: bounds checked in code, never
+    sent as a provider json_schema), else 0 with the first failing field; a thesis reply is told by its `theses`."""
+
+    id = "schema_valid"
+    version = "1"
+    kind = "code"
+
+    def grade(self, sample, expected) -> Score:
+        if sample.parse_status != "ok":
+            return Score(value=0.0, explanation=f"parse_status {sample.parse_status}")
+        raw = sample.output_parsed
+        model = ThesisReply if isinstance(raw, dict) and "theses" in raw else AnalyzeReply
+        try:
+            model.model_validate_json(json.dumps(raw))
+        except ValidationError as exc:
+            first = exc.errors()[0]
+            where = ".".join(map(str, first["loc"]))
+            return Score(value=0.0, explanation=f"{model.__name__}: {exc.error_count()} error(s), {where}: "
+                                                f"{first['type']}")
+        return Score(value=1.0, explanation=model.__name__)
 
 
 @grader

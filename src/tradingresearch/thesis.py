@@ -1,6 +1,7 @@
 """`tr thesis`: one stored Analysis becomes 0–3 theses (one per horizon) or NoTrade rows; code checks every thesis
 against the SPIKE §1.1 Thesis rules and the §6.6 stop floor before anything is written (SPIKE §6.2, §6.7, P5).
-The thesis-2 prompt also shows the playbook (SPIKE §8.1) as computed sources a thesis may cite in `playbook`."""
+The thesis-2 prompt also shows the playbook (SPIKE §8.1) as computed sources a thesis may cite in `playbook`.
+Those checks are the built-in guard rule (GUARDS-SPIKE §7.2); a live call audits every rejection (§3.3)."""
 
 from __future__ import annotations
 
@@ -16,7 +17,7 @@ from gigai_core.graders.protocol import CannotGrade
 from gigai_core.score import Score
 from pydantic import ValidationError
 
-from . import analyze as an, journal, news, sessions
+from . import analyze as an, guards, journal, news, sessions
 from .hashing import digest, new_id
 from .records import (HOLD_RANGE, RULES_VERSION, Analysis, EntryRule, Event, NoTrade, SetupType, SourceRef, Thesis,
                       clean_route)
@@ -28,6 +29,9 @@ DEFAULT_PROMPT = "thesis-1"
 PLAYBOOK_PROMPTS = ("thesis-2",)  # prompts whose user turn ends with the PLAYBOOK block
 DEFAULT_MODEL = "anthropic/claude-sonnet-5.5"  # SPIKE §9.1, thesis row
 HORIZONS = ("day", "short", "swing")
+ITEM_KEYS = frozenset({"horizon", "direction", "setup_type", "prediction", "reason", "entry_kind", "entry_price",
+                       "stop", "target", "hold_sessions", "invalidation_price", "invalidation_text", "evidence",
+                       "playbook"})  # keys a reply item is read by; a KeyError names one of them, never reply text
 STOP_FLOOR_BPS = 50.0  # SPIKE §6.6: a stop closer than this, or than 0.25·ATR14, is rejected
 STOP_FLOOR_ATR = 0.25
 DAY_WINDOW_END = time(11, 30)  # SPIKE §6.2: day entries only 09:30–11:30 ET
@@ -144,26 +148,27 @@ def check_thesis(item: dict, analysis: Analysis, written: Written,
     evidence = list(item["evidence"])
     if not evidence:
         return "no_evidence", "evidence is empty"
-    unknown = [e for e in evidence if e not in claims]
+    unknown = [guards.shown_id(e) for e in evidence if e not in claims]
     if unknown:
         return "unknown_evidence", f"not a claim of {analysis.analysis_id}: {', '.join(unknown)}"
     if all(claims[e].tag == "opinion" for e in evidence):  # rule 2
         return "opinion_only_evidence", "evidence needs at least one fact or inference claim"
     if playbook_ids is not None:  # thesis-2: a cited playbook row must be one the block showed
-        invented = [p for p in item["playbook"] if p not in playbook_ids]
+        invented = [guards.shown_id(p) for p in item["playbook"] if p not in playbook_ids]
         if invented:
-            return "unknown_playbook_row", f"not a row of the PLAYBOOK block: {', '.join(map(str, invented))}"
+            return "unknown_playbook_row", f"not a row of the PLAYBOOK block: {', '.join(invented)}"
     horizon, direction, hold = item["horizon"], item["direction"], item["hold_sessions"]
     lo, hi = HOLD_RANGE[horizon]
     if not (isinstance(hold, int) and lo <= hold <= hi):  # rule 3
-        return "hold_sessions", f"{horizon} needs {lo}-{hi}, got {hold}"
+        return "hold_sessions", f"{horizon} needs {lo}-{hi}, got {hold if isinstance(hold, int) else 'a non-integer'}"
     entry, stop, target = reference_price(item, analysis), float(item["stop"]), float(item["target"])
     invalidation = float(item["invalidation_price"])
     sign = 1 if direction == "long" else -1
+    side = direction if direction in ("long", "short") else "?"  # a detail never carries a reply-written string
     if sign * (entry - stop) <= 0:  # rule 1
-        return "stop_side", f"{direction}: entry {entry:g}, stop {stop:g}"
+        return "stop_side", f"{side}: entry {entry:g}, stop {stop:g}"
     if sign * (target - entry) <= 0:
-        return "target_side", f"{direction}: entry {entry:g}, target {target:g}"
+        return "target_side", f"{side}: entry {entry:g}, target {target:g}"
     floor = stop_floor(analysis, entry)
     if abs(entry - stop) < floor:  # rule 4
         return "stop_floor", f"stop distance {abs(entry - stop):.2f} < floor {floor:.2f} (max of 50 bps, 0.25·ATR14)"
@@ -174,6 +179,21 @@ def check_thesis(item: dict, analysis: Analysis, written: Written,
     if start <= bound:  # rule 5
         return "window_passed", f"entry window starts {start.isoformat()}, not after {bound.isoformat()}"
     return None
+
+
+@guards.builtin
+class ThesisRules:
+    """Today's Thesis checks (`check_thesis`) as the built-in thesis rule; a violation is named after the check that
+    broke (stop_floor, invalidation, ...), so the audit log and stdout give the same reason."""
+
+    id = "thesis_rules"
+    version = "1"
+    stage = "thesis"
+    action = "reject"
+
+    def check(self, item: dict, ctx: guards.ThesisContext) -> guards.Violation | None:
+        problem = check_thesis(item, ctx.analysis, ctx.written, ctx.playbook_ids)
+        return None if problem is None else guards.Violation(problem[0], self.version, "reject", problem[1])
 
 
 def build(item: dict, analysis: Analysis, written: Written) -> Thesis:
@@ -202,38 +222,95 @@ def horizon_problem(horizon: str, asked: tuple[str, ...], seen: set[str]) -> tup
     return None
 
 
+def horizon_of(item: object) -> str:
+    """A reply item's horizon if it is one of HORIZONS, else `?`: a Rejection and the audit never carry reply text."""
+    horizon = item.get("horizon") if isinstance(item, dict) else None
+    return horizon if horizon in HORIZONS else "?"
+
+
+def failure(exc: Exception) -> str:
+    """Why a reply item could not be built, by field and error type, never by a reply value (GUARDS-SPIKE §3.3)."""
+    if isinstance(exc, ValidationError):
+        first = exc.errors()[0]
+        return f"{exc.error_count()} error(s), {'.'.join(map(str, first['loc']))}: {first['type']}"
+    if isinstance(exc, KeyError) and exc.args and exc.args[0] in ITEM_KEYS:
+        return f"missing {exc.args[0]}"
+    return f"{type(exc).__name__}: a value of the wrong type or form"
+
+
+def audit_item(auditor: guards.Auditor | None, analysis: Analysis, horizon: str, item: object,
+               violation: guards.Violation) -> None:
+    """One decision on a reply item, audited by its analysis id, horizon and digest when the call has an auditor."""
+    if auditor is not None:
+        subject = guards.AuditSubject(kind="thesis_item", id=f"{analysis.analysis_id}:{horizon}",
+                                      sha256=guards.sha256(item))
+        auditor.write("thesis", violation.action, violation.rule, violation.version, subject, violation.detail,
+                      horizon)
+
+
+def audit_thesis(auditor: guards.Auditor | None, stage: str, t: Thesis, rejection: Rejection,
+                 version: str = guards.BUILTIN_VERSION) -> None:
+    """A built thesis refused later (a challenger's filter at its diff_ref, the one_live trigger), audited by its id
+    and digest."""
+    if auditor is not None:
+        subject = guards.AuditSubject(kind="thesis", id=t.thesis_id, sha256=digest(t))
+        auditor.write(stage, "reject", rejection.reason, version, subject, rejection.detail, t.horizon)
+
+
 def validate(raw: object, analysis: Analysis, asked: tuple[str, ...], written: Written,
-             playbook_ids: frozenset[str] | None = None) -> Checked:
+             playbook_ids: frozenset[str] | None = None, *, guard_ids: tuple[str, ...] = (),
+             auditor: guards.Auditor | None = None) -> Checked:
     """Every reply item becomes a Thesis, a NoTrade or a Rejection with a reason; nothing is dropped silently.
-    `playbook_ids` are the PLAYBOOK block's source ids for a thesis-2 reply, None for a prompt without the block."""
+    `playbook_ids` are the PLAYBOOK block's source ids for a thesis-2 reply, None for a prompt without the block.
+    Each item goes through `guards.judge`: the built-in `ThesisRules`, then the thesis rules `guard_ids` names (an
+    unknown id raises). With an `auditor` every Rejection and flag is audited; the grader's re-run passes none."""
+    guards.resolve(guard_ids, "thesis")
     out = Checked([], [], [])
+
+    def refuse(horizon: str, reason: str, detail: str, item: object, version: str = guards.BUILTIN_VERSION) -> None:
+        out.rejected.append(Rejection(horizon, reason, detail))
+        audit_item(auditor, analysis, horizon, item, guards.Violation(reason, version, "reject", detail))
+
     if not (isinstance(raw, dict) and isinstance(raw.get("theses"), list) and isinstance(raw.get("no_trade"), list)):
-        out.rejected.append(Rejection("-", "not_json_theses", "output needs 'theses' and 'no_trade' lists"))
+        refuse("-", "not_json_theses", "output needs 'theses' and 'no_trade' lists", raw)
         return out
+    ctx = guards.ThesisContext(analysis, written, playbook_ids)
     seen: set[str] = set()
     for item in raw["theses"]:
-        horizon = str(item.get("horizon")) if isinstance(item, dict) else "?"
+        horizon = horizon_of(item)
         problem = horizon_problem(horizon, asked, seen)
         seen.add(horizon)
-        if problem is None:
-            try:
-                problem = check_thesis(item, analysis, written, playbook_ids)
-                if problem is None:
-                    out.theses.append(build(item, analysis, written))
-            except (ValidationError, KeyError, TypeError, ValueError) as exc:
-                problem = "not_a_thesis", str(exc).splitlines()[0][:160]
-        if problem:
-            out.rejected.append(Rejection(horizon, *problem))
+        if problem is not None:
+            refuse(horizon, *problem, item)
+            continue
+        try:
+            found = guards.judge(item, ctx, guard_ids)
+            if found and found[-1].action == "reject":
+                *flags, reject = found
+                refuse(horizon, reject.rule, reject.detail, item, reject.version)
+            else:
+                flags = found
+                out.theses.append(build(item, analysis, written))
+        except (ValidationError, KeyError, TypeError, ValueError) as exc:
+            refuse(horizon, "not_a_thesis", failure(exc), item)
+            continue
+        for flag in flags:
+            audit_item(auditor, analysis, horizon, item, flag)
     for item in raw["no_trade"]:
-        horizon = str(item.get("horizon")) if isinstance(item, dict) else "?"
+        horizon = horizon_of(item)
         problem = horizon_problem(horizon, asked, seen)
         if problem:
-            out.rejected.append(Rejection(horizon, *problem))
+            refuse(horizon, *problem, item)
             continue
         seen.add(horizon)
-        out.no_trades.append(NoTrade(analysis_id=analysis.analysis_id, horizon=horizon, reason=str(item.get("reason")),
-                                     created_at=written.created_at))
-    out.rejected += [Rejection(h, "horizon_missing", "no thesis and no no_trade") for h in asked if h not in seen]
+        try:
+            out.no_trades.append(NoTrade(analysis_id=analysis.analysis_id, horizon=horizon,
+                                         reason=str(item.get("reason")), created_at=written.created_at))
+        except ValidationError as exc:  # a reason past the S1 bound
+            refuse(horizon, "not_a_no_trade", failure(exc), item)
+    for h in asked:
+        if h not in seen:
+            refuse(h, "horizon_missing", "no thesis and no no_trade", None)
     return out
 
 
@@ -363,8 +440,9 @@ def terms_class(model: str) -> str:
     return "restricted" if model.startswith("anthropic/") else "unknown"
 
 
-def store(conn: sqlite3.Connection, checked: Checked) -> Checked:
-    """Each accepted thesis with its PROPOSED event in one transaction; the one_live trigger is the last guard."""
+def store(conn: sqlite3.Connection, checked: Checked, auditor: guards.Auditor | None = None) -> Checked:
+    """Each accepted thesis with its PROPOSED event in one transaction; the one_live trigger is the last guard, and
+    a thesis it refuses is audited when the call has an auditor."""
     kept: list[Thesis] = []
     for t in checked.theses:
         written = Event(event_id=new_id("ev"), subject_id=t.thesis_id, state="PROPOSED", at=t.created_at,
@@ -374,18 +452,34 @@ def store(conn: sqlite3.Connection, checked: Checked) -> Checked:
             journal.add(conn, t, written)
             kept.append(t)
         except sqlite3.IntegrityError as exc:
-            checked.rejected.append(Rejection(t.horizon, "one_live", str(exc)))
+            rejection = Rejection(t.horizon, "one_live", str(exc))
+            checked.rejected.append(rejection)
+            audit_thesis(auditor, "store", t, rejection)
     journal.add(conn, *checked.no_trades)
     return Checked(kept, checked.no_trades, checked.rejected)
+
+
+def filtered(checked: Checked, post: Callable[[Checked], Checked], auditor: guards.Auditor,
+             version: str = guards.BUILTIN_VERSION) -> Checked:
+    """A challenger rule's filter (rules.py) applied, each thesis it drops audited at `version` (its diff_ref)."""
+    out = post(checked)
+    by_horizon = {t.horizon: t for t in checked.theses}
+    for rejection in out.rejected[len(checked.rejected):]:
+        audit_thesis(auditor, "thesis", by_horizon[rejection.horizon], rejection, version)
+    return out
 
 
 def thesis(conn: sqlite3.Connection, analysis: Analysis, provider, *, asked: tuple[str, ...], arm: str, model: str,
            max_usd: float, prices: dict, data_dir, prompt_version: str = DEFAULT_PROMPT,
            terms: str | None = None, post: Callable[[Checked], Checked] | None = None,
-           playbook: Playbook | None = None) -> Result:
+           playbook: Playbook | None = None, guard_ids: tuple[str, ...] = (),
+           post_version: str = guards.BUILTIN_VERSION) -> Result:
     """One model call, checked and stored; `terms` None means `terms_class(model)`, the teacher arm passes trainable.
-    `post` is a challenger rule's filter (rules.py), applied before the store because stored theses never go away.
-    `playbook` is for thesis-2 only (default: computed from the journal, see `playbook_for`)."""
+    `post` is a challenger rule's filter (rules.py), applied before the store because stored theses never go away;
+    `post_version` (its diff_ref) is the version its drops are audited at. `playbook` is for thesis-2 only (default:
+    computed from the journal, see `playbook_for`). `guard_ids` names the learner's thesis guards (none by default);
+    every rejection is audited in `<data_dir>/audit.jsonl`."""
+    guards.resolve(guard_ids, "thesis")  # an unknown guard: refused before the call
     shown = playbook_for(conn, analysis, prompt_version, playbook)
     item = item_for(analysis, asked, arm, shown, cited_headlines(conn, analysis, data_dir))  # refusal: before the call
     run = run_eval(Dataset.of("thesis", [item]), provider, [ThesesValid()],
@@ -402,6 +496,8 @@ def thesis(conn: sqlite3.Connection, analysis: Analysis, provider, *, asked: tup
     written = Written(arm, datetime.now(UTC), sample.trace_id, route, terms or terms_class(model),
                       input_hash(analysis, asked, prompt_version, None if shown is None else digest(shown[0])))
     ids = None if shown is None else frozenset(s.source_id for s in shown[1])
-    checked = validate(sample.output_parsed, analysis, asked, written, ids)
-    checked = store(conn, checked if post is None else post(checked))
+    auditor = guards.Auditor(data_dir, analysis.ticker, analysis.session, run.record.run_id, arm, guard_ids,
+                             written.input_hash)
+    checked = validate(sample.output_parsed, analysis, asked, written, ids, guard_ids=guard_ids, auditor=auditor)
+    checked = store(conn, checked if post is None else filtered(checked, post, auditor, post_version), auditor)
     return Result(checked, run.record.spent_usd, str(run_path), str(run.record.trace_path))

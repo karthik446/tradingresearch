@@ -99,8 +99,10 @@ class Masked:
 
 
 def passages(retrieved) -> str:
-    """The numbered block of a retrieval/store.Retrieved, in rank order; each text one line, quoted, capped."""
-    lines = [f'{n}. [{p.chunk_id}] "{one_line(p.text, PASSAGE_CHARS)}"' for n, p in enumerate(retrieved.passages, 1)]
+    """The numbered block of a retrieval/store.Retrieved, in rank order; each text one line, quoted, capped. The
+    pre-week-7 render (`clean=False`): passages render as before G14a; the guards arm normalises them explicitly."""
+    lines = [f'{n}. [{p.chunk_id}] "{one_line(p.text, PASSAGE_CHARS, clean=False)}"'
+             for n, p in enumerate(retrieved.passages, 1)]
     return "\n".join([PASSAGES, *(lines or [NO_PASSAGE])])
 
 

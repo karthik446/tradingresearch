@@ -20,6 +20,7 @@ CASES += [("label_list", ["label", "list"]), ("label_show", ["label", "show"]), 
           ("label_agree", ["label", "agree"])]
 CASES += [("split_register", ["split", "register"]), ("split_show", ["split", "show"])]
 CASES += [("dataset_publish", ["dataset", "publish"]), ("dataset_hydrate", ["dataset", "hydrate"])]
+CASES += [("guards", ["guards"])]
 
 
 @pytest.mark.parametrize(("golden", "argv"), CASES, ids=[golden for golden, _ in CASES])

@@ -22,7 +22,7 @@ from gigai_core.trace import CallError, ListTrace, ModelCall, ModelSpan, ToolSpa
 from pydantic import ValidationError
 from tokenizers import Tokenizer
 
-from . import alpaca, indicators, news, sessions
+from . import alpaca, guards, indicators, news, sessions
 from .edgar import Edgar, fact_source, latest_frames
 from .hashing import digest, new_id
 from .records import Analysis, Claim, IndicatorSnapshot, SourceRef
@@ -42,6 +42,9 @@ HEADLINE_NAME = "headline"  # a headline row's name starts with it (masking's `h
 # invisible code points outside Cc/Cf: variation selectors 1-16 and 17-256 (each can carry one byte of a hidden
 # payload); the tag block is Cf already, listed so the guard does not rest on the Unicode table version
 INVISIBLE = ((0xFE00, 0xFE0F), (0xE0000, 0xE007F), (0xE0100, 0xE01EF))
+# Hangul fillers (blank glyphs, category Lo; NFKC turns U+3164 and U+FFA0 into U+1160), invisible only on the
+# cleaned path (GUARDS-SPIKE §1.2) so a legacy render stays byte for byte
+HANGUL_FILLERS = ((0x115F, 0x1160), (0x3164, 0x3164), (0xFFA0, 0xFFA0))
 
 
 def system_prompt(version: str) -> str:
@@ -228,15 +231,18 @@ def with_headlines(ctx: Context, data_dir: Path, prompt_version: str, now: datet
     return replace(ctx, headlines=tuple(found[-MAX_HEADLINES:]))
 
 
-def invisible(c: str) -> bool:
-    return unicodedata.category(c) in ("Cc", "Cf") or any(low <= ord(c) <= high for low, high in INVISIBLE)
+def invisible(c: str, clean: bool = True) -> bool:
+    return unicodedata.category(c) in ("Cc", "Cf") or any(
+        low <= ord(c) <= high for low, high in INVISIBLE + (HANGUL_FILLERS if clean else ()))
 
 
-def one_line(text: str, limit: int) -> str:
-    """Third-party text as one plain table cell: control, format and invisible characters (newlines, bidi,
-    zero-width, variation selectors, tags) become spaces, `|` and `"` cannot end the cell or its quotes, and the
-    length is capped."""
-    text = "".join(" " if invisible(c) else c for c in text)
+def one_line(text: str, limit: int, *, clean: bool = True) -> str:
+    """Third-party text as one plain table cell: with `clean`, first `guards.normalise` (NFKC, curly quotes, lookalike
+    bars and letters, stacked marks) and Hangul fillers count as invisible; then control, format and invisible
+    characters (newlines, bidi, zero-width, variation selectors, tags) become spaces, `|` and `"` cannot end the cell
+    or its quotes, and the length is capped. `clean=False` is the pre-week-7 render (filing passages, whose
+    `input_hash` hashes chunk shas, not the rendered text)."""
+    text = "".join(" " if invisible(c, clean) else c for c in (guards.normalise(text) if clean else text))
     text = " ".join(text.replace("|", "/").replace('"', "'").split())
     return text if len(text) <= limit else text[:limit - 1].rstrip() + "…"
 

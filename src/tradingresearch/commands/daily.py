@@ -18,7 +18,7 @@ from ..providers import anthropic
 from .common import alpaca_client, edgar_client
 from .reconcile import completed_session
 from .screen import cmd_screen
-from .thesis import analysis_for, horizons_to_ask
+from .thesis import analysis_for, diff_ref_of, horizons_to_ask
 
 CALL_USD = 0.25  # each call's own cap, the `tr analyze` and `tr thesis` default (core refuses a worst case above it)
 
@@ -65,7 +65,7 @@ def challenger_steps(conn, cfg, provider) -> daily.ChallengerSteps:
     def thesis_step(a, asked, rule):
         return th.thesis(conn, a, provider, asked=asked, arm="challenger", model=th.DEFAULT_MODEL, max_usd=CALL_USD,
                          prices=prices(), data_dir=cfg.data_dir, prompt_version=rules.prompt_of(rule),
-                         post=rules.post(rule, a))
+                         post=rules.post(rule, a), post_version=diff_ref_of(rule))
 
     return daily.ChallengerSteps(lambda a, now: horizons_to_ask(conn, a, "challenger", now), thesis_step)
 
