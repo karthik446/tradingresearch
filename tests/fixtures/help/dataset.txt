@@ -1,0 +1,11 @@
+usage: tr dataset [-h] {publish,hydrate} ...
+
+positional arguments:
+  {publish,hydrate}
+    publish          write the train/val release of the split's teacher
+                     analyses
+    hydrate          refill a public release from your Alpaca data; check the
+                     private digest
+
+options:
+  -h, --help         show this help message and exit

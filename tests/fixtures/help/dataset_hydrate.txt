@@ -1,0 +1,8 @@
+usage: tr dataset hydrate [-h] --out DIR PATH
+
+positional arguments:
+  PATH        the public release directory
+
+options:
+  -h, --help  show this help message and exit
+  --out DIR   an empty or new directory for the hydrated files

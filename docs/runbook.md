@@ -306,6 +306,36 @@ almost always a fact, and "none cited" means the model did not tag it a fact. It
 `tr analyze` prints the model's tags. So the tagger's kappa on fact versus inference against these labels is
 optimistic, and you should not run `tr analyze` (or look up the analysis) before labelling.
 
+## Dataset release
+
+No model call. `tr dataset publish` cuts the governing split's teacher analyses into a release (TRAINING-SPIKE §7.4).
+One item is one analysis, as the teacher saw and wrote it, read from its run file.
+
+```
+uv run tr dataset publish --form private [--name teacher-sft] [--out DIR] [--split SPLIT_ID] [--teacher MODEL]
+uv run tr dataset publish --form public                   # Alpaca prices and headlines as {{px:..}} / {{news:..}}
+uv run tr dataset hydrate PUBLIC_DIR --out DIR             # refill from your own Alpaca keys; checks the private digest
+```
+
+The default output directory is `<TR_DATA_DIR>/release/<name>`. A directory that is not empty is refused. Each release
+holds `<name>.train.jsonl`, `<name>.val.jsonl`, `DATASHEET.md`, `LICENSE` (CDLA-Permissive-2.0) and `SHA256SUMS`.
+
+**Which rows go in.** Only trainable teacher-arm rows on a clean route from a pinned teacher, and only the first
+analysis per ticker, session and model. A row also needs a run file and a reply with every claim valid (claims_valid 1).
+Every teacher thesis on the row must pass P2-P4. Test-split and embargoed sessions are never written. Every excluded
+row is counted by reason, both in the output and in the DATASHEET. val is the latest tenth of the item sessions.
+
+**The private form** is verbatim and for personal use only, because Alpaca prices and headlines may not be
+redistributed.
+
+**The public form** replaces every Alpaca price and headline with a content-addressed placeholder. EDGAR and
+scale-free rows ship verbatim. A price check scans each prompt and each free-text string: one price-looking number left
+in refuses the whole publish and lists the item ids. Such an item blocks the public form, but not the private one.
+
+**Hydrate** recomputes the rows from Alpaca the way `tr analyze` does and fills them in. The result must match the
+private digests printed in the DATASHEET. If it does not, hydrate names the first differing item and writes nothing.
+Bars corrected or split-adjusted since the session will fail this check.
+
 ## Playbook and rule changes (`tr learn`)
 
 No model call. Only `--decide` writes, and only a final decision.

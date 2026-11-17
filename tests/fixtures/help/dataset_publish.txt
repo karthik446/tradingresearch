@@ -1,0 +1,14 @@
+usage: tr dataset publish [-h] --form {public,private} [--name NAME]
+                          [--out DIR] [--split SPLIT_ID] [--teacher MODEL]
+
+options:
+  -h, --help            show this help message and exit
+  --form {public,private}
+                        public: Alpaca prices and headlines as placeholders;
+                        private: verbatim (personal use)
+  --name NAME           file stem (default: teacher-sft)
+  --out DIR             an empty or new directory (default:
+                        <TR_DATA_DIR>/release/<name>)
+  --split SPLIT_ID      default: the latest registered split
+  --teacher MODEL       only this teacher's analyses (default: every pinned
+                        teacher)
