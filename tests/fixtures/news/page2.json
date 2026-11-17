@@ -1,0 +1,50 @@
+{
+ "news": [
+  {
+   "author": "",
+   "content": "",
+   "created_at": "2026-11-10T19:01:28Z",
+   "headline": "placeholder headline 118734073 xxxxxxxxxxxxxxxxxxxxxxx",
+   "id": 118734073,
+   "images": [],
+   "source": "fiscal.ai",
+   "summary": "placeholder summary xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+   "symbols": [
+    "AAPL"
+   ],
+   "updated_at": "2026-11-10T19:01:28Z",
+   "url": "https://www.globenewswire.com/"
+  },
+  {
+   "author": "",
+   "content": "",
+   "created_at": "2026-11-10T21:31:17Z",
+   "headline": "placeholder headline 119002269 xxxxxxxxxxxxxxxxxxxxxxxxx",
+   "id": 119002269,
+   "images": [],
+   "source": "fiscal.ai",
+   "summary": "placeholder summary xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+   "symbols": [
+    "AAPL"
+   ],
+   "updated_at": "2026-11-10T21:31:17Z",
+   "url": "https://www.prnewswire.com/"
+  },
+  {
+   "author": "",
+   "content": "",
+   "created_at": "2026-11-11T00:01:27Z",
+   "headline": "placeholder headline 119300748 xxxxxxxxxxxxxxxxxx",
+   "id": 119300748,
+   "images": [],
+   "source": "fiscal.ai",
+   "summary": "placeholder summary xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+   "symbols": [
+    "AAPL"
+   ],
+   "updated_at": "2026-11-11T00:01:27Z",
+   "url": "https://www.newswire.com/"
+  }
+ ],
+ "next_page_token": null
+}

@@ -1,0 +1,50 @@
+{
+ "news": [
+  {
+   "author": "",
+   "content": "",
+   "created_at": "2026-11-10T01:01:34Z",
+   "headline": "placeholder headline 118120577 xxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+   "id": 118120577,
+   "images": [],
+   "source": "fiscal.ai",
+   "summary": "placeholder summary xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+   "symbols": [
+    "AAPL"
+   ],
+   "updated_at": "2026-11-10T01:01:34Z",
+   "url": "https://www.tradingview.com/"
+  },
+  {
+   "author": "",
+   "content": "",
+   "created_at": "2026-11-10T11:34:33Z",
+   "headline": "placeholder headline 118217756 xxxxxxxxxxxx",
+   "id": 118217756,
+   "images": [],
+   "source": "fiscal.ai",
+   "summary": "placeholder summary xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+   "symbols": [
+    "AAPL"
+   ],
+   "updated_at": "2026-11-10T11:34:33Z",
+   "url": "https://www.marketscreener.com/"
+  },
+  {
+   "author": "",
+   "content": "",
+   "created_at": "2026-11-10T12:31:32Z",
+   "headline": "placeholder headline 118243856 xxxxxxxxxxxxxxxxxxxxxxxxxx",
+   "id": 118243856,
+   "images": [],
+   "source": "fiscal.ai",
+   "summary": "placeholder summary xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+   "symbols": [
+    "AAPL"
+   ],
+   "updated_at": "2026-11-10T12:31:32Z",
+   "url": "https://markets.businessinsider.com/"
+  }
+ ],
+ "next_page_token": "MTc5NDMxMzg5MjAwMDAwMDAwMHwxMTgyNDM4NTY="
+}

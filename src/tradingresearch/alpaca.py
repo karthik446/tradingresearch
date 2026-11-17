@@ -1,4 +1,4 @@
-"""Alpaca market data over plain REST: daily bars (journal) and 1-minute bars (CSV cache)."""
+"""Alpaca market data over plain REST: daily bars (journal), 1-minute bars (CSV cache) and news (SPIKE §3.1)."""
 
 from __future__ import annotations
 
@@ -14,7 +14,9 @@ from . import sessions
 from .hashing import digest
 from .records import SourceRef
 
-DATA_URL = "https://data.alpaca.markets/v2/stocks/bars"
+DATA_HOST = "https://data.alpaca.markets"
+DATA_URL = f"{DATA_HOST}/v2/stocks/bars"
+NEWS_URL = f"{DATA_HOST}/v1beta1/news"
 BAR_COLUMNS = ["o", "h", "l", "c", "v", "n", "vw"]
 LICENCE = "Alpaca market data: personal use; do not redistribute raw bars"
 
@@ -64,6 +66,29 @@ def fetch_bars(
     frame = pd.DataFrame(rows, columns=["ticker", "t", *BAR_COLUMNS])
     frame["t"] = pd.to_datetime(frame["t"], utc=True)
     return frame
+
+
+def news(
+    http: httpx.Client, tickers: list[str], start: str, end: str, limit: int = 50, *, sort: str = "asc",
+    max_articles: int = 5000,
+) -> list[dict]:
+    """News articles for `tickers` in [start, end], following next_page_token until it is null or the cap.
+
+    `limit` is the page size (Alpaca's maximum is 50). Article bodies are never requested (SPIKE §3.2).
+    """
+    params = {
+        "symbols": ",".join(tickers), "start": start, "end": end, "limit": str(limit), "sort": sort,
+        "include_content": "false",
+    }
+    articles: list[dict] = []
+    while len(articles) < max_articles:
+        page = get_json(http, NEWS_URL, params)
+        articles.extend(page.get("news") or [])
+        token = page.get("next_page_token")
+        if not token:
+            break
+        params["page_token"] = token
+    return articles[:max_articles]
 
 
 def daily_bars(

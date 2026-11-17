@@ -1,0 +1,9 @@
+usage: tr news [-h] [--session SESSION] [--days DAYS] ticker
+
+positional arguments:
+  ticker
+
+options:
+  -h, --help         show this help message and exit
+  --session SESSION
+  --days DAYS        sessions back from --session (default 1)
