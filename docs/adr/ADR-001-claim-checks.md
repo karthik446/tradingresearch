@@ -12,7 +12,8 @@ agreement with a human has to be measured on labelled data before its score mean
 - Every mechanical class gets a deterministic code check: `claims_valid` / `all_claims_valid` (shipped) and
   `inferences_grounded` (new, `evals/specs/inferences_grounded.md`). They run free on every analysis.
 - judgement_in_fact waits for an LLM judge in week 4, built against `labels.csv` with agreement (TPR/TNR) measured
-  on a held-out split.
+  on a held-out split. Caveat (2026-11-17): `labels.csv` is the reference answer to the week-1 open-coding exercise,
+  not an independent ground truth; the judge counts as validated only against the operator's own labels.
 - The headline metric for prompt work is `all_claims_valid`: one bad claim spoils an analysis for the reader.
 
 **Consequences.** Week 1 metrics say nothing about tone or verdicts; a prompt can score 1.0 here and still editorialise.

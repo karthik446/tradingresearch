@@ -35,6 +35,13 @@ change under the stream. Two rules follow, and they are separate on purpose.
    `learn --decide`. Tests, experiments and packet runs use `TR_DATA_DIR=<repo>/data-dev` (git-ignored). Read-only
    commands (`report`, `usage`, `slo`, `--dry-run`) may read the live data.
 
+   Who may write the live journal, and what (operator ruling 2026-11-17): the agent writes the daily rows. Two more
+   writes are sanctioned and logged (what, when, spend), run by the coordinator from the pinned worktree with
+   `TR_DATA_DIR=<repo>/data`: registering a rule change, once per change, and `grade --judge`. **`label add` is human
+   only**: the operator's labels are the ground truth the judge's kappa is measured against, and a label written by
+   a model or a worker would make kappa model against model. `learn --decide` runs only after the operator's go (the
+   decision is an ADR, at `n_planned`). Everything else stays on `data-dev`.
+
 Moving the pin, only to a commit whose tests and `ci/gate.py` pass, and never between 14:15 and 14:45 or between
 18:45 and 19:15 America/Denver (the two run windows):
 
@@ -184,14 +191,30 @@ uv run python -c "from pathlib import Path; from tradingresearch import experime
 ## Experiment arms: `drop`
 
 A fixed-mode arm may set `drop = ["edgar"]` (any of `indicators`, `levels`, `edgar`, the same split as the week-4
-tools) to hide those SOURCES rows from the model; the default `drop = []` sends the prompt byte for byte as before.
-`tr exp run` refuses at config load a value that is not a list of section names, an unknown section (`headlines` too:
-headlines are not rendered yet), a section named twice, a list that names every section, and `drop` on a tools arm.
+tools, and `headlines` under analyze-3) to hide those SOURCES rows from the model; the default `drop = []` sends the
+prompt byte for byte as before. `tr exp run` refuses at config load a value that is not a list of section names, an
+unknown section, `headlines` on a prompt that renders none, a section named twice, a list that names every section the
+prompt shows, and `drop` on a tools arm.
 Both arms share one dataset (the items keep the full prompt); `masking.Masked` removes the rows from each user turn
 before the call, and a drop arm runs on the in-repo loop (as a tools arm does), so the trace's `request_sha256`,
 `last_turn` and `Sample.input` hold the masked request. A drop arm takes code graders only. A stored analysis adds
 the sorted drop list to its `input_hash` (unchanged when `drop` is empty), and a claim citing a dropped row is rejected
 as `dropped_source`, so any inference derived from it falls too.
+
+## Headlines in the analyze prompt
+
+`analyze-3` (the only prompt in `analyze.HEADLINE_PROMPTS`) is analyze-2 plus news rules: its SOURCES table ends with
+the latest 5 stored headlines of the session's news window (previous session's close to this close, the look-ahead
+guard of `tr news`), oldest first, one row each: `src_<digest> | headline 2026-11-13 15:05Z benzinga | "<text>" | -`.
+The text has newlines, control and bidi/zero-width characters turned into spaces, `|` and `"` replaced, and a cap of
+200 characters. Rows are read from `data/news/<TICKER>/`, never fetched: run `tr news TICKER --session DATE` first,
+or the table has no headline rows. A claim about a headline is a fact citing its source_id with `value: null` (a number
+is `unsourced_number`, digits in the text `number_in_text`); the headline SourceRefs join the analysis's `input_hash`
+and are stored with it. analyze-1, analyze-2 and `tr daily` never read the store, so their prompts and hashes are
+unchanged. Fixed arms of one experiment share a dataset, so they all use a headline prompt or none (refused at load).
+`experiments/headlines.toml` only records the prompt for `ci/gate.py`; the learner's ablation is its own file. The
+headlines are untrusted text and analyze-3 says so, but nothing here stops an instruction phrased as a headline, a false
+headline or a homoglyph: those are week 7 (`guards.py`, the injection set).
 
 ## Provenance: the route
 
