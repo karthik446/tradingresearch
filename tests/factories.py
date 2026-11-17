@@ -37,7 +37,7 @@ def analysis(**overrides) -> Analysis:
     fields = dict(
         analysis_id=analysis_id, ticker="AAPL", session=date(2026, 11, 13), created_at=T0, run_id="run_0",
         snapshot=snapshot(), claims=(claim(analysis_id),), input_hash="sha256:" + "1" * 64, prompt_version="analyze-1",
-        model="anthropic/claude-sonnet-5.5", sample_trace_id="tr_0", provider_route="openrouter",
+        model="anthropic/claude-sonnet-5.5", sample_trace_id="tr_0", provider_route="openrouter:Anthropic",
         terms_class="restricted", context_tokens=3000,
     )
     return Analysis(**(fields | overrides))
@@ -50,7 +50,8 @@ def thesis(analysis_id: str, **overrides) -> Thesis:
         setup_type="breakout_20d", prediction="Closes above 240 within 5 sessions.", reason="20-day high break.",
         entry=EntryRule(kind="stop", price=232.0, window_start=start, window_end=start + timedelta(hours=6, minutes=30)),
         stop=226.0, target=244.0, hold_sessions=5, invalidation_price=226.0, invalidation_text="Back inside the range.",
-        evidence=("cl_0",), regime="bull-normal", arm="champion", sample_trace_id="tr_0", provider_route="openrouter",
+        evidence=("cl_0",), regime="bull-normal", arm="champion", sample_trace_id="tr_0",
+        provider_route="openrouter:Anthropic",
         terms_class="restricted", rules_version="1", created_at=T0, input_hash="sha256:" + "2" * 64,
     )
     return Thesis(**(fields | overrides))

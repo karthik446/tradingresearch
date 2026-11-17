@@ -2,7 +2,8 @@
 
 A `Routing` pins which hosts may serve a call (the teacher arm's DeepInfra pin, SPIKE §9.4, P12); without one the
 request is the plain Claude-route request. Every request runs under the shared retry policy (`retry.py`). Tools travel
-as gigai-core's own `ToolSpec` / `ToolCall` types (week 4 plumbing: no tool loop here)."""
+as gigai-core's own `ToolSpec` / `ToolCall` types (week 4 plumbing: no tool loop here). The served route is logged per
+exchange (its first user turn), so a tool loop's route covers every turn: it is provenance (runbook, "Provenance")."""
 
 from __future__ import annotations
 
@@ -19,9 +20,11 @@ from gigai_core.providers import (
     TokenUsage, ToolCall, ToolSpec, Turn, UnsupportedRequestField,
 )
 
+from .records import clean_route
 from .retry import DEFAULT, HttpError, Policy
 
 API = "https://openrouter.ai/api/v1"
+UNKNOWN = "openrouter:unknown"
 FINISH = {"stop": "stop", "length": "length", "tool_calls": "tool_calls", "content_filter": "content_filter"}
 QUANTIZATIONS = ("int4", "int8", "fp4", "fp6", "fp8", "fp16", "bf16", "fp32", "unknown")  # OpenRouter's filter values
 ROUTING_KEYS = ("only", "allow_fallbacks", "quantizations")
@@ -118,6 +121,11 @@ def tool_choice(value: str) -> str | dict:
     return value if value in ("auto", "none", "required") else {"type": "function", "function": {"name": value}}
 
 
+def exchange_key(request: ModelRequest) -> str:
+    """The exchange's first user turn (the item prompt): every request of one tool loop shares it."""
+    return next((t.content for t in request.turns if t.role == "user"), "")
+
+
 class OpenRouter:
     """Chat completions over httpx. No temperature or seed: the Claude 5.5 routes do not accept them."""
 
@@ -129,7 +137,8 @@ class OpenRouter:
             base_url=API, timeout=timeout,
             headers={"Authorization": f"Bearer {api_key}", "X-Title": "tradingresearch"},
         )
-        self.routes: dict[str, str] = {}  # last user turn -> the upstream that served it (Analysis.provider_route)
+        self.served: list[tuple[str, str]] = []  # (first user turn, route) per successful call, in order
+        self.routes: dict[str, list[str]] = {}  # first user turn -> the route of each turn of its latest exchange
         self.routing = routing
         self.policy = policy
 
@@ -137,10 +146,19 @@ class OpenRouter:
         """The same client pinned by `routing` (an experiment arm's `provider` knob)."""
         pinned = copy.copy(self)
         pinned.routing = routing
+        pinned.served, pinned.routes = [], {}  # its own log: arms never see each other's routes
         return pinned
 
     def route_for(self, prompt: str) -> str:
-        return self.routes.get(prompt, "openrouter:unknown")
+        """The exchange's route (Analysis.provider_route): its one route, `openrouter:mixed(a+b)` when turns were
+        served by different routes, unknown when any turn's provider is (or nothing was served)."""
+        routes = self.routes.get(prompt)
+        if not routes or not all(clean_route(r) for r in routes):
+            return UNKNOWN
+        distinct = sorted(set(routes))
+        if len(distinct) == 1:
+            return distinct[0]
+        return f"openrouter:mixed({'+'.join(r.removeprefix('openrouter:') for r in distinct)})"
 
     @property
     def identity(self) -> ProviderIdentity:
@@ -159,6 +177,8 @@ class OpenRouter:
         if refused:
             raise UnsupportedRequestField(refused)
         body = self.body(request)
+        if all(t.role in ("system", "user") for t in request.turns):  # a fresh exchange, not a tool-loop follow-up
+            self.routes[exchange_key(request)] = []
         failures: list[Exception] = []
         billed: list[float] = []  # usage.cost of failed tries (a 200 carrying an error body may have billed)
 
@@ -222,10 +242,10 @@ class OpenRouter:
             if (data.get("usage") or {}).get("cost"):
                 billed.append(float(data["usage"]["cost"]))
             raise OpenRouterError(int(data["error"].get("code", 502)), str(data["error"].get("message"))[:300])
-        if self.routing is None:
-            self.routes[request.turns[-1].content] = f"openrouter:{data.get('provider', 'unknown')}"
-        else:
-            self.routes[request.turns[-1].content] = self.routing.served(data)
+        route = f"openrouter:{data.get('provider', 'unknown')}" if self.routing is None else self.routing.served(data)
+        key = exchange_key(request)
+        self.routes.setdefault(key, []).append(route)
+        self.served.append((key, route))
         choice = data["choices"][0]
         text = choice["message"].get("content") or ""
         calls = tuple(

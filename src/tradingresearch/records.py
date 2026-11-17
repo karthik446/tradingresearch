@@ -28,6 +28,19 @@ MAX_CONTEXT_TOKENS = 14_000
 RULES_VERSION = "rules-1"  # the reconcile rules (SPIKE §6) a thesis or event is settled by; reconcile picks rules by it
 
 
+def clean_route(route: str) -> bool:
+    """True only for one known provider: the teacher terms filter and the training set need who served every turn."""
+    prefix, _, rest = route.partition(":")
+    host = rest.split("/")[0]
+    return prefix == "openrouter" and host not in ("", "unknown") and not host.startswith("mixed(")
+
+
+def _trainable_route(terms_class: str, route: str) -> None:
+    """A trainable record (the teacher arm) is refused when its route lost provenance (unknown or mixed)."""
+    if terms_class == "trainable" and not clean_route(route):
+        raise ValueError(f"a trainable record needs one known provider route, got {route!r}")
+
+
 class SourceRef(CoreModel):
     source_id: str
     kind: Literal["edgar_fact", "edgar_filing", "bars_daily", "bars_1m", "news", "computed"]
@@ -116,6 +129,7 @@ class Analysis(CoreModel):
     def _rules(self) -> Self:
         if self.arm == "teacher" and self.terms_class != "trainable":
             raise ValueError("a teacher analysis must be terms_class 'trainable'")
+        _trainable_route(self.terms_class, self.provider_route)
         if self.context_tokens > MAX_CONTEXT_TOKENS:
             raise ValueError(f"context_tokens {self.context_tokens} > {MAX_CONTEXT_TOKENS}")
         if any(claim.analysis_id != self.analysis_id for claim in self.claims):
@@ -169,6 +183,7 @@ class Thesis(CoreModel):
 
     @model_validator(mode="after")
     def _rules(self) -> Self:
+        _trainable_route(self.terms_class, self.provider_route)
         if self.entry.price is not None:
             low, high = (self.stop, self.target) if self.direction == "long" else (self.target, self.stop)
             if not low < self.entry.price < high:

@@ -16,7 +16,7 @@ from pydantic import ValidationError
 
 from . import analyze as an, journal, sessions
 from .hashing import digest, new_id
-from .records import HOLD_RANGE, RULES_VERSION, Analysis, EntryRule, Event, NoTrade, SetupType, Thesis
+from .records import HOLD_RANGE, RULES_VERSION, Analysis, EntryRule, Event, NoTrade, SetupType, Thesis, clean_route
 
 DEFAULT_PROMPT = "thesis-1"
 DEFAULT_MODEL = "anthropic/claude-sonnet-5.5"  # SPIKE §9.1, thesis row
@@ -325,6 +325,8 @@ def thesis(conn: sqlite3.Connection, analysis: Analysis, provider, *, asked: tup
     if sample.outcome != "succeeded":
         raise SystemExit(f"model call failed: {sample.error.code if sample.error else '?'} (run {run_path})")
     route = provider.route_for(item.prompt) if hasattr(provider, "route_for") else "unknown"
+    if (terms or terms_class(model)) == "trainable" and not clean_route(route):
+        raise SystemExit(f"route lost provenance ({route}): a trainable thesis needs one known provider ({run_path})")
     written = Written(arm, datetime.now(UTC), sample.trace_id, route, terms or terms_class(model),
                       input_hash(analysis, asked, prompt_version))
     checked = validate(sample.output_parsed, analysis, asked, written)
