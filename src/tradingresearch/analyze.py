@@ -327,7 +327,8 @@ def gather(conn, http, edgar: Edgar, ticker: str, session: date, cache_dir, feed
 def item_for(ctx: Context) -> DatasetItem:
     """One ticker-day as a gigai-core dataset item. Cluster = ticker: days of one stock are not independent."""
     return DatasetItem(id=f"{ctx.ticker}:{ctx.session}", cluster_id=ctx.ticker, prompt=render(ctx),
-                       expected={"values": ctx.values()}, tags=(ctx.ticker,))
+                       expected={"values": ctx.values(), "names": {row.source_id: row.name for row in ctx.rows}},
+                       tags=(ctx.ticker,))
 
 
 def call_settings(model: str) -> CallSettings:
