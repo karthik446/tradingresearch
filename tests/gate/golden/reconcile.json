@@ -1,0 +1,2555 @@
+{
+  "cases": {
+    "corporate_action_open/long": {
+      "events": [
+        {
+          "at": "2026-11-16T14:30:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_fdeeae77cf3093ec",
+          "price": 101.0,
+          "reason": "entry_fill",
+          "recorded_at": "2026-11-16T14:30:00Z",
+          "rules_version": "rules-1",
+          "state": "OPEN",
+          "subject_id": "th_gate_corporate_action_open_long"
+        },
+        {
+          "at": "2026-11-17T14:30:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_1e3fbf6082c1d92c",
+          "price": null,
+          "reason": "corporate_action",
+          "recorded_at": "2026-11-17T14:30:00Z",
+          "rules_version": "rules-1",
+          "state": "CANCELLED",
+          "subject_id": "th_gate_corporate_action_open_long"
+        }
+      ],
+      "notes": [],
+      "outcome": null
+    },
+    "corporate_action_open/short": {
+      "events": [
+        {
+          "at": "2026-11-16T14:30:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_a83358ad39d36dc9",
+          "price": 99.0,
+          "reason": "entry_fill",
+          "recorded_at": "2026-11-16T14:30:00Z",
+          "rules_version": "rules-1",
+          "state": "OPEN",
+          "subject_id": "th_gate_corporate_action_open_short"
+        },
+        {
+          "at": "2026-11-17T14:30:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_26c398ad047ac420",
+          "price": null,
+          "reason": "corporate_action",
+          "recorded_at": "2026-11-17T14:30:00Z",
+          "rules_version": "rules-1",
+          "state": "CANCELLED",
+          "subject_id": "th_gate_corporate_action_open_short"
+        }
+      ],
+      "notes": [],
+      "outcome": null
+    },
+    "corporate_action_proposed/long": {
+      "events": [
+        {
+          "at": "2026-11-16T14:30:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_549ae6b3c0305d32",
+          "price": null,
+          "reason": "corporate_action",
+          "recorded_at": "2026-11-16T14:30:00Z",
+          "rules_version": "rules-1",
+          "state": "CANCELLED",
+          "subject_id": "th_gate_corporate_action_proposed_long"
+        }
+      ],
+      "notes": [],
+      "outcome": null
+    },
+    "corporate_action_proposed/short": {
+      "events": [
+        {
+          "at": "2026-11-16T14:30:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_b64eccba4a4c44af",
+          "price": null,
+          "reason": "corporate_action",
+          "recorded_at": "2026-11-16T14:30:00Z",
+          "rules_version": "rules-1",
+          "state": "CANCELLED",
+          "subject_id": "th_gate_corporate_action_proposed_short"
+        }
+      ],
+      "notes": [],
+      "outcome": null
+    },
+    "day_pre_entry_invalidated/long": {
+      "events": [
+        {
+          "at": "2026-11-16T14:45:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_6aa794bad67ef7e6",
+          "price": null,
+          "reason": "invalidated",
+          "recorded_at": "2026-11-16T14:45:00Z",
+          "rules_version": "rules-1",
+          "state": "CANCELLED",
+          "subject_id": "th_gate_day_pre_entry_invalidated_long"
+        }
+      ],
+      "notes": [],
+      "outcome": null
+    },
+    "day_pre_entry_invalidated/short": {
+      "events": [
+        {
+          "at": "2026-11-16T14:45:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_439a8ac3c3821cd8",
+          "price": null,
+          "reason": "invalidated",
+          "recorded_at": "2026-11-16T14:45:00Z",
+          "rules_version": "rules-1",
+          "state": "CANCELLED",
+          "subject_id": "th_gate_day_pre_entry_invalidated_short"
+        }
+      ],
+      "notes": [],
+      "outcome": null
+    },
+    "day_pre_entry_stop/long": {
+      "events": [
+        {
+          "at": "2026-11-16T14:45:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_41fd0c5ee3945141",
+          "price": null,
+          "reason": "pre_entry_stop",
+          "recorded_at": "2026-11-16T14:45:00Z",
+          "rules_version": "rules-1",
+          "state": "CANCELLED",
+          "subject_id": "th_gate_day_pre_entry_stop_long"
+        }
+      ],
+      "notes": [],
+      "outcome": null
+    },
+    "day_pre_entry_stop/short": {
+      "events": [
+        {
+          "at": "2026-11-16T14:45:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_de4c47bdd695d56f",
+          "price": null,
+          "reason": "pre_entry_stop",
+          "recorded_at": "2026-11-16T14:45:00Z",
+          "rules_version": "rules-1",
+          "state": "CANCELLED",
+          "subject_id": "th_gate_day_pre_entry_stop_short"
+        }
+      ],
+      "notes": [],
+      "outcome": null
+    },
+    "entry_day_invalidation/long": {
+      "events": [
+        {
+          "at": "2026-11-16T14:30:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_85a510914f7f07cb",
+          "price": 101.0,
+          "reason": "entry_fill",
+          "recorded_at": "2026-11-16T14:30:00Z",
+          "rules_version": "rules-1",
+          "state": "OPEN",
+          "subject_id": "th_gate_entry_day_invalidation_long"
+        },
+        {
+          "at": "2026-11-17T14:30:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_f6c8c969fb029c1b",
+          "price": 98.6,
+          "reason": "invalidated",
+          "recorded_at": "2026-11-17T14:30:00Z",
+          "rules_version": "rules-1",
+          "state": "CLOSED",
+          "subject_id": "th_gate_entry_day_invalidation_long"
+        }
+      ],
+      "notes": [],
+      "outcome": {
+        "cost_bps": 8.0,
+        "cost_r": 0.026933333333333333,
+        "entry_price": 101.0,
+        "exit_price": 98.6,
+        "exit_reason": "invalidated",
+        "mae_r": -0.8333333333333334,
+        "mfe_r": 0.06666666666666761,
+        "r_gross": -0.8000000000000019,
+        "r_net": -0.8269333333333353,
+        "sessions_held": 1,
+        "subject_id": "th_gate_entry_day_invalidation_long"
+      }
+    },
+    "entry_day_invalidation/short": {
+      "events": [
+        {
+          "at": "2026-11-16T14:30:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_d57cf25f886be90e",
+          "price": 99.0,
+          "reason": "entry_fill",
+          "recorded_at": "2026-11-16T14:30:00Z",
+          "rules_version": "rules-1",
+          "state": "OPEN",
+          "subject_id": "th_gate_entry_day_invalidation_short"
+        },
+        {
+          "at": "2026-11-17T14:30:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_354b53092a6ee5bf",
+          "price": 101.4,
+          "reason": "invalidated",
+          "recorded_at": "2026-11-17T14:30:00Z",
+          "rules_version": "rules-1",
+          "state": "CLOSED",
+          "subject_id": "th_gate_entry_day_invalidation_short"
+        }
+      ],
+      "notes": [],
+      "outcome": {
+        "cost_bps": 8.0,
+        "cost_r": 0.026400000000000003,
+        "entry_price": 99.0,
+        "exit_price": 101.4,
+        "exit_reason": "invalidated",
+        "mae_r": -0.8333333333333334,
+        "mfe_r": 0.06666666666666761,
+        "r_gross": -0.8000000000000019,
+        "r_net": -0.8264000000000019,
+        "sessions_held": 1,
+        "subject_id": "th_gate_entry_day_invalidation_short"
+      }
+    },
+    "entry_limit/long": {
+      "events": [
+        {
+          "at": "2026-11-16T15:30:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_0508aa7ec18195bd",
+          "price": 100.0,
+          "reason": "entry_fill",
+          "recorded_at": "2026-11-16T15:30:00Z",
+          "rules_version": "rules-1",
+          "state": "OPEN",
+          "subject_id": "th_gate_entry_limit_long"
+        }
+      ],
+      "notes": [],
+      "outcome": null
+    },
+    "entry_limit/short": {
+      "events": [
+        {
+          "at": "2026-11-16T15:30:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_0eee2b5803b6ad8f",
+          "price": 100.0,
+          "reason": "entry_fill",
+          "recorded_at": "2026-11-16T15:30:00Z",
+          "rules_version": "rules-1",
+          "state": "OPEN",
+          "subject_id": "th_gate_entry_limit_short"
+        }
+      ],
+      "notes": [],
+      "outcome": null
+    },
+    "entry_limit_gap/long": {
+      "events": [
+        {
+          "at": "2026-11-16T14:30:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_672b91365abd742d",
+          "price": 99.5,
+          "reason": "gap_fill",
+          "recorded_at": "2026-11-16T14:30:00Z",
+          "rules_version": "rules-1",
+          "state": "OPEN",
+          "subject_id": "th_gate_entry_limit_gap_long"
+        }
+      ],
+      "notes": [],
+      "outcome": null
+    },
+    "entry_limit_gap/short": {
+      "events": [
+        {
+          "at": "2026-11-16T14:30:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_24b43adc9ffc443a",
+          "price": 100.5,
+          "reason": "gap_fill",
+          "recorded_at": "2026-11-16T14:30:00Z",
+          "rules_version": "rules-1",
+          "state": "OPEN",
+          "subject_id": "th_gate_entry_limit_gap_short"
+        }
+      ],
+      "notes": [],
+      "outcome": null
+    },
+    "entry_limit_touch/long": {
+      "events": [
+        {
+          "at": "2026-11-16T21:00:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_ff57fc38ecb8c36f",
+          "price": null,
+          "reason": "window_missed",
+          "recorded_at": "2026-11-16T21:00:00Z",
+          "rules_version": "rules-1",
+          "state": "EXPIRED",
+          "subject_id": "th_gate_entry_limit_touch_long"
+        }
+      ],
+      "notes": [],
+      "outcome": null
+    },
+    "entry_limit_touch/short": {
+      "events": [
+        {
+          "at": "2026-11-16T21:00:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_27c7b32c1d9e4268",
+          "price": null,
+          "reason": "window_missed",
+          "recorded_at": "2026-11-16T21:00:00Z",
+          "rules_version": "rules-1",
+          "state": "EXPIRED",
+          "subject_id": "th_gate_entry_limit_touch_short"
+        }
+      ],
+      "notes": [],
+      "outcome": null
+    },
+    "entry_minutes_missing/long": {
+      "events": [
+        {
+          "at": "2026-11-16T14:30:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_5e7960bcb6ae0c4d",
+          "price": null,
+          "reason": "data_missing",
+          "recorded_at": "2026-11-16T14:30:00Z",
+          "rules_version": "rules-1",
+          "state": "CANCELLED",
+          "subject_id": "th_gate_entry_minutes_missing_long"
+        }
+      ],
+      "notes": [
+        "2026-11-16: no 1-minute bars"
+      ],
+      "outcome": null
+    },
+    "entry_minutes_missing/short": {
+      "events": [
+        {
+          "at": "2026-11-16T14:30:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_686fb3aea4ea1e4d",
+          "price": null,
+          "reason": "data_missing",
+          "recorded_at": "2026-11-16T14:30:00Z",
+          "rules_version": "rules-1",
+          "state": "CANCELLED",
+          "subject_id": "th_gate_entry_minutes_missing_short"
+        }
+      ],
+      "notes": [
+        "2026-11-16: no 1-minute bars"
+      ],
+      "outcome": null
+    },
+    "entry_stop/long": {
+      "events": [
+        {
+          "at": "2026-11-16T15:00:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_3b89e229aca5acf7",
+          "price": 101.0,
+          "reason": "entry_fill",
+          "recorded_at": "2026-11-16T15:00:00Z",
+          "rules_version": "rules-1",
+          "state": "OPEN",
+          "subject_id": "th_gate_entry_stop_long"
+        }
+      ],
+      "notes": [],
+      "outcome": null
+    },
+    "entry_stop/short": {
+      "events": [
+        {
+          "at": "2026-11-16T15:00:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_d952a78aaee5f3d9",
+          "price": 99.0,
+          "reason": "entry_fill",
+          "recorded_at": "2026-11-16T15:00:00Z",
+          "rules_version": "rules-1",
+          "state": "OPEN",
+          "subject_id": "th_gate_entry_stop_short"
+        }
+      ],
+      "notes": [],
+      "outcome": null
+    },
+    "entry_stop_gap/long": {
+      "events": [
+        {
+          "at": "2026-11-16T14:30:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_84a5eb898cce6e81",
+          "price": 101.5,
+          "reason": "gap_fill",
+          "recorded_at": "2026-11-16T14:30:00Z",
+          "rules_version": "rules-1",
+          "state": "OPEN",
+          "subject_id": "th_gate_entry_stop_gap_long"
+        }
+      ],
+      "notes": [],
+      "outcome": null
+    },
+    "entry_stop_gap/short": {
+      "events": [
+        {
+          "at": "2026-11-16T14:30:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_9cc81ca5846a5d5d",
+          "price": 98.5,
+          "reason": "gap_fill",
+          "recorded_at": "2026-11-16T14:30:00Z",
+          "rules_version": "rules-1",
+          "state": "OPEN",
+          "subject_id": "th_gate_entry_stop_gap_short"
+        }
+      ],
+      "notes": [],
+      "outcome": null
+    },
+    "entry_stop_touch/long": {
+      "events": [
+        {
+          "at": "2026-11-16T16:00:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_b672d61673aa02ec",
+          "price": 101.0,
+          "reason": "entry_fill",
+          "recorded_at": "2026-11-16T16:00:00Z",
+          "rules_version": "rules-1",
+          "state": "OPEN",
+          "subject_id": "th_gate_entry_stop_touch_long"
+        }
+      ],
+      "notes": [],
+      "outcome": null
+    },
+    "entry_stop_touch/short": {
+      "events": [
+        {
+          "at": "2026-11-16T16:00:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_868af1a3da215d3e",
+          "price": 99.0,
+          "reason": "entry_fill",
+          "recorded_at": "2026-11-16T16:00:00Z",
+          "rules_version": "rules-1",
+          "state": "OPEN",
+          "subject_id": "th_gate_entry_stop_touch_short"
+        }
+      ],
+      "notes": [],
+      "outcome": null
+    },
+    "exit_stop/long": {
+      "events": [
+        {
+          "at": "2026-11-16T14:30:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_e3b94fc585df7883",
+          "price": 101.0,
+          "reason": "entry_fill",
+          "recorded_at": "2026-11-16T14:30:00Z",
+          "rules_version": "rules-1",
+          "state": "OPEN",
+          "subject_id": "th_gate_exit_stop_long"
+        },
+        {
+          "at": "2026-11-17T14:30:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_b202fdb7a386183e",
+          "price": 98.0,
+          "reason": "stop",
+          "recorded_at": "2026-11-17T14:30:00Z",
+          "rules_version": "rules-1",
+          "state": "CLOSED",
+          "subject_id": "th_gate_exit_stop_long"
+        }
+      ],
+      "notes": [],
+      "outcome": {
+        "cost_bps": 8.0,
+        "cost_r": 0.026933333333333333,
+        "entry_price": 101.0,
+        "exit_price": 98.0,
+        "exit_reason": "stop",
+        "mae_r": -1.0,
+        "mfe_r": 0.09999999999999905,
+        "r_gross": -1.0,
+        "r_net": -1.0269333333333333,
+        "sessions_held": 1,
+        "subject_id": "th_gate_exit_stop_long"
+      }
+    },
+    "exit_stop/short": {
+      "events": [
+        {
+          "at": "2026-11-16T14:30:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_a1380a1c84308c3f",
+          "price": 99.0,
+          "reason": "entry_fill",
+          "recorded_at": "2026-11-16T14:30:00Z",
+          "rules_version": "rules-1",
+          "state": "OPEN",
+          "subject_id": "th_gate_exit_stop_short"
+        },
+        {
+          "at": "2026-11-17T14:30:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_9cee10fb585a3f40",
+          "price": 102.0,
+          "reason": "stop",
+          "recorded_at": "2026-11-17T14:30:00Z",
+          "rules_version": "rules-1",
+          "state": "CLOSED",
+          "subject_id": "th_gate_exit_stop_short"
+        }
+      ],
+      "notes": [],
+      "outcome": {
+        "cost_bps": 8.0,
+        "cost_r": 0.026400000000000003,
+        "entry_price": 99.0,
+        "exit_price": 102.0,
+        "exit_reason": "stop",
+        "mae_r": -1.0,
+        "mfe_r": 0.09999999999999905,
+        "r_gross": -1.0,
+        "r_net": -1.0264,
+        "sessions_held": 1,
+        "subject_id": "th_gate_exit_stop_short"
+      }
+    },
+    "exit_stop_gap/long": {
+      "events": [
+        {
+          "at": "2026-11-16T14:30:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_c6eb7db12d42e274",
+          "price": 101.0,
+          "reason": "entry_fill",
+          "recorded_at": "2026-11-16T14:30:00Z",
+          "rules_version": "rules-1",
+          "state": "OPEN",
+          "subject_id": "th_gate_exit_stop_gap_long"
+        },
+        {
+          "at": "2026-11-17T14:30:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_8d7ff12ab0ee9ff4",
+          "price": 97.0,
+          "reason": "stop",
+          "recorded_at": "2026-11-17T14:30:00Z",
+          "rules_version": "rules-1",
+          "state": "CLOSED",
+          "subject_id": "th_gate_exit_stop_gap_long"
+        }
+      ],
+      "notes": [],
+      "outcome": {
+        "cost_bps": 8.0,
+        "cost_r": 0.026933333333333333,
+        "entry_price": 101.0,
+        "exit_price": 97.0,
+        "exit_reason": "stop",
+        "mae_r": -1.3333333333333333,
+        "mfe_r": 0.09999999999999905,
+        "r_gross": -1.3333333333333333,
+        "r_net": -1.3602666666666665,
+        "sessions_held": 1,
+        "subject_id": "th_gate_exit_stop_gap_long"
+      }
+    },
+    "exit_stop_gap/short": {
+      "events": [
+        {
+          "at": "2026-11-16T14:30:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_6d0dbac98061d0b4",
+          "price": 99.0,
+          "reason": "entry_fill",
+          "recorded_at": "2026-11-16T14:30:00Z",
+          "rules_version": "rules-1",
+          "state": "OPEN",
+          "subject_id": "th_gate_exit_stop_gap_short"
+        },
+        {
+          "at": "2026-11-17T14:30:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_201553361aaefc34",
+          "price": 103.0,
+          "reason": "stop",
+          "recorded_at": "2026-11-17T14:30:00Z",
+          "rules_version": "rules-1",
+          "state": "CLOSED",
+          "subject_id": "th_gate_exit_stop_gap_short"
+        }
+      ],
+      "notes": [],
+      "outcome": {
+        "cost_bps": 8.0,
+        "cost_r": 0.026400000000000003,
+        "entry_price": 99.0,
+        "exit_price": 103.0,
+        "exit_reason": "stop",
+        "mae_r": -1.3333333333333333,
+        "mfe_r": 0.09999999999999905,
+        "r_gross": -1.3333333333333333,
+        "r_net": -1.3597333333333332,
+        "sessions_held": 1,
+        "subject_id": "th_gate_exit_stop_gap_short"
+      }
+    },
+    "exit_stop_touch/long": {
+      "events": [
+        {
+          "at": "2026-11-16T14:30:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_64e514cf3c76c30d",
+          "price": 101.0,
+          "reason": "entry_fill",
+          "recorded_at": "2026-11-16T14:30:00Z",
+          "rules_version": "rules-1",
+          "state": "OPEN",
+          "subject_id": "th_gate_exit_stop_touch_long"
+        },
+        {
+          "at": "2026-11-17T14:30:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_258b2e73fac2aa5b",
+          "price": 98.0,
+          "reason": "stop",
+          "recorded_at": "2026-11-17T14:30:00Z",
+          "rules_version": "rules-1",
+          "state": "CLOSED",
+          "subject_id": "th_gate_exit_stop_touch_long"
+        }
+      ],
+      "notes": [],
+      "outcome": {
+        "cost_bps": 8.0,
+        "cost_r": 0.026933333333333333,
+        "entry_price": 101.0,
+        "exit_price": 98.0,
+        "exit_reason": "stop",
+        "mae_r": -1.0,
+        "mfe_r": 0.09999999999999905,
+        "r_gross": -1.0,
+        "r_net": -1.0269333333333333,
+        "sessions_held": 1,
+        "subject_id": "th_gate_exit_stop_touch_long"
+      }
+    },
+    "exit_stop_touch/short": {
+      "events": [
+        {
+          "at": "2026-11-16T14:30:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_8162cfb1cf9849d8",
+          "price": 99.0,
+          "reason": "entry_fill",
+          "recorded_at": "2026-11-16T14:30:00Z",
+          "rules_version": "rules-1",
+          "state": "OPEN",
+          "subject_id": "th_gate_exit_stop_touch_short"
+        },
+        {
+          "at": "2026-11-17T14:30:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_0bd7d5cf78de3117",
+          "price": 102.0,
+          "reason": "stop",
+          "recorded_at": "2026-11-17T14:30:00Z",
+          "rules_version": "rules-1",
+          "state": "CLOSED",
+          "subject_id": "th_gate_exit_stop_touch_short"
+        }
+      ],
+      "notes": [],
+      "outcome": {
+        "cost_bps": 8.0,
+        "cost_r": 0.026400000000000003,
+        "entry_price": 99.0,
+        "exit_price": 102.0,
+        "exit_reason": "stop",
+        "mae_r": -1.0,
+        "mfe_r": 0.09999999999999905,
+        "r_gross": -1.0,
+        "r_net": -1.0264,
+        "sessions_held": 1,
+        "subject_id": "th_gate_exit_stop_touch_short"
+      }
+    },
+    "exit_target/long": {
+      "events": [
+        {
+          "at": "2026-11-16T14:30:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_e283d6d4685b8eb9",
+          "price": 101.0,
+          "reason": "entry_fill",
+          "recorded_at": "2026-11-16T14:30:00Z",
+          "rules_version": "rules-1",
+          "state": "OPEN",
+          "subject_id": "th_gate_exit_target_long"
+        },
+        {
+          "at": "2026-11-17T14:30:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_d51af04aaf879883",
+          "price": 106.0,
+          "reason": "target",
+          "recorded_at": "2026-11-17T14:30:00Z",
+          "rules_version": "rules-1",
+          "state": "CLOSED",
+          "subject_id": "th_gate_exit_target_long"
+        }
+      ],
+      "notes": [],
+      "outcome": {
+        "cost_bps": 6.0,
+        "cost_r": 0.0202,
+        "entry_price": 101.0,
+        "exit_price": 106.0,
+        "exit_reason": "target",
+        "mae_r": -0.03333333333333144,
+        "mfe_r": 1.6666666666666667,
+        "r_gross": 1.6666666666666667,
+        "r_net": 1.6464666666666667,
+        "sessions_held": 1,
+        "subject_id": "th_gate_exit_target_long"
+      }
+    },
+    "exit_target/short": {
+      "events": [
+        {
+          "at": "2026-11-16T14:30:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_703c74b85bf71979",
+          "price": 99.0,
+          "reason": "entry_fill",
+          "recorded_at": "2026-11-16T14:30:00Z",
+          "rules_version": "rules-1",
+          "state": "OPEN",
+          "subject_id": "th_gate_exit_target_short"
+        },
+        {
+          "at": "2026-11-17T14:30:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_e3b817ba8d08123b",
+          "price": 94.0,
+          "reason": "target",
+          "recorded_at": "2026-11-17T14:30:00Z",
+          "rules_version": "rules-1",
+          "state": "CLOSED",
+          "subject_id": "th_gate_exit_target_short"
+        }
+      ],
+      "notes": [],
+      "outcome": {
+        "cost_bps": 6.0,
+        "cost_r": 0.0198,
+        "entry_price": 99.0,
+        "exit_price": 94.0,
+        "exit_reason": "target",
+        "mae_r": -0.03333333333333144,
+        "mfe_r": 1.6666666666666667,
+        "r_gross": 1.6666666666666667,
+        "r_net": 1.6468666666666667,
+        "sessions_held": 1,
+        "subject_id": "th_gate_exit_target_short"
+      }
+    },
+    "exit_target_gap/long": {
+      "events": [
+        {
+          "at": "2026-11-16T14:30:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_4ffb6b9bc74275a5",
+          "price": 101.0,
+          "reason": "entry_fill",
+          "recorded_at": "2026-11-16T14:30:00Z",
+          "rules_version": "rules-1",
+          "state": "OPEN",
+          "subject_id": "th_gate_exit_target_gap_long"
+        },
+        {
+          "at": "2026-11-17T14:30:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_2126be9d4ad3af76",
+          "price": 107.0,
+          "reason": "target",
+          "recorded_at": "2026-11-17T14:30:00Z",
+          "rules_version": "rules-1",
+          "state": "CLOSED",
+          "subject_id": "th_gate_exit_target_gap_long"
+        }
+      ],
+      "notes": [],
+      "outcome": {
+        "cost_bps": 6.0,
+        "cost_r": 0.0202,
+        "entry_price": 101.0,
+        "exit_price": 107.0,
+        "exit_reason": "target",
+        "mae_r": -0.03333333333333144,
+        "mfe_r": 2.0,
+        "r_gross": 2.0,
+        "r_net": 1.9798,
+        "sessions_held": 1,
+        "subject_id": "th_gate_exit_target_gap_long"
+      }
+    },
+    "exit_target_gap/short": {
+      "events": [
+        {
+          "at": "2026-11-16T14:30:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_521b9b972e16afc8",
+          "price": 99.0,
+          "reason": "entry_fill",
+          "recorded_at": "2026-11-16T14:30:00Z",
+          "rules_version": "rules-1",
+          "state": "OPEN",
+          "subject_id": "th_gate_exit_target_gap_short"
+        },
+        {
+          "at": "2026-11-17T14:30:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_7512b5181dab3b84",
+          "price": 93.0,
+          "reason": "target",
+          "recorded_at": "2026-11-17T14:30:00Z",
+          "rules_version": "rules-1",
+          "state": "CLOSED",
+          "subject_id": "th_gate_exit_target_gap_short"
+        }
+      ],
+      "notes": [],
+      "outcome": {
+        "cost_bps": 6.0,
+        "cost_r": 0.0198,
+        "entry_price": 99.0,
+        "exit_price": 93.0,
+        "exit_reason": "target",
+        "mae_r": -0.03333333333333144,
+        "mfe_r": 2.0,
+        "r_gross": 2.0,
+        "r_net": 1.9802,
+        "sessions_held": 1,
+        "subject_id": "th_gate_exit_target_gap_short"
+      }
+    },
+    "exit_target_touch/long": {
+      "events": [
+        {
+          "at": "2026-11-16T14:30:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_91b70fc40dfc80b3",
+          "price": 101.0,
+          "reason": "entry_fill",
+          "recorded_at": "2026-11-16T14:30:00Z",
+          "rules_version": "rules-1",
+          "state": "OPEN",
+          "subject_id": "th_gate_exit_target_touch_long"
+        }
+      ],
+      "notes": [],
+      "outcome": null
+    },
+    "exit_target_touch/short": {
+      "events": [
+        {
+          "at": "2026-11-16T14:30:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_d9885a6c9688d26d",
+          "price": 99.0,
+          "reason": "entry_fill",
+          "recorded_at": "2026-11-16T14:30:00Z",
+          "rules_version": "rules-1",
+          "state": "OPEN",
+          "subject_id": "th_gate_exit_target_touch_short"
+        }
+      ],
+      "notes": [],
+      "outcome": null
+    },
+    "invalidation_day/long": {
+      "events": [
+        {
+          "at": "2026-11-16T14:30:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_5712a59f2712d370",
+          "price": 101.0,
+          "reason": "entry_fill",
+          "recorded_at": "2026-11-16T14:30:00Z",
+          "rules_version": "rules-1",
+          "state": "OPEN",
+          "subject_id": "th_gate_invalidation_day_long"
+        },
+        {
+          "at": "2026-11-16T15:01:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_25e378f8562699f2",
+          "price": 98.7,
+          "reason": "invalidated",
+          "recorded_at": "2026-11-16T15:01:00Z",
+          "rules_version": "rules-1",
+          "state": "CLOSED",
+          "subject_id": "th_gate_invalidation_day_long"
+        }
+      ],
+      "notes": [],
+      "outcome": {
+        "cost_bps": 8.0,
+        "cost_r": 0.026933333333333333,
+        "entry_price": 101.0,
+        "exit_price": 98.7,
+        "exit_reason": "invalidated",
+        "mae_r": -0.7666666666666657,
+        "mfe_r": 0.06666666666666761,
+        "r_gross": -0.7666666666666657,
+        "r_net": -0.7935999999999991,
+        "sessions_held": 0,
+        "subject_id": "th_gate_invalidation_day_long"
+      }
+    },
+    "invalidation_day/short": {
+      "events": [
+        {
+          "at": "2026-11-16T14:30:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_7360e7f556c66ce5",
+          "price": 99.0,
+          "reason": "entry_fill",
+          "recorded_at": "2026-11-16T14:30:00Z",
+          "rules_version": "rules-1",
+          "state": "OPEN",
+          "subject_id": "th_gate_invalidation_day_short"
+        },
+        {
+          "at": "2026-11-16T15:01:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_703b490c9db4fb83",
+          "price": 101.3,
+          "reason": "invalidated",
+          "recorded_at": "2026-11-16T15:01:00Z",
+          "rules_version": "rules-1",
+          "state": "CLOSED",
+          "subject_id": "th_gate_invalidation_day_short"
+        }
+      ],
+      "notes": [],
+      "outcome": {
+        "cost_bps": 8.0,
+        "cost_r": 0.026400000000000003,
+        "entry_price": 99.0,
+        "exit_price": 101.3,
+        "exit_reason": "invalidated",
+        "mae_r": -0.7666666666666657,
+        "mfe_r": 0.06666666666666761,
+        "r_gross": -0.7666666666666657,
+        "r_net": -0.7930666666666657,
+        "sessions_held": 0,
+        "subject_id": "th_gate_invalidation_day_short"
+      }
+    },
+    "invalidation_short/long": {
+      "events": [
+        {
+          "at": "2026-11-16T14:30:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_c3ee04c056e9a091",
+          "price": 101.0,
+          "reason": "entry_fill",
+          "recorded_at": "2026-11-16T14:30:00Z",
+          "rules_version": "rules-1",
+          "state": "OPEN",
+          "subject_id": "th_gate_invalidation_short_long"
+        },
+        {
+          "at": "2026-11-18T14:30:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_048abb89bf96b713",
+          "price": 98.5,
+          "reason": "invalidated",
+          "recorded_at": "2026-11-18T14:30:00Z",
+          "rules_version": "rules-1",
+          "state": "CLOSED",
+          "subject_id": "th_gate_invalidation_short_long"
+        }
+      ],
+      "notes": [],
+      "outcome": {
+        "cost_bps": 8.0,
+        "cost_r": 0.026933333333333333,
+        "entry_price": 101.0,
+        "exit_price": 98.5,
+        "exit_reason": "invalidated",
+        "mae_r": -0.8333333333333334,
+        "mfe_r": 0.09999999999999905,
+        "r_gross": -0.8333333333333334,
+        "r_net": -0.8602666666666667,
+        "sessions_held": 2,
+        "subject_id": "th_gate_invalidation_short_long"
+      }
+    },
+    "invalidation_short/short": {
+      "events": [
+        {
+          "at": "2026-11-16T14:30:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_ee7264d14d161d1d",
+          "price": 99.0,
+          "reason": "entry_fill",
+          "recorded_at": "2026-11-16T14:30:00Z",
+          "rules_version": "rules-1",
+          "state": "OPEN",
+          "subject_id": "th_gate_invalidation_short_short"
+        },
+        {
+          "at": "2026-11-18T14:30:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_945cf3f708d6e45c",
+          "price": 101.5,
+          "reason": "invalidated",
+          "recorded_at": "2026-11-18T14:30:00Z",
+          "rules_version": "rules-1",
+          "state": "CLOSED",
+          "subject_id": "th_gate_invalidation_short_short"
+        }
+      ],
+      "notes": [],
+      "outcome": {
+        "cost_bps": 8.0,
+        "cost_r": 0.026400000000000003,
+        "entry_price": 99.0,
+        "exit_price": 101.5,
+        "exit_reason": "invalidated",
+        "mae_r": -0.8333333333333334,
+        "mfe_r": 0.09999999999999905,
+        "r_gross": -0.8333333333333334,
+        "r_net": -0.8597333333333333,
+        "sessions_held": 2,
+        "subject_id": "th_gate_invalidation_short_short"
+      }
+    },
+    "invalidation_stop_first/long": {
+      "events": [
+        {
+          "at": "2026-11-16T14:30:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_27159d98c8a8c81d",
+          "price": 101.0,
+          "reason": "entry_fill",
+          "recorded_at": "2026-11-16T14:30:00Z",
+          "rules_version": "rules-1",
+          "state": "OPEN",
+          "subject_id": "th_gate_invalidation_stop_first_long"
+        },
+        {
+          "at": "2026-11-17T14:30:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_9a976220a5b921f7",
+          "price": 98.0,
+          "reason": "stop",
+          "recorded_at": "2026-11-17T14:30:00Z",
+          "rules_version": "rules-1",
+          "state": "CLOSED",
+          "subject_id": "th_gate_invalidation_stop_first_long"
+        }
+      ],
+      "notes": [],
+      "outcome": {
+        "cost_bps": 8.0,
+        "cost_r": 0.026933333333333333,
+        "entry_price": 101.0,
+        "exit_price": 98.0,
+        "exit_reason": "stop",
+        "mae_r": -1.0,
+        "mfe_r": 0.09999999999999905,
+        "r_gross": -1.0,
+        "r_net": -1.0269333333333333,
+        "sessions_held": 1,
+        "subject_id": "th_gate_invalidation_stop_first_long"
+      }
+    },
+    "invalidation_stop_first/short": {
+      "events": [
+        {
+          "at": "2026-11-16T14:30:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_1ad530fe1ad45ec2",
+          "price": 99.0,
+          "reason": "entry_fill",
+          "recorded_at": "2026-11-16T14:30:00Z",
+          "rules_version": "rules-1",
+          "state": "OPEN",
+          "subject_id": "th_gate_invalidation_stop_first_short"
+        },
+        {
+          "at": "2026-11-17T14:30:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_be8c8c8284eab19a",
+          "price": 102.0,
+          "reason": "stop",
+          "recorded_at": "2026-11-17T14:30:00Z",
+          "rules_version": "rules-1",
+          "state": "CLOSED",
+          "subject_id": "th_gate_invalidation_stop_first_short"
+        }
+      ],
+      "notes": [],
+      "outcome": {
+        "cost_bps": 8.0,
+        "cost_r": 0.026400000000000003,
+        "entry_price": 99.0,
+        "exit_price": 102.0,
+        "exit_reason": "stop",
+        "mae_r": -1.0,
+        "mfe_r": 0.09999999999999905,
+        "r_gross": -1.0,
+        "r_net": -1.0264,
+        "sessions_held": 1,
+        "subject_id": "th_gate_invalidation_stop_first_short"
+      }
+    },
+    "invalidation_time_exit_first/long": {
+      "events": [
+        {
+          "at": "2026-11-16T14:30:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_57f5e93cc84e0ec4",
+          "price": 101.0,
+          "reason": "entry_fill",
+          "recorded_at": "2026-11-16T14:30:00Z",
+          "rules_version": "rules-1",
+          "state": "OPEN",
+          "subject_id": "th_gate_invalidation_time_exit_first_long"
+        },
+        {
+          "at": "2026-11-18T21:00:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_e79e365f85fd29af",
+          "price": 98.7,
+          "reason": "time_exit",
+          "recorded_at": "2026-11-18T21:00:00Z",
+          "rules_version": "rules-1",
+          "state": "CLOSED",
+          "subject_id": "th_gate_invalidation_time_exit_first_long"
+        }
+      ],
+      "notes": [],
+      "outcome": {
+        "cost_bps": 6.0,
+        "cost_r": 0.0202,
+        "entry_price": 101.0,
+        "exit_price": 98.7,
+        "exit_reason": "time_exit",
+        "mae_r": -0.8333333333333334,
+        "mfe_r": 0.3333333333333333,
+        "r_gross": -0.7666666666666657,
+        "r_net": -0.7868666666666657,
+        "sessions_held": 2,
+        "subject_id": "th_gate_invalidation_time_exit_first_long"
+      }
+    },
+    "invalidation_time_exit_first/short": {
+      "events": [
+        {
+          "at": "2026-11-16T14:30:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_55dc2aa5aed02bb9",
+          "price": 99.0,
+          "reason": "entry_fill",
+          "recorded_at": "2026-11-16T14:30:00Z",
+          "rules_version": "rules-1",
+          "state": "OPEN",
+          "subject_id": "th_gate_invalidation_time_exit_first_short"
+        },
+        {
+          "at": "2026-11-18T21:00:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_028a5fb83351ad6d",
+          "price": 101.3,
+          "reason": "time_exit",
+          "recorded_at": "2026-11-18T21:00:00Z",
+          "rules_version": "rules-1",
+          "state": "CLOSED",
+          "subject_id": "th_gate_invalidation_time_exit_first_short"
+        }
+      ],
+      "notes": [],
+      "outcome": {
+        "cost_bps": 6.0,
+        "cost_r": 0.0198,
+        "entry_price": 99.0,
+        "exit_price": 101.3,
+        "exit_reason": "time_exit",
+        "mae_r": -0.8333333333333334,
+        "mfe_r": 0.3333333333333333,
+        "r_gross": -0.7666666666666657,
+        "r_net": -0.7864666666666658,
+        "sessions_held": 2,
+        "subject_id": "th_gate_invalidation_time_exit_first_short"
+      }
+    },
+    "market_open/long": {
+      "events": [
+        {
+          "at": "2026-11-16T14:30:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_4e8570f5f8af1fd5",
+          "price": 100.5,
+          "reason": "entry_fill",
+          "recorded_at": "2026-11-16T14:30:00Z",
+          "rules_version": "rules-1",
+          "state": "OPEN",
+          "subject_id": "th_gate_market_open_long"
+        }
+      ],
+      "notes": [],
+      "outcome": null
+    },
+    "market_open/short": {
+      "events": [
+        {
+          "at": "2026-11-16T14:30:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_bbc413e446c949fb",
+          "price": 99.5,
+          "reason": "entry_fill",
+          "recorded_at": "2026-11-16T14:30:00Z",
+          "rules_version": "rules-1",
+          "state": "OPEN",
+          "subject_id": "th_gate_market_open_short"
+        }
+      ],
+      "notes": [],
+      "outcome": null
+    },
+    "minute_invalidation_stop_first/long": {
+      "events": [
+        {
+          "at": "2026-11-16T14:30:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_fc948989c32bef0f",
+          "price": 101.0,
+          "reason": "entry_fill",
+          "recorded_at": "2026-11-16T14:30:00Z",
+          "rules_version": "rules-1",
+          "state": "OPEN",
+          "subject_id": "th_gate_minute_invalidation_stop_first_long"
+        },
+        {
+          "at": "2026-11-16T15:00:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_33bdb0ceb673d11d",
+          "price": 98.0,
+          "reason": "stop",
+          "recorded_at": "2026-11-16T15:00:00Z",
+          "rules_version": "rules-1",
+          "state": "CLOSED",
+          "subject_id": "th_gate_minute_invalidation_stop_first_long"
+        }
+      ],
+      "notes": [],
+      "outcome": {
+        "cost_bps": 8.0,
+        "cost_r": 0.026933333333333333,
+        "entry_price": 101.0,
+        "exit_price": 98.0,
+        "exit_reason": "stop",
+        "mae_r": -1.0,
+        "mfe_r": 0.06666666666666761,
+        "r_gross": -1.0,
+        "r_net": -1.0269333333333333,
+        "sessions_held": 0,
+        "subject_id": "th_gate_minute_invalidation_stop_first_long"
+      }
+    },
+    "minute_invalidation_stop_first/short": {
+      "events": [
+        {
+          "at": "2026-11-16T14:30:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_60e614f77641aec3",
+          "price": 99.0,
+          "reason": "entry_fill",
+          "recorded_at": "2026-11-16T14:30:00Z",
+          "rules_version": "rules-1",
+          "state": "OPEN",
+          "subject_id": "th_gate_minute_invalidation_stop_first_short"
+        },
+        {
+          "at": "2026-11-16T15:00:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_6752a1ce04fb0e7e",
+          "price": 102.0,
+          "reason": "stop",
+          "recorded_at": "2026-11-16T15:00:00Z",
+          "rules_version": "rules-1",
+          "state": "CLOSED",
+          "subject_id": "th_gate_minute_invalidation_stop_first_short"
+        }
+      ],
+      "notes": [],
+      "outcome": {
+        "cost_bps": 8.0,
+        "cost_r": 0.026400000000000003,
+        "entry_price": 99.0,
+        "exit_price": 102.0,
+        "exit_reason": "stop",
+        "mae_r": -1.0,
+        "mfe_r": 0.06666666666666761,
+        "r_gross": -1.0,
+        "r_net": -1.0264,
+        "sessions_held": 0,
+        "subject_id": "th_gate_minute_invalidation_stop_first_short"
+      }
+    },
+    "minute_invalidation_time_exit_first/long": {
+      "events": [
+        {
+          "at": "2026-11-16T14:30:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_8792bd462575c9c4",
+          "price": 101.0,
+          "reason": "entry_fill",
+          "recorded_at": "2026-11-16T14:30:00Z",
+          "rules_version": "rules-1",
+          "state": "OPEN",
+          "subject_id": "th_gate_minute_invalidation_time_exit_first_long"
+        },
+        {
+          "at": "2026-11-16T20:54:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_860472f36913c9c3",
+          "price": 98.8,
+          "reason": "time_exit",
+          "recorded_at": "2026-11-16T20:54:00Z",
+          "rules_version": "rules-1",
+          "state": "CLOSED",
+          "subject_id": "th_gate_minute_invalidation_time_exit_first_long"
+        }
+      ],
+      "notes": [],
+      "outcome": {
+        "cost_bps": 6.0,
+        "cost_r": 0.0202,
+        "entry_price": 101.0,
+        "exit_price": 98.8,
+        "exit_reason": "time_exit",
+        "mae_r": -0.8000000000000019,
+        "mfe_r": 0.06666666666666761,
+        "r_gross": -0.7333333333333343,
+        "r_net": -0.7535333333333343,
+        "sessions_held": 0,
+        "subject_id": "th_gate_minute_invalidation_time_exit_first_long"
+      }
+    },
+    "minute_invalidation_time_exit_first/short": {
+      "events": [
+        {
+          "at": "2026-11-16T14:30:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_74fd459486da0c75",
+          "price": 99.0,
+          "reason": "entry_fill",
+          "recorded_at": "2026-11-16T14:30:00Z",
+          "rules_version": "rules-1",
+          "state": "OPEN",
+          "subject_id": "th_gate_minute_invalidation_time_exit_first_short"
+        },
+        {
+          "at": "2026-11-16T20:54:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_50e3b6f7fc13f6ed",
+          "price": 101.2,
+          "reason": "time_exit",
+          "recorded_at": "2026-11-16T20:54:00Z",
+          "rules_version": "rules-1",
+          "state": "CLOSED",
+          "subject_id": "th_gate_minute_invalidation_time_exit_first_short"
+        }
+      ],
+      "notes": [],
+      "outcome": {
+        "cost_bps": 6.0,
+        "cost_r": 0.0198,
+        "entry_price": 99.0,
+        "exit_price": 101.2,
+        "exit_reason": "time_exit",
+        "mae_r": -0.8000000000000019,
+        "mfe_r": 0.06666666666666761,
+        "r_gross": -0.7333333333333343,
+        "r_net": -0.7531333333333343,
+        "sessions_held": 0,
+        "subject_id": "th_gate_minute_invalidation_time_exit_first_short"
+      }
+    },
+    "no_look_ahead/long": {
+      "events": [
+        {
+          "at": "2026-11-16T21:00:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_c83b3c0bbf368d5d",
+          "price": null,
+          "reason": "window_missed",
+          "recorded_at": "2026-11-16T21:00:00Z",
+          "rules_version": "rules-1",
+          "state": "EXPIRED",
+          "subject_id": "th_gate_no_look_ahead_long"
+        }
+      ],
+      "notes": [],
+      "outcome": null
+    },
+    "no_look_ahead/short": {
+      "events": [
+        {
+          "at": "2026-11-16T21:00:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_6b0f5ca1155910df",
+          "price": null,
+          "reason": "window_missed",
+          "recorded_at": "2026-11-16T21:00:00Z",
+          "rules_version": "rules-1",
+          "state": "EXPIRED",
+          "subject_id": "th_gate_no_look_ahead_short"
+        }
+      ],
+      "notes": [],
+      "outcome": null
+    },
+    "no_look_ahead_daily/long": {
+      "events": [
+        {
+          "at": "2026-11-17T21:00:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_69950bc292d8ac11",
+          "price": null,
+          "reason": "window_missed",
+          "recorded_at": "2026-11-17T21:00:00Z",
+          "rules_version": "rules-1",
+          "state": "EXPIRED",
+          "subject_id": "th_gate_no_look_ahead_daily_long"
+        }
+      ],
+      "notes": [],
+      "outcome": null
+    },
+    "no_look_ahead_daily/short": {
+      "events": [
+        {
+          "at": "2026-11-17T21:00:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_deb23dd9ffa52fae",
+          "price": null,
+          "reason": "window_missed",
+          "recorded_at": "2026-11-17T21:00:00Z",
+          "rules_version": "rules-1",
+          "state": "EXPIRED",
+          "subject_id": "th_gate_no_look_ahead_daily_short"
+        }
+      ],
+      "notes": [],
+      "outcome": null
+    },
+    "pre_entry_gap_limit_at_stop/long": {
+      "events": [
+        {
+          "at": "2026-11-16T14:30:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_ca72b333845b6a15",
+          "price": null,
+          "reason": "pre_entry_stop",
+          "recorded_at": "2026-11-16T14:30:00Z",
+          "rules_version": "rules-1",
+          "state": "CANCELLED",
+          "subject_id": "th_gate_pre_entry_gap_limit_at_stop_long"
+        }
+      ],
+      "notes": [],
+      "outcome": null
+    },
+    "pre_entry_gap_limit_at_stop/short": {
+      "events": [
+        {
+          "at": "2026-11-16T14:30:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_4844bb5381e2398b",
+          "price": null,
+          "reason": "pre_entry_stop",
+          "recorded_at": "2026-11-16T14:30:00Z",
+          "rules_version": "rules-1",
+          "state": "CANCELLED",
+          "subject_id": "th_gate_pre_entry_gap_limit_at_stop_short"
+        }
+      ],
+      "notes": [],
+      "outcome": null
+    },
+    "pre_entry_gap_limit_below_stop/long": {
+      "events": [
+        {
+          "at": "2026-11-16T14:30:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_2e129aeb80854239",
+          "price": null,
+          "reason": "pre_entry_stop",
+          "recorded_at": "2026-11-16T14:30:00Z",
+          "rules_version": "rules-1",
+          "state": "CANCELLED",
+          "subject_id": "th_gate_pre_entry_gap_limit_below_stop_long"
+        }
+      ],
+      "notes": [],
+      "outcome": null
+    },
+    "pre_entry_gap_limit_below_stop/short": {
+      "events": [
+        {
+          "at": "2026-11-16T14:30:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_576b49d8a0e64b17",
+          "price": null,
+          "reason": "pre_entry_stop",
+          "recorded_at": "2026-11-16T14:30:00Z",
+          "rules_version": "rules-1",
+          "state": "CANCELLED",
+          "subject_id": "th_gate_pre_entry_gap_limit_below_stop_short"
+        }
+      ],
+      "notes": [],
+      "outcome": null
+    },
+    "pre_entry_gap_stop_entry/long": {
+      "events": [
+        {
+          "at": "2026-11-16T14:30:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_6800ce67adfe3956",
+          "price": null,
+          "reason": "pre_entry_stop",
+          "recorded_at": "2026-11-16T14:30:00Z",
+          "rules_version": "rules-1",
+          "state": "CANCELLED",
+          "subject_id": "th_gate_pre_entry_gap_stop_entry_long"
+        }
+      ],
+      "notes": [],
+      "outcome": null
+    },
+    "pre_entry_gap_stop_entry/short": {
+      "events": [
+        {
+          "at": "2026-11-16T14:30:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_ba579c256c2209f1",
+          "price": null,
+          "reason": "pre_entry_stop",
+          "recorded_at": "2026-11-16T14:30:00Z",
+          "rules_version": "rules-1",
+          "state": "CANCELLED",
+          "subject_id": "th_gate_pre_entry_gap_stop_entry_short"
+        }
+      ],
+      "notes": [],
+      "outcome": null
+    },
+    "pre_entry_invalidated/long": {
+      "events": [
+        {
+          "at": "2026-11-16T14:30:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_7e789e6896f2cdf9",
+          "price": null,
+          "reason": "invalidated",
+          "recorded_at": "2026-11-16T14:30:00Z",
+          "rules_version": "rules-1",
+          "state": "CANCELLED",
+          "subject_id": "th_gate_pre_entry_invalidated_long"
+        }
+      ],
+      "notes": [],
+      "outcome": null
+    },
+    "pre_entry_invalidated/short": {
+      "events": [
+        {
+          "at": "2026-11-16T14:30:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_1e0cbe143d4225e5",
+          "price": null,
+          "reason": "invalidated",
+          "recorded_at": "2026-11-16T14:30:00Z",
+          "rules_version": "rules-1",
+          "state": "CANCELLED",
+          "subject_id": "th_gate_pre_entry_invalidated_short"
+        }
+      ],
+      "notes": [],
+      "outcome": null
+    },
+    "pre_entry_stop/long": {
+      "events": [
+        {
+          "at": "2026-11-16T14:30:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_4fcff823b9e9b074",
+          "price": null,
+          "reason": "pre_entry_stop",
+          "recorded_at": "2026-11-16T14:30:00Z",
+          "rules_version": "rules-1",
+          "state": "CANCELLED",
+          "subject_id": "th_gate_pre_entry_stop_long"
+        }
+      ],
+      "notes": [],
+      "outcome": null
+    },
+    "pre_entry_stop/short": {
+      "events": [
+        {
+          "at": "2026-11-16T14:30:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_29ba996bc8576eb2",
+          "price": null,
+          "reason": "pre_entry_stop",
+          "recorded_at": "2026-11-16T14:30:00Z",
+          "rules_version": "rules-1",
+          "state": "CANCELLED",
+          "subject_id": "th_gate_pre_entry_stop_short"
+        }
+      ],
+      "notes": [],
+      "outcome": null
+    },
+    "same_bar_daily/long": {
+      "events": [
+        {
+          "at": "2026-11-16T14:30:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_81386e60e9b3bc14",
+          "price": 101.0,
+          "reason": "entry_fill",
+          "recorded_at": "2026-11-16T14:30:00Z",
+          "rules_version": "rules-1",
+          "state": "OPEN",
+          "subject_id": "th_gate_same_bar_daily_long"
+        },
+        {
+          "at": "2026-11-17T16:00:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_da84e20d2a72139d",
+          "price": 106.0,
+          "reason": "target",
+          "recorded_at": "2026-11-17T16:00:00Z",
+          "rules_version": "rules-1",
+          "state": "CLOSED",
+          "subject_id": "th_gate_same_bar_daily_long"
+        }
+      ],
+      "notes": [],
+      "outcome": {
+        "cost_bps": 6.0,
+        "cost_r": 0.0202,
+        "entry_price": 101.0,
+        "exit_price": 106.0,
+        "exit_reason": "target",
+        "mae_r": -0.03333333333333144,
+        "mfe_r": 1.6666666666666667,
+        "r_gross": 1.6666666666666667,
+        "r_net": 1.6464666666666667,
+        "sessions_held": 1,
+        "subject_id": "th_gate_same_bar_daily_long"
+      }
+    },
+    "same_bar_daily/short": {
+      "events": [
+        {
+          "at": "2026-11-16T14:30:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_fe0494b308b75c7a",
+          "price": 99.0,
+          "reason": "entry_fill",
+          "recorded_at": "2026-11-16T14:30:00Z",
+          "rules_version": "rules-1",
+          "state": "OPEN",
+          "subject_id": "th_gate_same_bar_daily_short"
+        },
+        {
+          "at": "2026-11-17T16:00:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_fea3f6cf917d274c",
+          "price": 94.0,
+          "reason": "target",
+          "recorded_at": "2026-11-17T16:00:00Z",
+          "rules_version": "rules-1",
+          "state": "CLOSED",
+          "subject_id": "th_gate_same_bar_daily_short"
+        }
+      ],
+      "notes": [],
+      "outcome": {
+        "cost_bps": 6.0,
+        "cost_r": 0.0198,
+        "entry_price": 99.0,
+        "exit_price": 94.0,
+        "exit_reason": "target",
+        "mae_r": -0.03333333333333144,
+        "mfe_r": 1.6666666666666667,
+        "r_gross": 1.6666666666666667,
+        "r_net": 1.6468666666666667,
+        "sessions_held": 1,
+        "subject_id": "th_gate_same_bar_daily_short"
+      }
+    },
+    "same_bar_daily_stop_first/long": {
+      "events": [
+        {
+          "at": "2026-11-16T14:30:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_2071a1e291fd0697",
+          "price": 101.0,
+          "reason": "entry_fill",
+          "recorded_at": "2026-11-16T14:30:00Z",
+          "rules_version": "rules-1",
+          "state": "OPEN",
+          "subject_id": "th_gate_same_bar_daily_stop_first_long"
+        },
+        {
+          "at": "2026-11-17T15:00:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_1624208c0cfad01a",
+          "price": 98.0,
+          "reason": "stop",
+          "recorded_at": "2026-11-17T15:00:00Z",
+          "rules_version": "rules-1",
+          "state": "CLOSED",
+          "subject_id": "th_gate_same_bar_daily_stop_first_long"
+        }
+      ],
+      "notes": [],
+      "outcome": {
+        "cost_bps": 8.0,
+        "cost_r": 0.026933333333333333,
+        "entry_price": 101.0,
+        "exit_price": 98.0,
+        "exit_reason": "stop",
+        "mae_r": -1.0,
+        "mfe_r": 0.2666666666666657,
+        "r_gross": -1.0,
+        "r_net": -1.0269333333333333,
+        "sessions_held": 1,
+        "subject_id": "th_gate_same_bar_daily_stop_first_long"
+      }
+    },
+    "same_bar_daily_stop_first/short": {
+      "events": [
+        {
+          "at": "2026-11-16T14:30:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_e10698359f777026",
+          "price": 99.0,
+          "reason": "entry_fill",
+          "recorded_at": "2026-11-16T14:30:00Z",
+          "rules_version": "rules-1",
+          "state": "OPEN",
+          "subject_id": "th_gate_same_bar_daily_stop_first_short"
+        },
+        {
+          "at": "2026-11-17T15:00:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_d5df505ab59b454d",
+          "price": 102.0,
+          "reason": "stop",
+          "recorded_at": "2026-11-17T15:00:00Z",
+          "rules_version": "rules-1",
+          "state": "CLOSED",
+          "subject_id": "th_gate_same_bar_daily_stop_first_short"
+        }
+      ],
+      "notes": [],
+      "outcome": {
+        "cost_bps": 8.0,
+        "cost_r": 0.026400000000000003,
+        "entry_price": 99.0,
+        "exit_price": 102.0,
+        "exit_reason": "stop",
+        "mae_r": -1.0,
+        "mfe_r": 0.2666666666666657,
+        "r_gross": -1.0,
+        "r_net": -1.0264,
+        "sessions_held": 1,
+        "subject_id": "th_gate_same_bar_daily_stop_first_short"
+      }
+    },
+    "same_bar_entry_stop/long": {
+      "events": [
+        {
+          "at": "2026-11-16T14:45:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_af4e3e59bb2be9f0",
+          "price": 101.0,
+          "reason": "entry_fill",
+          "recorded_at": "2026-11-16T14:45:00Z",
+          "rules_version": "rules-1",
+          "state": "OPEN",
+          "subject_id": "th_gate_same_bar_entry_stop_long"
+        },
+        {
+          "at": "2026-11-16T14:45:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_fcb9b21bf520380c",
+          "price": 98.0,
+          "reason": "stop",
+          "recorded_at": "2026-11-16T14:45:00Z",
+          "rules_version": "rules-1",
+          "state": "CLOSED",
+          "subject_id": "th_gate_same_bar_entry_stop_long"
+        }
+      ],
+      "notes": [],
+      "outcome": {
+        "cost_bps": 8.0,
+        "cost_r": 0.026933333333333333,
+        "entry_price": 101.0,
+        "exit_price": 98.0,
+        "exit_reason": "stop",
+        "mae_r": -1.0,
+        "mfe_r": 0.09999999999999905,
+        "r_gross": -1.0,
+        "r_net": -1.0269333333333333,
+        "sessions_held": 0,
+        "subject_id": "th_gate_same_bar_entry_stop_long"
+      }
+    },
+    "same_bar_entry_stop/short": {
+      "events": [
+        {
+          "at": "2026-11-16T14:45:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_a0891ee6bc9bdc3a",
+          "price": 99.0,
+          "reason": "entry_fill",
+          "recorded_at": "2026-11-16T14:45:00Z",
+          "rules_version": "rules-1",
+          "state": "OPEN",
+          "subject_id": "th_gate_same_bar_entry_stop_short"
+        },
+        {
+          "at": "2026-11-16T14:45:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_9484a725dfc02331",
+          "price": 102.0,
+          "reason": "stop",
+          "recorded_at": "2026-11-16T14:45:00Z",
+          "rules_version": "rules-1",
+          "state": "CLOSED",
+          "subject_id": "th_gate_same_bar_entry_stop_short"
+        }
+      ],
+      "notes": [],
+      "outcome": {
+        "cost_bps": 8.0,
+        "cost_r": 0.026400000000000003,
+        "entry_price": 99.0,
+        "exit_price": 102.0,
+        "exit_reason": "stop",
+        "mae_r": -1.0,
+        "mfe_r": 0.09999999999999905,
+        "r_gross": -1.0,
+        "r_net": -1.0264,
+        "sessions_held": 0,
+        "subject_id": "th_gate_same_bar_entry_stop_short"
+      }
+    },
+    "same_bar_entry_target/long": {
+      "events": [
+        {
+          "at": "2026-11-16T14:45:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_bb3188a9e9a3662d",
+          "price": 101.0,
+          "reason": "entry_fill",
+          "recorded_at": "2026-11-16T14:45:00Z",
+          "rules_version": "rules-1",
+          "state": "OPEN",
+          "subject_id": "th_gate_same_bar_entry_target_long"
+        },
+        {
+          "at": "2026-11-16T14:46:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_38ca1a3cd8f9eb73",
+          "price": 106.0,
+          "reason": "target",
+          "recorded_at": "2026-11-16T14:46:00Z",
+          "rules_version": "rules-1",
+          "state": "CLOSED",
+          "subject_id": "th_gate_same_bar_entry_target_long"
+        }
+      ],
+      "notes": [],
+      "outcome": {
+        "cost_bps": 6.0,
+        "cost_r": 0.0202,
+        "entry_price": 101.0,
+        "exit_price": 106.0,
+        "exit_reason": "target",
+        "mae_r": 0.0,
+        "mfe_r": 1.6666666666666667,
+        "r_gross": 1.6666666666666667,
+        "r_net": 1.6464666666666667,
+        "sessions_held": 0,
+        "subject_id": "th_gate_same_bar_entry_target_long"
+      }
+    },
+    "same_bar_entry_target/short": {
+      "events": [
+        {
+          "at": "2026-11-16T14:45:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_231a04fc89482268",
+          "price": 99.0,
+          "reason": "entry_fill",
+          "recorded_at": "2026-11-16T14:45:00Z",
+          "rules_version": "rules-1",
+          "state": "OPEN",
+          "subject_id": "th_gate_same_bar_entry_target_short"
+        },
+        {
+          "at": "2026-11-16T14:46:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_8a33e704daeff537",
+          "price": 94.0,
+          "reason": "target",
+          "recorded_at": "2026-11-16T14:46:00Z",
+          "rules_version": "rules-1",
+          "state": "CLOSED",
+          "subject_id": "th_gate_same_bar_entry_target_short"
+        }
+      ],
+      "notes": [],
+      "outcome": {
+        "cost_bps": 6.0,
+        "cost_r": 0.0198,
+        "entry_price": 99.0,
+        "exit_price": 94.0,
+        "exit_reason": "target",
+        "mae_r": 0.0,
+        "mfe_r": 1.6666666666666667,
+        "r_gross": 1.6666666666666667,
+        "r_net": 1.6468666666666667,
+        "sessions_held": 0,
+        "subject_id": "th_gate_same_bar_entry_target_short"
+      }
+    },
+    "same_bar_minute/long": {
+      "events": [
+        {
+          "at": "2026-11-16T14:30:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_6de7c0554914098b",
+          "price": 101.0,
+          "reason": "entry_fill",
+          "recorded_at": "2026-11-16T14:30:00Z",
+          "rules_version": "rules-1",
+          "state": "OPEN",
+          "subject_id": "th_gate_same_bar_minute_long"
+        },
+        {
+          "at": "2026-11-16T15:00:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_4e75eb28658d6945",
+          "price": 98.0,
+          "reason": "stop",
+          "recorded_at": "2026-11-16T15:00:00Z",
+          "rules_version": "rules-1",
+          "state": "CLOSED",
+          "subject_id": "th_gate_same_bar_minute_long"
+        }
+      ],
+      "notes": [],
+      "outcome": {
+        "cost_bps": 8.0,
+        "cost_r": 0.026933333333333333,
+        "entry_price": 101.0,
+        "exit_price": 98.0,
+        "exit_reason": "stop",
+        "mae_r": -1.0,
+        "mfe_r": 1.8333333333333333,
+        "r_gross": -1.0,
+        "r_net": -1.0269333333333333,
+        "sessions_held": 0,
+        "subject_id": "th_gate_same_bar_minute_long"
+      }
+    },
+    "same_bar_minute/short": {
+      "events": [
+        {
+          "at": "2026-11-16T14:30:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_dbf11ca265d7cec6",
+          "price": 99.0,
+          "reason": "entry_fill",
+          "recorded_at": "2026-11-16T14:30:00Z",
+          "rules_version": "rules-1",
+          "state": "OPEN",
+          "subject_id": "th_gate_same_bar_minute_short"
+        },
+        {
+          "at": "2026-11-16T15:00:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_d38d2bff24252401",
+          "price": 102.0,
+          "reason": "stop",
+          "recorded_at": "2026-11-16T15:00:00Z",
+          "rules_version": "rules-1",
+          "state": "CLOSED",
+          "subject_id": "th_gate_same_bar_minute_short"
+        }
+      ],
+      "notes": [],
+      "outcome": {
+        "cost_bps": 8.0,
+        "cost_r": 0.026400000000000003,
+        "entry_price": 99.0,
+        "exit_price": 102.0,
+        "exit_reason": "stop",
+        "mae_r": -1.0,
+        "mfe_r": 1.8333333333333333,
+        "r_gross": -1.0,
+        "r_net": -1.0264,
+        "sessions_held": 0,
+        "subject_id": "th_gate_same_bar_minute_short"
+      }
+    },
+    "same_bar_missing_minutes/long": {
+      "events": [
+        {
+          "at": "2026-11-16T14:30:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_fde743dfca8157e0",
+          "price": 101.0,
+          "reason": "entry_fill",
+          "recorded_at": "2026-11-16T14:30:00Z",
+          "rules_version": "rules-1",
+          "state": "OPEN",
+          "subject_id": "th_gate_same_bar_missing_minutes_long"
+        },
+        {
+          "at": "2026-11-17T14:30:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_a6c8551a9cbab0a1",
+          "price": 98.0,
+          "reason": "data_missing",
+          "recorded_at": "2026-11-17T14:30:00Z",
+          "rules_version": "rules-1",
+          "state": "CLOSED",
+          "subject_id": "th_gate_same_bar_missing_minutes_long"
+        }
+      ],
+      "notes": [
+        "2026-11-17: no 1-minute bars",
+        "2026-11-17: stop and target in one daily bar and no 1-minute bars settle it; stop"
+      ],
+      "outcome": {
+        "cost_bps": 8.0,
+        "cost_r": 0.026933333333333333,
+        "entry_price": 101.0,
+        "exit_price": 98.0,
+        "exit_reason": "data_missing",
+        "mae_r": -1.0,
+        "mfe_r": 1.8333333333333333,
+        "r_gross": -1.0,
+        "r_net": -1.0269333333333333,
+        "sessions_held": 1,
+        "subject_id": "th_gate_same_bar_missing_minutes_long"
+      }
+    },
+    "same_bar_missing_minutes/short": {
+      "events": [
+        {
+          "at": "2026-11-16T14:30:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_6707e0ab88382b3f",
+          "price": 99.0,
+          "reason": "entry_fill",
+          "recorded_at": "2026-11-16T14:30:00Z",
+          "rules_version": "rules-1",
+          "state": "OPEN",
+          "subject_id": "th_gate_same_bar_missing_minutes_short"
+        },
+        {
+          "at": "2026-11-17T14:30:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_43e14051aeb1c002",
+          "price": 102.0,
+          "reason": "data_missing",
+          "recorded_at": "2026-11-17T14:30:00Z",
+          "rules_version": "rules-1",
+          "state": "CLOSED",
+          "subject_id": "th_gate_same_bar_missing_minutes_short"
+        }
+      ],
+      "notes": [
+        "2026-11-17: no 1-minute bars",
+        "2026-11-17: stop and target in one daily bar and no 1-minute bars settle it; stop"
+      ],
+      "outcome": {
+        "cost_bps": 8.0,
+        "cost_r": 0.026400000000000003,
+        "entry_price": 99.0,
+        "exit_price": 102.0,
+        "exit_reason": "data_missing",
+        "mae_r": -1.0,
+        "mfe_r": 1.8333333333333333,
+        "r_gross": -1.0,
+        "r_net": -1.0264,
+        "sessions_held": 1,
+        "subject_id": "th_gate_same_bar_missing_minutes_short"
+      }
+    },
+    "time_exit_day/long": {
+      "events": [
+        {
+          "at": "2026-11-16T14:30:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_aace3915ae6c070f",
+          "price": 101.0,
+          "reason": "entry_fill",
+          "recorded_at": "2026-11-16T14:30:00Z",
+          "rules_version": "rules-1",
+          "state": "OPEN",
+          "subject_id": "th_gate_time_exit_day_long"
+        },
+        {
+          "at": "2026-11-16T20:54:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_0ab7cadc8ed5e31d",
+          "price": 101.7,
+          "reason": "time_exit",
+          "recorded_at": "2026-11-16T20:54:00Z",
+          "rules_version": "rules-1",
+          "state": "CLOSED",
+          "subject_id": "th_gate_time_exit_day_long"
+        }
+      ],
+      "notes": [],
+      "outcome": {
+        "cost_bps": 6.0,
+        "cost_r": 0.0202,
+        "entry_price": 101.0,
+        "exit_price": 101.7,
+        "exit_reason": "time_exit",
+        "mae_r": -0.06666666666666761,
+        "mfe_r": 0.2666666666666657,
+        "r_gross": 0.23333333333333428,
+        "r_net": 0.21313333333333428,
+        "sessions_held": 0,
+        "subject_id": "th_gate_time_exit_day_long"
+      }
+    },
+    "time_exit_day/short": {
+      "events": [
+        {
+          "at": "2026-11-16T14:30:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_40f7359b11fdf0ca",
+          "price": 99.0,
+          "reason": "entry_fill",
+          "recorded_at": "2026-11-16T14:30:00Z",
+          "rules_version": "rules-1",
+          "state": "OPEN",
+          "subject_id": "th_gate_time_exit_day_short"
+        },
+        {
+          "at": "2026-11-16T20:54:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_f2fb9127778b2fb2",
+          "price": 98.3,
+          "reason": "time_exit",
+          "recorded_at": "2026-11-16T20:54:00Z",
+          "rules_version": "rules-1",
+          "state": "CLOSED",
+          "subject_id": "th_gate_time_exit_day_short"
+        }
+      ],
+      "notes": [],
+      "outcome": {
+        "cost_bps": 6.0,
+        "cost_r": 0.0198,
+        "entry_price": 99.0,
+        "exit_price": 98.3,
+        "exit_reason": "time_exit",
+        "mae_r": -0.06666666666666761,
+        "mfe_r": 0.2666666666666657,
+        "r_gross": 0.23333333333333428,
+        "r_net": 0.21353333333333427,
+        "sessions_held": 0,
+        "subject_id": "th_gate_time_exit_day_short"
+      }
+    },
+    "time_exit_day_early_close/long": {
+      "events": [
+        {
+          "at": "2026-11-27T14:30:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_453ed6728a1518b4",
+          "price": 101.0,
+          "reason": "entry_fill",
+          "recorded_at": "2026-11-27T14:30:00Z",
+          "rules_version": "rules-1",
+          "state": "OPEN",
+          "subject_id": "th_gate_time_exit_day_early_close_long"
+        },
+        {
+          "at": "2026-11-27T17:54:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_d8d33ba5b6ff1d38",
+          "price": 101.5,
+          "reason": "time_exit",
+          "recorded_at": "2026-11-27T17:54:00Z",
+          "rules_version": "rules-1",
+          "state": "CLOSED",
+          "subject_id": "th_gate_time_exit_day_early_close_long"
+        }
+      ],
+      "notes": [],
+      "outcome": {
+        "cost_bps": 6.0,
+        "cost_r": 0.0202,
+        "entry_price": 101.0,
+        "exit_price": 101.5,
+        "exit_reason": "time_exit",
+        "mae_r": 0.0,
+        "mfe_r": 0.1999999999999981,
+        "r_gross": 0.16666666666666666,
+        "r_net": 0.14646666666666666,
+        "sessions_held": 0,
+        "subject_id": "th_gate_time_exit_day_early_close_long"
+      }
+    },
+    "time_exit_day_early_close/short": {
+      "events": [
+        {
+          "at": "2026-11-27T14:30:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_233a4c5e28c478e3",
+          "price": 99.0,
+          "reason": "entry_fill",
+          "recorded_at": "2026-11-27T14:30:00Z",
+          "rules_version": "rules-1",
+          "state": "OPEN",
+          "subject_id": "th_gate_time_exit_day_early_close_short"
+        },
+        {
+          "at": "2026-11-27T17:54:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_67b3e3915340c41a",
+          "price": 98.5,
+          "reason": "time_exit",
+          "recorded_at": "2026-11-27T17:54:00Z",
+          "rules_version": "rules-1",
+          "state": "CLOSED",
+          "subject_id": "th_gate_time_exit_day_early_close_short"
+        }
+      ],
+      "notes": [],
+      "outcome": {
+        "cost_bps": 6.0,
+        "cost_r": 0.0198,
+        "entry_price": 99.0,
+        "exit_price": 98.5,
+        "exit_reason": "time_exit",
+        "mae_r": 0.0,
+        "mfe_r": 0.1999999999999981,
+        "r_gross": 0.16666666666666666,
+        "r_net": 0.14686666666666665,
+        "sessions_held": 0,
+        "subject_id": "th_gate_time_exit_day_early_close_short"
+      }
+    },
+    "time_exit_short/long": {
+      "events": [
+        {
+          "at": "2026-11-16T14:30:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_e47f906f0756d2c9",
+          "price": 101.0,
+          "reason": "entry_fill",
+          "recorded_at": "2026-11-16T14:30:00Z",
+          "rules_version": "rules-1",
+          "state": "OPEN",
+          "subject_id": "th_gate_time_exit_short_long"
+        },
+        {
+          "at": "2026-11-19T21:00:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_de5045931f6114e8",
+          "price": 102.6,
+          "reason": "time_exit",
+          "recorded_at": "2026-11-19T21:00:00Z",
+          "rules_version": "rules-1",
+          "state": "CLOSED",
+          "subject_id": "th_gate_time_exit_short_long"
+        }
+      ],
+      "notes": [],
+      "outcome": {
+        "cost_bps": 6.0,
+        "cost_r": 0.0202,
+        "entry_price": 101.0,
+        "exit_price": 102.6,
+        "exit_reason": "time_exit",
+        "mae_r": -0.3333333333333333,
+        "mfe_r": 0.6666666666666666,
+        "r_gross": 0.5333333333333314,
+        "r_net": 0.5131333333333314,
+        "sessions_held": 3,
+        "subject_id": "th_gate_time_exit_short_long"
+      }
+    },
+    "time_exit_short/short": {
+      "events": [
+        {
+          "at": "2026-11-16T14:30:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_f39e395d3df5459c",
+          "price": 99.0,
+          "reason": "entry_fill",
+          "recorded_at": "2026-11-16T14:30:00Z",
+          "rules_version": "rules-1",
+          "state": "OPEN",
+          "subject_id": "th_gate_time_exit_short_short"
+        },
+        {
+          "at": "2026-11-19T21:00:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_d27f976d84071f1b",
+          "price": 97.4,
+          "reason": "time_exit",
+          "recorded_at": "2026-11-19T21:00:00Z",
+          "rules_version": "rules-1",
+          "state": "CLOSED",
+          "subject_id": "th_gate_time_exit_short_short"
+        }
+      ],
+      "notes": [],
+      "outcome": {
+        "cost_bps": 6.0,
+        "cost_r": 0.0198,
+        "entry_price": 99.0,
+        "exit_price": 97.4,
+        "exit_reason": "time_exit",
+        "mae_r": -0.3333333333333333,
+        "mfe_r": 0.6666666666666666,
+        "r_gross": 0.5333333333333314,
+        "r_net": 0.5135333333333314,
+        "sessions_held": 3,
+        "subject_id": "th_gate_time_exit_short_short"
+      }
+    },
+    "time_exit_swing_holiday/long": {
+      "events": [
+        {
+          "at": "2026-11-19T14:30:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_e131bb290dfaf49d",
+          "price": 101.0,
+          "reason": "entry_fill",
+          "recorded_at": "2026-11-19T14:30:00Z",
+          "rules_version": "rules-1",
+          "state": "OPEN",
+          "subject_id": "th_gate_time_exit_swing_holiday_long"
+        },
+        {
+          "at": "2026-11-27T18:00:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_914d79a8b19976ee",
+          "price": 102.4,
+          "reason": "time_exit",
+          "recorded_at": "2026-11-27T18:00:00Z",
+          "rules_version": "rules-1",
+          "state": "CLOSED",
+          "subject_id": "th_gate_time_exit_swing_holiday_long"
+        }
+      ],
+      "notes": [],
+      "outcome": {
+        "cost_bps": 6.0,
+        "cost_r": 0.0202,
+        "entry_price": 101.0,
+        "exit_price": 102.4,
+        "exit_reason": "time_exit",
+        "mae_r": -0.16666666666666666,
+        "mfe_r": 0.6333333333333352,
+        "r_gross": 0.46666666666666856,
+        "r_net": 0.44646666666666857,
+        "sessions_held": 5,
+        "subject_id": "th_gate_time_exit_swing_holiday_long"
+      }
+    },
+    "time_exit_swing_holiday/short": {
+      "events": [
+        {
+          "at": "2026-11-19T14:30:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_8bb6c21273a47727",
+          "price": 99.0,
+          "reason": "entry_fill",
+          "recorded_at": "2026-11-19T14:30:00Z",
+          "rules_version": "rules-1",
+          "state": "OPEN",
+          "subject_id": "th_gate_time_exit_swing_holiday_short"
+        },
+        {
+          "at": "2026-11-27T18:00:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_ec458eaf1f1cf928",
+          "price": 97.6,
+          "reason": "time_exit",
+          "recorded_at": "2026-11-27T18:00:00Z",
+          "rules_version": "rules-1",
+          "state": "CLOSED",
+          "subject_id": "th_gate_time_exit_swing_holiday_short"
+        }
+      ],
+      "notes": [],
+      "outcome": {
+        "cost_bps": 6.0,
+        "cost_r": 0.0198,
+        "entry_price": 99.0,
+        "exit_price": 97.6,
+        "exit_reason": "time_exit",
+        "mae_r": -0.16666666666666666,
+        "mfe_r": 0.6333333333333352,
+        "r_gross": 0.46666666666666856,
+        "r_net": 0.4468666666666686,
+        "sessions_held": 5,
+        "subject_id": "th_gate_time_exit_swing_holiday_short"
+      }
+    },
+    "window_end_after_close/long": {
+      "events": [
+        {
+          "at": "2026-11-17T14:00:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_bf9323f9dfa6061c",
+          "price": null,
+          "reason": "window_missed",
+          "recorded_at": "2026-11-17T14:00:00Z",
+          "rules_version": "rules-1",
+          "state": "EXPIRED",
+          "subject_id": "th_gate_window_end_after_close_long"
+        }
+      ],
+      "notes": [],
+      "outcome": null
+    },
+    "window_end_after_close/short": {
+      "events": [
+        {
+          "at": "2026-11-17T14:00:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_5b7f60db144addf8",
+          "price": null,
+          "reason": "window_missed",
+          "recorded_at": "2026-11-17T14:00:00Z",
+          "rules_version": "rules-1",
+          "state": "EXPIRED",
+          "subject_id": "th_gate_window_end_after_close_short"
+        }
+      ],
+      "notes": [],
+      "outcome": null
+    },
+    "window_missed/long": {
+      "events": [
+        {
+          "at": "2026-11-17T21:00:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_24c46af5c7b086cf",
+          "price": null,
+          "reason": "window_missed",
+          "recorded_at": "2026-11-17T21:00:00Z",
+          "rules_version": "rules-1",
+          "state": "EXPIRED",
+          "subject_id": "th_gate_window_missed_long"
+        }
+      ],
+      "notes": [],
+      "outcome": null
+    },
+    "window_missed/short": {
+      "events": [
+        {
+          "at": "2026-11-17T21:00:00Z",
+          "bars_source_id": null,
+          "event_id": "ev_0d0fc3cfbc0e4725",
+          "price": null,
+          "reason": "window_missed",
+          "recorded_at": "2026-11-17T21:00:00Z",
+          "rules_version": "rules-1",
+          "state": "EXPIRED",
+          "subject_id": "th_gate_window_missed_short"
+        }
+      ],
+      "notes": [],
+      "outcome": null
+    },
+    "window_missed_before_end/long": {
+      "events": [],
+      "notes": [],
+      "outcome": null
+    },
+    "window_missed_before_end/short": {
+      "events": [],
+      "notes": [],
+      "outcome": null
+    }
+  },
+  "rules_version": "rules-1"
+}

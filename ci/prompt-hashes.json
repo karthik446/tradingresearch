@@ -1,0 +1,14 @@
+{
+  "analyze-1": {
+    "experiment": "prompt-v2",
+    "sha256": "sha256:d75afb6d348a820a0145534a183d4b2ad367fd33c1a6b863eb64ec0e1f60774b"
+  },
+  "analyze-2": {
+    "experiment": "prompt-v2",
+    "sha256": "sha256:254bcfb067e354d35c013428e47827a567e6855cd9740d249540cfeaa1769aae"
+  },
+  "thesis-1": {
+    "experiment": "baseline",
+    "sha256": "sha256:906a62d063b11d0197f7137c6c458cd10e062db0a3691e8184c9ea1f4055bd13"
+  }
+}
