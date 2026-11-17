@@ -311,7 +311,9 @@ def store(conn: sqlite3.Connection, checked: Checked) -> Checked:
 
 
 def thesis(conn: sqlite3.Connection, analysis: Analysis, provider, *, asked: tuple[str, ...], arm: str, model: str,
-           max_usd: float, prices: dict, data_dir, prompt_version: str = DEFAULT_PROMPT) -> Result:
+           max_usd: float, prices: dict, data_dir, prompt_version: str = DEFAULT_PROMPT,
+           terms: str | None = None) -> Result:
+    """One model call, checked and stored; `terms` None means `terms_class(model)`, the teacher arm passes trainable."""
     item = item_for(analysis, asked, arm)
     run = run_eval(Dataset.of("thesis", [item]), provider, [ThesesValid()], settings=call_settings(model),
                    budget=CallBudget(max_usd=max_usd, prices=prices), system=an.system_prompt(prompt_version),
@@ -321,7 +323,7 @@ def thesis(conn: sqlite3.Connection, analysis: Analysis, provider, *, asked: tup
     if sample.outcome != "succeeded":
         raise SystemExit(f"model call failed: {sample.error.code if sample.error else '?'} (run {run_path})")
     route = provider.route_for(item.prompt) if hasattr(provider, "route_for") else "unknown"
-    written = Written(arm, datetime.now(UTC), sample.trace_id, route, terms_class(model),
+    written = Written(arm, datetime.now(UTC), sample.trace_id, route, terms or terms_class(model),
                       input_hash(analysis, asked, prompt_version))
     checked = store(conn, validate(sample.output_parsed, analysis, asked, written))
     return Result(checked, run.record.spent_usd, str(run_path), str(run.record.trace_path))

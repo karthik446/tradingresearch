@@ -1,0 +1,46 @@
+{
+ "id": "gen-1794887818-7v7wBVKQZcY9zObQjZYv",
+ "object": "chat.completion",
+ "created": 1794887818,
+ "model": "deepseek/deepseek-v4-pro",
+ "provider": "DeepInfra",
+ "system_fingerprint": null,
+ "service_tier": "flex",
+ "choices": [
+  {
+   "index": 0,
+   "logprobs": null,
+   "finish_reason": "stop",
+   "native_finish_reason": "stop",
+   "message": {
+    "role": "assistant",
+    "content": "{\n  \"claims\": [\n    {\n      \"id\": \"c1\",\n      \"tag\": \"fact\",\n      \"text\": \"AAPL closed the session at {value} USD on 2026-11-16.\",\n      \"value\": 352.78,\n      \"unit\": \"USD\",\n      \"source_ids\": [\"src_3737a7c770eb2194\"],\n      \"derived_from\": [],\n      \"steps\": null\n    },\n    {\n      \"id\": \"c2\",\n      \"tag\": \"fact\",\n      \"text\": \"The 200-period simple moving average (sma_200) was {value} USD.\",\n      \"value\": 301.719,\n      \"unit\": \"USD\",\n      \"source_ids\": [\"src_b035a2c24290baec\"],\n      \"derived_from\": [],\n      \"steps\": null\n    },\n    {\n      \"id\": \"c3\",\n      \"tag\": \"fact\",\n      \"text\": \"The distance from the close to the sma_200 was {value} ATR.\",\n      \"value\": 6.34635,\n      \"unit\": \"ATR\",\n      \"source_ids\": [\"src_9ea38056ede57021\"],\n      \"derived_from\": [],\n      \"steps\": null\n    },\n    {\n      \"id\": \"c4\",\n      \"tag\": \"inference\",\n      \"text\": \"The close of {value} USD remains significantly above the sma_200, with a distance of 6.35 ATR.\",\n      \"value\": null,\n      \"unit\": null,\n      \"source_ids\": [],\n      \"derived_from\": [\"c1\", \"c2\", \"c3\"],\n      \"steps\": \"Combined close, sma_200, and their ATR-based distance.\"\n    },\n    {\n      \"id\": \"c5\",\n      \"tag\": \"fact\",\n      \"text\": \"The 14-period Relative Strength Index (rsi_14) was {value}.\",\n      \"value\": 56.9998,\n      \"unit\": \"index\",\n      \"source_ids\": [\"src_858e0bf6cad204cc\"],\n      \"derived_from\": [],\n      \"steps\": null\n    },\n    {\n      \"id\": \"c6\",\n      \"tag\": \"inference\",\n      \"text\": \"With an rsi_14 of 56.9998, the stock sits in a neutral momentum zone, neither overbought nor oversold.\",\n      \"value\": null,\n      \"unit\": null,\n      \"source_ids\": [],\n      \"derived_from\": [\"c5\"],\n      \"steps\": \"RSI between 30 and 70 typically signals neutral momentum.\"\n    },\n    {\n      \"id\": \"c7\",\n      \"tag\": \"fact\",\n      \"text\": \"Diluted earnings per share (eps_diluted) increased from {value} USD in CY2025Q2 to {value} USD in CY2026Q2.\",\n      \"value\": null,\n      \"unit\": null,\n      \"source_ids\": [\"src_0fe1b09f2d7d6435\", \"src_cb91baf9da0ba4d0\"],\n      \"derived_from\": [],\n      \"steps\": null\n    },\n    {\n      \"id\": \"c8\",\n      \"tag\": \"fact\",\n      \"text\": \"Annual revenue grew from {value} USD in CY2025 to {value} USD in CY2026.\",\n      \"value\": null,\n      \"unit\": null,\n      \"source_ids\": [\"src_297ac9bf472c5d4f\", \"src_eb42393546cae602\"],\n      \"derived_from\": [],\n      \"steps\": null\n    },\n    {\n      \"id\": \"c9\",\n      \"tag\": \"inference\",\n      \"text\": \"Year-over-year revenue and EPS expansion supports a favorable fundamental backdrop.\",\n      \"value\": null,\n      \"unit\": null,\n      \"source_ids\": [],\n      \"derived_from\": [\"c7\", \"c8\"],\n      \"steps\": \"Both trailing EPS and annual revenue showed growth over the referenced periods.\"\n    },\n    {\n      \"id\": \"c10\",\n      \"tag\": \"fact\",\n      \"text\": \"The session's relative volume was {value}x, indicating turnover above the usual level.\",\n      \"value\": 1.21742,\n      \"unit\": \"x\",\n      \"source_ids\": [\"src_975106b2d3d70129\"],\n      \"derived_from\": [],\n      \"steps\": null\n    },\n    {\n      \"id\": \"c11\",\n      \"tag\": \"fact\",\n      \"text\": \"The Volume-Weighted Average Price (vwap_session) was {value} USD.\",\n      \"value\": 353.44,\n      \"unit\": \"USD\",\n      \"source_ids\": [\"src_9a865eda1165db9a\"],\n      \"derived_from\": [],\n      \"steps\": null\n    },\n    {\n      \"id\": \"c12\",\n      \"tag\": \"inference\",\n      \"text\": \"The close settled slightly below the session's VWAP, suggesting mild intraday selling pressure.\",\n      \"value\": null,\n      \"unit\": null,\n      \"source_ids\": [],\n      \"derived_from\": [\"c1\", \"c11\"],\n      \"steps\": \"Compared close to vwap_session: 352.78 < 353.44.\"\n    }\n  ]\n}",
+    "refusal": null,
+    "reasoning": null
+   }
+  }
+ ],
+ "usage": {
+  "prompt_tokens": 1499,
+  "completion_tokens": 1163,
+  "total_tokens": 2662,
+  "cost": 0.0027492,
+  "is_byok": false,
+  "prompt_tokens_details": {
+   "cached_tokens": 1280,
+   "cache_write_tokens": 0,
+   "audio_tokens": 0,
+   "video_tokens": 0
+  },
+  "cost_details": {
+   "upstream_inference_cost": 0.0027492,
+   "upstream_inference_prompt_cost": 0.00033016,
+   "upstream_inference_completions_cost": 0.00241904
+  },
+  "completion_tokens_details": {
+   "reasoning_tokens": 0,
+   "image_tokens": 0,
+   "audio_tokens": 0
+  }
+ }
+}

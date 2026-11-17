@@ -1,13 +1,17 @@
 usage: tr analyze [-h] [--session SESSION] [--prompt PROMPT] [--model MODEL]
-                  [--max-usd MAX_USD]
+                  [--arm {main,teacher}] [--teacher MODEL] [--max-usd MAX_USD]
                   ticker
 
 positional arguments:
   ticker
 
 options:
-  -h, --help         show this help message and exit
+  -h, --help            show this help message and exit
   --session SESSION
-  --prompt PROMPT    prompt version: prompts/<version>.txt
+  --prompt PROMPT       prompt version: prompts/<version>.txt
   --model MODEL
+  --arm {main,teacher}
+  --teacher MODEL       the teacher arm's model, pinned to its DeepInfra
+                        endpoint: deepseek/deepseek-v4-pro,
+                        qwen/qwen3.5-397b-a17b, openai/gpt-oss-120b
   --max-usd MAX_USD

@@ -335,16 +335,19 @@ def call_settings(model: str) -> CallSettings:
     return CallSettings(model=model, max_output_tokens=4000, output_mode="schema", json_schema=OUTPUT_SCHEMA)
 
 
-def store(conn, ctx: Context, sample, run_id: str, *, model: str, prompt_version: str, route: str
-          ) -> tuple[Analysis, list[Rejection]]:
-    """Validate one sample's claims and write the Analysis (valid claims only) with its sources to the journal."""
+def store(conn, ctx: Context, sample, run_id: str, *, model: str, prompt_version: str, route: str,
+          arm: str = "main", terms_class: str | None = None) -> tuple[Analysis, list[Rejection]]:
+    """Validate one sample's claims and write the Analysis (valid claims only) with its sources to the journal.
+
+    `terms_class` None means the route's default: restricted for Claude, unknown otherwise; the teacher arm passes
+    `trainable`."""
     analysis_id = new_id("an")
     claims, rejected = validate_claims(sample.output_parsed, ctx.values(), analysis_id)
     analysis = Analysis(
         analysis_id=analysis_id, ticker=ctx.ticker, session=ctx.session, created_at=datetime.now(UTC),
         run_id=run_id, snapshot=ctx.snapshot, claims=tuple(claims), input_hash=input_hash(ctx, prompt_version),
-        prompt_version=prompt_version, model=model, sample_trace_id=sample.trace_id, provider_route=route,
-        terms_class="restricted" if model.startswith("anthropic/") else "unknown",
+        prompt_version=prompt_version, model=model, sample_trace_id=sample.trace_id, provider_route=route, arm=arm,
+        terms_class=terms_class or ("restricted" if model.startswith("anthropic/") else "unknown"),
         context_tokens=context_tokens(system_prompt(prompt_version), render(ctx)),
     )
     from . import journal  # local import keeps this module importable without a database
@@ -360,7 +363,7 @@ def save(run, data_dir) -> Path:
 
 
 def analyze(conn, ctx: Context, provider, *, model: str, max_usd: float, prices: dict, data_dir,
-            prompt_version: str = DEFAULT_PROMPT) -> Result:
+            prompt_version: str = DEFAULT_PROMPT, arm: str = "main", terms_class: str | None = None) -> Result:
     item = item_for(ctx)
     run = run_eval(Dataset.of("analyze", [item]), provider, [ClaimsValid()], settings=call_settings(model),
                    budget=CallBudget(max_usd=max_usd, prices=prices), system=system_prompt(prompt_version),
@@ -370,5 +373,6 @@ def analyze(conn, ctx: Context, provider, *, model: str, max_usd: float, prices:
     if sample.outcome != "succeeded":
         raise SystemExit(f"model call failed: {sample.error.code if sample.error else '?'} (run {run_path})")
     analysis, rejected = store(conn, ctx, sample, run.record.run_id, model=model, prompt_version=prompt_version,
-                               route=provider.route_for(item.prompt) if hasattr(provider, "route_for") else "unknown")
+                               route=provider.route_for(item.prompt) if hasattr(provider, "route_for") else "unknown",
+                               arm=arm, terms_class=terms_class)
     return Result(analysis, rejected, run.record.spent_usd, str(run_path), str(run.record.trace_path))

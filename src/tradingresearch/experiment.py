@@ -1,7 +1,8 @@
 """Experiments as config: the same ticker-days, one run per arm, the registry's graders, a paired comparison.
 
 A config is a TOML file (see experiments/). Every arm asks the same gigai-core Dataset, so `compare` pairs the
-answers item by item; an arm differs from the baseline only in what the config names (prompt version, model).
+answers item by item; an arm differs from the baseline only in what the config names (prompt version, model, and an
+OpenRouter `provider` routing table such as a teacher's DeepInfra pin, SPIKE §9.4).
 """
 
 from __future__ import annotations
@@ -16,6 +17,7 @@ from gigai_core import run as run_eval
 
 from . import analyze as an
 from .evals import graders as registry
+from .openrouter import Routing
 
 REQUIRED = ("name", "model", "max_usd_per_arm", "tickers", "sessions", "graders", "arms")
 
@@ -25,6 +27,7 @@ class Arm:
     name: str
     prompt: str
     model: str
+    provider: Routing | None = None  # recorded in every call's ProviderIdentity, so the run shows how it was routed
 
 
 @dataclass(frozen=True)
@@ -42,12 +45,22 @@ def load(path: Path) -> Config:
     missing = [key for key in REQUIRED if key not in raw]
     if missing:
         raise SystemExit(f"{path}: missing {missing}")
-    arms = tuple(Arm(a["name"], a["prompt"], a.get("model", raw["model"])) for a in raw["arms"])
+    arms = tuple(Arm(a["name"], a["prompt"], a.get("model", raw["model"]), routing(path, a)) for a in raw["arms"])
     for arm in arms:
         an.system_prompt(arm.prompt)  # fail before any spend if a prompt file is missing
     registry(raw["graders"])  # and if a grader is not registered
     return Config(raw["name"], tuple(raw["tickers"]), tuple(date.fromisoformat(s) for s in raw["sessions"]),
                   tuple(raw["graders"]), arms, float(raw["max_usd_per_arm"]))
+
+
+def routing(path: Path, arm: dict) -> Routing | None:
+    """An arm's `provider` table, refused before any spend if a key, type or quantization is wrong."""
+    if "provider" not in arm:
+        return None
+    try:
+        return Routing.from_config(arm["provider"])
+    except ValueError as exc:
+        raise SystemExit(f"{path}: arm {arm.get('name')}: {exc}") from None
 
 
 @dataclass
@@ -65,7 +78,8 @@ def run_arms(conn, config: Config, contexts: list[an.Context], provider, prices:
     by_item = {f"{ctx.ticker}:{ctx.session}": ctx for ctx in contexts}
     results = []
     for arm in config.arms:
-        run = run_eval(dataset, provider, registry(list(config.graders)), settings=an.call_settings(arm.model),
+        routed = provider.routed(arm.provider) if arm.provider else provider
+        run = run_eval(dataset, routed, registry(list(config.graders)), settings=an.call_settings(arm.model),
                        budget=CallBudget(max_usd=config.max_usd_per_arm, prices=prices),
                        system=an.system_prompt(arm.prompt), trace_dir=data_dir / "traces",
                        tag=f"{config.name}:{arm.name}:{arm.prompt}")
@@ -75,7 +89,7 @@ def run_arms(conn, config: Config, contexts: list[an.Context], provider, prices:
             if sample.parse_status == "ok":
                 ctx = by_item[sample.item_id]
                 an.store(conn, ctx, sample, run.record.run_id, model=arm.model, prompt_version=arm.prompt,
-                         route=provider.route_for(run.items[sample.item_id].prompt))
+                         route=routed.route_for(run.items[sample.item_id].prompt))
                 stored += 1
         results.append(ArmResult(arm, run, path, stored))
     return results

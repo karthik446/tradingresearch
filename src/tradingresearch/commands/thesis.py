@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from .. import analyze as an, journal, openrouter, sessions, thesis as th
+from .. import analyze as an, journal, openrouter, sessions, teacher as tc, thesis as th
 from ..config import require
 from ..records import Analysis, Thesis
 from .common import session_arg
@@ -13,8 +13,8 @@ ARMS = ("champion", "challenger", "teacher")
 
 
 def analysis_for(conn, args) -> Analysis:
-    """The stored analysis to write from; never runs analyze. Validator 6: a teacher thesis needs a teacher analysis,
-    champion and challenger theses a main one."""
+    """The stored analysis to write from; never runs analyze. Validator 6: a teacher thesis needs a teacher analysis
+    (from the same teacher model), champion and challenger theses a main one."""
     wanted = "teacher" if args.arm == "teacher" else "main"
     if args.analysis:
         a = journal.get(conn, Analysis, args.analysis)
@@ -27,6 +27,10 @@ def analysis_for(conn, args) -> Analysis:
             raise SystemExit(f"no {wanted} analysis for {args.ticker} {day}: run `tr analyze {args.ticker}` first")
     if a.arm != wanted:
         raise SystemExit(f"a {args.arm} thesis needs a {wanted} analysis; {a.analysis_id} is {a.arm}")
+    teacher = getattr(args, "teacher", None)
+    if wanted == "teacher" and teacher and a.model != teacher:
+        raise SystemExit(f"{a.analysis_id} was written by {a.model}, not {teacher}: pass --analysis <id> of a "
+                         f"{teacher} analysis")
     return a
 
 
@@ -53,21 +57,25 @@ def thesis_line(t: Thesis) -> str:
 
 
 def cmd_thesis(args, cfg) -> None:
+    teacher = tc.from_args(args.arm, args.teacher, args.model, th.DEFAULT_MODEL)
+    model = teacher.model if teacher else args.model
     conn = journal.connect(cfg.db_path)
     a = analysis_for(conn, args)
     asked = horizons_to_ask(conn, a, args.arm, datetime.now(UTC))
     if not asked:
         print(f"nothing to ask for {a.ticker}: every horizon has a live {args.arm} thesis (no model call)")
         return
-    provider = openrouter.OpenRouter(require(cfg.openrouter_key, "OPENROUTER_API_KEY"))
+    provider = openrouter.OpenRouter(require(cfg.openrouter_key, "OPENROUTER_API_KEY"),
+                                     routing=teacher.routing if teacher else None)
     try:
-        result = th.thesis(conn, a, provider, asked=asked, arm=args.arm, model=args.model, max_usd=args.max_usd,
-                           prices=openrouter.prices([args.model]), data_dir=cfg.data_dir, prompt_version=args.prompt)
+        result = th.thesis(conn, a, provider, asked=asked, arm=args.arm, model=model, max_usd=args.max_usd,
+                           prices=openrouter.prices([model]), data_dir=cfg.data_dir, prompt_version=args.prompt,
+                           terms=teacher.terms_class if teacher else None)
     finally:
         provider.close()
     c = result.checked
     print(f"thesis {a.ticker} {a.session}  analysis {a.analysis_id}  arm={args.arm}  prompt={args.prompt}  "
-          f"model={args.model}  asked {','.join(asked)}  spent=${result.spent_usd:.4f}")
+          f"model={model}  asked {','.join(asked)}  spent=${result.spent_usd:.4f}")
     print(f"run={result.run_path}")
     for t in c.theses:
         print(f"  ACCEPTED {thesis_line(t)}")
@@ -96,6 +104,8 @@ def register(sub) -> None:
     p.add_argument("--arm", choices=ARMS, default="champion")
     p.add_argument("--prompt", default=th.DEFAULT_PROMPT, help="prompt version: prompts/<version>.txt")
     p.add_argument("--model", default=th.DEFAULT_MODEL)
+    p.add_argument("--teacher", choices=tuple(tc.TEACHERS), metavar="MODEL",
+                   help="the teacher arm's model, pinned to its DeepInfra endpoint: " + ", ".join(tc.TEACHERS))
     p.add_argument("--max-usd", type=float, default=0.25)
     p.set_defaults(func=cmd_thesis)
     p = sub.add_parser("open", help="theses whose last event is PROPOSED or OPEN")

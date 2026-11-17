@@ -1,9 +1,14 @@
-"""OpenRouter as a gigai-core ModelProvider (gigai-core ships no OpenRouter adapter), plus prices and key spend."""
+"""OpenRouter as a gigai-core ModelProvider (gigai-core ships no OpenRouter adapter), plus prices and key spend.
+
+A `Routing` pins which hosts may serve a call (the teacher arm's DeepInfra pin, SPIKE §9.4, P12); without one the
+request is the plain Claude-route request."""
 
 from __future__ import annotations
 
+import copy
 import threading
 import time
+from dataclasses import dataclass
 from datetime import UTC, datetime
 
 import httpx
@@ -15,6 +20,8 @@ from gigai_core.providers import (
 
 API = "https://openrouter.ai/api/v1"
 FINISH = {"stop": "stop", "length": "length", "tool_calls": "tool_calls", "content_filter": "content_filter"}
+QUANTIZATIONS = ("int4", "int8", "fp4", "fp6", "fp8", "fp16", "bf16", "fp32", "unknown")  # OpenRouter's filter values
+ROUTING_KEYS = ("only", "allow_fallbacks", "quantizations")
 
 
 class OpenRouterError(ProviderError):
@@ -24,10 +31,73 @@ class OpenRouterError(ProviderError):
         self.retryable = status == 429 or status >= 500
 
 
+class RouteMismatch(ProviderError):
+    """The reply came from a host or tier the routing does not allow: never reroute silently (SPIKE §9.4)."""
+
+    code = "route_mismatch"
+
+
+@dataclass(frozen=True)
+class Routing:
+    """OpenRouter's `provider` block: endpoint slugs allowed (`provider[/variant][/tier]`), fallbacks, quantizations."""
+
+    only: tuple[str, ...] = ()
+    allow_fallbacks: bool = True
+    quantizations: tuple[str, ...] = ()
+
+    @classmethod
+    def from_config(cls, raw: object) -> Routing:
+        """An experiment arm's `provider` table, checked before any spend."""
+        if not isinstance(raw, dict):
+            raise ValueError("provider must be a table")
+        unknown = sorted(set(raw) - set(ROUTING_KEYS))
+        if unknown:
+            raise ValueError(f"unknown provider key(s) {unknown}; allowed {list(ROUTING_KEYS)}")
+        only, fallbacks, quants = raw.get("only", []), raw.get("allow_fallbacks", True), raw.get("quantizations", [])
+        if not (isinstance(only, list) and all(isinstance(s, str) and s for s in only)):
+            raise ValueError("provider.only must be a list of endpoint slugs")
+        if not isinstance(fallbacks, bool):
+            raise ValueError("provider.allow_fallbacks must be true or false")
+        if not (isinstance(quants, list) and all(q in QUANTIZATIONS for q in quants)):
+            raise ValueError(f"provider.quantizations must be a list of {list(QUANTIZATIONS)}")
+        return cls(tuple(only), fallbacks, tuple(quants))
+
+    @property
+    def tier(self) -> str | None:
+        """`flex` when every allowed endpoint is a flex one: sent as `service_tier` and checked on the reply."""
+        return "flex" if self.only and all(slug.endswith("/flex") for slug in self.only) else None
+
+    def block(self) -> dict:
+        out: dict = {"allow_fallbacks": self.allow_fallbacks}
+        if self.only:
+            out["only"] = list(self.only)
+        if self.quantizations:
+            out["quantizations"] = list(self.quantizations)
+        return out
+
+    def describe(self) -> str:
+        """The pin as one line, kept in the trace (`ProviderIdentity.provider`) so a run shows how it was routed."""
+        return (f"only={'+'.join(self.only) or '*'},allow_fallbacks={str(self.allow_fallbacks).lower()},"
+                f"quantizations={'+'.join(self.quantizations) or '*'}")
+
+    def served(self, data: dict) -> str:
+        """The route that answered (`openrouter:<slug>`), or RouteMismatch if the reply names another host or tier."""
+        host = str(data.get("provider", "")).lower().replace(" ", "-")
+        hosts = {slug.split("/")[0] for slug in self.only}
+        if hosts and host not in hosts:
+            raise RouteMismatch(f"served by {data.get('provider')!r}, pinned to {'+'.join(self.only)}")
+        tier = data.get("service_tier")
+        if self.tier and tier != self.tier:
+            raise RouteMismatch(f"served at tier {tier!r}, pinned to {self.tier}")
+        if len(self.only) == 1:
+            return f"openrouter:{self.only[0]}"
+        return f"openrouter:{host or 'unknown'}" + (f"/{tier}" if tier and tier != "default" else "")
+
+
 class OpenRouter:
     """Chat completions over httpx. No temperature or seed: the Claude 5.5 routes do not accept them."""
 
-    def __init__(self, api_key: str, *, timeout: float = 120.0) -> None:
+    def __init__(self, api_key: str, *, timeout: float = 120.0, routing: Routing | None = None) -> None:
         if not api_key:
             raise AuthenticationRequired("OPENROUTER_API_KEY is not set")
         self._http = httpx.Client(
@@ -35,13 +105,21 @@ class OpenRouter:
             headers={"Authorization": f"Bearer {api_key}", "X-Title": "tradingresearch"},
         )
         self.routes: dict[str, str] = {}  # last user turn -> the upstream that served it (Analysis.provider_route)
+        self.routing = routing
+
+    def routed(self, routing: Routing) -> OpenRouter:
+        """The same client pinned by `routing` (an experiment arm's `provider` knob)."""
+        pinned = copy.copy(self)
+        pinned.routing = routing
+        return pinned
 
     def route_for(self, prompt: str) -> str:
         return self.routes.get(prompt, "openrouter:unknown")
 
     @property
     def identity(self) -> ProviderIdentity:
-        return ProviderIdentity(provider="openrouter", endpoint=f"{API}/chat/completions", adapter="tradingresearch/1")
+        provider = "openrouter" if self.routing is None else f"openrouter:{self.routing.describe()}"
+        return ProviderIdentity(provider=provider, endpoint=f"{API}/chat/completions", adapter="tradingresearch/1")
 
     @property
     def capabilities(self) -> frozenset[Capability]:
@@ -63,6 +141,10 @@ class OpenRouter:
             body["response_format"] = {
                 "type": "json_schema", "json_schema": {"name": "output", "strict": True, "schema": s.json_schema},
             }
+        if self.routing is not None:
+            body["provider"] = self.routing.block()
+            if self.routing.tier:
+                body["service_tier"] = self.routing.tier
         started = datetime.now(UTC)
         t0 = time.monotonic()
         response = self._http.post("/chat/completions", json=body)
@@ -74,7 +156,10 @@ class OpenRouter:
         data = response.json()
         if "error" in data:  # some upstream failures arrive as 200 with an error body
             raise OpenRouterError(int(data["error"].get("code", 502)), str(data["error"].get("message"))[:300])
-        self.routes[request.turns[-1].content] = f"openrouter:{data.get('provider', 'unknown')}"
+        if self.routing is None:
+            self.routes[request.turns[-1].content] = f"openrouter:{data.get('provider', 'unknown')}"
+        else:
+            self.routes[request.turns[-1].content] = self.routing.served(data)
         choice = data["choices"][0]
         text = choice["message"].get("content") or ""
         if s.output_mode != "text" and not text.strip():

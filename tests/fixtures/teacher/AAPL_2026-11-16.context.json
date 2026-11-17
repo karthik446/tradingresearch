@@ -1,0 +1,773 @@
+{
+ "ticker": "AAPL",
+ "session": "2026-11-16",
+ "snapshot": {
+  "ticker": "AAPL",
+  "session": "2026-11-16",
+  "values": {
+   "close": 352.78,
+   "sma_20": 346.64225,
+   "sma_50": 339.6925,
+   "sma_200": 301.719375,
+   "ema_9": 350.86285928931477,
+   "ema_21": 346.86202900190267,
+   "rsi_14": 56.999820696972385,
+   "atr_14": 8.045664467165874,
+   "atr_pct": 2.280646427565586,
+   "rel_volume": 1.2174205672853229,
+   "high_20": 360.83,
+   "low_20": 325.33,
+   "gap_pct": 0.23998652707216947,
+   "nr7": 0.0,
+   "vwap_session": 353.44043558319976,
+   "dist_sma_20_atr": 0.7628642761636363,
+   "dist_sma_50_atr": 1.6266524726962812,
+   "dist_sma_200_atr": 6.346352772773076,
+   "dist_high_20_atr": -1.0005388657272287,
+   "dist_low_20_atr": 3.41177538685868
+  },
+  "levels": [
+   {
+    "price": 333.35270145989335,
+    "kind": "hvn",
+    "strength": 2.7153174780447804,
+    "distance_atr": 2.414629471486024
+   },
+   {
+    "price": 343.40978204385067,
+    "kind": "hvn",
+    "strength": 3.084510341347315,
+    "distance_atr": 1.1646294714860277
+   },
+   {
+    "price": 338.7,
+    "kind": "pivot_low",
+    "strength": 1.0,
+    "distance_atr": 1.750010835955198
+   },
+   {
+    "price": 325.81,
+    "kind": "pivot_low",
+    "strength": 1.0,
+    "distance_atr": 3.3521159265420235
+   },
+   {
+    "price": 360.83,
+    "kind": "high_20",
+    "strength": 1.0,
+    "distance_atr": -1.0005388657272287
+   },
+   {
+    "price": 325.33,
+    "kind": "low_20",
+    "strength": 1.0,
+    "distance_atr": 3.41177538685868
+   }
+  ],
+  "congestion": null,
+  "regime": "bull-high",
+  "bars_source_id": "src_7db69ef4288c40b3",
+  "code_version": "indicators-1"
+ },
+ "sources": [
+  {
+   "source_id": "src_7db69ef4288c40b3",
+   "kind": "bars_daily",
+   "uri": "https://data.alpaca.markets/v2/stocks/bars?symbols=AAPL&timeframe=1Day&start=2025-09-05&end=2026-11-16&feed=sip&adjustment=split",
+   "retrieved_at": "2026-11-17T03:58:21.291479Z",
+   "content_sha256": "sha256:7db69ef4288c40b344b6b582a0bc224fc19d9e057b6af051b527562241caff37",
+   "feed": "sip",
+   "licence_note": "Alpaca market data: personal use; do not redistribute raw bars"
+  },
+  {
+   "source_id": "src_3737a7c770eb2194",
+   "kind": "computed",
+   "uri": "tradingresearch:indicators.py#close?ticker=AAPL&session=2026-11-16",
+   "retrieved_at": "2026-11-17T03:58:21.303691Z",
+   "content_sha256": "sha256:3737a7c770eb2194e4338d8a7d1c718453e445a8cd8e387ecc3ad60e9c238ee0",
+   "feed": null,
+   "licence_note": "computed by tradingresearch from licensed bars"
+  },
+  {
+   "source_id": "src_d952374e921009a6",
+   "kind": "computed",
+   "uri": "tradingresearch:indicators.py#sma_20?ticker=AAPL&session=2026-11-16",
+   "retrieved_at": "2026-11-17T03:58:21.303714Z",
+   "content_sha256": "sha256:d952374e921009a6122edc800ed6328efddf1997454754f905eb891788b0f60c",
+   "feed": null,
+   "licence_note": "computed by tradingresearch from licensed bars"
+  },
+  {
+   "source_id": "src_8d375151f7825551",
+   "kind": "computed",
+   "uri": "tradingresearch:indicators.py#sma_50?ticker=AAPL&session=2026-11-16",
+   "retrieved_at": "2026-11-17T03:58:21.303726Z",
+   "content_sha256": "sha256:8d375151f782555158d223dd9d6b6a3ec30ee165026a8ffef8ec82ba9ac75b7f",
+   "feed": null,
+   "licence_note": "computed by tradingresearch from licensed bars"
+  },
+  {
+   "source_id": "src_b035a2c24290baec",
+   "kind": "computed",
+   "uri": "tradingresearch:indicators.py#sma_200?ticker=AAPL&session=2026-11-16",
+   "retrieved_at": "2026-11-17T03:58:21.303737Z",
+   "content_sha256": "sha256:b035a2c24290baeccce564ac945f1c50fb285ceaccdd96dacec062befe52d97e",
+   "feed": null,
+   "licence_note": "computed by tradingresearch from licensed bars"
+  },
+  {
+   "source_id": "src_15f296506bec88e4",
+   "kind": "computed",
+   "uri": "tradingresearch:indicators.py#ema_9?ticker=AAPL&session=2026-11-16",
+   "retrieved_at": "2026-11-17T03:58:21.303746Z",
+   "content_sha256": "sha256:15f296506bec88e466016551bbef616174bc6f5defd73209885203fa0538349e",
+   "feed": null,
+   "licence_note": "computed by tradingresearch from licensed bars"
+  },
+  {
+   "source_id": "src_f443b862280f516e",
+   "kind": "computed",
+   "uri": "tradingresearch:indicators.py#ema_21?ticker=AAPL&session=2026-11-16",
+   "retrieved_at": "2026-11-17T03:58:21.303754Z",
+   "content_sha256": "sha256:f443b862280f516e8a0dacc2c388521f6c66d0911dd17cc748cd090bbee4ac5a",
+   "feed": null,
+   "licence_note": "computed by tradingresearch from licensed bars"
+  },
+  {
+   "source_id": "src_858e0bf6cad204cc",
+   "kind": "computed",
+   "uri": "tradingresearch:indicators.py#rsi_14?ticker=AAPL&session=2026-11-16",
+   "retrieved_at": "2026-11-17T03:58:21.303763Z",
+   "content_sha256": "sha256:858e0bf6cad204cca127f74c255173d1c7a365e45ce0451d33b054e4200484a2",
+   "feed": null,
+   "licence_note": "computed by tradingresearch from licensed bars"
+  },
+  {
+   "source_id": "src_88b9351449dc9910",
+   "kind": "computed",
+   "uri": "tradingresearch:indicators.py#atr_14?ticker=AAPL&session=2026-11-16",
+   "retrieved_at": "2026-11-17T03:58:21.303771Z",
+   "content_sha256": "sha256:88b9351449dc991047bb633fcb7237a0026c2b0fe1685234a588f63f86d4cc9e",
+   "feed": null,
+   "licence_note": "computed by tradingresearch from licensed bars"
+  },
+  {
+   "source_id": "src_d677d5e5b31f37eb",
+   "kind": "computed",
+   "uri": "tradingresearch:indicators.py#atr_pct?ticker=AAPL&session=2026-11-16",
+   "retrieved_at": "2026-11-17T03:58:21.303779Z",
+   "content_sha256": "sha256:d677d5e5b31f37eb5626f9fbfbb8b0f7b532361bd342918eef28e02fee4cb8bb",
+   "feed": null,
+   "licence_note": "computed by tradingresearch from licensed bars"
+  },
+  {
+   "source_id": "src_975106b2d3d70129",
+   "kind": "computed",
+   "uri": "tradingresearch:indicators.py#rel_volume?ticker=AAPL&session=2026-11-16",
+   "retrieved_at": "2026-11-17T03:58:21.303787Z",
+   "content_sha256": "sha256:975106b2d3d70129645a7241457d53279fed1093ca532c5a25369f44209c23bc",
+   "feed": null,
+   "licence_note": "computed by tradingresearch from licensed bars"
+  },
+  {
+   "source_id": "src_3b6e4b38434cb811",
+   "kind": "computed",
+   "uri": "tradingresearch:indicators.py#high_20?ticker=AAPL&session=2026-11-16",
+   "retrieved_at": "2026-11-17T03:58:21.303795Z",
+   "content_sha256": "sha256:3b6e4b38434cb811f9c447fdd7e35e8fcbb090e980bc322e596ff116905d201f",
+   "feed": null,
+   "licence_note": "computed by tradingresearch from licensed bars"
+  },
+  {
+   "source_id": "src_5d1fd94ce28d2135",
+   "kind": "computed",
+   "uri": "tradingresearch:indicators.py#low_20?ticker=AAPL&session=2026-11-16",
+   "retrieved_at": "2026-11-17T03:58:21.303803Z",
+   "content_sha256": "sha256:5d1fd94ce28d2135ade868b33ffb241dabc85e3ad34ae2237d21f85384189493",
+   "feed": null,
+   "licence_note": "computed by tradingresearch from licensed bars"
+  },
+  {
+   "source_id": "src_9a3fe53f216ece07",
+   "kind": "computed",
+   "uri": "tradingresearch:indicators.py#gap_pct?ticker=AAPL&session=2026-11-16",
+   "retrieved_at": "2026-11-17T03:58:21.303811Z",
+   "content_sha256": "sha256:9a3fe53f216ece07a674398976e790e35a52df2e2a369e53a40da14f53d842c9",
+   "feed": null,
+   "licence_note": "computed by tradingresearch from licensed bars"
+  },
+  {
+   "source_id": "src_24d815bb5b25ebe6",
+   "kind": "computed",
+   "uri": "tradingresearch:indicators.py#nr7?ticker=AAPL&session=2026-11-16",
+   "retrieved_at": "2026-11-17T03:58:21.303820Z",
+   "content_sha256": "sha256:24d815bb5b25ebe63735d368d86a40cc73925d49704d683b4e2a1dda6e0f343e",
+   "feed": null,
+   "licence_note": "computed by tradingresearch from licensed bars"
+  },
+  {
+   "source_id": "src_9a865eda1165db9a",
+   "kind": "computed",
+   "uri": "tradingresearch:indicators.py#vwap_session?ticker=AAPL&session=2026-11-16",
+   "retrieved_at": "2026-11-17T03:58:21.303832Z",
+   "content_sha256": "sha256:9a865eda1165db9ac708e33e9ac02bd1a11e4f1aa9691a0bb041fb867650d493",
+   "feed": null,
+   "licence_note": "computed by tradingresearch from licensed bars"
+  },
+  {
+   "source_id": "src_84d3b13b366a29bd",
+   "kind": "computed",
+   "uri": "tradingresearch:indicators.py#dist_sma_20_atr?ticker=AAPL&session=2026-11-16",
+   "retrieved_at": "2026-11-17T03:58:21.303843Z",
+   "content_sha256": "sha256:84d3b13b366a29bda374ed5da264055908ef7fe139af0abdf09b40a13d8d4348",
+   "feed": null,
+   "licence_note": "computed by tradingresearch from licensed bars"
+  },
+  {
+   "source_id": "src_d451015c9cd0a2b7",
+   "kind": "computed",
+   "uri": "tradingresearch:indicators.py#dist_sma_50_atr?ticker=AAPL&session=2026-11-16",
+   "retrieved_at": "2026-11-17T03:58:21.303852Z",
+   "content_sha256": "sha256:d451015c9cd0a2b73e0e85fb58440737b554616d044590597f310f7714b5bed6",
+   "feed": null,
+   "licence_note": "computed by tradingresearch from licensed bars"
+  },
+  {
+   "source_id": "src_9ea38056ede57021",
+   "kind": "computed",
+   "uri": "tradingresearch:indicators.py#dist_sma_200_atr?ticker=AAPL&session=2026-11-16",
+   "retrieved_at": "2026-11-17T03:58:21.303861Z",
+   "content_sha256": "sha256:9ea38056ede57021f84ba42a2657957e3501d722cab2f0609aa3ddacb286f1c2",
+   "feed": null,
+   "licence_note": "computed by tradingresearch from licensed bars"
+  },
+  {
+   "source_id": "src_7b23617c005552c9",
+   "kind": "computed",
+   "uri": "tradingresearch:indicators.py#dist_high_20_atr?ticker=AAPL&session=2026-11-16",
+   "retrieved_at": "2026-11-17T03:58:21.303869Z",
+   "content_sha256": "sha256:7b23617c005552c9fe23270dba82cd7ccca01340268b5f20fab3959cd84b24e0",
+   "feed": null,
+   "licence_note": "computed by tradingresearch from licensed bars"
+  },
+  {
+   "source_id": "src_f51a489480e72d47",
+   "kind": "computed",
+   "uri": "tradingresearch:indicators.py#dist_low_20_atr?ticker=AAPL&session=2026-11-16",
+   "retrieved_at": "2026-11-17T03:58:21.303878Z",
+   "content_sha256": "sha256:f51a489480e72d479d7b04a87136bd93e1e2dd49ee8b2300996861c57919b7e6",
+   "feed": null,
+   "licence_note": "computed by tradingresearch from licensed bars"
+  },
+  {
+   "source_id": "src_e3c3d34f7caac923",
+   "kind": "computed",
+   "uri": "tradingresearch:indicators.py#level_hvn_1?ticker=AAPL&session=2026-11-16",
+   "retrieved_at": "2026-11-17T03:58:21.303891Z",
+   "content_sha256": "sha256:e3c3d34f7caac923c99b3e84c67637b3206f546c684a05fdfd97b0a533932382",
+   "feed": null,
+   "licence_note": "computed by tradingresearch from licensed bars"
+  },
+  {
+   "source_id": "src_978c1f4aca6fadcd",
+   "kind": "computed",
+   "uri": "tradingresearch:indicators.py#dist_level_hvn_1_atr?ticker=AAPL&session=2026-11-16",
+   "retrieved_at": "2026-11-17T03:58:21.303899Z",
+   "content_sha256": "sha256:978c1f4aca6fadcd1890446a6179f7319f120b2e3d7c35099619d98c63c7e105",
+   "feed": null,
+   "licence_note": "computed by tradingresearch from licensed bars"
+  },
+  {
+   "source_id": "src_1cad32e483f64af9",
+   "kind": "computed",
+   "uri": "tradingresearch:indicators.py#level_hvn_2?ticker=AAPL&session=2026-11-16",
+   "retrieved_at": "2026-11-17T03:58:21.303908Z",
+   "content_sha256": "sha256:1cad32e483f64af9eb734f54c2106679590abab5bb33d5e1571e87ee8728ccab",
+   "feed": null,
+   "licence_note": "computed by tradingresearch from licensed bars"
+  },
+  {
+   "source_id": "src_6eff98f98f25ce29",
+   "kind": "computed",
+   "uri": "tradingresearch:indicators.py#dist_level_hvn_2_atr?ticker=AAPL&session=2026-11-16",
+   "retrieved_at": "2026-11-17T03:58:21.303916Z",
+   "content_sha256": "sha256:6eff98f98f25ce2972ac13557d894d7054b6cfaa574aac6f2f9493cd1f9050d5",
+   "feed": null,
+   "licence_note": "computed by tradingresearch from licensed bars"
+  },
+  {
+   "source_id": "src_2e6ad5faf80ec1df",
+   "kind": "computed",
+   "uri": "tradingresearch:indicators.py#level_pivot_low_1?ticker=AAPL&session=2026-11-16",
+   "retrieved_at": "2026-11-17T03:58:21.303924Z",
+   "content_sha256": "sha256:2e6ad5faf80ec1dfbe54f878ab278c37f57227846651a1eaaf5d9cc14e1f87f9",
+   "feed": null,
+   "licence_note": "computed by tradingresearch from licensed bars"
+  },
+  {
+   "source_id": "src_c67723c23aba4c35",
+   "kind": "computed",
+   "uri": "tradingresearch:indicators.py#dist_level_pivot_low_1_atr?ticker=AAPL&session=2026-11-16",
+   "retrieved_at": "2026-11-17T03:58:21.303933Z",
+   "content_sha256": "sha256:c67723c23aba4c3553d1354712faaa0ca37c48330694722f3fbba203dac41bc4",
+   "feed": null,
+   "licence_note": "computed by tradingresearch from licensed bars"
+  },
+  {
+   "source_id": "src_4c144285e733102e",
+   "kind": "computed",
+   "uri": "tradingresearch:indicators.py#level_pivot_low_2?ticker=AAPL&session=2026-11-16",
+   "retrieved_at": "2026-11-17T03:58:21.303941Z",
+   "content_sha256": "sha256:4c144285e733102e72e32dbc5839fca3232ab35352eb51374196f04cdaaf8a67",
+   "feed": null,
+   "licence_note": "computed by tradingresearch from licensed bars"
+  },
+  {
+   "source_id": "src_0d54775eb50f1021",
+   "kind": "computed",
+   "uri": "tradingresearch:indicators.py#dist_level_pivot_low_2_atr?ticker=AAPL&session=2026-11-16",
+   "retrieved_at": "2026-11-17T03:58:21.303950Z",
+   "content_sha256": "sha256:0d54775eb50f102163a9d53ebc1e7bc25e6217f2714d3b8630a442d2b756adbe",
+   "feed": null,
+   "licence_note": "computed by tradingresearch from licensed bars"
+  },
+  {
+   "source_id": "src_d7e151e78a501360",
+   "kind": "computed",
+   "uri": "tradingresearch:indicators.py#regime_spy?ticker=AAPL&session=2026-11-16",
+   "retrieved_at": "2026-11-17T03:58:21.303959Z",
+   "content_sha256": "sha256:d7e151e78a5013600de52d73bef4063426bd2c070c40ecf9aee6cd54bf9defbd",
+   "feed": null,
+   "licence_note": "computed by tradingresearch from licensed bars"
+  },
+  {
+   "source_id": "src_f9efc6f14355cdc3",
+   "kind": "edgar_fact",
+   "uri": "https://data.sec.gov/api/xbrl/companyfacts/CIK0000320193.json#RevenueFromContractWithCustomerExcludingAssessedTax/CY2025Q2/accn=0000320193-26-000020",
+   "retrieved_at": "2026-11-17T03:58:21.333543Z",
+   "content_sha256": "sha256:f9efc6f14355cdc3e1f4600b2fa6b8630d8c30b7162fef3054f05549dbbf0435",
+   "feed": null,
+   "licence_note": "SEC EDGAR: US government public data"
+  },
+  {
+   "source_id": "src_d190d8d010f27730",
+   "kind": "edgar_fact",
+   "uri": "https://data.sec.gov/api/xbrl/companyfacts/CIK0000320193.json#RevenueFromContractWithCustomerExcludingAssessedTax/CY2025Q4/accn=0000320193-26-000006",
+   "retrieved_at": "2026-11-17T03:58:21.333581Z",
+   "content_sha256": "sha256:d190d8d010f27730b36237718e2d33bbe26861e744a2974aa2beea6926855f95",
+   "feed": null,
+   "licence_note": "SEC EDGAR: US government public data"
+  },
+  {
+   "source_id": "src_ad7658d6d180bf58",
+   "kind": "edgar_fact",
+   "uri": "https://data.sec.gov/api/xbrl/companyfacts/CIK0000320193.json#RevenueFromContractWithCustomerExcludingAssessedTax/CY2026Q1/accn=0000320193-26-000013",
+   "retrieved_at": "2026-11-17T03:58:21.333595Z",
+   "content_sha256": "sha256:ad7658d6d180bf58810ef873df2972cb3f8dc79db1b65a307ba44ad7c5c0a0d3",
+   "feed": null,
+   "licence_note": "SEC EDGAR: US government public data"
+  },
+  {
+   "source_id": "src_52f14ce55f33375e",
+   "kind": "edgar_fact",
+   "uri": "https://data.sec.gov/api/xbrl/companyfacts/CIK0000320193.json#RevenueFromContractWithCustomerExcludingAssessedTax/CY2026Q2/accn=0000320193-26-000020",
+   "retrieved_at": "2026-11-17T03:58:21.333606Z",
+   "content_sha256": "sha256:52f14ce55f33375e9e853700ad70e5b3d91ee69717d42a95b7fb89e96fb3b491",
+   "feed": null,
+   "licence_note": "SEC EDGAR: US government public data"
+  },
+  {
+   "source_id": "src_62ad0f11c55195f2",
+   "kind": "edgar_fact",
+   "uri": "https://data.sec.gov/api/xbrl/companyfacts/CIK0000320193.json#NetIncomeLoss/CY2025Q2/accn=0000320193-26-000020",
+   "retrieved_at": "2026-11-17T03:58:21.333653Z",
+   "content_sha256": "sha256:62ad0f11c55195f27303b689e7caebaeeb5b5394f6f8e2bfffcdd56060ad1731",
+   "feed": null,
+   "licence_note": "SEC EDGAR: US government public data"
+  },
+  {
+   "source_id": "src_e67ce39a67b4af78",
+   "kind": "edgar_fact",
+   "uri": "https://data.sec.gov/api/xbrl/companyfacts/CIK0000320193.json#NetIncomeLoss/CY2025Q4/accn=0000320193-26-000006",
+   "retrieved_at": "2026-11-17T03:58:21.333664Z",
+   "content_sha256": "sha256:e67ce39a67b4af78b3c6b6ffc0b1dad6ecd94b9ca86f84fb931d91500a804a2c",
+   "feed": null,
+   "licence_note": "SEC EDGAR: US government public data"
+  },
+  {
+   "source_id": "src_cef49d654bea82b9",
+   "kind": "edgar_fact",
+   "uri": "https://data.sec.gov/api/xbrl/companyfacts/CIK0000320193.json#NetIncomeLoss/CY2026Q1/accn=0000320193-26-000013",
+   "retrieved_at": "2026-11-17T03:58:21.333673Z",
+   "content_sha256": "sha256:cef49d654bea82b978e13441b30cf2af24be58dba541f3fbf3d13d8bf5cb0cac",
+   "feed": null,
+   "licence_note": "SEC EDGAR: US government public data"
+  },
+  {
+   "source_id": "src_aecdc8620aae041f",
+   "kind": "edgar_fact",
+   "uri": "https://data.sec.gov/api/xbrl/companyfacts/CIK0000320193.json#NetIncomeLoss/CY2026Q2/accn=0000320193-26-000020",
+   "retrieved_at": "2026-11-17T03:58:21.333682Z",
+   "content_sha256": "sha256:aecdc8620aae041f0e9c8cca6d4cc8f98eb50a60c0e823767ac201e0a3fa47b8",
+   "feed": null,
+   "licence_note": "SEC EDGAR: US government public data"
+  },
+  {
+   "source_id": "src_0fe1b09f2d7d6435",
+   "kind": "edgar_fact",
+   "uri": "https://data.sec.gov/api/xbrl/companyfacts/CIK0000320193.json#EarningsPerShareDiluted/CY2025Q2/accn=0000320193-26-000020",
+   "retrieved_at": "2026-11-17T03:58:21.333730Z",
+   "content_sha256": "sha256:0fe1b09f2d7d6435e78432072e62536d60df8efa2da4702442d0b9ead66d27e1",
+   "feed": null,
+   "licence_note": "SEC EDGAR: US government public data"
+  },
+  {
+   "source_id": "src_08d61e8c02efc5cd",
+   "kind": "edgar_fact",
+   "uri": "https://data.sec.gov/api/xbrl/companyfacts/CIK0000320193.json#EarningsPerShareDiluted/CY2025Q4/accn=0000320193-26-000006",
+   "retrieved_at": "2026-11-17T03:58:21.333740Z",
+   "content_sha256": "sha256:08d61e8c02efc5cd4f31311f95ba21e1588985f93a31ba608af5da106c92304b",
+   "feed": null,
+   "licence_note": "SEC EDGAR: US government public data"
+  },
+  {
+   "source_id": "src_081aebfc942cfb77",
+   "kind": "edgar_fact",
+   "uri": "https://data.sec.gov/api/xbrl/companyfacts/CIK0000320193.json#EarningsPerShareDiluted/CY2026Q1/accn=0000320193-26-000013",
+   "retrieved_at": "2026-11-17T03:58:21.333749Z",
+   "content_sha256": "sha256:081aebfc942cfb774f173be846574f2fd4cc66a25493c011ddc07de26c827ce4",
+   "feed": null,
+   "licence_note": "SEC EDGAR: US government public data"
+  },
+  {
+   "source_id": "src_cb91baf9da0ba4d0",
+   "kind": "edgar_fact",
+   "uri": "https://data.sec.gov/api/xbrl/companyfacts/CIK0000320193.json#EarningsPerShareDiluted/CY2026Q2/accn=0000320193-26-000020",
+   "retrieved_at": "2026-11-17T03:58:21.333758Z",
+   "content_sha256": "sha256:cb91baf9da0ba4d0a020983e892cca2a4cafe8cbb1621929a42366e4503a77fc",
+   "feed": null,
+   "licence_note": "SEC EDGAR: US government public data"
+  },
+  {
+   "source_id": "src_297ac9bf472c5d4f",
+   "kind": "edgar_fact",
+   "uri": "https://data.sec.gov/api/xbrl/companyfacts/CIK0000320193.json#RevenueFromContractWithCustomerExcludingAssessedTax/CY2025/accn=0000320193-26-000026",
+   "retrieved_at": "2026-11-17T03:58:21.333793Z",
+   "content_sha256": "sha256:297ac9bf472c5d4f63d9f72fb1afcbc983fdee5b251caf81f0c92a48cbb00211",
+   "feed": null,
+   "licence_note": "SEC EDGAR: US government public data"
+  },
+  {
+   "source_id": "src_eb42393546cae602",
+   "kind": "edgar_fact",
+   "uri": "https://data.sec.gov/api/xbrl/companyfacts/CIK0000320193.json#RevenueFromContractWithCustomerExcludingAssessedTax/CY2026/accn=0000320193-26-000026",
+   "retrieved_at": "2026-11-17T03:58:21.333802Z",
+   "content_sha256": "sha256:eb42393546cae6024f720a3ed905c5498d4c4214918b01670bd5f72a6f8505e5",
+   "feed": null,
+   "licence_note": "SEC EDGAR: US government public data"
+  }
+ ],
+ "rows": [
+  {
+   "source_id": "src_3737a7c770eb2194",
+   "name": "close",
+   "value": 352.78,
+   "unit": "USD",
+   "label": null
+  },
+  {
+   "source_id": "src_d952374e921009a6",
+   "name": "sma_20",
+   "value": 346.64225,
+   "unit": "USD",
+   "label": null
+  },
+  {
+   "source_id": "src_8d375151f7825551",
+   "name": "sma_50",
+   "value": 339.6925,
+   "unit": "USD",
+   "label": null
+  },
+  {
+   "source_id": "src_b035a2c24290baec",
+   "name": "sma_200",
+   "value": 301.719375,
+   "unit": "USD",
+   "label": null
+  },
+  {
+   "source_id": "src_15f296506bec88e4",
+   "name": "ema_9",
+   "value": 350.86285928931477,
+   "unit": "USD",
+   "label": null
+  },
+  {
+   "source_id": "src_f443b862280f516e",
+   "name": "ema_21",
+   "value": 346.86202900190267,
+   "unit": "USD",
+   "label": null
+  },
+  {
+   "source_id": "src_858e0bf6cad204cc",
+   "name": "rsi_14",
+   "value": 56.999820696972385,
+   "unit": "index",
+   "label": null
+  },
+  {
+   "source_id": "src_88b9351449dc9910",
+   "name": "atr_14",
+   "value": 8.045664467165874,
+   "unit": "USD",
+   "label": null
+  },
+  {
+   "source_id": "src_d677d5e5b31f37eb",
+   "name": "atr_pct",
+   "value": 2.280646427565586,
+   "unit": "%",
+   "label": null
+  },
+  {
+   "source_id": "src_975106b2d3d70129",
+   "name": "rel_volume",
+   "value": 1.2174205672853229,
+   "unit": "x",
+   "label": null
+  },
+  {
+   "source_id": "src_3b6e4b38434cb811",
+   "name": "high_20",
+   "value": 360.83,
+   "unit": "USD",
+   "label": null
+  },
+  {
+   "source_id": "src_5d1fd94ce28d2135",
+   "name": "low_20",
+   "value": 325.33,
+   "unit": "USD",
+   "label": null
+  },
+  {
+   "source_id": "src_9a3fe53f216ece07",
+   "name": "gap_pct",
+   "value": 0.23998652707216947,
+   "unit": "%",
+   "label": null
+  },
+  {
+   "source_id": "src_24d815bb5b25ebe6",
+   "name": "nr7",
+   "value": 0.0,
+   "unit": "flag",
+   "label": null
+  },
+  {
+   "source_id": "src_9a865eda1165db9a",
+   "name": "vwap_session",
+   "value": 353.44043558319976,
+   "unit": "USD",
+   "label": null
+  },
+  {
+   "source_id": "src_84d3b13b366a29bd",
+   "name": "dist_sma_20_atr",
+   "value": 0.7628642761636363,
+   "unit": "ATR",
+   "label": null
+  },
+  {
+   "source_id": "src_d451015c9cd0a2b7",
+   "name": "dist_sma_50_atr",
+   "value": 1.6266524726962812,
+   "unit": "ATR",
+   "label": null
+  },
+  {
+   "source_id": "src_9ea38056ede57021",
+   "name": "dist_sma_200_atr",
+   "value": 6.346352772773076,
+   "unit": "ATR",
+   "label": null
+  },
+  {
+   "source_id": "src_7b23617c005552c9",
+   "name": "dist_high_20_atr",
+   "value": -1.0005388657272287,
+   "unit": "ATR",
+   "label": null
+  },
+  {
+   "source_id": "src_f51a489480e72d47",
+   "name": "dist_low_20_atr",
+   "value": 3.41177538685868,
+   "unit": "ATR",
+   "label": null
+  },
+  {
+   "source_id": "src_e3c3d34f7caac923",
+   "name": "level_hvn_1",
+   "value": 333.35270145989335,
+   "unit": "USD",
+   "label": null
+  },
+  {
+   "source_id": "src_978c1f4aca6fadcd",
+   "name": "dist_level_hvn_1_atr",
+   "value": 2.414629471486024,
+   "unit": "ATR",
+   "label": null
+  },
+  {
+   "source_id": "src_1cad32e483f64af9",
+   "name": "level_hvn_2",
+   "value": 343.40978204385067,
+   "unit": "USD",
+   "label": null
+  },
+  {
+   "source_id": "src_6eff98f98f25ce29",
+   "name": "dist_level_hvn_2_atr",
+   "value": 1.1646294714860277,
+   "unit": "ATR",
+   "label": null
+  },
+  {
+   "source_id": "src_2e6ad5faf80ec1df",
+   "name": "level_pivot_low_1",
+   "value": 325.81,
+   "unit": "USD",
+   "label": null
+  },
+  {
+   "source_id": "src_c67723c23aba4c35",
+   "name": "dist_level_pivot_low_1_atr",
+   "value": 3.3521159265420235,
+   "unit": "ATR",
+   "label": null
+  },
+  {
+   "source_id": "src_4c144285e733102e",
+   "name": "level_pivot_low_2",
+   "value": 338.7,
+   "unit": "USD",
+   "label": null
+  },
+  {
+   "source_id": "src_0d54775eb50f1021",
+   "name": "dist_level_pivot_low_2_atr",
+   "value": 1.750010835955198,
+   "unit": "ATR",
+   "label": null
+  },
+  {
+   "source_id": "src_d7e151e78a501360",
+   "name": "regime_spy",
+   "value": null,
+   "unit": null,
+   "label": "bull-high"
+  },
+  {
+   "source_id": "src_f9efc6f14355cdc3",
+   "name": "revenue_CY2025Q2",
+   "value": 94036000000.0,
+   "unit": "USD",
+   "label": null
+  },
+  {
+   "source_id": "src_d190d8d010f27730",
+   "name": "revenue_CY2025Q4",
+   "value": 143756000000.0,
+   "unit": "USD",
+   "label": null
+  },
+  {
+   "source_id": "src_ad7658d6d180bf58",
+   "name": "revenue_CY2026Q1",
+   "value": 111184000000.0,
+   "unit": "USD",
+   "label": null
+  },
+  {
+   "source_id": "src_52f14ce55f33375e",
+   "name": "revenue_CY2026Q2",
+   "value": 109417000000.0,
+   "unit": "USD",
+   "label": null
+  },
+  {
+   "source_id": "src_62ad0f11c55195f2",
+   "name": "net_income_CY2025Q2",
+   "value": 23434000000.0,
+   "unit": "USD",
+   "label": null
+  },
+  {
+   "source_id": "src_e67ce39a67b4af78",
+   "name": "net_income_CY2025Q4",
+   "value": 42097000000.0,
+   "unit": "USD",
+   "label": null
+  },
+  {
+   "source_id": "src_cef49d654bea82b9",
+   "name": "net_income_CY2026Q1",
+   "value": 29578000000.0,
+   "unit": "USD",
+   "label": null
+  },
+  {
+   "source_id": "src_aecdc8620aae041f",
+   "name": "net_income_CY2026Q2",
+   "value": 29789000000.0,
+   "unit": "USD",
+   "label": null
+  },
+  {
+   "source_id": "src_0fe1b09f2d7d6435",
+   "name": "eps_diluted_CY2025Q2",
+   "value": 1.57,
+   "unit": "USD/shares",
+   "label": null
+  },
+  {
+   "source_id": "src_08d61e8c02efc5cd",
+   "name": "eps_diluted_CY2025Q4",
+   "value": 2.84,
+   "unit": "USD/shares",
+   "label": null
+  },
+  {
+   "source_id": "src_081aebfc942cfb77",
+   "name": "eps_diluted_CY2026Q1",
+   "value": 2.01,
+   "unit": "USD/shares",
+   "label": null
+  },
+  {
+   "source_id": "src_cb91baf9da0ba4d0",
+   "name": "eps_diluted_CY2026Q2",
+   "value": 2.02,
+   "unit": "USD/shares",
+   "label": null
+  },
+  {
+   "source_id": "src_297ac9bf472c5d4f",
+   "name": "revenue_annual_CY2025",
+   "value": 416161000000.0,
+   "unit": "USD",
+   "label": null
+  },
+  {
+   "source_id": "src_eb42393546cae602",
+   "name": "revenue_annual_CY2026",
+   "value": 478834000000.0,
+   "unit": "USD",
+   "label": null
+  }
+ ]
+}

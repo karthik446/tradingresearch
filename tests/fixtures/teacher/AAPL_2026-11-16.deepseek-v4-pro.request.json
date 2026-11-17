@@ -1,0 +1,104 @@
+{
+ "model": "deepseek/deepseek-v4-pro",
+ "messages": [
+  {
+   "role": "system",
+   "content": "You are an equity research assistant. You write short, checkable claims about one US stock on one\ntrading day. You never compute numbers: every number you use is in the SOURCES table, computed by code.\n\nRules for every claim:\n- tag \"fact\": restates one or more sources. source_ids lists them; derived_from is empty; steps is null.\n  If the claim has a number, put it in \"value\" and \"unit\" exactly as in the cited source.\n- tag \"inference\": a conclusion drawn from earlier claims. derived_from lists their ids; steps says how in one\n  sentence; source_ids is empty. value is null unless the number appears in a cited source.\n- tag \"opinion\": a judgement. value is null and the text contains no digits.\n- Write numbers ONLY in \"value\". In \"text\", refer to it as {value}. Name indicators by their table name\n  (sma_200, high_20, rsi_14). Dates as YYYY-MM-DD are allowed.\n- Use only the source_ids in the table. Do not invent sources, news or events.\nWrite 6 to 12 claims. Ids are c1, c2, ... in order; an inference may only derive from earlier ids.\nThis is educational research, not investment advice. Do not recommend buying or selling."
+  },
+  {
+   "role": "user",
+   "content": "TICKER: AAPL\nSESSION: 2026-11-16 (the last completed NYSE session)\n\nSOURCES (source_id | name | value | unit)\nsrc_3737a7c770eb2194 | close | 352.78 | USD\nsrc_d952374e921009a6 | sma_20 | 346.642 | USD\nsrc_8d375151f7825551 | sma_50 | 339.692 | USD\nsrc_b035a2c24290baec | sma_200 | 301.719 | USD\nsrc_15f296506bec88e4 | ema_9 | 350.863 | USD\nsrc_f443b862280f516e | ema_21 | 346.862 | USD\nsrc_858e0bf6cad204cc | rsi_14 | 56.9998 | index\nsrc_88b9351449dc9910 | atr_14 | 8.04566 | USD\nsrc_d677d5e5b31f37eb | atr_pct | 2.28065 | %\nsrc_975106b2d3d70129 | rel_volume | 1.21742 | x\nsrc_3b6e4b38434cb811 | high_20 | 360.83 | USD\nsrc_5d1fd94ce28d2135 | low_20 | 325.33 | USD\nsrc_9a3fe53f216ece07 | gap_pct | 0.239987 | %\nsrc_24d815bb5b25ebe6 | nr7 | 0 | flag\nsrc_9a865eda1165db9a | vwap_session | 353.44 | USD\nsrc_84d3b13b366a29bd | dist_sma_20_atr | 0.762864 | ATR\nsrc_d451015c9cd0a2b7 | dist_sma_50_atr | 1.62665 | ATR\nsrc_9ea38056ede57021 | dist_sma_200_atr | 6.34635 | ATR\nsrc_7b23617c005552c9 | dist_high_20_atr | -1.00054 | ATR\nsrc_f51a489480e72d47 | dist_low_20_atr | 3.41178 | ATR\nsrc_e3c3d34f7caac923 | level_hvn_1 | 333.353 | USD\nsrc_978c1f4aca6fadcd | dist_level_hvn_1_atr | 2.41463 | ATR\nsrc_1cad32e483f64af9 | level_hvn_2 | 343.41 | USD\nsrc_6eff98f98f25ce29 | dist_level_hvn_2_atr | 1.16463 | ATR\nsrc_2e6ad5faf80ec1df | level_pivot_low_1 | 325.81 | USD\nsrc_c67723c23aba4c35 | dist_level_pivot_low_1_atr | 3.35212 | ATR\nsrc_4c144285e733102e | level_pivot_low_2 | 338.7 | USD\nsrc_0d54775eb50f1021 | dist_level_pivot_low_2_atr | 1.75001 | ATR\nsrc_d7e151e78a501360 | regime_spy | bull-high | -\nsrc_f9efc6f14355cdc3 | revenue_CY2025Q2 | 94036000000 | USD\nsrc_d190d8d010f27730 | revenue_CY2025Q4 | 143756000000 | USD\nsrc_ad7658d6d180bf58 | revenue_CY2026Q1 | 111184000000 | USD\nsrc_52f14ce55f33375e | revenue_CY2026Q2 | 109417000000 | USD\nsrc_62ad0f11c55195f2 | net_income_CY2025Q2 | 23434000000 | USD\nsrc_e67ce39a67b4af78 | net_income_CY2025Q4 | 42097000000 | USD\nsrc_cef49d654bea82b9 | net_income_CY2026Q1 | 29578000000 | USD\nsrc_aecdc8620aae041f | net_income_CY2026Q2 | 29789000000 | USD\nsrc_0fe1b09f2d7d6435 | eps_diluted_CY2025Q2 | 1.57 | USD/shares\nsrc_08d61e8c02efc5cd | eps_diluted_CY2025Q4 | 2.84 | USD/shares\nsrc_081aebfc942cfb77 | eps_diluted_CY2026Q1 | 2.01 | USD/shares\nsrc_cb91baf9da0ba4d0 | eps_diluted_CY2026Q2 | 2.02 | USD/shares\nsrc_297ac9bf472c5d4f | revenue_annual_CY2025 | 416161000000 | USD\nsrc_eb42393546cae602 | revenue_annual_CY2026 | 478834000000 | USD\n\nWrite the claims as JSON with the key \"claims\"."
+  }
+ ],
+ "max_tokens": 4000,
+ "response_format": {
+  "type": "json_schema",
+  "json_schema": {
+   "name": "output",
+   "strict": true,
+   "schema": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+     "claims"
+    ],
+    "properties": {
+     "claims": {
+      "type": "array",
+      "items": {
+       "type": "object",
+       "additionalProperties": false,
+       "required": [
+        "id",
+        "tag",
+        "text",
+        "value",
+        "unit",
+        "source_ids",
+        "derived_from",
+        "steps"
+       ],
+       "properties": {
+        "id": {
+         "type": "string"
+        },
+        "tag": {
+         "type": "string",
+         "enum": [
+          "fact",
+          "inference",
+          "opinion"
+         ]
+        },
+        "text": {
+         "type": "string"
+        },
+        "value": {
+         "type": [
+          "number",
+          "null"
+         ]
+        },
+        "unit": {
+         "type": [
+          "string",
+          "null"
+         ]
+        },
+        "source_ids": {
+         "type": "array",
+         "items": {
+          "type": "string"
+         }
+        },
+        "derived_from": {
+         "type": "array",
+         "items": {
+          "type": "string"
+         }
+        },
+        "steps": {
+         "type": [
+          "string",
+          "null"
+         ]
+        }
+       }
+      }
+     }
+    }
+   }
+  }
+ },
+ "provider": {
+  "allow_fallbacks": false,
+  "only": [
+   "deepinfra/fp8/flex"
+  ],
+  "quantizations": [
+   "fp8",
+   "bf16"
+  ]
+ },
+ "service_tier": "flex"
+}
