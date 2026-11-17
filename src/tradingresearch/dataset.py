@@ -11,15 +11,17 @@ import hashlib
 import json
 import re
 import sqlite3
+import unicodedata
 from collections import Counter
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from pathlib import Path
+from urllib.parse import parse_qs, urlsplit
 
 import httpx
 from gigai_core import DatasetItem, open_run
 
-from . import alpaca, bakeoff, edgar, journal, news, sessions, teacher
+from . import alpaca, bakeoff, edgar, journal, news, teacher
 from . import analyze as an
 from . import split as sp
 from .records import Analysis, IndicatorSnapshot, SourceRef, Thesis, TrainingSplit, clean_route
@@ -31,9 +33,15 @@ VAL_SHARE = 10  # the latest tenth of the item sessions is val (at least one ses
 ROW = re.compile(r"src_[0-9a-f]{16} \| ")  # a SOURCES table line of an analyze prompt
 PLACEHOLDER = re.compile(r"\{\{(px|news):(src_[0-9a-f]{16})\}\}")
 NUMBER = r"\$?(?:(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?|\.\d+)(?:[eE][+-]?\d+)?(?!\w)(?!\.\d)%?"
-# placeholders, `{value}` and ISO dates are skipped whole; a word holding digits (`sma_200`, `1d`) is an identifier,
-# the way analyze's ALLOWED_DIGITS reads claim text
+# templating and the shown-text check: placeholders, `{value}` and ISO dates are skipped whole; a word holding digits
+# (`sma_200`, `1d`) is an identifier, the way analyze's ALLOWED_DIGITS reads claim text
 TOKEN = re.compile(r"\{\{(?:px|news):[^{}]*\}\}|\{value\}|\b\d{4}-\d{2}-\d{2}\b|(?P<num>" + NUMBER + r")|\w+")
+# the price check reads every digit run (Unicode digits; NFKC first, so `１２` and `½` count): `.` `,` `/` between runs
+# join them (`12,50`, `7/8`) and letters may follow (`101.87usd`, `$1.2k`); a word that starts with a letter or `_`
+# (`sma_200`) is still an identifier
+SCAN = re.compile(r"\{\{(?:px|news):[^{}]*\}\}|\{value\}|\b\d{4}-\d{2}-\d{2}\b|[^\W\d]\w*"
+                  r"|(?P<num>\$?(?:\d+|(?=[.,]\d))(?:[.,/]\d+)*(?:[eE][+-]?\d+)?%?)")
+SEPARATORS = str.maketrans({"\u066b": ".", "\u066c": ",", "\u2044": "/"})  # Arabic decimal/thousands, fraction slash
 SHEET_FILE = re.compile(r"- private `([^`]+)`: sha256 `([0-9a-f]{64})`, (\d+) items")
 SHEET_ITEM = re.compile(r"- item `([^`]+)`: sha256 `([0-9a-f]{64})`")
 
@@ -121,19 +129,30 @@ def table_rows(prompt: str) -> list[list[str]]:
     return [line.split(" | ") for line in prompt.split("\n") if ROW.match(line)]
 
 
-def number_of(token: str) -> float:
-    return float(token.strip("$%").replace(",", ""))
+def readings(token: str) -> set[float]:
+    """Every value a scanned number may stand for: each digit run, each side of a `/`, and commas read both as
+    thousands groups and as the decimal mark (`12,50`)."""
+    body = token.strip("$%")
+    sides = body.split("/")
+    out = set()
+    for text in {*re.findall(r"\d+", body), *(s.replace(",", mark) for s in sides for mark in ("", "."))}:
+        try:
+            out.add(float(text))
+        except ValueError:  # `1.2.3`: its runs are already read
+            continue
+    return out
 
 
 def price_like(token: str, prices: list[float]) -> bool:
     """A free-text number that could leak a price: near one of the item's prices, or (not a percent) written the way
-    prices are, with `$`, a thousands comma, a decimal point or an exponent."""
-    near = any(an.close_to(number_of(token), p) for p in prices)
-    return near if token.endswith("%") else near or any(c in token for c in "$,.eE")
+    prices are, with `$`, a comma, a decimal point, a fraction slash or an exponent."""
+    near = any(an.close_to(value, p) for value in readings(token) for p in prices)
+    return near if token.endswith("%") else near or any(c in token for c in "$,./eE")
 
 
 def free_text_hits(text: str, prices: list[float]) -> list[str]:
-    return [m.group() for m in TOKEN.finditer(text) if m.group("num") and price_like(m.group(), prices)]
+    text = unicodedata.normalize("NFKC", text).translate(SEPARATORS)
+    return [m.group() for m in SCAN.finditer(text) if m.group("num") and price_like(m.group(), prices)]
 
 
 def shown_hits(text: str, prices: list[float]) -> list[str]:
@@ -153,8 +172,23 @@ def strings(value: object) -> list[str]:
     return []
 
 
-def template_text(text: str, by_text: dict[str, str]) -> str:
-    """Every number written exactly as a price's table text becomes that price's placeholder (a `$` stays)."""
+def headline_labels(prompt: str) -> dict[str, str]:
+    """Each headline row's quoted text as the prompt shows it, by news source id."""
+    return {cells[0]: cells[2] for cells in table_rows(prompt) if cells[1].startswith(an.HEADLINE_NAME)}
+
+
+def headline_hits(texts: list[str], labels: dict[str, str]) -> list[str]:
+    """Headlines still in reply text after templating (copied without the row's quotes, or in another case)."""
+    return [f"headline {sid}" for sid, label in labels.items()
+            if any(label[1:-1].removesuffix("…").casefold() in t.casefold() for t in texts)]
+
+
+def template_text(text: str, by_text: dict[str, str], labels: dict[str, str]) -> str:
+    """Each headline's quoted text becomes its placeholder, then every number written exactly as a price's table text
+    becomes that price's placeholder (a `$` stays)."""
+    for sid, label in sorted(labels.items(), key=lambda kv: -len(kv[1])):
+        text = text.replace(label, news_placeholder(sid))
+
     def swap(m: re.Match) -> str:
         token = m.group()
         if not m.group("num") or token.endswith("%") or token.lstrip("$") not in by_text:
@@ -163,13 +197,13 @@ def template_text(text: str, by_text: dict[str, str]) -> str:
     return TOKEN.sub(swap, text)
 
 
-def template_value(value: object, by_text: dict[str, str]) -> object:
+def template_value(value: object, by_text: dict[str, str], labels: dict[str, str]) -> object:
     if isinstance(value, str):
-        return template_text(value, by_text)
+        return template_text(value, by_text, labels)
     if isinstance(value, dict):
-        return {key: template_value(item, by_text) for key, item in value.items()}
+        return {key: template_value(item, by_text, labels) for key, item in value.items()}
     if isinstance(value, list):
-        return [template_value(item, by_text) for item in value]
+        return [template_value(item, by_text, labels) for item in value]
     return value
 
 
@@ -185,14 +219,15 @@ def matched_prices(claim: dict, parents: dict[str, tuple[str, ...]], prices: dic
     return tuple(dict.fromkeys(s for s in pool if an.close_to(float(value), prices[s])))
 
 
-def template_expected(expected: dict, prices: dict[str, float]) -> tuple[dict, list[str]]:
-    """The reply with each price-restating claim value as a placeholder and each price text in free text templated;
-    plus the claim values that restate a price but not exactly as the table shows it (they cannot ship)."""
+def template_expected(expected: dict, prices: dict[str, float],
+                      labels: dict[str, str]) -> tuple[dict, list[str]]:
+    """The reply with each price-restating claim value as a placeholder and each headline and price text in free text
+    templated; plus the claim values that restate a price but not exactly as the table shows it (they cannot ship)."""
     by_text = {an.plain(v): sid for sid, v in reversed(prices.items())}  # the first row wins
     parents: dict[str, tuple[str, ...]] = {}
     claims, left = [], []
     for claim in expected["claims"]:
-        out = template_value({k: v for k, v in claim.items() if k != "value"}, by_text)
+        out = template_value({k: v for k, v in claim.items() if k != "value"}, by_text, labels)
         matched = matched_prices(claim, parents, prices)
         parents[str(claim.get("id"))] = matched
         value = claim.get("value")
@@ -202,7 +237,7 @@ def template_expected(expected: dict, prices: dict[str, float]) -> tuple[dict, l
         if matched and not exact:
             left.append(f"value={value}")
         claims.append({k: out[k] for k in claim})  # the reply's key order, so a hydrated line has the same bytes
-    return {k: claims if k == "claims" else template_value(v, by_text) for k, v in expected.items()}, left
+    return {k: claims if k == "claims" else template_value(v, by_text, labels) for k, v in expected.items()}, left
 
 
 def template_prompt(prompt: str, prices: dict[str, float]) -> str:
@@ -221,11 +256,13 @@ def template_prompt(prompt: str, prices: dict[str, float]) -> str:
 
 
 def public_item(item: DatasetItem, prices: dict[str, float]) -> tuple[DatasetItem, list[str]]:
-    """The public form of a private item, plus every price-check hit left in it (an item with hits never ships)."""
-    expected, left = template_expected(item.expected, prices)
+    """The public form of a private item, plus every price-check and headline hit left in it (an item with hits never
+    ships)."""
+    labels = headline_labels(item.prompt)
+    expected, left = template_expected(item.expected, prices, labels)
     out = item.model_copy(update={"prompt": template_prompt(item.prompt, prices), "expected": expected})
-    values = list(prices.values())
-    hits = [t for s in strings(expected) for t in free_text_hits(s, values)]
+    values, texts = list(prices.values()), strings(expected)
+    hits = [t for s in texts for t in free_text_hits(s, values)] + headline_hits(texts, labels)
     hits += [t for text in (out.prompt, out.system or "") for t in shown_hits(text, values)]
     return out, hits + left
 
@@ -295,14 +332,23 @@ def stored_source(conn: sqlite3.Connection, source_id: str) -> SourceRef | None:
     return None if row is None else SourceRef.model_validate_json(row[0])
 
 
+def bars_start(ref: SourceRef) -> str | None:
+    """The first session of the daily-bar frame a snapshot was computed from (`start=` in alpaca.bars_source's uri).
+    `analyze.gather` reads every stored bar up to the session, so the frame starts at the journal's oldest bar."""
+    start = parse_qs(urlsplit(ref.uri).query).get("start")
+    return date.fromisoformat(start[0]).isoformat() if start else None
+
+
 def source_ids_of(conn: sqlite3.Connection, data_dir: Path, a: Analysis, prompt: str) -> dict[str, str | int] | str:
     """§7.4 L725's source ids (the same in both forms), or why one cannot be found. A headline ships as its Alpaca
-    news id, URL and content sha256; an EDGAR fact as its accession number."""
+    news id, URL and content sha256; an EDGAR fact as its accession number; the bars as their id, frame start and
+    feed (hydrate pulls the same frame)."""
     bars = stored_source(conn, a.snapshot.bars_source_id)
-    if bars is None or bars.feed is None:
+    start = None if bars is None else bars_start(bars)
+    if bars is None or bars.feed is None or start is None:
         return "no_bars_source"
     ids: dict[str, str | int] = {"analysis_id": a.analysis_id, "input_hash": a.input_hash,
-                                 "bars": a.snapshot.bars_source_id, "feed": bars.feed}
+                                 "bars": a.snapshot.bars_source_id, "bars_start": start, "feed": bars.feed}
     stored: dict[str, news.Headline] | None = None
     for sid, name, *_ in table_rows(prompt):
         if name.startswith(an.HEADLINE_NAME):
@@ -424,7 +470,8 @@ def publish(conn: sqlite3.Connection, data_dir: Path, out: Path, name: str, form
             written[part] = [p for p, _ in pairs]
             hits += [f"{item.id}: {', '.join(h)}" for item, (_, h) in zip(items, pairs) if h]
         if hits:
-            raise Refused("price check failed, nothing written; price-looking numbers left in:\n  " + "\n  ".join(hits))
+            raise Refused("price check failed, nothing written; price-looking numbers or headline text left in:\n  "
+                          + "\n  ".join(hits))
     files = {f"{name}.{part}.jsonl": items for part, items in written.items()}
     sheet = datasheet(name, form, selection, {f"{name}.{part}.jsonl": items for part, items in private.items()})
     out.mkdir(parents=True, exist_ok=True)
@@ -468,6 +515,9 @@ def datasheet(name: str, form: str, selection: Selection, private: dict[str, lis
         "- item: one teacher analysis of a ticker-day; `prompt` and `system` are the turns the teacher saw, `expected` "
         "is its claims reply; `id` = `ticker:session:teacher`, `cluster_id` = the session",
         "- teachers (model, pinned route): " + "; ".join(f"`{m}` via `{r}`" for m, r in routes),
+        "- `source_ids`: `bars` (the daily-bar SourceRef id), `bars_start` (the first session of the frame the "
+        "snapshot was computed from: `tr analyze` reads every stored bar up to the session, and the bars hash, EMA "
+        "and ATR depend on that start; hydrate pulls from it), `feed`, and per headline and EDGAR fact the ids below",
         "- no Claude or closed OpenAI GPT output: every expected answer is a pinned open-weights teacher's", "",
         "## Row filter", "",
         f"Of {selection.read} journal analyses, an item is a pinned teacher's (`arm=\"teacher\"`, "
@@ -522,12 +572,12 @@ class AlpacaSource:
     http: httpx.Client
     data_dir: Path  # the minute-bar cache lives under it, as in `tr analyze`
 
-    def snapshot(self, ticker: str, session: date, feed: str) -> tuple[SourceRef, IndicatorSnapshot]:
-        """(bars SourceRef, snapshot), computed the way `analyze.gather` does."""
+    def snapshot(self, ticker: str, session: date, feed: str, start: date) -> tuple[SourceRef, IndicatorSnapshot]:
+        """(bars SourceRef, snapshot), computed the way `analyze.gather` does from the frame the release names:
+        gather reads every stored bar up to the session, so its frame starts at `bars_start`, not 300 sessions back."""
         conn = journal.connect(":memory:")
-        start = sessions.recent(300, session)[0]
         frame = alpaca.daily_bars(self.http, [ticker, "SPY"], start, session, feed=feed, adjustment="split")
-        for symbol in (ticker, "SPY"):
+        for symbol in (ticker, "SPY"):  # SPY feeds only the regime label, which ships verbatim
             alpaca.store_daily(conn, frame[frame["ticker"] == symbol], feed=feed, adjustment="split")
         bars = alpaca.load_daily(conn, ticker, session, feed=feed)
         spy = alpaca.load_daily(conn, "SPY", session, feed=feed)
@@ -560,6 +610,17 @@ def fill_value(value: object, fills: dict[tuple[str, str], tuple[str, object]]) 
     return value
 
 
+def coordinates(item: DatasetItem) -> tuple[str, date, str, str, date]:
+    """(ticker, session, feed, bars id, bars start) of a public item; refused when the item lacks one."""
+    try:
+        ticker, day, _ = item.id.split(":")
+        ids = item.source_ids
+        return (ticker, date.fromisoformat(day), str(ids["feed"]), str(ids["bars"]),
+                date.fromisoformat(str(ids["bars_start"])))
+    except (KeyError, ValueError) as error:
+        raise Refused(f"{item.id}: not an item of a public release ({type(error).__name__}: {error})") from None
+
+
 def hydrate_item(item: DatasetItem, source: AlpacaSource) -> DatasetItem:
     """`item` with every placeholder refilled from the reader's data; refused when a source id does not reappear
     (the reader's bars or headlines differ, e.g. a split since the session)."""
@@ -567,14 +628,14 @@ def hydrate_item(item: DatasetItem, source: AlpacaSource) -> DatasetItem:
               for m in PLACEHOLDER.finditer(text)}
     if not wanted:
         return item
-    ticker, day, _ = item.id.split(":")
-    session = date.fromisoformat(day)
+    ticker, session, feed, bars_id, start = coordinates(item)
     fills: dict[tuple[str, str], tuple[str, object]] = {}
     if any(kind == "px" for kind, _ in wanted):
-        bars, snapshot = source.snapshot(ticker, session, str(item.source_ids["feed"]))
-        if bars.source_id != item.source_ids["bars"]:
-            raise Refused(f"{item.id}: your bars hash to {bars.source_id}, the release used {item.source_ids['bars']} "
-                          f"(different bars: a split or a correction since the session?)")
+        bars, snapshot = source.snapshot(ticker, session, feed, start)
+        if bars.source_id != bars_id:
+            raise Refused(f"{item.id}: your {feed} bars {start}..{session} hash to {bars.source_id}, the release "
+                          f"used {bars_id} (different bars: a split or a correction since the session, or a gap in "
+                          f"the publisher's stored bars)")
         fills |= {("px", sid): (an.plain(v), shown(v)) for sid, v in price_rows(snapshot).items()}
     if any(kind == "news" for kind, _ in wanted):
         fills |= {("news", sid): (label, label) for sid, label in source.headlines(ticker, session).items()}
@@ -602,7 +663,11 @@ def hydrate(release: Path, out: Path, source: AlpacaSource) -> dict[str, int]:
     files, per_item = read_sheet(release / "DATASHEET.md")
     data: dict[str, bytes] = {}
     for fname, (want, count) in files.items():
-        items = [DatasetItem.model_validate_json(line) for line in (release / fname).read_text().splitlines() if line]
+        try:
+            items = [DatasetItem.model_validate_json(line)
+                     for line in (release / fname).read_text().splitlines() if line]
+        except ValueError as error:  # pydantic's ValidationError is a ValueError
+            raise Refused(f"{fname}: not a DatasetItem line ({str(error).splitlines()[0]})") from None
         filled = [hydrate_item(item, source) for item in items]
         lines = jsonl(filled)
         got = sha256(b"".join(lines))

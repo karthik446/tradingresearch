@@ -16,13 +16,16 @@ from test_teacher import PRICE, REPLY, TEACHER, replaying
 
 from factories import thesis
 from tradingresearch import analyze as an, dataset as ds, journal, news, sessions, split as sp
+from tradingresearch.alpaca import daily_bars, store_daily
 from tradingresearch.cli import main
+from tradingresearch.edgar import Edgar
 from tradingresearch.records import SourceRef
 
 TICKER = "FAKEA"
 S1, S2, S3 = date(2026, 9, 14), date(2026, 9, 15), date(2026, 9, 16)  # train/val; S3 is the val session
 BAD_REPLY, BAD_THESIS = date(2026, 9, 17), date(2026, 9, 18)
 EMBARGOED, CUTOFF = date(2026, 11, 2), date(2026, 11, 16)
+LONG_START = sessions.recent(340, S1)[0]  # an earlier, longer bar pull: the journal holds bars before gather's 300
 REGISTERED = datetime(2026, 9, 1, 12, tzinfo=UTC)
 ROUTE = "openrouter:deepinfra/fp8/flex"
 EDGAR = SourceRef(source_id="src_ed6a7f00000000a1", kind="edgar_fact",
@@ -82,10 +85,18 @@ def source(cache) -> ds.AlpacaSource:
 
 # ---------- a journal of teacher analyses ----------
 
-def context(src: ds.AlpacaSource, day: date) -> an.Context:
-    bars, snapshot = src.snapshot(TICKER, day, "sip")
-    s_sources, s_rows = an.snapshot_rows(snapshot)
-    return an.Context(TICKER, day, snapshot, [bars, *s_sources, EDGAR], s_rows + [EDGAR_ROW])
+def sec(cache) -> Edgar:
+    """The real EDGAR client over a filled cache: FAKEA has a CIK and no facts (its one EDGAR row is EDGAR_ROW)."""
+    (cache / "companyfacts").mkdir(parents=True, exist_ok=True)
+    (cache / "company_tickers.json").write_text(json.dumps({"0": {"cik_str": 1, "ticker": TICKER, "title": "FakeCo"}}))
+    (cache / "companyfacts" / "CIK0000000001.json").write_text(json.dumps({"facts": {}}))
+    return Edgar("tradingresearch test@example.com", cache)
+
+
+def context(conn, src: ds.AlpacaSource, edgar: Edgar, day: date) -> an.Context:
+    """The live path: `analyze.gather` over the journal's stored bars (they reach back to LONG_START), plus EDGAR_ROW."""
+    ctx = an.gather(conn, src.http, edgar, TICKER, day, src.data_dir, "sip")
+    return an.Context(TICKER, day, ctx.snapshot, [*ctx.sources, EDGAR], ctx.rows + [EDGAR_ROW])
 
 
 def claims(ctx: an.Context, steps: str, headline: str | None = None, digits: bool = False) -> dict:
@@ -125,15 +136,17 @@ def world(tmp_path, monkeypatch):
     """A data dir with a registered split and one analysis per filter case; returns a builder for variants."""
     monkeypatch.setattr(an, "context_tokens", lambda system, prompt: 1894)
 
-    def build(steps: str = "the close holds above the mean", everything: bool = True) -> dict:
+    def build(steps: str = "the close holds above the mean", everything: bool = True, s2_steps: str | None = None) -> dict:
         conn = journal.connect(tmp_path / "journal.db")
         sp.register(conn, CUTOFF, 22, sp.gate_prereg(REGISTERED), REGISTERED)
         src = source(tmp_path / "pub")
+        store_daily(conn, daily_bars(src.http, [TICKER, "SPY"], LONG_START, S1), feed="sip", adjustment="split")
+        edgar = sec(tmp_path / "edgar")
         headline = news.normalise(ARTICLE, REGISTERED)
         news.store(tmp_path, TICKER, [headline])
-        c1, c2, c3 = (context(src, d) for d in (S1, S2, S3))
+        c1, c2, c3 = (context(conn, src, edgar, d) for d in (S1, S2, S3))
         ids = {"S1": analyze(conn, tmp_path, c1, claims(c1, steps)).analysis_id,
-               "S2": analyze(conn, tmp_path, c2, claims(c2, steps, news.source_ref(headline).source_id),
+               "S2": analyze(conn, tmp_path, c2, claims(c2, s2_steps or steps, news.source_ref(headline).source_id),
                              version="analyze-3").analysis_id,
                "S3": analyze(conn, tmp_path, c3, claims(c3, "steady")).analysis_id}
         if everything:
@@ -142,11 +155,11 @@ def world(tmp_path, monkeypatch):
             # a teacher row is trainable by construction (records.Analysis), so non-trainable is a main-arm row
             ids["not_trainable"] = analyze(conn, tmp_path, c1, claims(c1, steps), arm="main", terms=None).analysis_id
             for name, day in (("test_split", CUTOFF), ("embargoed", EMBARGOED)):
-                ctx = context(src, day)
+                ctx = context(conn, src, edgar, day)
                 ids[name] = analyze(conn, tmp_path, ctx, claims(ctx, steps)).analysis_id
-            ctx = context(src, BAD_REPLY)
+            ctx = context(conn, src, edgar, BAD_REPLY)
             ids["claims_invalid"] = analyze(conn, tmp_path, ctx, claims(ctx, steps, digits=True)).analysis_id
-            ctx = context(src, BAD_THESIS)
+            ctx = context(conn, src, edgar, BAD_THESIS)
             ids["checks_failed"] = analyze(conn, tmp_path, ctx, claims(ctx, steps)).analysis_id
             journal.add(conn, thesis(ids["checks_failed"], ticker=TICKER, arm="teacher", terms_class="trainable",
                                      provider_route=ROUTE, evidence=("cl_missing",)))  # P2 fails
@@ -225,9 +238,47 @@ def test_the_public_form_holds_no_alpaca_price_and_no_headline_text(world):
 @pytest.mark.parametrize(("text", "hit"), [("12.50", True), ("$1,234.5", True), ("1e3", True), ("$.5", True),
                                           ("5%", False), ("101.37%", True), ("101", True), ("7", False),
                                           ("sma_200", False), ("2026-09-14", False), ("{{px:src_0123456789abcdef}}",
-                                                                                     False)])
+                                                                                     False),
+                                          # a unit glued on, a comma decimal, a fraction, non-ASCII digits
+                                          ("101.87usd", True), ("12.50USD", True), ("$1.2k", True), ("101usd", True),
+                                          ("12,50", True), ("12/13", True), ("101 7/8", True), ("12½", True),
+                                          ("１０１", True), ("١٢٫٥٠", True), ("١٠١", True), ("1d", False),
+                                          ("rsi_14", False)])
 def test_the_price_check_rejects_price_shaped_numbers_and_keeps_scale_free_ones(text, hit):
     assert bool(ds.free_text_hits(f"it held {text} into the close.", [101.37])) is hit
+
+
+def test_a_claim_value_near_a_price_but_not_as_the_table_shows_it_cannot_ship():
+    sid = "src_00000000000000a1"
+    claim = {"id": "c1", "tag": "fact", "text": "The close was {value}.", "value": 101.57, "unit": "USD",
+             "source_ids": [sid], "derived_from": [], "steps": None}
+    _, left = ds.template_expected({"claims": [claim]}, {sid: 101.37}, {})
+    assert left == ["value=101.57"]  # within REL_TOL of 101.37, so it restates the price, but not as shown
+    out, left = ds.template_expected({"claims": [{**claim, "value": 101.37}]}, {sid: 101.37}, {})
+    assert left == [] and out["claims"][0]["value"] == f"{{{{px:{sid}}}}}"
+
+
+def test_a_headline_quoted_in_the_reply_ships_as_its_placeholder_and_hydrates_back(world):
+    headline = news.normalise(ARTICLE, REGISTERED)
+    sid, label = news.source_ref(headline).source_id, an.headline_row(headline).label
+    w = world(s2_steps=f"the tape read {label} and the close held", everything=False)
+    pub, priv = w["dir"] / "public", w["dir"] / "private"
+    ds.publish(w["conn"], w["dir"], pub, "teacher-sft", "public")
+    ds.publish(w["conn"], w["dir"], priv, "teacher-sft", "private")
+    text = (pub / "teacher-sft.train.jsonl").read_text()
+    assert ARTICLE["headline"] not in text and f"the tape read {{{{news:{sid}}}}} and the close held" in text
+    assert ARTICLE["headline"] in (priv / "teacher-sft.train.jsonl").read_text()
+    written = ds.hydrate(pub, w["dir"] / "hydrated", source(w["dir"] / "reader"))
+    for fname in written:
+        assert (w["dir"] / "hydrated" / fname).read_bytes() == (priv / fname).read_bytes()
+
+
+def test_a_headline_copied_without_its_quotes_refuses_the_public_form(world):
+    sid = news.source_ref(news.normalise(ARTICLE, REGISTERED)).source_id
+    w = world(s2_steps=f"the tape read {ARTICLE['headline'].lower()} today", everything=False)
+    with pytest.raises(ds.Refused, match=rf"{TICKER}:{S2}:teacher: .*headline {sid}"):
+        ds.publish(w["conn"], w["dir"], w["dir"] / "public", "teacher-sft", "public")
+    assert not (w["dir"] / "public").exists()
 
 
 def test_a_public_publish_with_a_price_left_in_free_text_is_refused_and_writes_nothing(world):
@@ -246,14 +297,16 @@ def test_publish_never_writes_into_a_non_empty_directory(world):
         ds.publish(w["conn"], w["dir"], w["dir"] / "out", "teacher-sft", "private")
 
 
-def test_the_cli_publishes_under_the_data_dir_and_prints_the_counts(world, monkeypatch, capsys):
+def test_the_cli_publishes_under_data_dev_by_default_and_prints_the_counts(world, monkeypatch, capsys):
     w = world()
     monkeypatch.setenv("TR_DATA_DIR", str(w["dir"]))
+    monkeypatch.chdir(w["dir"])
     main(["dataset", "publish", "--form", "public"])
     out = capsys.readouterr().out
-    assert f"wrote public release to {w['dir'] / 'release' / 'teacher-sft'}" in out
+    assert "wrote public release to data-dev/release/teacher-sft" in out
     assert "teacher-sft.train.jsonl 2, teacher-sft.val.jsonl 1 items" in out and "3 of 10 analyses kept" in out
-    assert "checks_failed 1" in out and (w["dir"] / "release" / "teacher-sft" / "DATASHEET.md").exists()
+    assert "checks_failed 1" in out and (w["dir"] / "data-dev" / "release" / "teacher-sft" / "DATASHEET.md").exists()
+    assert not (w["dir"] / "release").exists()
 
 
 # ---------- hydrate ----------
@@ -266,6 +319,29 @@ def test_hydrating_the_public_form_reproduces_the_private_bytes(world):
     assert written == {"teacher-sft.train.jsonl": 2, "teacher-sft.val.jsonl": 1}
     for fname in written:
         assert (w["dir"] / "hydrated" / fname).read_bytes() == (w["dir"] / "private" / fname).read_bytes()
+        for item in Dataset.from_jsonl(w["dir"] / "public" / fname).items:
+            # the frame `tr analyze` used starts at the journal's oldest bar, before the 300-session window
+            assert item.source_ids["bars_start"] == LONG_START.isoformat()
+            assert LONG_START < sessions.recent(300, date.fromisoformat(item.cluster_id))[0]
+
+
+@pytest.mark.parametrize("damage", ["feed", "bars", "bars_start", "id", "json"])
+def test_a_malformed_public_item_is_refused_and_writes_nothing(world, damage):
+    w = world(everything=False)
+    pub = w["dir"] / "public"
+    ds.publish(w["conn"], w["dir"], pub, "teacher-sft", "public")
+    path = pub / "teacher-sft.val.jsonl"
+    line = path.read_text()
+    item = json.loads(line)
+    if damage == "id":
+        item["id"] = f"{TICKER}-{S3}"
+    elif damage != "json":
+        del item["source_ids"][damage]
+    path.write_text(line[:40] + "\n" if damage == "json" else json.dumps(item) + "\n")
+    message = "not a DatasetItem line" if damage == "json" else "not an item of a public release"
+    with pytest.raises(ds.Refused, match=message):
+        ds.hydrate(pub, w["dir"] / "hydrated", source(w["dir"] / "reader"))
+    assert not (w["dir"] / "hydrated").exists()
 
 
 def test_a_tampered_public_file_fails_hydrate_naming_the_item_and_writes_nothing(world):

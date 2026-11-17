@@ -323,7 +323,8 @@ uv run tr dataset publish --form public                   # Alpaca prices and he
 uv run tr dataset hydrate PUBLIC_DIR --out DIR             # refill from your own Alpaca keys; checks the private digest
 ```
 
-The default output directory is `<TR_DATA_DIR>/release/<name>`. A directory that is not empty is refused. Each release
+The default output directory is `data-dev/release/<name>`, relative to where you run it (so a publish never lands in
+the live data dir by accident; pass `--out` to put it elsewhere). A directory that is not empty is refused. Each release
 holds `<name>.train.jsonl`, `<name>.val.jsonl`, `DATASHEET.md`, `LICENSE` (CDLA-Permissive-2.0) and `SHA256SUMS`.
 
 **Which rows go in.** Only trainable teacher-arm rows on a clean route from a pinned teacher, and only the first
@@ -335,12 +336,27 @@ row is counted by reason, both in the output and in the DATASHEET. val is the la
 redistributed.
 
 **The public form** replaces every Alpaca price and headline with a content-addressed placeholder. EDGAR and
-scale-free rows ship verbatim. A price check scans each prompt and each free-text string: one price-looking number left
-in refuses the whole publish and lists the item ids. Such an item blocks the public form, but not the private one.
+scale-free rows ship verbatim. A headline the reply quotes exactly as its SOURCES row shows it (with the row's double
+quotes) is templated too. A price check scans each prompt and each free-text string: one price-looking number or
+headline left in refuses the whole publish and lists the item ids. Such an item blocks the public form, but not the
+private one.
 
-**Hydrate** recomputes the rows from Alpaca the way `tr analyze` does and fills them in. The result must match the
-private digests printed in the DATASHEET. If it does not, hydrate names the first differing item and writes nothing.
-Bars corrected or split-adjusted since the session will fail this check.
+What the check catches. It reads every digit run, after NFKC (so fullwidth digits and `½` count) and with Arabic
+decimal and thousands marks read as `.` and `,`. A unit glued on (`101.87usd`, `$1.2k`), a comma decimal (`12,50`) and a
+fraction (`7/8`) are all caught. A run within 0.5% of a price is caught even as a bare integer or a percent; any other
+run that is not a percent is caught when written with `$`, `,`, `.`, `/` or an exponent. A word that starts with a
+letter or `_` (`sma_200`) is an identifier. A headline copied without its quotes or in another case refuses the
+publish. A partial quote or a paraphrase is not detected. EDGAR numbers are not exempt in free text: one written with a
+comma or decimal point, or equal to a price's shown text, refuses the publish (on the safe side). EDGAR rows and the
+claim values citing them still ship verbatim.
+
+**Hydrate** recomputes the rows from Alpaca the way `tr analyze` does and fills them in. `tr analyze` computes from
+every stored daily bar up to the session, so the frame starts at the journal's oldest bar, not 300 sessions back. Each
+item records that first session as `source_ids.bars_start`, and hydrate pulls the bars from it. The result must match
+the private digests printed in the DATASHEET. If it does not, hydrate names the first differing item and writes
+nothing. Bars corrected or split-adjusted since the session will fail this check, and so will a gap in the publisher's
+stored bars. A public file with a missing or malformed item is refused. The minute-bar cache goes under
+`<TR_DATA_DIR>/bars_1m`, as for `tr analyze`.
 
 ## Playbook and rule changes (`tr learn`)
 

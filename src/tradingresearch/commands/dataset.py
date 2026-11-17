@@ -10,7 +10,7 @@ from .common import alpaca_client
 
 
 def cmd_dataset_publish(args, cfg) -> None:
-    out = Path(args.out) if args.out else cfg.data_dir / "release" / args.name
+    out = Path(args.out) if args.out else Path("data-dev") / "release" / args.name
     conn = journal.connect(cfg.db_path)
     try:
         release = dataset.publish(conn, cfg.data_dir, out, args.name, args.form, split_id=args.split,
@@ -37,7 +37,7 @@ def register(sub) -> None:
     p.add_argument("--form", choices=dataset.FORMS, required=True, help="public: Alpaca prices and headlines as "
                    "placeholders; private: verbatim (personal use)")
     p.add_argument("--name", default="teacher-sft", help="file stem (default: teacher-sft)")
-    p.add_argument("--out", metavar="DIR", help="an empty or new directory (default: <TR_DATA_DIR>/release/<name>)")
+    p.add_argument("--out", metavar="DIR", help="an empty or new directory (default: data-dev/release/<name>)")
     p.add_argument("--split", metavar="SPLIT_ID", help="default: the latest registered split")
     p.add_argument("--teacher", metavar="MODEL", help="only this teacher's analyses (default: every pinned teacher)")
     p.set_defaults(func=cmd_dataset_publish)

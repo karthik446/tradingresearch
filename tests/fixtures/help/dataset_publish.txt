@@ -7,8 +7,8 @@ options:
                         public: Alpaca prices and headlines as placeholders;
                         private: verbatim (personal use)
   --name NAME           file stem (default: teacher-sft)
-  --out DIR             an empty or new directory (default:
-                        <TR_DATA_DIR>/release/<name>)
+  --out DIR             an empty or new directory (default: data-
+                        dev/release/<name>)
   --split SPLIT_ID      default: the latest registered split
   --teacher MODEL       only this teacher's analyses (default: every pinned
                         teacher)
