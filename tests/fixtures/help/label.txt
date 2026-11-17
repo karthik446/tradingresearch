@@ -1,4 +1,4 @@
-usage: tr label [-h] {list,show,add,agree} ...
+usage: tr label [-h] [--claims] {list,show,add,agree} ...
 
 positional arguments:
   {list,show,add,agree}
@@ -11,3 +11,5 @@ positional arguments:
 
 options:
   -h, --help            show this help message and exit
+  --claims              blind fact/inference/opinion labels of teacher claims
+                        instead (list, show CLAIM_ID, add CLAIM_ID)

@@ -226,6 +226,22 @@ the model that a headline row is untrusted (prompts are immutable; a later thesi
 headlines are untrusted text and analyze-3 says so, but nothing here stops an instruction phrased as a headline, a false
 headline or a homoglyph: those are week 7 (`guards.py`, the injection set).
 
+## Context ablation
+
+`experiments/context-ablation.toml` (ADR-007) runs three fixed analyze-3 arms on one dataset: `full`, `no-headlines`
+(`drop = ["headlines"]`) and `no-edgar` (`drop = ["edgar"]`), over AAPL, MSFT, NVDA, AMZN, JPM, XOM, UNH, HD, KO
+and CAT on 2026-11-12 and 2026-11-13, clustered by ticker, graded by `parsed`, `claims_valid`, `all_claims_valid`
+and the four `<section>_grounded` graders (`evals/specs/section_grounding.md`). Its header pre-registers the primary
+metric (`claims_valid`), the guard (`parsed`) and the keep/drop rule. First fetch the news for all 20 ticker-days,
+`tr news TICKER --session 2026-11-12` and `--session 2026-11-13` for each ticker (Alpaca, free); `tr exp run`
+refuses before the dataset and any call while a window is missing and lists the commands. Days with no headline
+are fine (on the 2026-11-17 fetch: UNH on both days, HD and CAT on 2026-11-12): those items send the same request in
+`full` and `no-headlines`. Then `tr exp run experiments/context-ablation.toml` and `tr exp compare` on its run ids.
+Cost: one recorded analyze-3 call (`tests/fixtures/week5/analyze3.reply.json`) was 2,714 prompt and 1,062 completion
+tokens, $0.016048, so about 20 × $0.016 ≈ $0.32 per arm and about $1 for the three (an estimate; the drop arms send
+fewer tokens), inside each arm's `CallBudget` of `max_usd_per_arm = 1.00`. Fill ADR-007's table from `compare`, with
+the run ids.
+
 ## Provenance: the route
 
 `provider_route` on an analysis or thesis says which upstream served the call; the teacher terms filter and the
@@ -252,6 +268,29 @@ uv run tr label agree                         # kappa vs stored judge verdicts o
 Decide from `show` alone (rubric `evals/rubrics/p1_thesis_quality.md`); `show` never prints a judge verdict or an
 earlier label. `agree` leaves out `unknown` labels and judge `unknown:` abstains and counts them. Its kappa
 thresholds are PROPOSED (ADR-003, decision Q1) and nothing it prints sets `validated`.
+
+## Training split and claim labels
+
+No model call. The training split (TRAINING-SPIKE §7.2 row 4) holds out a later period for the student-vs-teacher
+gate (§7.3); register it before its cutoff session opens. Which cutoff to use is the operator's choice (TRAINING-SPIKE
+§10 Q8).
+
+```
+uv run tr split register --cutoff YYYY-MM-DD --embargo 20 --note "hypothesis"   # a future NYSE session, embargo >= 20
+uv run tr split register --cutoff YYYY-MM-DD --embargo 20 --prereg-json FILE    # your own Prereg, no registered_at
+uv run tr split show [SPLIT_ID]               # train/val, embargoed and test sessions with counts (read-only)
+uv run tr label --claims list                 # teacher claims without a claim label; n unlabelled, n labelled
+uv run tr label --claims show CLAIM_ID        # claim text, value, cited source rows; never the model's tag
+uv run tr label --claims add CLAIM_ID --tag fact|inference|opinion [--supported|--unsupported] --labeller NAME
+```
+
+The default Prereg is the §7.3 gate (claims_valid NoWorseThan, CI lower bound >= -0.15, 40 test sessions, guard
+parse_ok Wilson lower bound >= 0.95). The split id is a digest of the cutoff, the embargo and the Prereg: registering
+the same split again writes nothing, and a different split is a new row (nothing is rewritten). `show` without an id
+reads the latest. The sessions are derived when you read them: train/val is before the embargo window (the 20 NYSE
+sessions before the cutoff), test is on or after the cutoff, and sessions inside the window are in neither. Claim labels
+are only for claims from teacher analyses (§7.4), one label per claim, and a second label is refused. Label from `show`
+alone.
 
 ## Playbook and rule changes (`tr learn`)
 

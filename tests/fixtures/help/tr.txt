@@ -1,11 +1,11 @@
 usage: tr [-h]
-          {sessions,bars,facts,snapshot,news,screen,analyze,thesis,open,reconcile,grade,daily,report,slo,check,exp,usage,bakeoff,label,learn}
+          {sessions,bars,facts,snapshot,news,screen,analyze,thesis,open,reconcile,grade,daily,report,slo,check,exp,usage,bakeoff,label,learn,split}
           ...
 
 tradingresearch: educational, not investment advice
 
 positional arguments:
-  {sessions,bars,facts,snapshot,news,screen,analyze,thesis,open,reconcile,grade,daily,report,slo,check,exp,usage,bakeoff,label,learn}
+  {sessions,bars,facts,snapshot,news,screen,analyze,thesis,open,reconcile,grade,daily,report,slo,check,exp,usage,bakeoff,label,learn,split}
     sessions            NYSE sessions ending at a date
     bars                fetch and store daily bars
     facts               framed EDGAR facts for one concept
@@ -40,6 +40,8 @@ positional arguments:
                         (no model call)
     learn               playbook per horizon and setup; rule changes and their
                         adoption (no model call)
+    split               register the held-out training split; show its
+                        sessions (no model call)
 
 options:
   -h, --help            show this help message and exit

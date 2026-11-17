@@ -1,7 +1,7 @@
-usage: tr label show [-h] thesis_id
+usage: tr label show [-h] ID
 
 positional arguments:
-  thesis_id
+  ID          a thesis id (a claim id with --claims)
 
 options:
   -h, --help  show this help message and exit

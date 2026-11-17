@@ -1,0 +1,11 @@
+usage: tr split [-h] {register,show} ...
+
+positional arguments:
+  {register,show}
+    register       store a TrainingSplit before its cutoff session (append-
+                   only)
+    show           the split's train/val, embargoed and test sessions with
+                   counts (read-only)
+
+options:
+  -h, --help       show this help message and exit

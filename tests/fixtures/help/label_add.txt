@@ -1,12 +1,20 @@
 usage: tr label add [-h] [--note NOTE] [--relabel]
-                    thesis_id {met,not_met,unknown}
+                    [--tag {fact,inference,opinion}]
+                    [--supported | --unsupported] [--labeller NAME]
+                    ID [{met,not_met,unknown}]
 
 positional arguments:
-  thesis_id
+  ID                    a thesis id (a claim id with --claims)
   {met,not_met,unknown}
+                        P1 verdict (not with --claims)
 
 options:
   -h, --help            show this help message and exit
   --note NOTE           why, in a sentence (stored as the label's critique)
   --relabel             replace the thesis's latest label; the new one points
                         at it
+  --tag {fact,inference,opinion}
+                        --claims: the claim's kind
+  --supported           --claims: its sources support it
+  --unsupported         --claims: its sources do not support it
+  --labeller NAME       --claims: who labelled it

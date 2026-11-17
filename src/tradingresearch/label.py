@@ -7,6 +7,10 @@ grade.py's post-trade summary, never a judge verdict or an earlier label. A rela
 one it replaces; the latest wins. `agree` pairs each latest label with the latest stored judge verdict by
 judge_agreement's rules and reads kappa from gigai-core `agreement` (judge_agreement itself needs a gigai-core Run,
 and stored verdicts are not one). Nothing here sets `validated`.
+
+`--claims` (TRAINING-SPIKE §7.2 row 5, §7.4): the operator's blind ClaimLabels of teacher claims, the claim tagger's
+reference labels (target (b), F15). `show_claim` prints the claim text with its value and the cited source rows, never
+the model's tag, its derived_from/steps, a claims_valid verdict or an earlier label. One label per claim.
 """
 
 from __future__ import annotations
@@ -14,6 +18,7 @@ from __future__ import annotations
 import sqlite3
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from typing import get_args
 
 from gigai_core.agreement import MIN_KAPPA, MIN_UNITS, agreement
 from gigai_core.records import LabelRecord
@@ -22,7 +27,7 @@ from . import grade, journal, sessions
 from .analyze import plain
 from .hashing import digest, new_id
 from .reconcile_run import BarSource
-from .records import Analysis, Grade, Thesis
+from .records import Analysis, Claim, ClaimLabel, ClaimTag, Grade, SourceRef, Thesis
 from .report import graded
 
 DATASET_ID = "p1_thesis_quality"  # the labels answer the P1 rubric's question
@@ -199,3 +204,89 @@ def render_agree(p: Pairing) -> list[str]:
             f"  thresholds PROPOSED (ADR-003, operator decision Q1 pending; not applied): kappa >= {MIN_KAPPA} "
             f"(gigai-core MIN_KAPPA) on n = {PROPOSED_N} labels; gigai-core's own gate needs n >= {MIN_UNITS}",
             "  p1_judge stays validated = False: only an ADR that records the measured kappa changes it"]
+
+
+# ---------- claims (TRAINING-SPIKE §7.2 row 5, §7.4) ----------
+
+TAGS = get_args(ClaimTag)
+CLAIM_ADD = ("`tr label --claims add <claim_id> --tag fact|inference|opinion [--supported|--unsupported] "
+             "--labeller NAME`")
+
+
+def claim_labels(conn: sqlite3.Connection) -> dict[str, ClaimLabel]:
+    """Every claim label, keyed by claim id."""
+    rows = conn.execute("SELECT body FROM claim_label ORDER BY rowid")
+    return {record.claim_id: record for record in (ClaimLabel.model_validate_json(body) for (body,) in rows)}
+
+
+def claims_to_label(conn: sqlite3.Connection) -> list[tuple[Claim, str, str]]:
+    """Teacher claims with no label yet, oldest first, with their analysis's ticker and session."""
+    rows = conn.execute("SELECT c.body, a.ticker, a.session FROM claim c JOIN analysis a USING (analysis_id) "
+                        "WHERE a.arm = 'teacher' "
+                        "AND NOT EXISTS (SELECT 1 FROM claim_label l WHERE l.claim_id = c.claim_id) ORDER BY c.rowid")
+    return [(Claim.model_validate_json(body), ticker, session) for body, ticker, session in rows]
+
+
+def teacher_claim(conn: sqlite3.Connection, claim_id: str) -> tuple[Claim, Analysis]:
+    """The claim and its analysis, or Refused: an unknown id, or a claim of a main-arm analysis (its tags are Claude
+    or GPT output and cannot train the tagger, TRAINING-SPIKE §7.1)."""
+    try:
+        c = journal.get(conn, Claim, claim_id)
+    except KeyError:
+        raise Refused(f"no claim {claim_id}") from None
+    a = journal.get(conn, Analysis, c.analysis_id)
+    if a.arm != "teacher":
+        raise Refused(f"{claim_id} is from a {a.arm} analysis: claim labels are for teacher claims "
+                      "(TRAINING-SPIKE §7.4)")
+    return c, a
+
+
+def render_claims_list(conn: sqlite3.Connection) -> list[str]:
+    """One line per teacher claim to label, then n unlabelled and n labelled; no tag of any kind."""
+    todo, done = claims_to_label(conn), len(claim_labels(conn))
+    if not todo:
+        return [f"nothing to label: no teacher claim without a claim label (0 unlabelled, {done} labelled)"]
+    lines = [f"{ticker:<6} {session} {c.claim_id}" for c, ticker, session in todo]
+    return lines + [f"{len(todo)} unlabelled, {done} labelled: `tr label --claims show <claim_id>`, then {CLAIM_ADD}"]
+
+
+def source_rows(conn: sqlite3.Connection, source_ids: tuple[str, ...]) -> list[str]:
+    """The cited SourceRefs as stored: id, kind, uri, feed and when they were read."""
+    lines = []
+    for source_id in source_ids:
+        try:
+            s = journal.get(conn, SourceRef, source_id)
+        except KeyError:
+            lines.append(f"  {source_id} | missing from the journal")
+            continue
+        lines.append(f"  {s.source_id} | {s.kind} | {s.uri} | feed {s.feed or '-'} | {s.retrieved_at.isoformat()}")
+    return lines or ["  none cited"]
+
+
+def show_claim(conn: sqlite3.Connection, claim_id: str) -> list[str]:
+    """The claim as a labeller judges it: its text with the value filled in and the cited source rows. Blind: no
+    model tag, derived_from or steps, no claims_valid verdict, no earlier label; nothing is recorded."""
+    c, a = teacher_claim(conn, claim_id)
+    text = c.text.replace("{value}", plain(c.value)) if c.value is not None else c.text
+    value = [f"value: {plain(c.value)}" + (f" {c.unit}" if c.unit else "")] if c.value is not None else []
+    return [f"{c.claim_id} {a.ticker} {a.session} (analysis {a.analysis_id})", f"text: {text}", *value,
+            "cited sources (source_id | kind | uri | feed | retrieved_at)", *source_rows(conn, c.source_ids), "",
+            f"blind: label it with {CLAIM_ADD.replace('<claim_id>', c.claim_id)}"]
+
+
+def add_claim_label(conn: sqlite3.Connection, claim_id: str, tag: str, labeller: str, *, supported: bool | None = None,
+                    now: datetime | None = None) -> ClaimLabel:
+    """Store one blind ClaimLabel. Refused: an unknown tag, a blank labeller, a non-teacher claim and a second label
+    on a claim (ClaimLabel has no relabel field, so the first label stands)."""
+    if tag not in TAGS:
+        raise Refused(f"tag {tag!r}: a claim is one of {', '.join(TAGS)}")
+    if not labeller.strip():
+        raise Refused("--labeller is blank: name the person who labelled the claim")
+    teacher_claim(conn, claim_id)
+    held = claim_labels(conn).get(claim_id)
+    if held is not None:
+        raise Refused(f"{claim_id} is already labelled ({held.claim_label_id}); a claim takes one label")
+    record = ClaimLabel(claim_label_id=new_id("clb"), claim_id=claim_id, tag=tag, supported=supported,
+                        labeller=labeller.strip(), blind=True, labelled_at=now or datetime.now(UTC))
+    journal.add(conn, record)
+    return record
