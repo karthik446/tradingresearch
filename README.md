@@ -16,3 +16,16 @@ Each chapter of the build guide starts at a tag (`week-1-start`) and ends at one
 - `experiments/*.toml`: experiments as config (`uv run tr exp run experiments/observe.toml`).
 - `evals/`: your labels, taxonomy and eval specs. `src/tradingresearch/evals.py` is the grader registry.
 - `data/` (or `$TR_DATA_DIR`): journal, bars, EDGAR cache, traces, run files. Never committed.
+
+The desk's daily loop, one command each (`uv run tr <command> --help` has the flags):
+
+| Command | What it does |
+|---|---|
+| `tr screen` | ranks the universe by §5 triggers and stores the shortlist |
+| `tr analyze` / `tr thesis` / `tr open` | claims for a ticker, then 0-3 theses (or a no-trade); `--arm teacher --teacher <model>` pins a DeepInfra route |
+| `tr reconcile` | settles PROPOSED and OPEN theses from bars after 16:15 ET (rules in `reconcile.py`, goldens in `tests/gate/`) |
+| `tr daily` | screen, analyze the shortlist, thesis each, reconcile; reruns skip what is done; `--max-usd` caps spend |
+| `tr usage` | cost per call, run, arm or day from the trace |
+| `tr bakeoff draw` / `report` | the date-seeded 4-name draw and the per-teacher report for the teacher bake-off |
+
+`uv run python ci/gate.py` is the free CI gate (reconcile goldens and prompt hashes). `tests/test_week2.py` fails by design at `week-2-start`: it is your week-2 acceptance test.
