@@ -136,6 +136,11 @@ Decide from `show` alone (rubric `evals/rubrics/p1_thesis_quality.md`); `show` n
 earlier label. `agree` leaves out `unknown` labels and judge `unknown:` abstains and counts them. Its kappa
 thresholds are PROPOSED (ADR-003, decision Q1) and nothing it prints sets `validated`.
 
+## Week 3 acceptance
+
+`uv run pytest tests/test_week3.py -q` is the week-3 contract: it passes when the P1 judge, `tr grade --judge`,
+`docs/adr/ADR-004-trace-policy.md`, `docs/slo-review.md` and `docs/measured-costs.md` exist and match it.
+
 ## CI
 
 `uv run python ci/gate.py` is the free gate (no model call).

@@ -1,0 +1,61 @@
+{
+  "id": "gen-1794895337-eGRi4ixvJH57kdQ4jKhY",
+  "object": "chat.completion",
+  "created": 1794895337,
+  "model": "openai/gpt-6-sol",
+  "provider": "OpenAI",
+  "system_fingerprint": null,
+  "service_tier": "default",
+  "choices": [
+    {
+      "index": 0,
+      "logprobs": null,
+      "finish_reason": "stop",
+      "native_finish_reason": "completed",
+      "message": {
+        "role": "assistant",
+        "content": "The reason names a break above both the congestion top and the 20-day high at 100.5 that holds after the fill. The summary shows both closes above 100.5.\n\n{\"verdict\":\"pass\",\"explanation\":\"Both reported closes stayed above the 100.5 congestion top and 20-day high, so the named break held.\"}",
+        "refusal": null,
+        "reasoning": "**Identifying fill thresholds**\n\nI need to find the closing values after filling on days 11-17 and 11-18, looking at fills of 101.3 and 106.2, which are both greater than 100.5. I want to understand if there's a mechanism where a two-level break exists if the initial threshold holds. It's important to ensure that I check all parameters and confirm the process is sound. Let's keep a close eye on those values!",
+        "reasoning_details": [
+          {
+            "type": "reasoning.summary",
+            "summary": "**Identifying fill thresholds**\n\nI need to find the closing values after filling on days 11-17 and 11-18, looking at fills of 101.3 and 106.2, which are both greater than 100.5. I want to understand if there's a mechanism where a two-level break exists if the initial threshold holds. It's important to ensure that I check all parameters and confirm the process is sound. Let's keep a close eye on those values!",
+            "format": "openai-responses-v1",
+            "index": 0
+          },
+          {
+            "type": "reasoning.encrypted",
+            "data": "gAAAAABq--3thQNjsIgDbaqykb4vkfhcJ-oy77Q7RZESElyw9_gODFVVsPv71jL1cdlVLWDPCx__A2EZj9zCoPKSW6_zha7HwgYTiVOYOnS2exYhZIFprrBTr96CYk4c8ICLKsdG5c4WCPh2QrN4Ti6QiTC2IC_r_-AJKeEumw04at0XnAlBiYOkIzSB5g9eAbTceWZ1v619plm20vqfZy_VT3TaDWo0UqjPFPP0LgOkLCFxBhm56A_ch1UUeGrY1fyA02V1VIyPNn_P7IyeBoHfi-LjPN3Ci8sVtAUEp4RwZSFRkiw9NaLDVkfq-ABDZnWD8AA2mcf6d_KyLwC4IWZ_SlL_X2DURzkAx-e-LvWA9QByJb-AWQgCDDJo6nazYywQ0ixvJZGjzWqVFaPymOu0LtpiNf5hOYcw8ecWLL79tDJaw2YJ8xIKc7r5UINBdHQsKrm_nrpWp-Nt5AJP1L6ZGDlEXVtGjJbf7X3cqoJeYIR74Rpth9dGgAJS5jnzW9KksgUahQqfNQbIUJwQcoMhsD8DPDRyQwoGuMqRZ-ppYBI_yREOppe0LYWLlMoa0nbNwhn9kbablPKZiMlS6-c3ksLTqcKJk8l7QF9AlDxvlMNdWVhUxqt1T9MsQpgdn10o91TAmw-6IOGk73pGA-ffkt3Z5sgWPZGLhqfJWD42bRwTwNEKxljQ--SaznVxPJlPms13xWoEPTP1h_7OYMl9zk2HREA4wa1px9hfk0sC1rUNfaTU0L6MIqLVsM_MDcRvwtbDupgLwKoHVT9fzEnHu79kML3W5wcw__UYfbp4TWphZ1nEtjX1IHMs1m3yuBbxzAX4-Zj3pGuWT6zLgimOAIHhjB1o8DTnCImaGqIHHJ-PxMKpVNAv5-AzrA_LgfVlVfbvrHQnMUnW9BJ6wfxcBSU3HJzH4Yv9KlLlKGRIHfBYbJsba2XfYyqvN4_xqxcC2NkQFoTPsKudDoRudZMJYVr2DJcNlaYpvA3-gflqTsMjMiTpk1JeWnuV8pQFqu_3FnnanOopBg7CCh0nw56Kn0Q7gG9Kv9Qn9NWvxD7B7yfVBdbIf45ttS12aPljmSXMHdwbzP6uVGP9OFuoxP85pYe3GGYz4_L3wYKSzdTDMOVhKJjK707OWkXq2HQ2JmkAJGNYm2l5q2pna-cxYnUj2g4EIBgjPCL5-s5ansTGC0vjFE-UnlxBB_HpbgoBDtv8q4fca5SPP2RpGJcyrc6ja5WPjV_uWv9goI1t1koYWsackco6grXUrg6dDvTVrNaGzG_aXxK_coIzk35IQ7aLzFuMvy933psMybetFmx9olKjTm71adLVE15nCdG48IwJ8q7ZkIFn-jRLOaMFi4KmxYZYhUW_9EiDIPfOQer1HszroW-7mehHu37NiJJY8dDSVmzUh530qwaa-rcDBUC7FjLmAaUyKIvlix3-LxSiBj5xb8uoG4mZ32Upa3ZXRkOF5VmeuXCUgRHyBZHTpliY2SpsW-oIR-MVKHj6duLP7h3D-mXypzQRLVxmz6Hg-LFRk_UlDHRooPCmnNmdIXbWE7cGMtkCkr3IBbDCwrs4j3I75bbIAudF4mpEspgsq0DHTScz_mwrGIjmUVzMheJ4j3aDB73kaEgyRl9AZB7RoqIwd25QBxhEWwizMruHmFZFN3scYfxXZklqeAOJX8RfcyY5LNOFQcN4b0HMKuoVMgdviXgMDZ2RcfX7T3QRh_oUKH0XNtAOpLUaKQzgCPIAO-f45fKPBRX4uD0nNhyTZ41RzrbGMebbYrd56j9lWdX5sUwqHZZcKqlpAom9Cwox_cw_Y0R078VzthXX4IMGkP6nYop8MqrQG-C7B7OvmkjtHIXB84w_tbbacY81EX5QepUusWhphggjBAJs8AmjRNRoaviGPSfJpDnso36qk2v-Bv2WcEY9K22vj8GnShACMYvTxQy04S6h5rHMeHjng8rCA_e0zSXvRgp2yhG4COnAXoQOz4iHO_gTFNjaByWZvuos_g0QN1Bi19_Yl95p9A1tHsVvFmPZr0a7hJx0OKuSlR70d_flz2YIROE0cjN6ygHA3ofamrKiTbMoDbGO5_gg7gvMU2MBuaGbEqQIiz2-m-RB6R2Fz6khNapIQtEFCYGUXhUQBEfD8YyUvaQwPoe5GyOvTv0fr1_42fDraoiYoPMi70JKbdy6dOqy4Mxq0BfozOxo-j3Io-bWI8MKkq7VkpoFS4K2yCPeIHLzFbeqXjU9kWID05wCMmIUNN_xYLsIQv1SrBkLAE_4dIwDoMtbVJRalM1rRGODto9P8GNdNsh3dHasc7yv3qH5Dx2o32klZzXBlbWJ0pC-ok5aCwxLQbugMKpbuzMzhojNEh5fntA_pJKWpDwQw5FZUZwaoplmj9W17bq1xG06wNjemVth-14YGq2hapsXRUr5aMrCCPmiMT9vIEP33YFJAp9y9SnTmZbKoyqzCmVG8wX2O5RNb7irxT3rnm57N7k49KaRYF49Et_T83Xb9CvGZoR74HYl0bHH9kilEAMCcmOlPJMpflOh2k9ISnDl2GrKv6G9aUdLTwttSxE3Iv7apScuMK6M0_ROvDzYVpUhrywj0_Ze0MIDf7A7JXQ1mWME05KllO5y2zmJ4TIxu12ndXy2lTXJSfH88YuM9ZmEn1qfKHr8ykiFYUvUzigfiSD2HG7OfFx3MDjprFrzw83HuX58d8JuX6YWc8Vjf7WkSgZTJwBEmAqgz5SZA4sbEJXFt2eJztYbQGgXVVQLtaxeW-Y2B1Aai-lYXUarQXdU21FuL7fQd_fnWZlx86LJixyE1Q3qgIlnskgzoBIxpCb_jSucsRq0uqGzydTkBY1SHEFU8wwImWcsJTZcwUHwCUX5PbYFtjLPJf9BRFAE__GqVYjznEdTWbXx6Ir2I8L2uM2-DbgtWj4AIB-LakwyP10M47zqajzwQWgRI85BbJNK84MhmeO84NFf1F8ibygNV6kGrel19bmdX5SVkVIdgnOsJZMwUtdKRErPJXmx1DvgxCBxRVzKd7kaa_ddccTYeQK5PwKHoJXrnH2-VRVmgzM6enhOzPq4fT8NMX_qHuiRGmj-eXfTeyqYqTp-57h0Gu5s_q0R7hQC7c0=.eyJlbmRwb2ludF9zbHVnIjoib3BlbmFpL2dwdC02LXNvbC0yMDI2MDkyMnxvcGVuYWkifQ",
+            "format": "openai-responses-v1",
+            "id": "rs_0041f1b8a690eb00016afbedeb7a7487d1a0d5a8886a5b41a9",
+            "index": 1
+          }
+        ]
+      }
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 1558,
+    "completion_tokens": 127,
+    "total_tokens": 1685,
+    "cost": 0.0051635,
+    "is_byok": false,
+    "prompt_tokens_details": {
+      "cached_tokens": 0,
+      "cache_write_tokens": 1555,
+      "audio_tokens": 0,
+      "video_tokens": 0
+    },
+    "cost_details": {
+      "upstream_inference_cost": 0.0051635,
+      "upstream_inference_prompt_cost": 0.0038935,
+      "upstream_inference_completions_cost": 0.00127
+    },
+    "completion_tokens_details": {
+      "reasoning_tokens": 49,
+      "image_tokens": 0,
+      "audio_tokens": 0
+    }
+  }
+}
