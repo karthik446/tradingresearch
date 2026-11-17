@@ -10,6 +10,9 @@ import exchange_calendars as xcals
 import pandas as pd
 
 NY = ZoneInfo("America/New_York")
+# The first live session: the prereg's "first NYSE session on or after 2026-11-17". Earlier `tr daily` runs, theses
+# and costs are dev runs; the bake-off, the scorecards and the SLOs start here.
+FIRST_SESSION = date(2026, 11, 17)
 
 
 @cache

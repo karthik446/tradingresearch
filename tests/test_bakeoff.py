@@ -12,7 +12,7 @@ from gigai_core.records import Prereg
 
 from factories import T0, analysis, claim, snapshot, thesis
 from test_teacher import PRICE, REPLY, TEACHER, context, replaying
-from tradingresearch import analyze as an, bakeoff, experiment, grade, journal, screen, teacher
+from tradingresearch import analyze as an, bakeoff, experiment, grade, journal, screen, sessions, teacher
 from tradingresearch.cli import main
 from tradingresearch.hashing import new_id
 from tradingresearch.records import NoTrade, TeacherOutcome
@@ -21,7 +21,7 @@ ROOT = Path(__file__).parent.parent
 TEN = ["AAPL", "MSFT", "NVDA", "AMZN", "JPM", "XOM", "UNH", "HD", "KO", "CAT"]  # prompt-v2's tickers
 DAY = date(2026, 11, 16)
 DRAWN = ["HD", "KO", "MSFT", "UNH"]  # draw(DAY, TEN); cross-checked with `shasum -a 256` in the shell
-BAKEOFF_DAY = bakeoff.FIRST_SESSION  # 2026-11-17, bake-off session 1; DAY is before it, so the report ignores DAY
+BAKEOFF_DAY = sessions.FIRST_SESSION  # 2026-11-17, bake-off session 1; DAY is before it, so the report ignores DAY
 BAKEOFF_DRAWN = ["KO", "NVDA", "UNH", "XOM"]  # draw(BAKEOFF_DAY, TEN)
 # Dataset.of("prompt-v2", ...) over the relabelled fixture contexts, captured at bc8859b before `cluster` existed.
 PROMPT_V2_SHA = "35ed95885c94ad30d6d5af5acd5a34167b424fa139bcc21eacac62b6ff6bb4c4"
@@ -95,7 +95,7 @@ def test_the_prereg_example_loads_into_a_gigai_core_prereg():
 def test_the_committed_prereg_loads_and_names_the_first_session_plan_uses():
     path = ROOT / "experiments" / "bakeoff-prereg.toml"
     assert isinstance(bakeoff.prereg(path), Prereg)
-    assert f"on or after {bakeoff.FIRST_SESSION.isoformat()}" in path.read_text()
+    assert f"on or after {sessions.FIRST_SESSION.isoformat()}" in path.read_text()
 
 
 def test_plan_ignores_teacher_analyses_before_the_first_bakeoff_session():

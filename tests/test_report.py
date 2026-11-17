@@ -1,5 +1,6 @@
 """`tr report` (SPIKE §7.5, §7.6, §7.2 2x2): hand-computed Wilson, cluster bootstrap and MDE numbers, the empty state,
-teacher exclusion, and one synthetic thesis graded end to end through the real reconcile and grade. No model call."""
+teacher exclusion, the live-stream filter, and one synthetic thesis graded end to end through the real reconcile and
+grade. No model call."""
 
 import math
 from datetime import UTC, date, datetime, timedelta
@@ -7,7 +8,7 @@ from datetime import UTC, date, datetime, timedelta
 import pytest
 from gigai_core.score import ScoreRecord
 
-from factories import analysis, snapshot, thesis
+from factories import analysis, event, snapshot, thesis
 from test_grade import D0, D1, D2, D3, NOW, Bars, ny, seed, settle
 from tradingresearch import grade, journal, report
 from tradingresearch.cli import main
@@ -94,6 +95,7 @@ def test_an_empty_journal_prints_counts_and_no_closed_trades_yet(tmp_path, monke
     monkeypatch.setenv("TR_ENV_FILE", str(tmp_path / "none.env"))
     main(["report", "--horizon", "swing"])
     assert capsys.readouterr().out.splitlines()[1:] == [
+        "pre-live, excluded (before 2026-11-17): 0 theses; 0 tr daily runs (--include-pre-live shows them)",
         "champion swing: 0 theses: 0 closed (0 graded), 0 expired, 0 cancelled, 0 open, 0 proposed",
         "  fill rate n/a (0 of 0) (filled / (filled + expired)); abstention n/a (0 of 0) "
         "(no-trades / main-analysis decisions for swing, both arms)",
@@ -126,7 +128,7 @@ def test_a_thesis_graded_through_reconcile_and_grade_lands_on_its_horizon_card(c
         settle(conn, bars, day)
     grade.run(conn, bars, D3, now=NOW)
     assert conn.execute("SELECT thesis_id FROM grade").fetchall() == [(winner.thesis_id,)]  # never the teacher's
-    [short, day] = report.cards(conn, ["champion"], ["short", "day"])
+    [short, day] = report.cards(conn, ["champion"], ["short", "day"], since=None)  # analysed on D0, before live
     assert (short.states, short.filled, short.no_trades, short.answered) == ({"CLOSED": 1, "EXPIRED": 1}, 1, 0, 2)
     assert (day.states, day.no_trades, day.answered, day.trades) == ({}, 1, 1, ())
     g = report.graded(conn, winner.thesis_id)
@@ -134,7 +136,7 @@ def test_a_thesis_graded_through_reconcile_and_grade_lands_on_its_horizon_card(c
     assert (t.session, t.r_net, t.mfe_r, t.mae_r) == (D1, g.outcome.r_net, g.outcome.mfe_r, g.outcome.mae_r)
     assert g.outcome.r_gross == pytest.approx(5 / 3)  # (106 - 101) / (101 - 98)
     assert t.shadow_r_net == journal.shadow_outcome(conn, g.shadow_id).r_net and t.p1 is None
-    lines = report.render([short, day], report.run_costs(conn))
+    lines = report.render([short, day], report.run_costs(conn, since=None), since=None)
     assert lines[1:5] == [
         "champion short: 2 theses: 1 closed (1 graded), 1 expired, 0 cancelled, 0 open, 0 proposed",
         "  fill rate 1/2 = 50.0% (filled / (filled + expired)); abstention 0/2 = 0.0% "
@@ -195,3 +197,42 @@ def test_run_costs_group_by_daily_run_and_split_out_the_teacher_part(conn):
     assert costs == {"dy_1": pytest.approx((0.12, 0.02)), "dy_2": (0.0, 0.0)}
     assert report.cost_line(costs) == ("cost per tr daily run: 2 runs, total $0.120000, mean $0.060000, "
                                        "max $0.120000; teacher steps $0.020000 of the total")
+
+
+def proposed(conn, ticker: str, day: date, arm: str = "champion", cost: float = 0.0) -> str:
+    """A PROPOSED short thesis analysed on `day`, and the `tr daily` run that wrote it."""
+    a = analysis(ticker=ticker, session=day, snapshot=snapshot(ticker=ticker, session=day))
+    journal.add_analysis(conn, a, sources=[])
+    t = thesis(a.analysis_id, ticker=ticker, arm=arm)
+    journal.add(conn, t, event(t.thesis_id, "PROPOSED"))
+    journal.add_daily_run(conn, {"daily_id": f"dy_{ticker}", "session": day.isoformat(), "step": "thesis",
+                                 "ticker": ticker, "status": "ok", "reason": "accepted 1", "ids": [t.thesis_id],
+                                 "cost_usd": cost})
+    return t.thesis_id
+
+
+def test_the_report_starts_at_the_first_live_session_and_names_what_it_leaves_out(tmp_path, monkeypatch, capsys):
+    monkeypatch.setenv("TR_DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("TR_ENV_FILE", str(tmp_path / "none.env"))
+    conn = journal.connect(tmp_path / "journal.db")
+    dev = proposed(conn, "DEVA", date(2026, 11, 16), cost=0.30)  # the 2026-11-16 dev run
+    dev_challenger = proposed(conn, "DEVB", date(2026, 11, 16), arm="challenger")
+    proposed(conn, "LIVE", date(2026, 11, 17), cost=0.10)
+    assert report.arms_shown(conn) == ["champion"] and report.arms_shown(conn, since=None) == ["champion", "challenger"]
+    conn.close()
+    main(["report", "--horizon", "short"])
+    out = capsys.readouterr().out.splitlines()
+    assert out[0].startswith("report: live stream from 2026-11-17; champion and challenger theses only")
+    assert out[1] == (f"pre-live, excluded (before 2026-11-17): 2 theses: {dev}, {dev_challenger}; 2 tr daily runs "
+                      "(--include-pre-live shows them)")
+    assert out[2] == "champion short: 1 theses: 0 closed (0 graded), 0 expired, 0 cancelled, 0 open, 1 proposed"
+    assert "challenger short" not in "\n".join(out)
+    assert out[-1] == ("cost per tr daily run: 1 runs, total $0.100000, mean $0.100000, max $0.100000; "
+                       "teacher steps $0.000000 of the total")
+    main(["report", "--horizon", "short", "--include-pre-live"])
+    out = capsys.readouterr().out.splitlines()
+    assert out[0].startswith("report: every session, pre-live included (the live stream starts 2026-11-17); ")
+    assert not any(line.startswith("pre-live, excluded") for line in out)
+    assert out[1] == "champion short: 2 theses: 0 closed (0 graded), 0 expired, 0 cancelled, 0 open, 2 proposed"
+    assert "challenger short: 1 theses: 0 closed (0 graded), 0 expired, 0 cancelled, 0 open, 1 proposed" in out
+    assert out[-1].startswith("cost per tr daily run: 3 runs, total $0.400000")

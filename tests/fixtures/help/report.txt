@@ -1,5 +1,5 @@
 usage: tr report [-h] [--horizon {day,short,swing}]
-                 [--arm {champion,challenger}]
+                 [--arm {champion,challenger}] [--include-pre-live]
 
 options:
   -h, --help            show this help message and exit
@@ -8,3 +8,5 @@ options:
   --arm {champion,challenger}
                         one arm (default: champion, plus challenger once it
                         has a thesis)
+  --include-pre-live    also count theses and runs before the live stream
+                        (2026-11-17): dev runs

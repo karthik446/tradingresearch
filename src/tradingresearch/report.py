@@ -1,6 +1,8 @@
 """`tr report`: one scorecard per arm and horizon, never pooled across horizons (SPIKE §7.5 statistics, §7.6 power,
-§7.2 the 2x2). Only champion and challenger theses are read; teacher theses never enter a scorecard. Reads the
-journal only; no model call, no network."""
+§7.2 the 2x2). Only champion and challenger theses are read; teacher theses never enter a scorecard. Only the live
+stream counts by default: theses whose analysis session, and `tr daily` runs whose session, is on or after
+`sessions.FIRST_SESSION`; the earlier ones are counted and named, never dropped silently. Reads the journal only; no
+model call, no network."""
 
 from __future__ import annotations
 
@@ -52,24 +54,28 @@ class Card:
     trades: tuple[Trade, ...]  # graded theses only
 
 
-def arms_shown(conn: sqlite3.Connection) -> list[str]:
+def arms_shown(conn: sqlite3.Connection, since: date | None = sessions.FIRST_SESSION) -> list[str]:
     """Champion always; challenger only once it has a thesis, so an unused arm prints no empty cards."""
-    has = conn.execute("SELECT 1 FROM thesis WHERE arm = 'challenger' LIMIT 1").fetchone()
+    has = conn.execute("SELECT 1 FROM thesis t JOIN analysis a USING (analysis_id) WHERE t.arm = 'challenger' "
+                       "AND (? IS NULL OR a.session >= ?) LIMIT 1", (since and since.isoformat(),) * 2).fetchone()
     return ["champion", "challenger"] if has else ["champion"]
 
 
-def cards(conn: sqlite3.Connection, arms: list[str], horizons: list[str]) -> list[Card]:
-    """One card per (arm, horizon), in that order."""
-    return [card(conn, arm, horizon) for arm in arms for horizon in horizons]
+def cards(conn: sqlite3.Connection, arms: list[str], horizons: list[str],
+          since: date | None = sessions.FIRST_SESSION) -> list[Card]:
+    """One card per (arm, horizon), in that order, over theses analysed on or after `since` (None: every session)."""
+    return [card(conn, arm, horizon, since) for arm in arms for horizon in horizons]
 
 
-def card(conn: sqlite3.Connection, arm: str, horizon: str) -> Card:
+def card(conn: sqlite3.Connection, arm: str, horizon: str, since: date | None = sessions.FIRST_SESSION) -> Card:
     """Count one arm's theses at one horizon by last state, and collect its graded trades."""
     if arm not in ARMS:
         raise ValueError(f"arm {arm!r} has no scorecard: only {', '.join(ARMS)}")
     states: Counter[str] = Counter()
     filled, trades = 0, []
-    rows = conn.execute("SELECT thesis_id FROM thesis WHERE arm = ? AND horizon = ? ORDER BY rowid", (arm, horizon))
+    rows = conn.execute("SELECT t.thesis_id FROM thesis t JOIN analysis a USING (analysis_id) WHERE t.arm = ? "
+                        "AND t.horizon = ? AND (? IS NULL OR a.session >= ?) ORDER BY t.rowid",
+                        (arm, horizon, *(since and since.isoformat(),) * 2))
     for (thesis_id,) in rows.fetchall():
         events = journal.events_for(conn, thesis_id)
         last = events[-1].state if events else "PROPOSED"
@@ -79,8 +85,21 @@ def card(conn: sqlite3.Connection, arm: str, horizon: str) -> Card:
         grade = graded(conn, thesis_id)
         if grade is not None and opened is not None:
             trades.append(trade(conn, grade, opened))
-    no_trades, answered = abstention(conn, horizon)
+    no_trades, answered = abstention(conn, horizon, since)
     return Card(arm, horizon, dict(states), filled, no_trades, answered, tuple(trades))
+
+
+def pre_live(conn: sqlite3.Connection, arms: list[str], horizons: list[str],
+             since: date = sessions.FIRST_SESSION) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    """(thesis ids, daily ids) a `since` report leaves out: the shown arms' and horizons' theses analysed earlier, and
+    the `tr daily` runs of earlier sessions."""
+    marks = ", ".join("?" * len(arms)), ", ".join("?" * len(horizons))
+    theses = conn.execute(f"SELECT t.thesis_id FROM thesis t JOIN analysis a USING (analysis_id) WHERE t.arm IN "
+                          f"({marks[0]}) AND t.horizon IN ({marks[1]}) AND a.session < ? ORDER BY t.rowid",
+                          (*arms, *horizons, since.isoformat())).fetchall()
+    runs = conn.execute("SELECT daily_id FROM daily_run WHERE session < ? GROUP BY daily_id ORDER BY min(seq)",
+                        (since.isoformat(),)).fetchall()
+    return tuple(t for (t,) in theses), tuple(d for (d,) in runs)
 
 
 def graded(conn: sqlite3.Connection, thesis_id: str) -> Grade | None:
@@ -116,21 +135,26 @@ def p1_result(conn: sqlite3.Connection, grade: Grade) -> P1 | None:
     return "met" if score.value == 1.0 else "not_met"
 
 
-def abstention(conn: sqlite3.Connection, horizon: str) -> tuple[int, int]:
+def abstention(conn: sqlite3.Connection, horizon: str, since: date | None = sessions.FIRST_SESSION) -> tuple[int, int]:
     """(no-trades, decisions) for one horizon on main analyses. A no_trade row carries no arm, so this rate belongs
     to the main analyses, not to one thesis arm."""
+    on = (since and since.isoformat(),) * 2
     no_trades = conn.execute("SELECT count(*) FROM no_trade n JOIN analysis a USING (analysis_id) "
-                             "WHERE a.arm = 'main' AND n.horizon = ?", (horizon,)).fetchone()[0]
-    theses = conn.execute("SELECT count(*) FROM thesis WHERE horizon = ? AND arm IN ('champion', 'challenger')",
-                          (horizon,)).fetchone()[0]
+                             "WHERE a.arm = 'main' AND n.horizon = ? AND (? IS NULL OR a.session >= ?)",
+                             (horizon, *on)).fetchone()[0]
+    theses = conn.execute("SELECT count(*) FROM thesis t JOIN analysis a USING (analysis_id) WHERE t.horizon = ? "
+                          "AND t.arm IN ('champion', 'challenger') AND (? IS NULL OR a.session >= ?)",
+                          (horizon, *on)).fetchone()[0]
     return no_trades, no_trades + theses
 
 
-def run_costs(conn: sqlite3.Connection) -> dict[str, tuple[float, float]]:
-    """Per `tr daily` run: (total cost, teacher part) from its stored daily_run rows, which carry the run files'
-    measured cost."""
+def run_costs(conn: sqlite3.Connection, since: date | None = sessions.FIRST_SESSION) -> dict[str, tuple[float, float]]:
+    """Per `tr daily` run of a session on or after `since`: (total cost, teacher part) from its stored daily_run rows,
+    which carry the run files' measured cost."""
     costs: dict[str, tuple[float, float]] = {}
     for row in journal.daily_runs(conn):
+        if since is not None and row["session"] < since.isoformat():
+            continue
         total, teacher = costs.get(row["daily_id"], (0.0, 0.0))
         cost = row["cost_usd"] or 0.0
         is_teacher = row["reason"].startswith(f"{TEACHER} ")
@@ -265,10 +289,24 @@ def cost_line(costs: dict[str, tuple[float, float]]) -> str:
             f"max ${max(totals):.6f}; teacher steps ${teacher:.6f} of the total")
 
 
-def render(card_list: list[Card], costs: dict[str, tuple[float, float]]) -> list[str]:
-    """The header, one block per card, then the cost line."""
-    lines = ["report: champion and challenger theses only (teacher theses never enter a scorecard); "
+def scope_lines(since: date | None, excluded: tuple[tuple[str, ...], tuple[str, ...]]) -> list[str]:
+    """The header, and on the live stream the one line counting and naming what it leaves out."""
+    scope = (f"live stream from {since}" if since else
+             f"every session, pre-live included (the live stream starts {sessions.FIRST_SESSION})")
+    lines = [f"report: {scope}; champion and challenger theses only (teacher theses never enter a scorecard); "
              "one scorecard per horizon, never pooled"]
+    if since is None:
+        return lines
+    theses, runs = excluded
+    named = f": {', '.join(theses)}" if theses else ""
+    return [*lines, f"pre-live, excluded (before {since}): {len(theses)} theses{named}; {len(runs)} tr daily runs "
+            "(--include-pre-live shows them)"]
+
+
+def render(card_list: list[Card], costs: dict[str, tuple[float, float]], since: date | None = sessions.FIRST_SESSION,
+           excluded: tuple[tuple[str, ...], tuple[str, ...]] = ((), ())) -> list[str]:
+    """The scope lines, one block per card, then the cost line."""
+    lines = scope_lines(since, excluded)
     for c in card_list:
         lines.extend(render_card(c))
     lines.append(cost_line(costs))

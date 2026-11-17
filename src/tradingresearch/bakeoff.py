@@ -1,11 +1,11 @@
 """The teacher bake-off report (SPIKE §9.4, P12; TRAINING-SPIKE §7.1): the pre-registered pick rule's inputs per
 teacher, read offline from the journal and the saved runs. It prints each teacher's eligibility and never picks.
 
-The bake-off is the first ten sessions on or after FIRST_SESSION with a stored teacher analysis; its items are each
-session's four drawn names (`teacher.draw` over the screen's shortlist of ten). A teacher's item counts as `parse_ok`
-when its analysis and a thesis-step decision (a teacher thesis or a no-trade) from it are stored, so a failed or
-missing call fails the item. P2-P4 run on each stored teacher thesis with its analysis (`grade.code_checks`), so
-they count before any thesis settles.
+The bake-off is the first ten sessions on or after FIRST_SESSION (the first live session, `sessions.py`) with a stored
+teacher analysis; its items are each session's four drawn names (`teacher.draw` over the screen's shortlist of ten).
+A teacher's item counts as `parse_ok` when its analysis and a thesis-step decision (a teacher thesis or a no-trade)
+from it are stored, so a failed or missing call fails the item. P2-P4 run on each stored teacher thesis with its
+analysis (`grade.code_checks`), so they count before any thesis settles.
 """
 
 from __future__ import annotations
@@ -21,9 +21,9 @@ from gigai_core.records import Prereg
 
 from . import daily, grade, journal, screen, teacher, trace, usage
 from .records import Analysis, TeacherOutcome, Thesis
+from .sessions import FIRST_SESSION
 
 SHORTLIST = 10  # the screen's top N the draw picks from (SPIKE §4.2)
-FIRST_SESSION = date(2026, 11, 17)  # the prereg's "first NYSE session on or after 2026-11-17"; earlier runs are tests
 N_PLANNED = 40  # items per teacher: 4 names x 10 sessions (SPIKE §9.4)
 SESSIONS = N_PLANNED // teacher.BAKEOFF_NAMES
 PARSE_OK_MIN = 38  # eligible at parse_ok >= 38/40 ...

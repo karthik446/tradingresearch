@@ -1,12 +1,14 @@
-"""`slo_check.py` / `tr slo` (PLAN-60 week 3): finish by 17:30 ET, zero missed sessions, fresh data. Rows are written
-with chosen `created_at` times; no model, no network."""
+"""`slo_check.py` / `tr slo` (PLAN-60 week 3): finish by 17:30 ET, zero missed sessions, fresh data, live sessions
+only (from `sessions.FIRST_SESSION`). Rows are written with chosen `created_at` times; no model, no network."""
 
+import argparse
 from datetime import UTC, date, datetime, timedelta
 
 import pytest
 
 from tradingresearch import journal, slo_check
 from tradingresearch.cli import main
+from tradingresearch.config import settings
 
 SESSION = date(2026, 11, 18)
 ON_TIME = datetime(2026, 11, 18, 21, 40, tzinfo=UTC)  # 16:40 ET
@@ -81,8 +83,10 @@ def test_missed_sessions_count_recorded_misses_and_sessions_with_no_row(conn):
     evening(conn, date(2026, 11, 16), ON_TIME, daily_id="dy_1")
     evening(conn, SESSION, ON_TIME, daily_id="dy_2")  # 2026-11-17 has no row at all
     slo = slo_check.missed(conn, SESSION)
-    assert not slo.ok
-    assert slo.measured == "2 of the last 5 sessions since 2026-11-12: 2026-11-13, 2026-11-17"
+    assert not slo.ok  # only live sessions count: 2026-11-13 predates the live stream
+    assert slo.measured == "1 of the last 2 sessions since 2026-11-17: 2026-11-17"
+    every = slo_check.missed(conn, SESSION, since=None)
+    assert every.measured == "2 of the last 5 sessions since 2026-11-12: 2026-11-13, 2026-11-17"
     assert slo_check.missed(conn, SESSION, window=1).ok  # only 2026-11-18 itself
 
 
@@ -95,10 +99,23 @@ def test_freshness_breaches_without_a_screen_or_with_a_ticker_missing_bars(conn)
     assert not slo_check.fresh(conn, SESSION, "iex").ok  # bars on another feed do not count
 
 
+def slo(argv: list[str], now: datetime) -> int:
+    """`tr slo` at a chosen wall-clock time (only the no-live-run path reads the clock)."""
+    parser = argparse.ArgumentParser()
+    slo_check.add_arguments(parser)
+    return slo_check.run(parser.parse_args(argv), settings(), now)
+
+
 def test_the_command_exits_1_on_a_breach_and_0_when_met(tmp_path, monkeypatch, capsys):
     monkeypatch.setenv("TR_DATA_DIR", str(tmp_path))
     monkeypatch.setenv("TR_ENV_FILE", str(tmp_path / "none.env"))
-    assert slo_check.main([]) == 1 and capsys.readouterr().out == "BREACH no tr daily run in the journal\n"
+    assert slo([], datetime(2026, 11, 17, 20, 0, tzinfo=UTC)) == 0  # 15:00 ET on the first live session
+    assert capsys.readouterr().out == "slo: no live session yet: the live stream starts 2026-11-17\n"
+    assert slo([], datetime(2026, 11, 18, 23, 0, tzinfo=UTC)) == 1  # 18:00 ET a day later: two deadlines passed
+    assert capsys.readouterr().out.splitlines() == [
+        "BREACH missed   2 of the last 2 sessions since 2026-11-17: 2026-11-17, 2026-11-18  "
+        "(target: 0 in the last 10 sessions)",
+        "slo: no tr daily run for any live session"]
     conn = journal.connect(tmp_path / "journal.db")
     evening(conn, SESSION, ON_TIME)
     screened(conn, SESSION, ["AAPL"], ["AAPL"])
@@ -111,3 +128,36 @@ def test_the_command_exits_1_on_a_breach_and_0_when_met(tmp_path, monkeypatch, c
     out = capsys.readouterr().out
     assert "BREACH finished dy_1 finished 2026-11-18 17:40 ET (+60 min injected)" in out
     assert out.rstrip().endswith("slo 2026-11-18: 2/3 met")
+
+
+def test_a_journal_of_only_the_pre_live_dev_run_has_no_live_session_and_session_names_it(tmp_path, monkeypatch,
+                                                                                          capsys):
+    monkeypatch.setenv("TR_DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("TR_ENV_FILE", str(tmp_path / "none.env"))
+    dev = date(2026, 11, 16)
+    conn = journal.connect(tmp_path / "journal.db")
+    evening(conn, dev, datetime(2026, 11, 17, 4, 21, tzinfo=UTC), daily_id="dy_dev")  # 23:21 ET: a real breach
+    screened(conn, dev, ["AAPL"], [])
+    conn.close()
+    assert slo([], datetime(2026, 11, 17, 15, 0, tzinfo=UTC)) == 0  # 10:00 ET on the first live session
+    assert capsys.readouterr().out == ("slo: no live session yet: the live stream starts 2026-11-17; the latest tr "
+                                       "daily run (2026-11-16) predates it and is not checked\n")
+    assert slo(["--session", "2026-11-16"], datetime(2026, 11, 17, 15, 0, tzinfo=UTC)) == 1
+    assert capsys.readouterr().out.splitlines() == [
+        "pre-live: 2026-11-16 predates the live stream (from 2026-11-17); a dev run, checked because --session "
+        "named it",
+        "BREACH finished dy_dev finished 2026-11-16 23:21 ET  (target: by 17:30 ET on 2026-11-16)",
+        "ok     missed   0 of the last 1 sessions since 2026-11-16  (target: 0 in the last 10 sessions)",
+        "BREACH fresh    0 of 1 screened tickers have 2026-11-16 bars; no bars for AAPL  (target: a screen result for "
+        "2026-11-16 and sip daily bars for every screened ticker)",
+        "slo 2026-11-16: 1/3 met"]
+
+
+def test_a_live_run_is_checked_and_the_pre_live_run_before_it_is_not_a_miss(conn):
+    evening(conn, date(2026, 11, 16), datetime(2026, 11, 17, 4, 21, tzinfo=UTC), daily_id="dy_dev")
+    assert slo_check.latest_session(conn) is None and slo_check.latest_session(conn, since=None) == date(2026, 11, 16)
+    evening(conn, date(2026, 11, 17), datetime(2026, 11, 17, 21, 40, tzinfo=UTC), daily_id="dy_live")
+    assert slo_check.latest_session(conn) == date(2026, 11, 17)
+    assert slo_check.missed(conn, date(2026, 11, 17)).measured == "0 of the last 1 sessions since 2026-11-17"
+    assert slo_check.overdue(datetime(2026, 11, 17, 22, 29, tzinfo=UTC)) == []  # 17:29 ET
+    assert slo_check.overdue(datetime(2026, 11, 17, 22, 30, tzinfo=UTC)) == [date(2026, 11, 17)]

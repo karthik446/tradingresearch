@@ -2,7 +2,9 @@
 
 Reads the journal only (no model, no network). Finish time comes from the `daily_run` rows, which are written as each
 step ends, so traces are not needed. `--inject-delay-minutes` adds to the measured finish to exercise the breach path
-without waiting. Exit 0 = every SLO met, 1 = a breach. Run as `tr slo` or `python -m tradingresearch.slo_check`.
+without waiting. Only live sessions (from `sessions.FIRST_SESSION`) are checked and counted; an earlier session is
+checked only when named with `--session`, labelled pre-live. Exit 0 = every SLO met, 1 = a breach. Run as `tr slo`
+or `python -m tradingresearch.slo_check`.
 """
 
 from __future__ import annotations
@@ -10,7 +12,7 @@ from __future__ import annotations
 import argparse
 import sqlite3
 from dataclasses import dataclass
-from datetime import date, datetime, time, timedelta
+from datetime import UTC, date, datetime, time, timedelta
 
 from . import journal, sessions
 from .config import Settings, settings
@@ -29,9 +31,10 @@ class Slo:
     target: str
 
 
-def latest_session(conn: sqlite3.Connection) -> date | None:
-    """The latest session `tr daily` ran for (a `missed` row is not a run)."""
-    found = conn.execute("SELECT max(session) FROM daily_run WHERE status != 'missed'").fetchone()[0]
+def latest_session(conn: sqlite3.Connection, since: date | None = sessions.FIRST_SESSION) -> date | None:
+    """The latest session on or after `since` (None: any) that `tr daily` ran for (a `missed` row is not a run)."""
+    found = conn.execute("SELECT max(session) FROM daily_run WHERE status != 'missed' AND (? IS NULL OR session >= ?)",
+                         (since and since.isoformat(),) * 2).fetchone()[0]
     return date.fromisoformat(found) if found else None
 
 
@@ -61,10 +64,13 @@ def finished(conn: sqlite3.Connection, session: date, delay: timedelta = timedel
                f"{injected}", target)
 
 
-def missed(conn: sqlite3.Connection, session: date, window: int = MISSED_WINDOW) -> Slo:
+def missed(conn: sqlite3.Connection, session: date, window: int = MISSED_WINDOW,
+           since: date | None = sessions.FIRST_SESSION) -> Slo:
     """Sessions in the last `window` up to `session` with a `missed` row or no run at all, counted from the first run
-    (earlier sessions predate the loop)."""
+    and from `since` (earlier sessions predate the loop or the live stream; None: from the first run only)."""
     first = journal.first_daily_session(conn)
+    if first is not None and since is not None:
+        first = max(first, since)
     days = [d for d in sessions.recent(window, session) if first is not None and d >= first]
     ran = {date.fromisoformat(d) for (d,) in conn.execute("SELECT DISTINCT session FROM daily_run "
                                                           "WHERE status != 'missed'")}
@@ -92,9 +98,32 @@ def fresh(conn: sqlite3.Connection, session: date, feed: str) -> Slo:
 
 
 def check(conn: sqlite3.Connection, session: date, feed: str, delay: timedelta = timedelta(),
-          window: int = MISSED_WINDOW) -> list[Slo]:
+          window: int = MISSED_WINDOW, since: date | None = sessions.FIRST_SESSION) -> list[Slo]:
     """Every SLO for one session."""
-    return [finished(conn, session, delay), missed(conn, session, window), fresh(conn, session, feed)]
+    return [finished(conn, session, delay), missed(conn, session, window, since), fresh(conn, session, feed)]
+
+
+def overdue(now: datetime) -> list[date]:
+    """Live sessions whose 17:30 ET deadline has passed by `now`."""
+    today = now.astimezone(sessions.NY).date()
+    if today < sessions.FIRST_SESSION:
+        return []
+    return [d for d in sessions.between(sessions.FIRST_SESSION, today)
+            if datetime.combine(d, DEADLINE, sessions.NY) <= now]
+
+
+def no_live_run(conn: sqlite3.Connection, now: datetime, window: int = MISSED_WINDOW) -> tuple[list[str], int]:
+    """The journal has no run for a live session: fine until a live session's deadline passes, then each such session
+    is missed."""
+    latest = latest_session(conn, since=None)
+    before = f"; the latest tr daily run ({latest}) predates it and is not checked" if latest else ""
+    due = overdue(now)
+    if not due:
+        return [f"slo: no live session yet: the live stream starts {sessions.FIRST_SESSION}{before}"], 0
+    gone = due[-window:]
+    slo = Slo("missed", False, f"{len(gone)} of the last {len(gone)} sessions since {sessions.FIRST_SESSION}: "
+              f"{', '.join(map(str, gone))}", f"0 in the last {window} sessions")
+    return [*render(gone[-1], [slo])[:1], f"slo: no tr daily run for any live session{before}"], 1
 
 
 def render(session: date, slos: list[Slo]) -> list[str]:
@@ -112,16 +141,22 @@ def add_arguments(p: argparse.ArgumentParser) -> None:
                    help=f"sessions looked back for misses (default {MISSED_WINDOW})")
 
 
-def run(args: argparse.Namespace, cfg: Settings) -> int:
+def run(args: argparse.Namespace, cfg: Settings, now: datetime | None = None) -> int:
     """Print the SLO lines; 0 when every SLO is met, 1 on any breach."""
     conn = journal.connect(cfg.db_path)
     session = date.fromisoformat(args.session) if args.session else latest_session(conn)
     if session is None:
-        print("BREACH no tr daily run in the journal")
-        return 1
+        lines, code = no_live_run(conn, now or datetime.now(UTC), args.window)
+        print("\n".join(lines))
+        return code
     if not sessions.is_session(session):
         raise SystemExit(f"{session} is not an NYSE session")
-    slos = check(conn, session, cfg.feed, timedelta(minutes=args.inject_delay_minutes), args.window)
+    live = session >= sessions.FIRST_SESSION
+    if not live:
+        print(f"pre-live: {session} predates the live stream (from {sessions.FIRST_SESSION}); a dev run, checked "
+              "because --session named it")
+    slos = check(conn, session, cfg.feed, timedelta(minutes=args.inject_delay_minutes), args.window,
+                 sessions.FIRST_SESSION if live else None)
     print("\n".join(render(session, slos)))
     return 0 if all(s.ok for s in slos) else 1
 
