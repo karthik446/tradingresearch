@@ -1,0 +1,30 @@
+{
+  "about": "Hand-built P4 cases (evals/specs/p4_levels_coherent.md). Made-up ticker FAKEA and round numbers; no market data. A case may override levels, atr14 or reference_close.",
+  "levels": [
+    {"price": 90.0, "kind": "low_20"},
+    {"price": 95.0, "kind": "pivot_low"},
+    {"price": 105.0, "kind": "hvn"},
+    {"price": 110.0, "kind": "pivot_high"},
+    {"price": 115.0, "kind": "high_20"}
+  ],
+  "atr14": 4.0,
+  "reference_close": 100.0,
+  "cases": [
+    {"name": "long_target_at_next_level", "expect": true, "thesis": {"direction": "long", "entry_kind": "stop", "entry_price": 101.0, "stop": 94.0, "target": 105.0}},
+    {"name": "long_target_within_half_atr_of_next_level", "expect": true, "thesis": {"direction": "long", "entry_kind": "stop", "entry_price": 101.0, "stop": 94.0, "target": 107.0}},
+    {"name": "short_stop_beyond_and_target_before_level", "expect": true, "thesis": {"direction": "short", "entry_kind": "limit", "entry_price": 99.0, "stop": 106.0, "target": 94.0}},
+    {"name": "short_target_exactly_half_atr_past_level", "expect": true, "thesis": {"direction": "short", "entry_kind": "limit", "entry_price": 99.0, "stop": 106.0, "target": 93.0}},
+    {"name": "long_market_open_from_the_snapshot_close", "expect": true, "thesis": {"direction": "long", "entry_kind": "market_open", "entry_price": null, "stop": 93.0, "target": 106.0}},
+    {"name": "long_market_open_from_a_higher_close", "expect": true, "reference_close": 106.0, "thesis": {"direction": "long", "entry_kind": "market_open", "entry_price": null, "stop": 103.0, "target": 112.0}},
+    {"name": "long_no_level_above_leaves_target_free", "expect": true, "levels": [{"price": 90.0, "kind": "low_20"}, {"price": 95.0, "kind": "pivot_low"}], "thesis": {"direction": "long", "entry_kind": "stop", "entry_price": 101.0, "stop": 94.0, "target": 130.0}},
+    {"name": "long_target_beyond_next_level_by_more_than_half_atr", "expect": false, "thesis": {"direction": "long", "entry_kind": "stop", "entry_price": 101.0, "stop": 94.0, "target": 108.0}},
+    {"name": "long_stop_on_the_level", "expect": false, "thesis": {"direction": "long", "entry_kind": "stop", "entry_price": 101.0, "stop": 95.0, "target": 105.0}},
+    {"name": "long_stop_inside_the_level", "expect": false, "thesis": {"direction": "long", "entry_kind": "stop", "entry_price": 101.0, "stop": 96.0, "target": 105.0}},
+    {"name": "short_target_beyond_next_level_by_more_than_half_atr", "expect": false, "thesis": {"direction": "short", "entry_kind": "limit", "entry_price": 99.0, "stop": 106.0, "target": 92.0}},
+    {"name": "short_stop_on_the_level", "expect": false, "thesis": {"direction": "short", "entry_kind": "limit", "entry_price": 99.0, "stop": 105.0, "target": 94.0}},
+    {"name": "short_stop_inside_the_level", "expect": false, "thesis": {"direction": "short", "entry_kind": "limit", "entry_price": 99.0, "stop": 104.0, "target": 94.0}},
+    {"name": "long_market_open_from_a_lower_close", "expect": false, "reference_close": 104.0, "thesis": {"direction": "long", "entry_kind": "market_open", "entry_price": null, "stop": 103.0, "target": 112.0}},
+    {"name": "long_target_two_past_level_with_atr_two", "expect": false, "atr14": 2.0, "thesis": {"direction": "long", "entry_kind": "stop", "entry_price": 101.0, "stop": 94.0, "target": 107.0}},
+    {"name": "short_no_level_below_but_stop_inside", "expect": false, "levels": [{"price": 105.0, "kind": "hvn"}, {"price": 110.0, "kind": "pivot_high"}], "thesis": {"direction": "short", "entry_kind": "limit", "entry_price": 99.0, "stop": 104.0, "target": 80.0}}
+  ]
+}

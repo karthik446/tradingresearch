@@ -1,0 +1,20 @@
+{
+  "about": "Hand-built P3 cases (evals/specs/p3_invalidation_testable.md). Made-up ticker FAKEA and round numbers; no market data.",
+  "cases": [
+    {"name": "long_between_entry_and_stop", "expect": true, "reference_close": 100.0, "thesis": {"direction": "long", "entry_kind": "stop", "entry_price": 102.0, "stop": 98.0, "target": 110.0, "invalidation_price": 99.0}},
+    {"name": "short_between_entry_and_stop", "expect": true, "reference_close": 100.0, "thesis": {"direction": "short", "entry_kind": "limit", "entry_price": 98.0, "stop": 102.0, "target": 90.0, "invalidation_price": 101.0}},
+    {"name": "long_equal_to_stop", "expect": true, "reference_close": 100.0, "thesis": {"direction": "long", "entry_kind": "stop", "entry_price": 102.0, "stop": 98.0, "target": 110.0, "invalidation_price": 98.0}},
+    {"name": "short_equal_to_stop", "expect": true, "reference_close": 100.0, "thesis": {"direction": "short", "entry_kind": "limit", "entry_price": 98.0, "stop": 102.0, "target": 90.0, "invalidation_price": 102.0}},
+    {"name": "long_market_open_uses_the_snapshot_close", "expect": true, "reference_close": 100.0, "thesis": {"direction": "long", "entry_kind": "market_open", "entry_price": null, "stop": 96.0, "target": 108.0, "invalidation_price": 97.0}},
+    {"name": "short_market_open_uses_the_snapshot_close", "expect": true, "reference_close": 100.0, "thesis": {"direction": "short", "entry_kind": "market_open", "entry_price": null, "stop": 104.0, "target": 92.0, "invalidation_price": 103.0}},
+    {"name": "long_market_open_passes_from_a_higher_close", "expect": true, "reference_close": 102.0, "thesis": {"direction": "long", "entry_kind": "market_open", "entry_price": null, "stop": 96.0, "target": 108.0, "invalidation_price": 101.0}},
+    {"name": "long_above_entry", "expect": false, "reference_close": 100.0, "thesis": {"direction": "long", "entry_kind": "stop", "entry_price": 102.0, "stop": 98.0, "target": 110.0, "invalidation_price": 103.0}},
+    {"name": "long_equal_to_entry", "expect": false, "reference_close": 100.0, "thesis": {"direction": "long", "entry_kind": "stop", "entry_price": 102.0, "stop": 98.0, "target": 110.0, "invalidation_price": 102.0}},
+    {"name": "long_beyond_stop", "expect": false, "reference_close": 100.0, "thesis": {"direction": "long", "entry_kind": "stop", "entry_price": 102.0, "stop": 98.0, "target": 110.0, "invalidation_price": 97.0}},
+    {"name": "short_below_entry", "expect": false, "reference_close": 100.0, "thesis": {"direction": "short", "entry_kind": "limit", "entry_price": 98.0, "stop": 102.0, "target": 90.0, "invalidation_price": 97.0}},
+    {"name": "short_beyond_stop", "expect": false, "reference_close": 100.0, "thesis": {"direction": "short", "entry_kind": "limit", "entry_price": 98.0, "stop": 102.0, "target": 90.0, "invalidation_price": 103.0}},
+    {"name": "long_market_open_above_the_snapshot_close", "expect": false, "reference_close": 100.0, "thesis": {"direction": "long", "entry_kind": "market_open", "entry_price": null, "stop": 96.0, "target": 108.0, "invalidation_price": 101.0}},
+    {"name": "short_market_open_below_the_snapshot_close", "expect": false, "reference_close": 100.0, "thesis": {"direction": "short", "entry_kind": "market_open", "entry_price": null, "stop": 104.0, "target": 92.0, "invalidation_price": 99.0}},
+    {"name": "limit_entry_ignores_the_snapshot_close", "expect": false, "reference_close": 101.0, "thesis": {"direction": "long", "entry_kind": "limit", "entry_price": 99.0, "stop": 95.0, "target": 108.0, "invalidation_price": 99.5}}
+  ]
+}

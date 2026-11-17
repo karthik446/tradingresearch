@@ -65,5 +65,5 @@ def test_a_decorated_grader_is_registered_and_nameable_from_config(registry):
     assert isinstance(graders(["toy_test_grader"])[0], Toy)
 
 
-def test_the_registry_holds_exactly_the_week1_graders():
-    assert list(GRADERS) == ["parsed", "claims_valid", "all_claims_valid", "inferences_grounded"]
+def test_the_registry_starts_with_the_week1_graders():
+    assert list(GRADERS)[:4] == ["parsed", "claims_valid", "all_claims_valid", "inferences_grounded"]

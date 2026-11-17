@@ -1,0 +1,30 @@
+{
+  "about": "Hand-built P2 cases (evals/specs/p2_evidence_valid.md). Made-up ticker FAKEA and round numbers; no market data.",
+  "values": {"src_close": 100.0, "src_sma_20": 95.0, "src_high_20": 104.0, "src_regime": null},
+  "claims": [
+    {"claim_id": "cl_f1", "tag": "fact", "text": "Close was {value} USD.", "value": 100.0, "unit": "USD", "source_ids": ["src_close"]},
+    {"claim_id": "cl_f2", "tag": "fact", "text": "Close is above sma_20.", "value": null, "unit": null, "source_ids": ["src_close", "src_sma_20"]},
+    {"claim_id": "cl_f3", "tag": "fact", "text": "Close was {value} USD.", "value": 100.6, "unit": "USD", "source_ids": ["src_close"]},
+    {"claim_id": "cl_f4", "tag": "fact", "text": "Close was {value} USD.", "value": 100.4, "unit": "USD", "source_ids": ["src_close"]},
+    {"claim_id": "cl_f5", "tag": "fact", "text": "Volume was {value} shares.", "value": 5000000.0, "unit": "shares", "source_ids": ["src_volume"]},
+    {"claim_id": "cl_f6", "tag": "fact", "text": "The regime score is {value}.", "value": 1.0, "unit": "label", "source_ids": ["src_regime"]},
+    {"claim_id": "cl_f7", "tag": "fact", "text": "Close was {value} USD, below high_20.", "value": 100.2, "unit": "USD", "source_ids": ["src_high_20", "src_close"]},
+    {"claim_id": "cl_i1", "tag": "inference", "text": "Price holds above its short trend.", "value": null, "unit": null, "derived_from": ["cl_f2"], "steps": "close above sma_20"},
+    {"claim_id": "cl_o1", "tag": "opinion", "text": "Hypothesis: buyers should return at the level.", "value": null, "unit": null}
+  ],
+  "cases": [
+    {"name": "long_numeric_fact_exact", "expect": true, "thesis": {"direction": "long", "entry_kind": "stop", "entry_price": 102.0, "stop": 98.0, "target": 110.0, "evidence": ["cl_f1"]}},
+    {"name": "short_numeric_fact_inside_tolerance", "expect": true, "thesis": {"direction": "short", "entry_kind": "limit", "entry_price": 98.0, "stop": 102.0, "target": 90.0, "evidence": ["cl_f4"]}},
+    {"name": "text_fact_plus_inference", "expect": true, "thesis": {"direction": "long", "entry_kind": "stop", "entry_price": 102.0, "stop": 98.0, "target": 110.0, "evidence": ["cl_f2", "cl_i1"]}},
+    {"name": "numeric_fact_matches_second_cited_source", "expect": true, "thesis": {"direction": "long", "entry_kind": "stop", "entry_price": 102.0, "stop": 98.0, "target": 110.0, "evidence": ["cl_f7"]}},
+    {"name": "market_open_entry_does_not_matter", "expect": true, "thesis": {"direction": "short", "entry_kind": "market_open", "entry_price": null, "stop": 104.0, "target": 92.0, "evidence": ["cl_f1", "cl_i1"]}},
+    {"name": "unknown_evidence_id", "expect": false, "thesis": {"direction": "long", "entry_kind": "stop", "entry_price": 102.0, "stop": 98.0, "target": 110.0, "evidence": ["cl_f1", "cl_nope"]}},
+    {"name": "hypothesis_claim_beside_a_fact", "expect": false, "thesis": {"direction": "long", "entry_kind": "stop", "entry_price": 102.0, "stop": 98.0, "target": 110.0, "evidence": ["cl_f1", "cl_o1"]}},
+    {"name": "hypothesis_claim_alone_short", "expect": false, "thesis": {"direction": "short", "entry_kind": "limit", "entry_price": 98.0, "stop": 102.0, "target": 90.0, "evidence": ["cl_o1"]}},
+    {"name": "numeric_fact_off_by_more_than_half_percent", "expect": false, "thesis": {"direction": "long", "entry_kind": "stop", "entry_price": 102.0, "stop": 98.0, "target": 110.0, "evidence": ["cl_f3"]}},
+    {"name": "short_inference_ok_but_fact_off", "expect": false, "thesis": {"direction": "short", "entry_kind": "limit", "entry_price": 98.0, "stop": 102.0, "target": 90.0, "evidence": ["cl_i1", "cl_f3"]}},
+    {"name": "fact_cites_source_not_in_table", "expect": false, "thesis": {"direction": "long", "entry_kind": "stop", "entry_price": 102.0, "stop": 98.0, "target": 110.0, "evidence": ["cl_f5"]}},
+    {"name": "numeric_fact_cites_a_label_source", "expect": false, "thesis": {"direction": "long", "entry_kind": "stop", "entry_price": 102.0, "stop": 98.0, "target": 110.0, "evidence": ["cl_f6"]}},
+    {"name": "inside_default_tolerance_but_not_a_tighter_one", "expect": false, "tolerance": 0.001, "thesis": {"direction": "long", "entry_kind": "stop", "entry_price": 102.0, "stop": 98.0, "target": 110.0, "evidence": ["cl_f4"]}}
+  ]
+}
