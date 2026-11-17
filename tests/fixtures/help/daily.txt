@@ -1,5 +1,5 @@
 usage: tr daily [-h] [--session SESSION] [--top TOP] [--max-usd MAX_USD]
-                [--dry-run] [--no-model] [--teachers]
+                [--dry-run] [--no-model] [--no-challenger] [--teachers]
                 [--teacher-max-usd TEACHER_MAX_USD]
 
 options:
@@ -12,6 +12,8 @@ options:
   --dry-run             free steps only (reconcile and grade write nothing):
                         print what would be analyzed and its cost
   --no-model            run the free steps for real; skip analyze and thesis
+  --no-challenger       skip the challenger of a pending rule change (recorded
+                        as skipped: adopt leaves the session out)
   --teachers            then run the 3 pinned teachers on the session's 4
                         drawn bake-off names (paid, SPIKE §9.4); a teacher
                         failure never changes the exit code

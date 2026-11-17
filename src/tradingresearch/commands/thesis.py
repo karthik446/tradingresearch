@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import UTC, datetime
 
-from .. import analyze as an, journal, openrouter, sessions, teacher as tc, thesis as th
+from .. import analyze as an, journal, openrouter, rules, sessions, teacher as tc, thesis as th
 from ..config import require
 from ..records import Analysis, Thesis
 from .common import session_arg
@@ -56,11 +57,30 @@ def thesis_line(t: Thesis) -> str:
             f"evidence {','.join(t.evidence)}")
 
 
+def challenger_rule(conn, a: Analysis, args) -> tuple[str, Callable[[th.Checked], th.Checked] | None, str]:
+    """(prompt, filter, change id) of the change pending for `a`'s session, refused before any call: a challenger
+    thesis is the champion's model with that one rule changed (SPIKE §8.2)."""
+    change = rules.pending_for(conn, a.session)
+    if change is None:
+        raise SystemExit(f"a challenger thesis answers a pending rule change; none was registered before {a.session} "
+                         "opened (rules.register)")
+    try:
+        rule = rules.resolve(change.diff_ref)
+    except ValueError as refused:
+        raise SystemExit(f"{change.change_id}: {refused}") from None
+    prompt = rules.prompt_of(rule)
+    if args.prompt not in (th.DEFAULT_PROMPT, prompt) or args.model != th.DEFAULT_MODEL:
+        raise SystemExit(f"a challenger thesis is {th.DEFAULT_MODEL} with {change.change_id}'s rule "
+                         f"({change.diff_ref}) only: drop --prompt and --model")
+    return prompt, rules.post(rule, a), change.change_id
+
+
 def cmd_thesis(args, cfg) -> None:
     teacher = tc.from_args(args.arm, args.teacher, args.model, th.DEFAULT_MODEL)
     model = teacher.model if teacher else args.model
     conn = journal.connect(cfg.db_path)
     a = analysis_for(conn, args)
+    prompt, post, change = challenger_rule(conn, a, args) if args.arm == "challenger" else (args.prompt, None, None)
     asked = horizons_to_ask(conn, a, args.arm, datetime.now(UTC))
     if not asked:
         print(f"nothing to ask for {a.ticker}: every horizon has a live {args.arm} thesis (no model call)")
@@ -69,12 +89,13 @@ def cmd_thesis(args, cfg) -> None:
                                      routing=teacher.routing if teacher else None)
     try:
         result = th.thesis(conn, a, provider, asked=asked, arm=args.arm, model=model, max_usd=args.max_usd,
-                           prices=openrouter.prices([model]), data_dir=cfg.data_dir, prompt_version=args.prompt,
-                           terms=teacher.terms_class if teacher else None)
+                           prices=openrouter.prices([model]), data_dir=cfg.data_dir, prompt_version=prompt,
+                           terms=teacher.terms_class if teacher else None, post=post)
     finally:
         provider.close()
     c = result.checked
-    print(f"thesis {a.ticker} {a.session}  analysis {a.analysis_id}  arm={args.arm}  prompt={args.prompt}  "
+    rule = f"  change={change}" if change else ""
+    print(f"thesis {a.ticker} {a.session}  analysis {a.analysis_id}  arm={args.arm}{rule}  prompt={prompt}  "
           f"model={model}  asked {','.join(asked)}  spent=${result.spent_usd:.4f}")
     print(f"run={result.run_path}")
     for t in c.theses:

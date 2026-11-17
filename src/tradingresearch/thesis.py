@@ -4,6 +4,7 @@ against the SPIKE §1.1 Thesis rules and the §6.6 stop floor before anything is
 from __future__ import annotations
 
 import sqlite3
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, time
 
@@ -312,8 +313,9 @@ def store(conn: sqlite3.Connection, checked: Checked) -> Checked:
 
 def thesis(conn: sqlite3.Connection, analysis: Analysis, provider, *, asked: tuple[str, ...], arm: str, model: str,
            max_usd: float, prices: dict, data_dir, prompt_version: str = DEFAULT_PROMPT,
-           terms: str | None = None) -> Result:
-    """One model call, checked and stored; `terms` None means `terms_class(model)`, the teacher arm passes trainable."""
+           terms: str | None = None, post: Callable[[Checked], Checked] | None = None) -> Result:
+    """One model call, checked and stored; `terms` None means `terms_class(model)`, the teacher arm passes trainable.
+    `post` is a challenger rule's filter (rules.py), applied before the store because stored theses never go away."""
     item = item_for(analysis, asked, arm)
     run = run_eval(Dataset.of("thesis", [item]), provider, [ThesesValid()], settings=call_settings(model),
                    budget=CallBudget(max_usd=max_usd, prices=prices), system=an.system_prompt(prompt_version),
@@ -325,5 +327,6 @@ def thesis(conn: sqlite3.Connection, analysis: Analysis, provider, *, asked: tup
     route = provider.route_for(item.prompt) if hasattr(provider, "route_for") else "unknown"
     written = Written(arm, datetime.now(UTC), sample.trace_id, route, terms or terms_class(model),
                       input_hash(analysis, asked, prompt_version))
-    checked = store(conn, validate(sample.output_parsed, analysis, asked, written))
+    checked = validate(sample.output_parsed, analysis, asked, written)
+    checked = store(conn, checked if post is None else post(checked))
     return Result(checked, run.record.spent_usd, str(run_path), str(run.record.trace_path))

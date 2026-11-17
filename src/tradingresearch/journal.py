@@ -6,15 +6,16 @@ import json
 import sqlite3
 from datetime import UTC, date, datetime
 from pathlib import Path
+from typing import get_args
 
-from gigai_core.records import LabelRecord
+from gigai_core.records import LabelRecord, Prereg
 from gigai_core.score import ScoreRecord
 from pydantic import BaseModel
 
 from .hashing import digest
 from .records import (
-    Analysis, Claim, ClaimLabel, Event, Grade, NoTrade, OutcomeGrade, Shadow, SourceRef, TeacherOutcome, Thesis,
-    TrainingSplit,
+    Analysis, Claim, ClaimLabel, Event, Grade, Horizon, NoTrade, OutcomeGrade, RuleChange, Shadow, SourceRef,
+    TeacherOutcome, Thesis, TrainingSplit,
 )
 
 SCHEMA = """
@@ -95,6 +96,24 @@ WHEN new.arm IN ('champion', 'challenger') AND EXISTS (
     AND (SELECT e.state FROM event e WHERE e.subject_id = t.thesis_id ORDER BY e.seq DESC LIMIT 1)
         IN ('PROPOSED', 'OPEN'))
 BEGIN SELECT RAISE(ABORT, 'one live thesis per (ticker, horizon, arm)'); END;
+
+-- G11a: SPIKE §8.2 rule changes. The pre-registration columns never change; `decided` moves once, from pending to
+-- adopted, rejected or insufficient (§8.3), and a row is never deleted. At most one change is pending at a time.
+CREATE TABLE IF NOT EXISTS rule_change (
+  change_id TEXT PRIMARY KEY, horizon TEXT NOT NULL, registered_at TEXT NOT NULL,
+  decided TEXT NOT NULL CHECK (decided IN ('pending', 'adopted', 'rejected', 'insufficient')), decided_at TEXT,
+  body TEXT NOT NULL, record_sha256 TEXT NOT NULL, created_at TEXT NOT NULL);
+CREATE UNIQUE INDEX IF NOT EXISTS one_pending_rule_change ON rule_change(decided) WHERE decided = 'pending';
+CREATE TRIGGER IF NOT EXISTS rule_change_starts_pending BEFORE INSERT ON rule_change
+WHEN new.decided != 'pending' OR new.decided_at IS NOT NULL
+BEGIN SELECT RAISE(ABORT, 'rule_change is stored pending'); END;
+CREATE TRIGGER IF NOT EXISTS rule_change_decided_once BEFORE UPDATE ON rule_change
+WHEN old.decided != 'pending' OR new.decided NOT IN ('adopted', 'rejected', 'insufficient') OR new.decided_at IS NULL
+  OR new.change_id IS NOT old.change_id OR new.horizon IS NOT old.horizon OR new.registered_at IS NOT old.registered_at
+  OR new.body IS NOT old.body OR new.record_sha256 IS NOT old.record_sha256 OR new.created_at IS NOT old.created_at
+BEGIN SELECT RAISE(ABORT, 'rule_change: only a pending decision changes, once'); END;
+CREATE TRIGGER IF NOT EXISTS rule_change_no_delete BEFORE DELETE ON rule_change
+BEGIN SELECT RAISE(ABORT, 'rule_change is append-only'); END;
 """
 
 IMMUTABLE = (
@@ -401,3 +420,94 @@ def judge_verdict(conn: sqlite3.Connection, thesis_id: str) -> dict | None:
 def abstained(verdict: dict) -> bool:
     """The rubric's unknown: a `fail` whose reason starts `unknown:`."""
     return verdict["verdict"] == "fail" and verdict["reason"].startswith("unknown:")
+
+
+# SPIKE §8.2: the only pre-registration a rule change may carry. gigai-core's Prereg has no unit or horizon field, so
+# the unit (one item per session on the affected horizon, holding that arm's summed r_net for the session, 0 when it
+# had no trade, clustered by session) is the primary metric with the horizon after the colon.
+RULE_METRIC = "session_r_net_delta"  # per-session summed r_net, challenger - champion
+RULE_PASS = "delta_ci_lower > 0"  # strict: a lower bound of exactly 0 does not pass
+RULE_GUARD = "p1_met_rate"  # per-session P1 met rate, challenger - champion ...
+RULE_MARGIN = 0.10  # ... whose lower bound must be >= -0.10
+RULE_N = 20  # paired sessions
+DECISIONS = ("adopted", "rejected", "insufficient")
+
+
+def rule_prereg(horizon: str, hypothesis: str, registered_at: datetime) -> Prereg:
+    """The §8.2 Prereg of a change on one horizon, so nobody types the metric strings by hand."""
+    return Prereg(primary_metric=f"{RULE_METRIC}:{horizon}", pass_rule=RULE_PASS, margin=RULE_MARGIN,
+                  n_planned=RULE_N, registered_at=registered_at, guard_metric=RULE_GUARD, hypothesis=hypothesis)
+
+
+def prereg_horizon(prereg: Prereg) -> str:
+    """The affected horizon of a §8.2 Prereg, or ValueError naming the first field that breaks §8.2."""
+    metric, _, horizon = prereg.primary_metric.partition(":")
+    if metric != RULE_METRIC or horizon not in get_args(Horizon):
+        raise ValueError(f"prereg primary_metric must be '{RULE_METRIC}:<day|short|swing>' (the SPIKE §8.2 unit), "
+                         f"got {prereg.primary_metric!r}")
+    for field, want in {"pass_rule": RULE_PASS, "guard_metric": RULE_GUARD, "margin": RULE_MARGIN,
+                        "n_planned": RULE_N}.items():
+        if getattr(prereg, field) != want:
+            raise ValueError(f"prereg {field} must be {want!r} (SPIKE §8.2), got {getattr(prereg, field)!r}")
+    return horizon
+
+
+def first_challenger_since_decision(conn: sqlite3.Connection) -> datetime | None:
+    """When the first challenger thesis after the last decision was stored (row time): a new change would cover it."""
+    since = conn.execute("SELECT max(decided_at) FROM rule_change").fetchone()[0] or ""
+    found = conn.execute("SELECT min(created_at) FROM thesis WHERE arm = 'challenger' AND created_at > ?",
+                         (since,)).fetchone()[0]
+    return datetime.fromisoformat(found) if found else None
+
+
+def add_rule_change(conn: sqlite3.Connection, change: RuleChange) -> None:
+    """Store a pre-registered change as pending. Refused: a Prereg that breaks §8.2, a second pending change (one
+    challenger at a time, §8.3), and a Prereg registered before the last decision or at/after a challenger thesis it
+    would cover (pre-registration comes before any trade under the change)."""
+    if change.decided != "pending":
+        raise ValueError(f"a rule change is stored pending, got {change.decided!r}")
+    horizon = prereg_horizon(change.prereg)
+    pending = conn.execute("SELECT change_id FROM rule_change WHERE decided = 'pending'").fetchone()
+    if pending:
+        raise ValueError(f"one challenger at a time: {pending[0]} is still pending")
+    registered = change.prereg.registered_at.astimezone(UTC)
+    last = conn.execute("SELECT max(decided_at) FROM rule_change").fetchone()[0]
+    if last and registered <= datetime.fromisoformat(last):
+        raise ValueError(f"prereg registered_at {registered.isoformat()} is not after the last decision ({last}): "
+                         "one challenger at a time")
+    first = first_challenger_since_decision(conn)
+    if first is not None and registered >= first:
+        raise ValueError(f"prereg registered_at {registered.isoformat()} is not before the first challenger thesis "
+                         f"it would cover (stored {first.isoformat()}): pre-register before any trade (SPIKE §8.2)")
+    with conn:
+        conn.execute("INSERT INTO rule_change (change_id, horizon, registered_at, decided, decided_at, body, "
+                     "record_sha256, created_at) VALUES (?, ?, ?, 'pending', NULL, ?, ?, ?)",
+                     (change.change_id, horizon, registered.isoformat(), change.model_dump_json(), digest(change),
+                      datetime.now(UTC).isoformat()))
+
+
+def decide_rule_change(conn: sqlite3.Connection, change_id: str, decided: str) -> None:
+    """Move a pending change to its one final decision (§8.3); a decided change never changes again."""
+    if decided not in DECISIONS:
+        raise ValueError(f"a decision is one of {', '.join(DECISIONS)}, got {decided!r}")
+    row = conn.execute("SELECT decided FROM rule_change WHERE change_id = ?", (change_id,)).fetchone()
+    if row is None:
+        raise KeyError(f"rule_change: no row with change_id = {change_id!r}")
+    if row[0] != "pending":
+        raise ValueError(f"{change_id} is already {row[0]}: a decision is final")
+    with conn:
+        conn.execute("UPDATE rule_change SET decided = ?, decided_at = ? WHERE change_id = ?",
+                     (decided, datetime.now(UTC).isoformat(), change_id))
+
+
+def rule_changes(conn: sqlite3.Connection, decided: str | None = None) -> list[RuleChange]:
+    """Stored changes in registration order, each with its current decision; `decided` keeps one status."""
+    where = " WHERE decided = ?" if decided else ""
+    rows = conn.execute(f"SELECT body, decided FROM rule_change{where} ORDER BY rowid", (decided,) if decided else ())
+    return [RuleChange.model_validate_json(body).model_copy(update={"decided": state}) for body, state in rows]
+
+
+def rule_change_decided_at(conn: sqlite3.Connection, change_id: str) -> datetime | None:
+    """When the change was decided; None while pending (or when no such change exists)."""
+    row = conn.execute("SELECT decided_at FROM rule_change WHERE change_id = ?", (change_id,)).fetchone()
+    return datetime.fromisoformat(row[0]) if row and row[0] else None

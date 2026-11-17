@@ -1,0 +1,11 @@
+usage: tr learn [-h] [--session SESSION] [--arm {champion,challenger}]
+                [--status | --decide CHANGE_ID]
+
+options:
+  -h, --help            show this help message and exit
+  --session SESSION     playbook as of this session, YYYY-MM-DD (default: last
+                        completed)
+  --arm {champion,challenger}
+                        playbook arm (default: champion)
+  --status              rule changes, pairs so far, decision rule, MDE
+  --decide CHANGE_ID    apply the §8.3 rule; writes only a final decision

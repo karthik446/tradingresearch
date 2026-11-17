@@ -9,8 +9,9 @@ How the daily loop runs, how to check it, and what to do when it fails. Live str
 | Setting | Value |
 |---|---|
 | When | Monday–Friday 14:30 and 19:00, Mac time zone America/Denver (16:30 and 21:00 New York). 19:00 is a catch-up |
-| Program | `/Users/kar/.local/bin/uv run tr daily` (uv by absolute path). With the bake-off: `... tr daily --teachers` |
-| WorkingDirectory | `/Users/kar/Developer/projects/tradingresearch` |
+| Program | `/Users/kar/.local/bin/uv run tr daily --teachers` (uv by absolute path; `--teachers` runs the bake-off) |
+| WorkingDirectory | `/Users/kar/Developer/projects/tradingresearch-live` (the pinned worktree, below) |
+| TR_DATA_DIR | `/Users/kar/Developer/projects/tradingresearch/data` (the live journal) |
 | PATH | `/Users/kar/.local/bin:/usr/bin:/bin:/usr/sbin:/sbin` |
 | Log | `data/logs/daily.log` (stdout and stderr) |
 | Keys | `tr` reads `~/.config/tradingresearch/verify.env` itself, including `TR_SEC_USER_AGENT`. No key goes in the plist |
@@ -21,12 +22,39 @@ saving on different dates, the times must be converted again. `ops/daily.launchd
 
 The LaunchAgent owns live runs. To look at what a live run would do, use `--dry-run`.
 
+## Pinned code, live data
+
+The journal is append-only and the bake-off is pre-registered, so the code that writes the live journal must not
+change under the stream. Two rules follow, and they are separate on purpose.
+
+1. **The agent runs pinned code.** Its WorkingDirectory is the git worktree `~/Developer/projects/tradingresearch-live`,
+   detached at a verified commit, with `TR_DATA_DIR=/Users/kar/Developer/projects/tradingresearch/data`. Editing
+   or committing on master does not change what runs at 14:30.
+2. **Dev never writes the live journal.** `<repo>/data/journal.db` is live evidence. Nothing writes to it except the
+   agent: no `daily`, `analyze`, `thesis`, `reconcile`, `label`, `grade` (without `--dry-run`), `exp run` or
+   `learn --decide`. Tests, experiments and packet runs use `TR_DATA_DIR=<repo>/data-dev` (git-ignored). Read-only
+   commands (`report`, `usage`, `slo`, `--dry-run`) may read the live data.
+
+Moving the pin, only to a commit whose tests and `ci/gate.py` pass, and never between 14:15 and 14:45 or between
+18:45 and 19:15 America/Denver (the two run windows):
+
+```sh
+git -C ~/Developer/projects/tradingresearch-live checkout --detach <sha>
+(cd ~/Developer/projects/tradingresearch-live && uv sync -q)
+(cd ~/Developer/projects/tradingresearch-live && TR_DATA_DIR=/Users/kar/Developer/projects/tradingresearch/data uv run tr daily --teachers --dry-run)
+```
+
+Schema changes must be backward-safe for the pinned code (`CREATE TABLE IF NOT EXISTS`, new columns with defaults), or
+land together with a pin move. A dev command that opens the live journal with newer code adds empty tables; the pinned
+code ignores them. Code a change needs in a live run (for example the challenger arm, `rules.py`) does not run until
+the pin moves past it: re-pin before registering a real rule change.
+
 ## What one run does
 
 `tr daily` settles the latest completed session (after 16:15 ET) in five steps: screen the universe, analyze the
 shortlist (`--top`, default 10), write one thesis-step decision per analysis, then reconcile and grade. Options:
-`--session`, `--top`, `--max-usd` (default 1.00), `--dry-run` (free steps only, writes nothing), `--no-model`, `--teachers`,
-`--teacher-max-usd` (default 0.40).
+`--session`, `--top`, `--max-usd` (default 1.00), `--dry-run` (free steps only, writes nothing), `--no-model`,
+`--no-challenger`, `--teachers`, `--teacher-max-usd` (default 0.40).
 
 - **Reruns are free.** Finished work prints `already done` and makes no model call, so the 19:00 catch-up only does
   what 14:30 missed. A holiday works the same way: the default session is the last completed one, already done.
@@ -44,6 +72,17 @@ shortlist (`--top`, default 10), write one thesis-step decision per analysis, th
   from each call's run file even when the reply has no verdict (that thesis stays unjudged and is retried next run).
   `--dry-run --judge` lists what it would judge and makes no call. Verdict and reason are stored with the Score.
 - The `events`, `thesis` and `daily_run` tables are append-only (triggers); nothing is corrected in place.
+- **Challenger** (only while a rule change is pending and its `registered_at` is before the session's open; see
+  "Playbook and rule changes"). Right after each champion thesis step, the challenger writes its own thesis-step
+  decision on the same analysis under the change's rule (`rules.CHALLENGER_RULES[diff_ref]`: a post-filter or a
+  prompt variant), at most one live thesis per arm and horizon. It runs only where the champion made a decision.
+  Rows are `thesis` rows whose reason starts `challenger <change_id> (<analysis_id>): `; the step ends with
+  `challenger <change_id> (<diff_ref>) <session>: ... answered ...`. Its cost is inside the run's total and
+  `--max-usd` and is shown separately on that line; `--dry-run` adds it to the estimate. A challenger failure is a
+  row and never changes the exit code; a rerun retries only analyses it has not answered. An unknown diff_ref fails
+  every challenger row with `refused: ...` before any call. `--no-challenger`, `--no-model`, `late` and a budget stop
+  leave `skipped`/`stopped` rows, and adopt.py leaves those sessions out (below). `tr thesis --arm challenger` does
+  the same for one ticker by hand, but writes no `daily_run` row.
 - **Teachers** (`--teachers`, off by default). After the evening's summary line, each of the 3 pinned teachers
   analyzes the session's 4 drawn names (`tr bakeoff draw`) and writes a thesis-step decision from its own analysis.
   Rows read `analyze <T> ... teacher <model>: ...` and the step ends with `teachers <session>: ...`. A teacher's first
@@ -146,6 +185,36 @@ uv run tr label agree                         # kappa vs stored judge verdicts o
 Decide from `show` alone (rubric `evals/rubrics/p1_thesis_quality.md`); `show` never prints a judge verdict or an
 earlier label. `agree` leaves out `unknown` labels and judge `unknown:` abstains and counts them. Its kappa
 thresholds are PROPOSED (ADR-003, decision Q1) and nothing it prints sets `validated`.
+
+## Playbook and rule changes (`tr learn`)
+
+No model call. Only `--decide` writes, and only a final decision.
+
+```
+uv run tr learn                     # champion playbook as of the last completed session; --session D, --arm challenger
+uv run tr learn --status            # rule changes, paired sessions so far, the decision rule, the MDE line
+uv run tr learn --decide CHANGE_ID  # applies SPIKE §8.3; writes adopted/rejected/insufficient, else prints pending
+```
+
+- **Playbook.** One row per (horizon, setup_type) over graded theses of one arm whose CLOSED event is on or before
+  the session: n, Wilson win rate, mean r_net with the session-cluster bootstrap (`insufficient (n sessions < 10)`),
+  real − shadow, P1 met rate (unknown left out), median MFE/MAE. Rows with n < 5 say `THIN`. Teacher theses never
+  enter.
+- **Registering a change.** `rules.register(conn, RuleChange(..., diff_ref=..., prereg=journal.rule_prereg(horizon,
+  hypothesis, registered_at), decided="pending"))`. `diff_ref` must be a key of `rules.CHALLENGER_RULES` (code
+  reviewed; the two `example-` entries are examples, not proposals), else it is refused before anything is stored.
+  The store refuses a Prereg that is not the §8.2 one (metric `session_r_net_delta:<horizon>`, pass rule
+  `delta_ci_lower > 0`, guard `p1_met_rate`, margin 0.10, 20 pairs), a second pending change, and a `registered_at`
+  that is not after the last decision or not before the first challenger thesis since it. Prereg fields never
+  change; a decision is made once (SQLite triggers back this up).
+- **Pairs.** From the first session that opens after `registered_at`: each main-analysis session on the change's
+  horizon is one pair (summed r_net per arm, 0 with no trade). Pairs stop at the first session with a thesis that is
+  not graded, expired or cancelled. The first 20 decide. Day 60 is 2027-01-15 (`adopt.DAY_60`); fewer than 20
+  pairs by then is `insufficient`.
+- **Sessions the challenger did not answer** (its `tr daily` row is failed, stopped or skipped, or it has none while
+  the champion's are there) are no pair. Until the next entry window opens the session is the waiting one and the
+  pairs stop there (rerun `tr daily` to retry); after that it is left out for good, the list goes on past it, and
+  `--status` prints `left out N, the challenger never answered: <dates>`.
 
 ## Week 3 acceptance
 

@@ -2,9 +2,11 @@
 L581).
 
 Each step is an existing function passed in `Steps`. Work already in the journal is skipped, so a rerun for the same
-session makes no model call. Every step leaves a `daily_run` row; a failed ticker is a row, not a crash. With
+session makes no model call. Every step leaves a `daily_run` row; a failed ticker is a row, not a crash. While a
+pre-registered rule change is pending (SPIKE §8.2), the challenger answers each analysis right after the champion
+under that rule (`ChallengerSteps`, rules.py); its rows are labelled and nothing in it can fail the evening. With
 `TeacherSteps` (`tr daily --teachers`), the bake-off's teachers then answer the session's drawn names (SPIKE §9.4)
-under their own cap; nothing in that step can fail the evening.
+under their own cap; nothing in that step can fail the evening either.
 """
 
 from __future__ import annotations
@@ -17,9 +19,9 @@ from pathlib import Path
 
 from gigai_core.budget import BudgetExceeded
 
-from . import analyze as an, grade as gr, journal, reconcile_run, sessions, teacher as tc, thesis as th, usage
+from . import analyze as an, grade as gr, journal, reconcile_run, rules, sessions, teacher as tc, thesis as th, usage
 from .hashing import new_id
-from .records import Analysis
+from .records import Analysis, RuleChange
 from .screen import ScreenResult
 
 ANALYZE_USD = 0.02  # estimate per call: measured `tr analyze` runs cost $0.016-0.017 (`tr usage`, 2026-11-16)
@@ -50,6 +52,25 @@ class TeacherSteps:
 
     analyze: Callable[[str, date, tc.Teacher, float], an.Result]
     thesis: Callable[[Analysis, tc.Teacher, float], th.Result]
+
+
+@dataclass(frozen=True)
+class ChallengerSteps:
+    """The challenger arm's calls (`tr daily` without --no-challenger): its own live horizons, and a thesis call that
+    applies the change's rule."""
+
+    horizons: Callable[[Analysis, datetime], tuple[str, ...]]
+    thesis: Callable[[Analysis, tuple[str, ...], rules.Rule], th.Result]
+
+
+@dataclass(frozen=True)
+class Challenge:
+    """The pending change `session` answers: its rule, the steps, and (status, reason) when it cannot run at all."""
+
+    change: RuleChange
+    rule: rules.Rule | None
+    steps: ChallengerSteps | None
+    blocked: tuple[str, str] | None
 
 
 @dataclass(frozen=True)
@@ -91,12 +112,12 @@ class Daily:
                 "status": row.status, "reason": row.reason, "ids": row.ids, "cost_usd": row.cost_usd,
             })
 
-    def affordable(self, step: str, ticker: str, estimate: float) -> bool:
+    def affordable(self, step: str, ticker: str, estimate: float, prefix: str = "") -> bool:
         """False, with a `stopped` row, once the next call's estimate would take the run past `max_usd`."""
         if self.stopped or self.spent_usd + estimate > self.max_usd:
             self.stopped = True
-            self.record(Row(step, ticker, "stopped", f"budget: spent ${self.spent_usd:.4f} + ≈${estimate:.2f} would "
-                                                     f"pass --max-usd ${self.max_usd:.2f}"))
+            self.record(Row(step, ticker, "stopped", f"{prefix}budget: spent ${self.spent_usd:.4f} + ≈${estimate:.2f} "
+                                                     f"would pass --max-usd ${self.max_usd:.2f}"))
             return False
         return True
 
@@ -169,9 +190,9 @@ def shortlist(results: list[ScreenResult], top: int) -> list[str]:
 
 def run(conn: sqlite3.Connection, steps: Steps, session: date, *, top: int, max_usd: float, runs_dir: Path,
         now: datetime, dry_run: bool = False, no_model: bool = False, teachers: TeacherSteps | None = None,
-        teacher_max_usd: float = TEACHER_MAX_USD) -> Daily:
+        teacher_max_usd: float = TEACHER_MAX_USD, challenger: ChallengerSteps | None = None) -> Daily:
     """The whole evening for `session`, then the teacher step when `teachers` is given. Only a failed screen ends it
-    early (`screen_failed`)."""
+    early (`screen_failed`). `challenger` None (--no-challenger) leaves a pending change's challenger skipped."""
     daily = Daily(conn, session, max_usd, runs_dir, dry_run)
     for day in missed_sessions(conn, session, now):
         daily.record(Row("session", None, "missed", "no tr daily row for this completed session"), day)
@@ -189,11 +210,14 @@ def run(conn: sqlite3.Connection, steps: Steps, session: date, *, top: int, max_
     gate = "--no-model" if no_model else None
     if opens <= now:  # `tr thesis` refuses now, so an analysis would be paid for and never used
         gate = f"late: the entry window after {session} opened at {opens:%Y-%m-%d %H:%M} UTC"
+    challenge = challenge_for(conn, session, challenger)
     analyze_all(daily, steps, tickers, gate)
-    thesis_all(daily, steps, now, gate)
+    thesis_all(daily, steps, now, gate, challenge)
     reconcile(daily, steps)
     grade(daily, steps)
     print(summary(daily))
+    if challenge is not None:
+        print(challenger_summary(daily, challenge))
     if teachers is not None:
         teach(daily, teachers, results, teacher_max_usd, no_model)
     return daily
@@ -222,8 +246,10 @@ def analyze_all(daily: Daily, steps: Steps, tickers: list[str], gate: str | None
             daily.record(Row("analyze", ticker, status, text, (a.analysis_id,), cost))
 
 
-def thesis_all(daily: Daily, steps: Steps, now: datetime, gate: str | None) -> None:
-    """A champion thesis call for the newest main analysis of each ticker this session that has no decision yet."""
+def thesis_all(daily: Daily, steps: Steps, now: datetime, gate: str | None,
+               challenge: Challenge | None = None) -> None:
+    """A champion thesis call for the newest main analysis of each ticker this session that has no decision yet;
+    then, while a change is pending, the challenger on that same analysis."""
     newest = {a.ticker: a for a in journal.analyses(daily.conn, daily.session, "main")}
     for ticker, a in newest.items():
         if journal.has_decision(daily.conn, a.analysis_id):
@@ -234,8 +260,12 @@ def thesis_all(daily: Daily, steps: Steps, now: datetime, gate: str | None) -> N
             daily.record(Row("thesis", ticker, "skipped", gate))
         else:
             thesis_one(daily, steps, a, now)
+        if challenge is not None:
+            challenge_one(daily, challenge, a, now, gate)
     for _, ticker in [p for p in daily.planned if p[0] == "analyze"]:
         daily.planned.append(("thesis", ticker))
+        if challenge is not None and challenge.blocked is None:
+            daily.planned.append((rules.CHALLENGER, ticker))
 
 
 def thesis_one(daily: Daily, steps: Steps, a: Analysis, now: datetime) -> None:
@@ -263,6 +293,80 @@ def decision(c: th.Checked) -> tuple[str, str]:
     text = f"accepted {len(c.theses)}, no_trade {len(c.no_trades)}, rejected {len(c.rejected)}"
     text += "".join(f"; {r.horizon} {r.reason}" for r in c.rejected)
     return ("ok" if c.theses or c.no_trades else "failed"), text
+
+
+# ---------- challenger (a pending rule change, SPIKE §8.2) ----------
+
+def challenge_for(conn: sqlite3.Connection, session: date, steps: ChallengerSteps | None) -> Challenge | None:
+    """The pending change `session` answers, resolved before any call: an unknown diff_ref blocks every challenger
+    call of the run (a `failed` row per analysis), as does --no-challenger (`skipped`)."""
+    change = rules.pending_for(conn, session)
+    if change is None:
+        return None
+    try:
+        rule = rules.resolve(change.diff_ref)
+    except ValueError as refused:
+        return Challenge(change, None, steps, ("failed", f"refused: {refused}"))
+    return Challenge(change, rule, steps, None if steps else ("skipped", "--no-challenger"))
+
+
+def challenge_one(daily: Daily, c: Challenge, a: Analysis, now: datetime, gate: str | None) -> None:
+    """The challenger's answer to the analysis the champion just decided on. Never raises, a journal error included:
+    the challenger's failure is a row, never the evening's exit code."""
+    tag = rules.label(c.change.change_id, a.analysis_id)
+    try:
+        challenge_step(daily, c, a, now, gate, tag)
+    except (Exception, SystemExit) as error:
+        try:
+            daily.record(Row("thesis", a.ticker, "failed", tag + reason(error)))
+        except sqlite3.Error as again:
+            print(f"{tag}failed: {reason(error)}; not recorded: {reason(again)}")
+
+
+def challenge_step(daily: Daily, c: Challenge, a: Analysis, now: datetime, gate: str | None, tag: str) -> None:
+    """An `ok` row means answered (the call returned and its reply was checked, or every horizon already has a live
+    challenger thesis); anything else leaves the analysis unanswered, so adopt.py leaves its session out."""
+    def row(status: str, text: str, ids: tuple[str, ...] = (), cost: float = 0.0) -> None:
+        daily.record(Row("thesis", a.ticker, status, tag + text, ids, cost))
+
+    champion = journal.has_decision(daily.conn, a.analysis_id) or ("thesis", a.ticker) in daily.planned
+    if rules.answered(daily.conn, c.change.change_id, a.analysis_id):
+        return row("skipped", DONE)
+    if not a.claims or not champion:
+        return row("skipped", "no champion decision on this analysis, so no challenger answer is owed")
+    if c.blocked or gate:
+        return row(*(c.blocked or ("skipped", gate)))
+    try:
+        asked = c.steps.horizons(a, now)
+    except SystemExit as refused:
+        return row("skipped", str(refused))
+    if not asked:
+        return row("ok", "no call: every horizon has a live challenger thesis")
+    if daily.dry_run:
+        daily.planned.append((rules.CHALLENGER, a.ticker))
+        print(f"would challenger thesis {a.ticker} {','.join(asked)} from {a.analysis_id} under "
+              f"{c.change.change_id} (≈${THESIS_USD:.2f})")
+    elif daily.affordable("thesis", a.ticker, THESIS_USD, tag):
+        result, error, cost = daily.call(lambda: c.steps.thesis(a, asked, c.rule))
+        if result is None:
+            return row("failed", error or "?", cost=cost)
+        row("ok", decision(result.checked)[1], tuple(t.thesis_id for t in result.checked.theses), cost)
+
+
+def is_challenger(row: Row) -> bool:
+    return row.reason.startswith(f"{rules.CHALLENGER} ")
+
+
+def challenger_summary(daily: Daily, c: Challenge) -> str:
+    """The challenger's own line: its spend is inside the run's total above, shown apart here."""
+    head = f"challenger {c.change.change_id} ({c.change.diff_ref}) {daily.session}"
+    if daily.dry_run:
+        n = sum(step == rules.CHALLENGER for step, _ in daily.planned)
+        return f"{head} (dry run): would thesis {n}, estimated ${n * THESIS_USD:.2f}, inside the estimate above"
+    rows = [r for r in daily.rows if is_challenger(r)]
+    count = {status: sum(r.status == status for r in rows) for status in ("ok", "failed", "skipped", "stopped")}
+    return (f"{head}: {count['ok']} answered, {count['failed']} failed, {count['skipped']} skipped, "
+            f"{count['stopped']} stopped; spent ${sum(r.cost_usd for r in rows):.4f}, inside the total above")
 
 
 def reconcile(daily: Daily, steps: Steps) -> None:
@@ -300,11 +404,12 @@ def grade(daily: Daily, steps: Steps) -> None:
 def summary(daily: Daily) -> str:
     if daily.dry_run:
         n_analyze = sum(step == "analyze" for step, _ in daily.planned)
-        n_thesis = len(daily.planned) - n_analyze
-        cost = n_analyze * ANALYZE_USD + n_thesis * THESIS_USD
+        n_thesis = sum(step == "thesis" for step, _ in daily.planned)
+        n_challenger = sum(step == rules.CHALLENGER for step, _ in daily.planned)
+        cost = n_analyze * ANALYZE_USD + (n_thesis + n_challenger) * THESIS_USD
         return (f"daily {daily.session} (dry run): would analyze {n_analyze}, thesis {n_thesis}, estimated ${cost:.2f} "
                 f"(≈${ANALYZE_USD:.2f} per analyze, ${THESIS_USD:.2f} per thesis); nothing written to daily_run")
-    paid = [r for r in daily.rows if r.step in ("analyze", "thesis")]
+    paid = [r for r in daily.rows if r.step in ("analyze", "thesis") and not is_challenger(r)]
     count = {status: sum(r.status == status for r in paid) for status in ("ok", "failed", "skipped", "stopped")}
     calls = count["ok"] + count["failed"]
     if paid and all(r.status == "skipped" and r.reason.startswith(DONE) for r in paid):

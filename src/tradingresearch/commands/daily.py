@@ -1,7 +1,9 @@
 """`tr daily`: the whole evening for one completed session, screen → analyze → thesis → reconcile → grade (REPO-PLAN
 §7 G4a, G8).
-Paid unless --dry-run or --no-model; --max-usd stops it before the next model call. --teachers then runs the
-bake-off's pinned teachers on the session's drawn names under --teacher-max-usd (SPIKE §9.4)."""
+Paid unless --dry-run or --no-model; --max-usd stops it before the next model call. While a rule change is pending,
+the challenger answers each analysis after the champion under the same --max-usd (SPIKE §8.2; --no-challenger skips
+it). --teachers then runs the bake-off's pinned teachers on the session's drawn names under --teacher-max-usd (SPIKE
+§9.4)."""
 
 from __future__ import annotations
 
@@ -10,7 +12,8 @@ from datetime import UTC, datetime
 from functools import cache
 from types import SimpleNamespace
 
-from .. import analyze as an, daily, grade, journal, openrouter, reconcile_run, screen, teacher as tc, thesis as th
+from .. import (analyze as an, daily, grade, journal, openrouter, reconcile_run, rules, screen, teacher as tc,
+                thesis as th)
 from ..config import require
 from .common import alpaca_client, edgar_client
 from .reconcile import completed_session
@@ -21,7 +24,7 @@ CALL_USD = 0.25  # each call's own cap, the `tr analyze` and `tr thesis` default
 
 
 def real_steps(conn, cfg, http, provider, top: int) -> daily.Steps:
-    """The existing commands' functions; analyze and thesis write arm main and champion (the challenger is week 4)."""
+    """The existing commands' functions; analyze and thesis write arm main and champion."""
     edgar = edgar_client(cfg)
 
     @cache
@@ -51,6 +54,20 @@ def real_steps(conn, cfg, http, provider, top: int) -> daily.Steps:
 
     return daily.Steps(screen_step, analyze_step, lambda a, now: horizons_to_ask(conn, a, "champion", now),
                        thesis_step, reconcile_step, grade_step)
+
+
+def challenger_steps(conn, cfg, provider) -> daily.ChallengerSteps:
+    """`tr thesis --arm challenger`: the champion's model with the rule's prompt, and its filter before the store."""
+    @cache
+    def prices() -> dict:
+        return openrouter.prices([th.DEFAULT_MODEL])
+
+    def thesis_step(a, asked, rule):
+        return th.thesis(conn, a, provider, asked=asked, arm="challenger", model=th.DEFAULT_MODEL, max_usd=CALL_USD,
+                         prices=prices(), data_dir=cfg.data_dir, prompt_version=rules.prompt_of(rule),
+                         post=rules.post(rule, a))
+
+    return daily.ChallengerSteps(lambda a, now: horizons_to_ask(conn, a, "challenger", now), thesis_step)
 
 
 def teacher_steps(conn, cfg, http, provider) -> daily.TeacherSteps:
@@ -88,9 +105,11 @@ def cmd_daily(args, cfg) -> None:
     try:
         with alpaca_client(cfg) as http:
             teachers = teacher_steps(conn, cfg, http, provider) if args.teachers else None
+            challenger = None if args.no_challenger else challenger_steps(conn, cfg, provider)
             report = daily.run(conn, real_steps(conn, cfg, http, provider, args.top), day, top=args.top,
                                max_usd=args.max_usd, runs_dir=cfg.data_dir / "runs", now=now, dry_run=args.dry_run,
-                               no_model=args.no_model, teachers=teachers, teacher_max_usd=args.teacher_max_usd)
+                               no_model=args.no_model, teachers=teachers, teacher_max_usd=args.teacher_max_usd,
+                               challenger=challenger)
     except sqlite3.Error as error:
         raise SystemExit(f"journal failed: {error}") from error
     finally:
@@ -111,6 +130,9 @@ def register(sub) -> None:
                    help="free steps only (reconcile and grade write nothing): print what would be analyzed and its "
                         "cost")
     p.add_argument("--no-model", action="store_true", help="run the free steps for real; skip analyze and thesis")
+    p.add_argument("--no-challenger", action="store_true",
+                   help="skip the challenger of a pending rule change (recorded as skipped: adopt leaves the session "
+                        "out)")
     p.add_argument("--teachers", action="store_true",
                    help="then run the 3 pinned teachers on the session's 4 drawn bake-off names (paid, SPIKE §9.4); "
                         "a teacher failure never changes the exit code")
