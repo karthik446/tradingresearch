@@ -50,6 +50,7 @@ def cmd_build(args, cfg) -> None:
           f"chunks {len(records)}, max_tokens {args.max_tokens}, counter {built['chunker']['counter']}")
     if embedder is not None:
         embedded = dense.embed_missing(records, embedder, index_root(cfg))
+        (folder / "vectors.json").unlink(missing_ok=True)  # a build re-records what the cache holds after its checks
         vectors = dense.matrix(manifest.Index(manifest.digest(built), built, records), embedder, index_root(cfg))
         print(f"dense {dense.MODEL}@{dense.REVISION[:12]}: embedded {embedded} new of {len(records)} chunks, "
               f"spot check of {len(dense.sample(len(records)))} passed, vectors {dense.write_observed(folder, vectors)}")

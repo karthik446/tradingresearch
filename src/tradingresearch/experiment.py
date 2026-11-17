@@ -31,7 +31,7 @@ from gigai_core.score import ScoreRecord
 from gigai_core.stats.intervals import MIN_CLUSTERS
 from gigai_core.trace import JsonlTrace, TrialSpan
 
-from . import analyze as an, masking, news
+from . import analyze as an, journal, masking, news
 from .evals import graders as registry
 from .hashing import new_id
 from .openrouter import Routing
@@ -251,11 +251,12 @@ def run_arms(conn, config: Config, contexts: list[an.Context], provider, prices:
                 # the route of the exchange's first user turn: the item's prompt (a drop or retrieval arm's wrapper
                 # looks it up by the text it sent), or in tools mode the tools prompt
                 first_user = an.tools_prompt(ctx) if arm.mode == "tools" else run.items[sample.item_id].prompt
-                analysis, _ = an.store(conn, ctx, sample, run.record.run_id, model=arm.model,
-                                       prompt_version=arm.prompt, route=routed.route_for(first_user), drop=arm.drop,
-                                       retrieval=found.get(sample.item_id))
-                if arm.retrieval:
-                    retrieval_store.add(conn, found[sample.item_id], analysis.analysis_id, analysis.input_hash)
+                with journal.atomic(conn) as tx:  # a retrieval arm's row commits with its analysis, or neither does
+                    analysis, _ = an.store(tx, ctx, sample, run.record.run_id, model=arm.model,
+                                           prompt_version=arm.prompt, route=routed.route_for(first_user),
+                                           drop=arm.drop, retrieval=found.get(sample.item_id))
+                    if arm.retrieval:
+                        retrieval_store.add(tx, found[sample.item_id], analysis.analysis_id, analysis.input_hash)
                 stored += 1
         results.append(ArmResult(arm, run, path, stored))
     return results

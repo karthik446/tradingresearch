@@ -105,7 +105,8 @@ def retrieve_all(knob: Knob, keys: dict[str, tuple[str, date]], root: Path,
 
 
 def add(conn: sqlite3.Connection, retrieved: Retrieved, analysis_id: str, input_hash: str) -> None:
-    """One row, committed at once; the chunk list keeps the order the model saw."""
+    """One row; the chunk list keeps the order the model saw. Committed at once, or with its analysis inside
+    journal.atomic (experiment.run_arms)."""
     chunks = [[p.chunk_id, p.sha256, p.score] for p in retrieved.passages]
     values = (analysis_id, input_hash, retrieved.ticker, retrieved.as_of.isoformat(), retrieved.mode, retrieved.k,
               retrieved.index_digest, retrieved.query, retrieved.query_template, json.dumps(chunks),

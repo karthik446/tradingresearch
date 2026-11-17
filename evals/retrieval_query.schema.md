@@ -17,7 +17,7 @@ One JSON object per line. The learner writes the 30 real queries (REPO-PLAN §1.
 | `notes` | no | Free text. Not scored. |
 
 - **Doc id.** A filing document is `<accession>/<file name>`, e.g. `0009999999-26-000101/fakea-ex991.htm`. A headline is
-  `headline/<article id>`. `tr retrieval query` prints chunk ids, which are `<doc id>#<n>`.
+  `headline/<TICKER>/<article id>`. `tr retrieval query` prints chunk ids, which are `<doc id>#<n>`.
 - **Gold is a quote, not a chunk id.** At eval time each quote is matched against every chunk of its document (spaces
   and line breaks are ignored), so a label survives a change of chunk size or chunker. A table row is quoted as the
   chunker prints it: cells joined by ` | `, e.g. `Net income | $701 | $633`.

@@ -6,6 +6,7 @@ from gigai_core import open_run
 
 from .. import analyze as an, journal, masking
 from ..records import Analysis
+from ..retrieval import store as retrieval_store
 
 
 def source_table(prompt: str) -> dict[str, tuple[str, str, str]]:
@@ -26,7 +27,8 @@ def hidden_ids(table: dict[str, tuple[str, str, str]], sample) -> frozenset[str]
 
 
 def cmd_check(args, cfg) -> None:
-    """Every claim the model wrote, kept or rejected, beside the source values it cites."""
+    """Every claim the model wrote, kept or rejected, beside the source values it cites. A retrieval arm's analysis
+    also has the chunks of its `retrieval` row citable (no number), as the store validated it."""
     conn = journal.connect(cfg.db_path)
     a = journal.get(conn, Analysis, args.analysis_id)
     run = open_run(cfg.data_dir / "runs" / f"{a.run_id}.jsonl")
@@ -34,7 +36,9 @@ def cmd_check(args, cfg) -> None:
     item = run.items[sample.item_id]
     table = source_table(item.prompt)
     hidden = hidden_ids(table, sample)
-    _, rejected = an.validate_claims(sample.output_parsed, item.expected["values"], "an_check", hidden)
+    passages = {chunk_id for row in retrieval_store.rows(conn, a.analysis_id) for chunk_id, _, _ in row["chunks"]}
+    values = item.expected["values"] | dict.fromkeys(passages)
+    _, rejected = an.validate_claims(sample.output_parsed, values, "an_check", hidden)
     why = {r.claim: f"REJECTED {r.reason}: {r.detail}" for r in rejected}
     print(f"{a.analysis_id}  {a.ticker} {a.session}  prompt={a.prompt_version}  run={a.run_id}  "
           f"trace={a.sample_trace_id}")
@@ -46,6 +50,9 @@ def cmd_check(args, cfg) -> None:
         print(f"{raw.get('id')} [{raw.get('tag')}] {why.get(raw.get('id'), 'ok')}")
         print(f"    text: {raw.get('text')}{value}")
         for sid in raw.get("source_ids") or []:
+            if sid in passages:
+                print(f"    src:  {sid} passage")
+                continue
             name, shown, unit = table.get(sid, ("NOT IN TABLE", "-", ""))
             dropped = "  (not shown to the model)" if sid in hidden else ""
             print(f"    src:  {sid} {name} = {shown} {unit}".rstrip() + dropped)

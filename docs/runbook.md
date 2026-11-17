@@ -495,8 +495,11 @@ uv run tr retrieval eval [--queries evals/retrieval_query.jsonl] [--index <diges
   rule is applied before ranking, so the top k is never short because of it; the output prints how many documents
   were hidden.
 - **Index identity.** An index is named by `sha256` of its manifest: chunker version and size, token counter, BM25
-  settings, every document's content hash and every chunk's text hash. Two builds of the same documents have the same
-  digest. `query` and `eval` use the newest index unless `--index` names one (a digest prefix is enough).
+  settings, and for every document its id, ticker, kind, availability time and content hash, and every chunk's text
+  hash. Two builds of the same documents have the same digest, whatever order the tickers are built in. A headline
+  tagged to two tickers is one document per ticker (`headline/<TICKER>/<article id>`). An index built under an older
+  manifest schema is refused with a message to rebuild it. `query` and `eval` use the newest index unless `--index`
+  names one (a digest prefix is enough).
 - **Recall eval.** `evals/retrieval_query.schema.md` defines a labelled query; the learner writes the 30 queries into
   `evals/retrieval_query.jsonl` (shipped empty: `eval` prints `0 queries`). Every label is checked against the index
   first; one bad label stops the eval. It prints recall_any@k and recall_frac@k at k 1, 5, 10, 20, with counts.
@@ -550,7 +553,11 @@ uv sync                                         # back to the base install; BM25
   session's close. A claim cites a passage by its chunk id in `source_ids`. Without the table, or with `mode = "none"`,
   the prompt and the input hash are as before. With it, the input hash also covers mode, k, index digest and the
   ordered chunk hashes. A retrieval arm cannot also `drop` sources, cannot be a tools arm, and grades with code
-  graders only. `tr check` does not know chunk ids and lists a passage citation as not in the table.
+  graders only. `tr check` accepts the chunks in the analysis's `retrieval` row as passage sources and rejects any
+  other chunk id. A claim with a `value` that cites only a passage is rejected as `unsourced_number` (a passage has no
+  value row), so a number taken from a filing counts against `claims_valid` unless the claim also cites a SOURCES row
+  holding it; that is why `citation_accuracy` is its own grader. A passage longer than 5,000 characters is cut in the
+  prompt.
 - **`retrieval` table.** One append-only journal row per stored analysis of a retrieval arm: analysis id, input hash,
   ticker, session, mode, k, index digest, the filled query and its template, the chunks as ordered
   `[chunk_id, sha256, score]` and the number of documents hidden as future. Opening an older journal adds the table

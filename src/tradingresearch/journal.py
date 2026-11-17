@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from collections.abc import Iterator
+from contextlib import contextmanager
 from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import get_args
@@ -186,6 +188,30 @@ def add(conn: sqlite3.Connection, *records: BaseModel) -> None:
     with conn:
         for record in records:
             _insert(conn, record)
+
+
+class _Joined:
+    """`conn` inside an open transaction: its own `with` blocks join that transaction instead of committing."""
+
+    def __init__(self, conn: sqlite3.Connection) -> None:
+        self._conn = conn
+
+    def __getattr__(self, name: str):
+        return getattr(self._conn, name)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc) -> bool:
+        return False
+
+
+@contextmanager
+def atomic(conn: sqlite3.Connection) -> Iterator[sqlite3.Connection]:
+    """One transaction around writers that each open `with conn:` (add_analysis, retrieval/store.add): they get a view
+    of `conn` whose `with` does not commit, so they all commit when the block ends, or none does if it raises."""
+    with conn:
+        yield _Joined(conn)
 
 
 def get[T: BaseModel](conn: sqlite3.Connection, kind: type[T], record_id: str) -> T:

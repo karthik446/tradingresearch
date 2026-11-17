@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import hashlib
 import sys
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -119,6 +120,52 @@ def test_matrix_refuses_a_bm25_index_other_pins_and_missing_vectors(tmp_path):
     plain = manifest.Index("sha256:x", manifest.build(docs_for(tmp_path), 256)[0], index.records)
     with pytest.raises(SystemExit, match="has no dense vectors"):
         dense.matrix(plain, embedder, root)
+
+
+def recorded_index(tmp_path, embedder) -> tuple[manifest.Index, Path]:
+    """A dense index whose build recorded `vectors.json`, as `tr retrieval build --dense` does."""
+    index = dense_index(tmp_path, embedder)
+    root = tmp_path / "retrieval"
+    dense.write_observed(root / index.digest.removeprefix("sha256:"), dense.matrix(index, embedder, root))
+    return index, root
+
+
+def unsampled(index: manifest.Index) -> manifest.Record:
+    picked = dense.sample(len(index.records))
+    assert len(index.records) > len(picked)
+    return next(r for i, r in enumerate(index.records) if i not in picked)
+
+
+def test_a_scaled_sampled_vector_is_refused_and_the_spot_check_is_a_cosine(tmp_path):
+    embedder = FakeEmbedder()
+    index, root = recorded_index(tmp_path, embedder)
+    victim = index.records[dense.sample(len(index.records))[3]]
+    path = dense.path_for(root, victim, embedder)
+    vector = np.load(path)
+    assert dense.verify(index.records, 2 * dense.matrix(index, embedder, root), embedder, root) == pytest.approx(1.0)
+    np.save(path, 2 * vector)
+    with pytest.raises(SystemExit, match=f"chunk {victim.chunk_id} has norm 2.000000, not 1 ± 0.001"):
+        dense.matrix(index, embedder, root)
+
+
+def test_a_rotated_vector_outside_the_sample_is_refused_by_the_recorded_digest(tmp_path):
+    embedder = FakeEmbedder()
+    index, root = recorded_index(tmp_path, embedder)
+    path = dense.path_for(root, unsampled(index), embedder)
+    np.save(path, np.roll(np.load(path), 1))  # still unit length, so only vectors.json can tell
+    with pytest.raises(SystemExit, match="recorded at build"):
+        dense.matrix(index, embedder, root)
+
+
+def test_an_unsampled_vector_scaled_to_50_is_refused(tmp_path):
+    embedder = FakeEmbedder()
+    index, root = recorded_index(tmp_path, embedder)
+    victim = unsampled(index)
+    path = dense.path_for(root, victim, embedder)
+    np.save(path, 50 * np.load(path))
+    (root / index.digest.removeprefix("sha256:") / "vectors.json").unlink()  # refused without the recorded digest too
+    with pytest.raises(SystemExit, match=f"chunk {victim.chunk_id} has norm 50.000000"):
+        dense.matrix(index, embedder, root)
 
 
 def test_every_retriever_ranks_only_allowed_chunks(tmp_path):

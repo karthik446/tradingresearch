@@ -1,8 +1,10 @@
 """The index on disk and its identity (RETRIEVAL-SPIKE §2.5).
 
-`index_digest = sha256(canonical JSON of the manifest)`. The manifest holds what decides the chunks and the BM25
-scores: chunker version, `max_tokens`, the token counter, BM25 `k1`/`b` and tokeniser rule, the sorted
-`(doc_id, raw_content_sha256)` of every document and the sorted `(chunk_id, sha256(chunk text))` of every chunk.
+`index_digest = sha256(canonical JSON of the manifest)`. The manifest holds what decides the chunks, the BM25
+scores and the look-ahead mask: chunker version, `max_tokens`, the token counter, BM25 `k1`/`b` and tokeniser rule,
+the sorted `(doc_id, raw_content_sha256, ticker, kind, available_at)` of every document and the sorted
+`(chunk_id, sha256(chunk text))` of every chunk. So one digest is one set of chunks with one mask: the same documents
+in any order name the same index. An index of an older `SCHEMA` is refused on load (rebuild it).
 Build time is not in it, so two builds of the same documents have the same digest. `as_of` is a query-time mask, not
 part of the index, so one index serves every session.
 
@@ -32,7 +34,7 @@ from . import bm25 as lexical
 from .chunk import CHUNKER_VERSION, COUNTER, chunk_document
 from .ingest import Doc
 
-SCHEMA = "retrieval-index-v1"
+SCHEMA = "retrieval-index-v2"  # v2: headline doc ids carry the ticker, docs entries carry what the mask reads
 
 
 @dataclass(frozen=True)
@@ -69,7 +71,8 @@ def build(docs: list[Doc], max_tokens: int, dense: dict | None = None) -> tuple[
         "schema": SCHEMA,
         "chunker": {"version": CHUNKER_VERSION, "max_tokens": max_tokens, "counter": COUNTER},
         "bm25": {"k1": lexical.K1, "b": lexical.B, "tokenizer": lexical.TOKENIZER_RULE},
-        "docs": sorted([doc.doc_id, doc.raw_content_sha256] for doc in unique),
+        "docs": sorted([doc.doc_id, doc.raw_content_sha256, doc.ticker, doc.kind, doc.available_at.isoformat()]
+                       for doc in unique),
         "chunks": sorted([record.chunk_id, record.sha256] for record in records),
     }
     return manifest | (dense or {}), records
@@ -134,6 +137,9 @@ def load(root: Path, ref: str | None = None) -> Index:
     manifest = json.loads((folder / "manifest.json").read_text())
     if digest(manifest) != f"sha256:{folder.name}":
         raise SystemExit(f"index {folder.name}: manifest does not match its digest")
+    if manifest.get("schema") != SCHEMA:
+        raise SystemExit(f"index {folder.name} was built as {manifest.get('schema')!r}, not {SCHEMA!r}: rebuild it with "
+                         "`tr retrieval build` (and pin the new digest in any arm's `retrieval.index`)")
     with (folder / "chunks.jsonl").open() as lines:
         records = [Record.of(json.loads(line)) for line in lines]
     return Index(digest(manifest), manifest, records)

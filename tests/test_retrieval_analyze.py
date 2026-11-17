@@ -4,6 +4,7 @@ refusals, and an arm run at $0 that sends the passages and journals the ordered 
 from __future__ import annotations
 
 import json
+import sqlite3
 from dataclasses import replace
 from datetime import date
 from pathlib import Path
@@ -22,7 +23,7 @@ from test_week4 import MODEL, PROMPT, context, prices, replaying
 from tradingresearch import analyze as an, experiment, journal, masking
 from tradingresearch.retrieval import evaluate, manifest, store
 
-LATER = {FUTURE, "headline/3", "headline/9"}  # public after AS_OF's close, or another ticker's (headline 9: FAKEB)
+LATER = {FUTURE, "headline/FAKEA/3", "headline/FAKEB/9"}  # public after AS_OF's close, or another ticker's (FAKEB)
 CONFIG = """name = "retrieval-arm"
 model = "MODEL"
 max_usd_per_arm = 1.0
@@ -128,6 +129,17 @@ def test_the_passages_block_is_numbered_quoted_one_line_and_before_the_closing_l
         masking.augment("TICKER: FAKEA", retrieved)
 
 
+def test_a_passage_over_the_chunk_cap_reaches_the_prompt_whole(tmp_path):
+    """The longest real over-cap sentence (KO, 711 tokens) renders to 4,392 characters; 4,400 must not be cut."""
+    retrieved = bm25_retrieved(fakea_index(tmp_path), k=3)
+    text = " ".join(f"word{i:04d}" for i in range(489))
+    long = replace(retrieved.passages[0], chunk_id="x#0", text=text)
+    block = masking.passages(replace(retrieved, passages=(long,)))
+    assert len(text) == 4400 and f'1. [x#0] "{text}"' in block.split("\n")
+    runaway = masking.passages(replace(retrieved, passages=(replace(long, text="w " * 4000),)))
+    assert len(runaway.split("\n")[1]) < len("1. [x#0] \"\"") + masking.PASSAGE_CHARS + 2
+
+
 def test_the_augmenting_provider_sends_known_prompts_only_and_maps_the_route(tmp_path):
     prompt = an.render(context())
     augmented = masking.augment(prompt, bm25_retrieved(fakea_index(tmp_path), k=3))
@@ -230,3 +242,34 @@ def test_a_missing_index_or_a_judge_is_refused_before_any_call(tmp_path):
     with pytest.raises(SystemExit, match="a retrieval arm grades with code graders only, not p1_judge"):
         experiment.run_arms(conn, experiment.load(path), ten(), replaying([reply()], sent), prices(), tmp_path)
     assert sent == [] and store.rows(conn) == []
+
+
+def cited_arm(tmp_path: Path):
+    """The bm25 arm on ten items, every reply the recorded claims plus c13 citing FAKEA's top passage: (config, that
+    passage, the claim count of a reply, a $0 provider answering the ten augmented prompts)."""
+    path = tmp_path / "arm.toml"
+    path.write_text(config_text(fakea_index(tmp_path).digest))
+    config = experiment.load(path)
+    keys = {f"{ctx.ticker}:{ctx.session}": (ctx.ticker, ctx.session) for ctx in ten()}
+    expected = store.retrieve_all(config.arms[0].retrieval, keys, tmp_path / "retrieval")
+    top = expected[f"FAKEA:{context().session}"].passages[0]
+    raw = reply()
+    claims = json.loads(raw["choices"][0]["message"]["content"])["claims"]
+    cited = dict(id="c13", tag="fact", text="FakeA disclosed a Gizmo recall.", value=None, unit=None,
+                 source_ids=[top.chunk_id], derived_from=[], steps=None)
+    raw["choices"][0]["message"]["content"] = json.dumps({"claims": [*claims, cited]})
+    prompts = [masking.augment(an.render(ctx), expected[f"{ctx.ticker}:{ctx.session}"]) for ctx in ten()]
+    return config, top, len(claims) + 1, keyed({p: served(raw, "Google") for p in prompts}, [])
+
+
+@pytest.mark.usefixtures("pinned_tokens")
+def test_the_retrieval_row_commits_with_its_analysis_or_nothing_is_stored(tmp_path):
+    config, _, _, provider = cited_arm(tmp_path)
+    conn = journal.connect(tmp_path / "journal.db")
+    conn.execute("CREATE TEMP TRIGGER no_retrieval BEFORE INSERT ON retrieval "
+                 "BEGIN SELECT RAISE(ABORT, 'retrieval insert fails'); END")
+    with pytest.raises(sqlite3.IntegrityError, match="retrieval insert fails"):
+        experiment.run_arms(conn, config, ten(), provider, prices(), tmp_path)
+    tables = ("analysis", "claim", "source_ref", "retrieval")
+    assert [conn.execute(f"SELECT count(*) FROM {t}").fetchone()[0] for t in tables] == [0, 0, 0, 0]
+    assert not conn.in_transaction

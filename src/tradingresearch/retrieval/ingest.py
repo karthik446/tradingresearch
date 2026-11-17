@@ -41,7 +41,7 @@ PRESS_RELEASE = "EX-99.1"
 class Doc:
     """One retrievable document. `media` is "html" (a filing) or "text" (a headline)."""
 
-    doc_id: str  # "{accession}/{file name}" or "headline/{article_id}"
+    doc_id: str  # "{accession}/{file name}" or "headline/{ticker}/{article_id}"
     ticker: str
     kind: str  # "8-K", "EX-99.1", "10-Q" or "headline"
     available_at: datetime
@@ -198,12 +198,13 @@ def filing_docs(archives: Archives, ticker: str, quarters: int, now: datetime) -
 
 
 def headline_docs(data_dir: Path, ticker: str, since: datetime) -> list[Doc]:
-    """Headlines already in the news store (`tr news` fetches them), created after `since`. Nothing is fetched."""
+    """Headlines already in the news store (`tr news` fetches them), created after `since`. Nothing is fetched. The doc
+    id names the ticker: an article tagged to two tickers is one doc for each, visible to both."""
     folder = data_dir / "news" / ticker
     rows = [row for path in sorted(folder.glob("*.jsonl")) for row in news.load(path)] if folder.is_dir() else []
     seen: dict[int, Doc] = {}
     for row in sorted(rows, key=lambda r: (r.created_at, r.article_id)):
         if row.created_at > since and row.article_id not in seen:
-            seen[row.article_id] = Doc(f"headline/{row.article_id}", ticker, "headline", row.created_at, row.headline,
-                                       "text", raw_sha256(row.headline.encode()), row.url)
+            seen[row.article_id] = Doc(f"headline/{ticker}/{row.article_id}", ticker, "headline", row.created_at,
+                                       row.headline, "text", raw_sha256(row.headline.encode()), row.url)
     return list(seen.values())

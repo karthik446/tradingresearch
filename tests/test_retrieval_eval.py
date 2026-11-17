@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 from datetime import UTC, date, datetime
 from pathlib import Path
 
@@ -46,7 +47,7 @@ def test_future_doc_never_appears_and_the_mask_runs_before_ranking(index):
     for k in (1, 5, 20):
         records, masked = bm25_search(index, "Gizmo recall", AS_OF, k)
         assert records, k  # k=1 still returns an allowed chunk: the top unmasked chunk is the future one
-        assert {r.doc_id for r in records}.isdisjoint({FUTURE, "headline/3", "headline/9"})
+        assert {r.doc_id for r in records}.isdisjoint({FUTURE, "headline/FAKEA/3", "headline/FAKEB/9"})
         assert all(r.ticker == "FAKEA" and r.available_at <= datetime(2026, 11, 5, 21, tzinfo=UTC) for r in records)
         assert masked == 2
     [top], masked = bm25_search(index, "Gizmo recall", date(2026, 11, 6), 1)  # once it is public, it ranks first
@@ -101,7 +102,7 @@ def test_schema_examples_validate_against_the_fakea_index(index):
 @pytest.mark.parametrize(("changes", "problem"), [
     ({"gold": [{"doc": EX991, "quote": "Net income | $999"}]}, "is in no chunk"),
     ({"gold": [{"doc": FUTURE, "quote": "voluntary recall"}]}, "after the cutoff"),
-    ({"gold": [{"doc": "headline/9", "quote": "FakeB"}]}, "belongs to FAKEB"),
+    ({"gold": [{"doc": "headline/FAKEB/9", "quote": "FakeB"}]}, "belongs to FAKEB"),
     ({"gold": [{"doc": "nope/x.htm", "quote": "x"}]}, "not in index"),
     ({"as_of": "2026-11-07"}, "not an NYSE session"),
     ({"kind": "opinion"}, "kind must be one of"),
@@ -149,3 +150,48 @@ def test_load_refuses_a_changed_manifest_and_an_unknown_ref(tmp_path):
         manifest.load(tmp_path / "retrieval")
     with pytest.raises(SystemExit, match="tr retrieval build"):
         manifest.load(tmp_path / "empty")
+
+
+def test_a_shared_headline_is_one_doc_per_ticker_and_ticker_order_names_the_same_index(tmp_path):
+    """An article tagged to both tickers sits in both news folders (as `tr news` stores it); either build order
+    gives one digest, one set of masks, and the headline visible to each ticker."""
+    since = ingest.since_for(1, NOW)
+    shared = (5, "FakeA and FakeB settle the Gizmo patent case", datetime(2026, 11, 3, 15, tzinfo=UTC))
+    for ticker in ("FAKEA", "FAKEB"):
+        write_headlines(tmp_path, ticker, [shared])
+    built = {}
+    for order in (("FAKEA", "FAKEB"), ("FAKEB", "FAKEA")):
+        built[order] = manifest.build([d for t in order for d in ingest.headline_docs(tmp_path, t, since)], 256)
+    (first, records), (second, _) = built.values()
+    assert manifest.digest(first) == manifest.digest(second)
+    a, b = (manifest.Index(manifest.digest(m), m, r) for m, r in built.values())
+    assert a.records == b.records
+    cutoff = datetime(2026, 11, 5, 21, tzinfo=UTC)
+    for ticker in ("FAKEA", "FAKEB"):
+        assert a.mask(ticker, cutoff).tolist() == b.mask(ticker, cutoff).tolist()
+        [visible] = [r for r, allowed in zip(a.records, a.mask(ticker, cutoff), strict=True) if allowed]
+        assert (visible.doc_id, visible.ticker) == (f"headline/{ticker}/5", ticker)
+    assert [d[2:] for d in first["docs"]] == [["FAKEA", "headline", "2026-11-03T15:00:00+00:00"],
+                                              ["FAKEB", "headline", "2026-11-03T15:00:00+00:00"]]
+
+
+def test_the_digest_names_each_docs_ticker_kind_and_available_at():
+    """The manifest docs entry is `[doc_id, raw_sha256, ticker, kind, available_at]`: changing any mask input of a
+    document (same id, same bytes) names another index."""
+    doc = ingest.Doc("headline/FAKEA/1", "FAKEA", "headline", datetime(2026, 11, 3, 14, tzinfo=UTC), "FakeA ships",
+                     "text", ingest.raw_sha256(b"FakeA ships"), "https://example.com/1")
+    base, _ = manifest.build([doc], 256)
+    assert base["docs"] == [[doc.doc_id, doc.raw_content_sha256, "FAKEA", "headline", "2026-11-03T14:00:00+00:00"]]
+    for change in ({"ticker": "FAKEB"}, {"kind": "8-K"}, {"available_at": datetime(2026, 11, 3, 15, tzinfo=UTC)}):
+        changed, _ = manifest.build([replace(doc, **change)], 256)
+        assert manifest.digest(changed) != manifest.digest(base), change
+
+
+def test_an_index_of_the_old_schema_is_refused_with_a_rebuild_message(tmp_path):
+    """A v1 index on disk (self-consistent: its folder is its digest) is never loaded beside v2 ones."""
+    built, records = manifest.build(docs_for(tmp_path), 256)
+    old = built | {"schema": "retrieval-index-v1", "docs": [d[:2] for d in built["docs"]]}
+    folder = manifest.write(tmp_path / "retrieval", old, records)
+    for ref in (None, folder.name):
+        with pytest.raises(SystemExit, match=r"'retrieval-index-v1', not 'retrieval-index-v2': rebuild it"):
+            manifest.load(tmp_path / "retrieval", ref)

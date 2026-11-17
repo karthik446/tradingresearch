@@ -160,8 +160,8 @@ def test_headlines_come_from_the_news_store_deduplicated(tmp_path):
     write_headlines(tmp_path, "FAKEA", [(1, "FakeA ships record Gizmos", datetime(2026, 11, 3, 14, tzinfo=UTC))])
     docs = ingest.headline_docs(tmp_path, "FAKEA", since)
     assert [(d.doc_id, d.kind, d.media, d.content) for d in docs] == [
-        ("headline/1", "headline", "text", "FakeA ships record Gizmos"),
-        ("headline/3", "headline", "text", "FakeA recalls Gizmo line"),
+        ("headline/FAKEA/1", "headline", "text", "FakeA ships record Gizmos"),
+        ("headline/FAKEA/3", "headline", "text", "FakeA recalls Gizmo line"),
     ]
     assert docs[1].available_at == datetime(2026, 11, 6, 12, tzinfo=UTC)
     assert ingest.headline_docs(tmp_path, "NONE", since) == []

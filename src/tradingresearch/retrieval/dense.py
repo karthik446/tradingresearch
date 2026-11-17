@@ -14,7 +14,9 @@ A dense retriever embeds the query and every chunk into one vector space and ran
   never reads it.
 - **Spot check.** Loading the vectors re-embeds `VERIFY_SAMPLE` evenly spaced chunks and requires cosine >=
   `MIN_COSINE` with the cached vector; a lower one is an error naming the chunk (a changed runtime or a corrupt
-  cache would otherwise rank silently differently).
+  cache would otherwise rank silently differently). Every cached row must also have norm 1 ± `NORM_TOLERANCE` (a
+  scaled vector ranks as a dot product), and the rows must hash to the `vectors_sha256` the build recorded in
+  `vectors.json` when it is there (a changed vector outside the sample).
 
 fastembed is imported inside functions only, so the base install never needs it. Tests inject a fake embedder into
 these functions; the CLI and the arm config always build `FastEmbedder`.
@@ -42,6 +44,7 @@ MAX_LENGTH = 512  # fastembed truncates at the model's 512 WordPiece tokens; chu
 CACHE_KEY = "vectors/<model id, / as -->@<revision>/<sha256(chunk text)>.npy"
 VERIFY_SAMPLE = 20
 MIN_COSINE = 0.9999
+NORM_TOLERANCE = 1e-3
 BATCH = 64
 INSTALL = "uv sync --extra retrieval"
 TOKENIZER_FILES = ("config.json", "tokenizer.json", "tokenizer_config.json", "special_tokens_map.json")
@@ -148,7 +151,8 @@ def verify(records: list[Record], matrix: np.ndarray, embedder: Embedder, root: 
     if not picked:
         return 1.0
     fresh = embedder.embed([records[i].text for i in picked])
-    cosines = np.sum(fresh * matrix[picked], axis=1)
+    cached = matrix[picked]
+    cosines = np.sum(fresh * cached, axis=1) / np.linalg.norm(cached, axis=1).clip(min=1e-12)
     worst = int(np.argmin(cosines))
     if cosines[worst] < MIN_COSINE:
         record = records[picked[worst]]
@@ -159,7 +163,8 @@ def verify(records: list[Record], matrix: np.ndarray, embedder: Embedder, root: 
 
 
 def matrix(index: Index, embedder: Embedder, root: Path, n: int = VERIFY_SAMPLE) -> np.ndarray:
-    """The index's vectors in chunk order, after checking the embedder is the index's and spot-checking `n`."""
+    """The index's vectors in chunk order, after checking the embedder is the index's, every row's norm, the recorded
+    `vectors_sha256` (when `vectors.json` is there) and spot-checking `n`."""
     pinned = index.manifest.get("dense")
     if pinned is None:
         raise SystemExit(f"index {index.digest} has no dense vectors: build one with `tr retrieval build --dense`")
@@ -173,6 +178,18 @@ def matrix(index: Index, embedder: Embedder, root: Path, n: int = VERIFY_SAMPLE)
             raise SystemExit(f"no cached vector for chunk {record.chunk_id}: run `tr retrieval build --dense`")
         rows.append(np.load(path))
     found = np.array(rows, dtype=np.float32).reshape(len(rows), -1)
+    norms = np.linalg.norm(found, axis=1)
+    if bad := np.flatnonzero(np.abs(norms - 1) > NORM_TOLERANCE).tolist():
+        record = index.records[bad[0]]
+        raise SystemExit(f"cached vector of chunk {record.chunk_id} has norm {norms[bad[0]]:.6f}, not 1 ± "
+                         f"{NORM_TOLERANCE} ({len(bad)} such rows): delete {path_for(root, record, embedder)} and "
+                         "rebuild with `tr retrieval build --dense`")
+    observed = root / index.digest.removeprefix("sha256:") / "vectors.json"
+    if observed.exists() and (recorded := json.loads(observed.read_text())["vectors_sha256"]) != vectors_sha256(found):
+        first = path_for(root, index.records[0], embedder).parent
+        raise SystemExit(f"index {index.digest}: the cached vectors hash to {vectors_sha256(found)}, not the "
+                         f"{recorded} recorded at build (a cached vector changed): delete {first} and rebuild with "
+                         "`tr retrieval build --dense`")
     verify(index.records, found, embedder, root, n)
     return found
 

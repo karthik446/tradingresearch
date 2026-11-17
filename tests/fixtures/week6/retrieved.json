@@ -4,7 +4,7 @@
   "as_of": "2026-11-13",
   "mode": "bm25",
   "k": 3,
-  "index_digest": "sha256:9b2284aecfb27c07d30260f9b0007afc97b7c395defde7fd7a43b8fdae7bb20f",
+  "index_digest": "sha256:4368baae011510be240c819183be4a90a7e7054ec0ff80a124250764c434b470",
   "query": "FAKEA quarterly results: revenue, earnings, guidance, outlook and risks",
   "query_template": "{ticker} quarterly results: revenue, earnings, guidance, outlook and risks",
   "masked_docs": 0,
