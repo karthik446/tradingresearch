@@ -3,7 +3,8 @@
 Free: stored events, raw bars and the pure `reconcile.settle`; no model call. A champion or challenger thesis gets
 its shadow once OPEN (§7.4: same entry, same stop distance, direction from close vs sma_20, target 2R, same time
 exit), and its Grade once both it and its shadow are CLOSED: the §7.1 OutcomeGrade, a gigai-core ScoreRecord of it,
-P2-P4 from checks.py, and a GRADED event, in one transaction. P1 (the judge, G9) reads `post_trade_summary`.
+P2-P4 from checks.py, and a GRADED event, in one transaction. P1 (the judge, ADR-003) reads `post_trade_summary`
+through `label.summary`; `judge` at the end is the opt-in `tr grade --judge`, the one paid call, one per graded thesis.
 
 The outcome is the one `settle` gives on replay of the recorded events: reconcile stores no OutcomeGrade for
 champion theses, and the replay is the same computation over the same bars (a data revision makes it wait).
@@ -15,12 +16,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field, replace
 from datetime import UTC, date, datetime, timedelta
+from pathlib import Path
 from statistics import median
 
 import pandas as pd
+from gigai_core.budget import BudgetExceeded
 from gigai_core.score import ScoreRecord
 
-from . import alpaca, checks, journal, reconcile, sessions
+from . import alpaca, checks, journal, reconcile, sessions, trace
 from .analyze import plain, snapshot_rows
 from .hashing import digest
 from .reconcile_run import ADJUSTMENT, PRICES, TERMINAL, BarSource, revision_notes
@@ -354,3 +357,80 @@ def written_ids(report: Report) -> tuple[str, ...]:
         return ()
     shadows = [it.shadow.shadow_id for it in report.items if it.created and it.shadow]
     return (*shadows, *(it.grade.grade_id for it in report.items if it.grade))
+
+
+# ---------- the P1 judge (`tr grade --judge`, ADR-003; the only model call here) ----------
+
+JUDGE_MAX_USD = 0.25  # one `tr grade --judge` run's cap; ADR-003 estimates about $0.013 per trade
+
+
+@dataclass(frozen=True)
+class Judged:
+    """One thesis after a judge run: its verdict and cost, why it was not judged, or neither (dry run)."""
+
+    thesis: Thesis
+    verdict: str | None = None
+    reason: str | None = None
+    cost_usd: float = 0.0
+    error: str | None = None
+
+
+def to_judge(conn) -> list[Thesis]:
+    """Graded champion and challenger theses with no judge verdict yet, oldest first."""
+    rows = conn.execute("SELECT t.body FROM thesis t JOIN grade g USING (thesis_id) "
+                        "WHERE t.arm IN ('champion', 'challenger') "
+                        "AND NOT EXISTS (SELECT 1 FROM judge_verdict v WHERE v.thesis_id = t.thesis_id) "
+                        "ORDER BY t.rowid")
+    return [Thesis.model_validate_json(body) for (body,) in rows]
+
+
+def run_files(data_dir: Path) -> set[Path]:
+    return set((data_dir / "runs").glob("run_*.jsonl"))
+
+
+def judge(conn, bars: BarSource | None, provider, *, prices: dict, data_dir: Path, max_usd: float = JUDGE_MAX_USD,
+          dry_run: bool = False) -> list[Judged]:
+    """P1 on every thesis `to_judge` lists, one call each, under one cap for the whole run. A thesis that cannot be
+    judged keeps its error and the run goes on; once the cap cannot cover a call, the rest wait for the next run.
+    Cost is each new run file's spent_usd, so a call whose reply held no verdict still counts against the cap."""
+    from . import evals  # evals imports label, which imports this module
+
+    out: list[Judged] = []
+    spent, capped = 0.0, False
+    for t in to_judge(conn):
+        if dry_run or capped:
+            out.append(Judged(t, error=f"the ${max_usd:.2f} cap is spent; next run" if capped else None))
+            continue
+        before = run_files(data_dir)
+        try:
+            score = evals.p1_judge(conn, bars, t.thesis_id, provider, prices=prices, data_dir=data_dir,
+                                   max_usd=max_usd - spent)
+            judged = Judged(t, verdict=score.answer, reason=score.explanation)
+        except BudgetExceeded as exc:
+            capped, judged = True, Judged(t, error=f"the ${max_usd:.2f} cap cannot cover the call: {exc}")
+        except Exception as exc:  # one thesis's failure (no verdict, a failed call, bars) never stops the run
+            judged = Judged(t, error=f"{type(exc).__name__}: {exc}")
+        cost = sum(trace.header(path).spent_usd for path in run_files(data_dir) - before)
+        spent += cost
+        out.append(replace(judged, cost_usd=cost))
+    return out
+
+
+def render_judged(judged: list[Judged], *, dry_run: bool, max_usd: float) -> list[str]:
+    """One line per thesis (verdict and cost, or why not judged), then the count and the run's cost in dollars."""
+    if not judged:
+        return ["judge: nothing to judge (no graded champion or challenger thesis without a verdict)"]
+    lines = []
+    for j in judged:
+        head = f"{j.thesis.ticker:<6} {j.thesis.horizon:<5} {j.thesis.thesis_id} {j.thesis.arm:<10}"
+        if dry_run:
+            lines.append(f"{head}  would judge")
+        elif j.verdict is not None:
+            lines.append(f"{head}  P1 {j.verdict} ${j.cost_usd:.6f}: {j.reason}")
+        else:
+            lines.append(f"{head}  not judged ${j.cost_usd:.6f}: {j.error}")
+    if dry_run:
+        return lines + [f"judge (dry run): would judge {len(judged)} (cap ${max_usd:.2f}); nothing judged, no call"]
+    done = sum(j.verdict is not None for j in judged)
+    return lines + [f"judge: {done} judged, {len(judged) - done} not judged, cost "
+                    f"${sum(j.cost_usd for j in judged):.6f} (cap ${max_usd:.2f})"]

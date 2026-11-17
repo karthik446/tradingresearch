@@ -1,17 +1,36 @@
-"""The eval registry: every grader an experiment config can name. A new grader is a `@grader` class plus a test."""
+"""The eval registry: every grader an experiment config can name. A new grader is a `@grader` class plus a test.
+
+`p1_judge` is the P1 judge on one closed trade (SPIKE §7.2 row P1, ADR-003, evals/specs/p1_judge.md); it runs
+from `tr grade --judge`, not from an experiment config.
+"""
 
 from __future__ import annotations
 
 import re
+import sqlite3
 from collections.abc import Callable
+from datetime import UTC, datetime
+from pathlib import Path
 
+from gigai_core import CallBudget, CallSettings, Dataset, DatasetItem, run as run_eval
+from gigai_core.budget import Price
+from gigai_core.graders.judge import last_json_object, llm_judge
 from gigai_core.graders.protocol import CannotGrade
-from gigai_core.score import Score
+from gigai_core.providers import Turn
+from gigai_core.sample import Sample
+from gigai_core.score import JudgeNote, Score, ScoreRecord
+from gigai_core.trace import ModelExchange
 from pydantic import ValidationError
 
-from . import checks, thesis as th
+from . import analyze as an, checks, journal, label, thesis as th
 from .analyze import ClaimsValid, snapshot_rows, validate_claims
+from .hashing import new_id
+from .reconcile_run import BarSource
 from .records import Analysis, Thesis
+
+RUBRICS = Path(__file__).resolve().parents[2] / "evals" / "rubrics"
+JUDGE_MODEL = "openai/gpt-6-sol"  # ADR-003: a different vendor from the thesis writer
+JUDGE_MAX_TOKENS = 4000  # ADR-003 estimates about 500 output tokens per trade; this bounds a runaway reply
 
 
 GRADERS: dict[str, type] = {}
@@ -169,10 +188,11 @@ class LevelsCoherent:
 
 @grader
 class P1Judge:
-    """P1, did the mechanism in `reason` happen: a draft judge, registered but unvalidated (evals/specs/p1_judge.md).
+    """P1, did the mechanism in `reason` happen: registered but unvalidated (evals/specs/p1_judge.md).
 
-    Week 3 wraps gigai-core `llm_judge` with evals/rubrics/p1_thesis_quality.md on closed trades; `validated` turns
-    True only by an ADR that records kappa on the operator's labels (SPIKE §7.3).
+    The judge runs on closed trades through `p1_judge` below (gigai-core `llm_judge` with
+    evals/rubrics/p1_thesis_quality.md); `validated` turns True only by an ADR that records kappa on the operator's
+    labels (SPIKE §7.3).
     """
 
     id = "p1_judge"
@@ -181,7 +201,69 @@ class P1Judge:
     validated = False
 
     def grade(self, sample, expected) -> Score:
-        raise CannotGrade("p1_judge is a draft: no model call until it runs on closed trades in week 3")
+        raise CannotGrade("p1_judge is a draft judge of closed trades (`tr grade --judge`), not of experiment samples")
+
+
+def p1_verdict(reply: str) -> tuple[str, str]:
+    """(verdict, reason) by the rubric's "Verdict format": the last JSON object wins, `unknown` becomes `fail` with
+    `unknown: ` (ADR-003). A reply with no verdict is CannotGrade, not an abstain."""
+    verdict = last_json_object(reply, "verdict")
+    if verdict not in ("pass", "fail", "unknown"):
+        raise CannotGrade(f"the judge's reply has no pass/fail/unknown verdict: {reply[:200]!r}")
+    explanation = last_json_object(reply, "explanation")
+    reason = explanation if isinstance(explanation, str) else ""
+    if verdict == "unknown":
+        return "fail", reason if reason.startswith("unknown:") else f"unknown: {reason}"
+    return verdict, reason
+
+
+def judged_sample(t: Thesis, shown: str) -> Sample:
+    """What `llm_judge` renders: INPUT is the cited claims and the summary, OUTPUT the thesis text (prompt file)."""
+    return Sample(trace_id=f"tr_{t.thesis_id}", run_id=P1Judge.id, item_id=t.thesis_id, item_version="1",
+                  cluster_id=t.ticker, repeat_index=0, input=(Turn(role="user", content=shown),),
+                  output_text=f"prediction: {t.prediction}\nreason: {t.reason}\ninvalidation_text: {t.invalidation_text}",
+                  output_parsed=None, parse_status="not_parsed", outcome="succeeded", error=None,
+                  recorded_at=datetime.now(UTC))
+
+
+def p1_judge(conn: sqlite3.Connection, bars: BarSource, thesis_id: str, provider, *, prices: dict[str, Price],
+             data_dir: Path, max_usd: float) -> Score:
+    """Judge one graded champion or challenger thesis with one call; store its verdict and ScoreRecord together.
+
+    Teacher theses and theses with no Grade (never entered, not closed) are CannotGrade before any call. A failed
+    call or a reply with no verdict is CannotGrade after it: the cost is in the run file, nothing is stored."""
+    try:
+        t, g = label.labelable(conn, thesis_id)
+    except label.Refused as exc:
+        raise CannotGrade(str(exc)) from None
+    analysis = journal.get(conn, Analysis, t.analysis_id)
+    shown = "\n".join(["cited claims (claim_id | tag | text)", *label.cited(analysis, t.evidence), "",
+                       "post-trade summary (code-written)", label.summary(conn, bars, t, g)])
+    rubric = (RUBRICS / "p1_judge_prompt.txt").read_text().replace("{rubric}",
+                                                                   (RUBRICS / "p1_thesis_quality.md").read_text())
+    settings = CallSettings(model=JUDGE_MODEL, max_output_tokens=JUDGE_MAX_TOKENS)
+    judge = llm_judge(provider, rubric=rubric, settings=settings, grader_id=P1Judge.id)
+    item = DatasetItem(id=t.thesis_id, cluster_id=t.ticker, prompt=judge.render(judged_sample(t, shown), None),
+                       expected=None)
+    run = run_eval(Dataset.of(P1Judge.id, [item]), provider, [], settings=settings,
+                   budget=CallBudget(max_usd=max_usd, prices=prices), trace_dir=data_dir / "traces", tag=P1Judge.id)
+    run_path = an.save(run, data_dir)
+    sample = run.samples[0]
+    if sample.outcome != "succeeded":
+        raise CannotGrade(f"judge call failed: {sample.error.code if sample.error else '?'} (run {run_path})")
+    verdict, reason = p1_verdict(sample.output_text)
+    spans = sample.model_spans
+    calls = tuple(ModelExchange(**{name: getattr(span, name) for name in ModelExchange.model_fields}) for span in spans)
+    score = Score(value=1.0 if verdict == "pass" else 0.0, explanation=reason, answer=verdict,
+                  judge=JudgeNote(model=JUDGE_MODEL, prompt_sha256=judge.prompt_sha256, calls=calls))
+    record = ScoreRecord(score_id=new_id("sc"), trace_id=sample.trace_id, grader_id=P1Judge.id,
+                         grader_version=P1Judge.version, kind="model", value=score.value, explanation=reason,
+                         judge_model=JUDGE_MODEL, judge_prompt_sha256=judge.prompt_sha256,
+                         judge_span_ids=tuple(span.span_id for span in spans), recorded_at=datetime.now(UTC))
+    with conn:  # the ScoreRecord and the verdict that points at it land in one transaction
+        journal._insert_score(conn, t.thesis_id, record)
+        journal.add_judge_verdict(conn, t.thesis_id, verdict, reason, record.score_id)
+    return score
 
 
 def graders(names: list[str]) -> list:

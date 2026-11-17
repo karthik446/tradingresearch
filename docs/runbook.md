@@ -39,6 +39,10 @@ shortlist (`--top`, default 10), write one thesis-step decision per analysis, th
 - **Missed sessions** (no `daily_run` row in the last 10 trading days) get a `missed` row and are never backfilled.
 - **Grade** (`tr grade`, no model call) builds each filled champion/challenger thesis's shadow and, once thesis and
   shadow are CLOSED, one Grade (r_net score, P2-P4). Its `daily_run` row is a `reconcile` row whose reason starts `grade: `.
+- **P1 judge** (`tr grade --judge`, one model call per graded champion/challenger thesis without a verdict; never in
+  `tr daily`). `openai/gpt-6-sol` (ADR-003), cap `--judge-max-usd` (default 0.25) for the whole run, cost counted
+  from each call's run file even when the reply has no verdict (that thesis stays unjudged and is retried next run).
+  `--dry-run --judge` lists what it would judge and makes no call. Verdict and reason are stored with the Score.
 - The `events`, `thesis` and `daily_run` tables are append-only (triggers); nothing is corrected in place.
 - **Teachers** (`--teachers`, off by default). After the evening's summary line, each of the 3 pinned teachers
   analyzes the session's 4 drawn names (`tr bakeoff draw`) and writes a thesis-step decision from its own analysis.
@@ -53,18 +57,25 @@ shortlist (`--top`, default 10), write one thesis-step decision per analysis, th
 tail -20 data/logs/daily.log        # "daily <session>: N ok, ..." or "already done, no model call"; then "teachers ..."
 launchctl list | grep tradingresearch   # second column is the last exit status
 uv run tr usage --by day            # spend per New York day, then the key's lifetime spend
-uv run tr slo                       # the SLOs for the latest session tr daily ran for; exit 1 on a breach
-uv run tr report                    # per-horizon scorecards; --horizon / --arm pick one
+uv run tr slo                       # the SLOs for the latest live session tr daily ran for; exit 1 on a breach
+uv run tr report                    # per-horizon scorecards from 2026-11-17; --horizon / --arm pick one
 ```
 
+- **Live stream.** Live sessions start at `sessions.FIRST_SESSION` (2026-11-17). Earlier `tr daily` runs, theses and
+  costs (the 2026-11-16 first run) are dev runs: `tr slo` and `tr report` leave them out unless asked.
 - **SLOs** (`tr slo`, or `uv run python -m tradingresearch.slo_check`; reads the journal only). One line per SLO,
   then `slo <session>: k/3 met`. `finished`: the first run that reached reconcile ended by 17:30 ET on the session
   date, timed by its last non-teacher `daily_run` row (the teacher arm is not on the deadline). `missed`: 0 sessions
-  with a `missed` row or no row at all in the last `--window` sessions (default 10), counted from the first run.
-  `fresh`: the session has a screen result, and every screened ticker has that session's daily bars on `TR_FEED`.
-  `--inject-delay-minutes M` adds M minutes to the measured finish, to check the breach path without waiting.
-  `--session D` checks another session. 2026-11-16 breaches `finished`: its first run ended at 23:21 ET.
-- **Scorecards** (`tr report`, no model call). One block per arm and horizon, never pooled: last-state counts,
+  with a `missed` row or no row at all in the last `--window` sessions (default 10), counted from the first run and
+  from 2026-11-17. `fresh`: the session has a screen result, and every screened ticker has that session's daily bars
+  on `TR_FEED`. `--inject-delay-minutes M` adds M minutes to the measured finish, to check the breach path without
+  waiting. With no live run yet, `tr slo` prints `slo: no live session yet ...` and exits 0, until a live session's
+  17:30 ET deadline passes with no run (then `BREACH missed`, exit 1). `--session D` checks another session; a
+  session before 2026-11-17 gets a `pre-live:` first line. `--session 2026-11-16` breaches `finished`: that dev run
+  ended at 23:21 ET.
+- **Scorecards** (`tr report`, no model call). Header `report: live stream from 2026-11-17`, then one line counting
+  and naming the earlier theses and `tr daily` runs it leaves out (`--include-pre-live` counts them too). One block
+  per arm and horizon, never pooled: last-state counts,
   fill rate (filled ÷ (filled + expired)), abstention (no-trades ÷ main-analysis decisions for the horizon), and,
   over graded trades only, the Wilson win rate, mean r_net and real − shadow with a cluster bootstrap over entry
   sessions (`insufficient (n sessions < 10)` under 10 sessions), median MFE/MAE, the MDE line, and the P1 2x2 once
@@ -99,7 +110,7 @@ status page before rerunning.
 ## Teacher bake-off
 
 `tr daily --teachers` runs it. Session 1 is the first session on or after 2026-11-17 with a stored teacher analysis
-(`bakeoff.FIRST_SESSION`, `experiments/bakeoff-prereg.toml`); earlier teacher analyses are tests and the report
+(`sessions.FIRST_SESSION`, `experiments/bakeoff-prereg.toml`); earlier teacher analyses are tests and the report
 ignores them. By hand, for one session D:
 
 ```

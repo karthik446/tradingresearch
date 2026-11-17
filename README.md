@@ -25,11 +25,11 @@ The desk's daily loop, one command each (`uv run tr <command> --help` has the fl
 | `tr screen` | ranks the universe by §5 triggers and stores the shortlist |
 | `tr analyze` / `tr thesis` / `tr open` | claims for a ticker, then 0-3 theses (or a no-trade); `--arm teacher --teacher <model>` pins a DeepInfra route |
 | `tr reconcile` | settles PROPOSED and OPEN theses from bars after 16:15 ET (rules in `reconcile.py`, goldens in `tests/gate/`) |
-| `tr grade` | shadow baseline for each filled champion/challenger thesis, then one Grade (r_net score, P2-P4) once thesis and shadow are CLOSED; no model call |
+| `tr grade` | shadow baseline for each filled champion/challenger thesis, then one Grade (r_net score, P2-P4) once thesis and shadow are CLOSED; `--judge` adds the P1 judge (one model call per graded thesis, `--judge-max-usd`), nothing else calls a model |
 | `tr label list` / `show` / `add` / `agree` | blind P1 labels of graded theses (`show` never prints a judge verdict), then Cohen's kappa against stored judge verdicts; thresholds shown as PROPOSED; no model call |
 | `tr daily` | screen, analyze the shortlist, thesis each, reconcile; reruns skip what is done; `--max-usd` caps spend; `--teachers` adds the bake-off teachers on the drawn names (`--teacher-max-usd` caps them) |
 | `tr report` | one scorecard per arm and horizon (never pooled): Wilson win rate, mean r_net and real − shadow with a session-cluster bootstrap, MFE/MAE, MDE, P1 2x2, cost per run |
-| `tr slo` | the after-close SLOs (finished by 17:30 ET, zero missed sessions, fresh bars); exit 1 on a breach |
+| `tr slo` | the after-close SLOs from the first live session, 2026-11-17 (finished by 17:30 ET, zero missed sessions, fresh bars); exit 1 on a breach |
 | `tr usage` | cost per call, run, arm or day from the trace |
 | `tr bakeoff draw` / `report` | the date-seeded 4-name draw and the per-teacher report for the teacher bake-off |
 
