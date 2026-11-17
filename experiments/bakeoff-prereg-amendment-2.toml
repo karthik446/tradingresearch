@@ -1,0 +1,52 @@
+# Amendment 2 to the teacher bake-off's pre-registration (experiments/bakeoff-prereg.toml, amendment 1 in
+# experiments/bakeoff-prereg-amendment-1.toml), registered BEFORE the 12:30 America/Denver check on 2026-11-17 and
+# before bake-off session 1's first teacher call (that day's 14:00 close). Neither earlier file is edited: the tests
+# pin their sha256. This file extends amendment 1's item 3 (a dead endpoint) from one teacher to two, and says how the
+# swap is tested. Every pick-rule number in the original stands unchanged.
+#
+# Why. The 05:00 America/Denver rehearsal on 2026-11-17 (pre-live session 2026-11-16, 4 names x 3 teachers, $0.0236
+# in all, daily_run rows of daily id dy_b08f1b9a62c042b8) gave:
+#   deepseek/deepseek-v4-pro   4 of 4 names answered
+#   qwen/qwen3.5-397b-a17b     4 of 4 failed: rate_limited (OpenRouter 429, DeepInfra, deepinfra/fp8/flex)
+#   openai/gpt-oss-120b        4 of 4 failed: http_503 (DeepInfra endpoint status -5, uptime 0)
+# Two data-dev re-tests after it (AAPL 2026-11-16, analyze-3 without headlines): qwen on deepinfra/fp8/flex answered but
+# the reply was not JSON (model_output_not_json, run_3e84d4dcadfe4b25); qwen on deepinfra/fp8 gave 429
+# (run_44a6c0e64f7b44d1). Without a swap rule for qwen, two of the three arms could be missing for the whole bake-off
+# and the comparison would collapse to one teacher.
+#
+# The rule (replaces amendment 1's item 3 where they differ; everything else in amendment 1 stands):
+# 1. The check. At 12:30 America/Denver on 2026-11-17, for each of qwen/qwen3.5-397b-a17b and openai/gpt-oss-120b, make
+#    two calls on the pinned DeepInfra route (the teacher's slug in teacher.TEACHERS; data-dev; `tr analyze AAPL
+#    --session 2026-11-16 --arm teacher`, analyze-3 without headlines, at most $0.02 per call). A call fails when it
+#    returns a 429, a 5xx, a timeout, or model_output_not_json. If BOTH calls of a teacher fail, that teacher is
+#    swapped (below). If either call returns a reply that parses, the teacher stays and availability rule 2 of
+#    amendment 1 applies to it.
+# 2. The replacement, per swapped teacher: ONE open-weight model served by DeepInfra whose licence allows training on
+#    its outputs (terms_class trainable), whose DeepInfra endpoint on OpenRouter is healthy at the check time (status 0)
+#    and which answers one test call in data-dev (at most $0.02) with a parsing reply. When several candidates pass,
+#    take the one with the most valid claims on that call; a tie goes to the lower price (prompt + completion per
+#    million tokens). The provider stays DeepInfra: no other provider. No model fills two arms: a replacement is neither
+#    deepseek/deepseek-v4-pro, nor the other arm's model, nor the other arm's replacement.
+# 3. The record. Each swap is written as a `[swap.<replaced model>]` table appended to THIS file in the commit that
+#    changes teacher.py: replacement, licence, DeepInfra slug, price, the two failed calls (run ids), the candidates
+#    tried with their valid-claim counts, and the time. The commit lands by 13:30 America/Denver; the live pin moves
+#    only after a clean-worktree test and never between 14:15 and 14:45. If no candidate passes, the arm stays and
+#    availability rule 2 applies to it, and a `[swap.<model>]` table says "none passed" with the candidates tried.
+# 4. No funds. If the account cannot pay for the calls (OpenRouter credit left at 12:30 is below the cost of the two
+#    checks and one test), only the endpoint status is read, the arms stay, and the operator rules.
+#
+# Not changed: the margin 0.10, n_planned 40, eligibility (parse_ok >= 38/40 and >= 90% of fact claims valid), the
+# availability counting and missing_sessions_max of amendment 1, the prompt (analyze-3 without headlines), the
+# champion arm.
+
+amends = "experiments/bakeoff-prereg-amendment-1.toml"
+amends_sha256 = "af6a40074a9757f93a92bef4ad20cec0a7ebc04ea0b62d4fb2d166f5c51b9228"
+original = "experiments/bakeoff-prereg.toml"
+original_sha256 = "6a8c269591986785746562c967236a8a536d31a39bcd073849840f0dcd3ab585"
+swapped_if_both_fail = ["qwen/qwen3.5-397b-a17b", "openai/gpt-oss-120b"]
+calls_per_teacher = 2
+max_usd_per_call = 0.02
+swap_check_at = 2026-11-17T19:30:00Z  # 12:30 America/Denver
+swap_commit_by = 2026-11-17T20:30:00Z  # 13:30 America/Denver
+applies_from = 2026-11-17  # bake-off session 1
+registered_at = 2026-11-17T12:15:00Z

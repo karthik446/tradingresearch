@@ -225,6 +225,18 @@ def test_amendment_1_changes_only_the_teacher_prompt_and_leaves_the_prereg_untou
     assert amendment["applies_from"] == sessions.FIRST_SESSION
 
 
+def test_amendment_2_pins_both_earlier_files_and_names_exactly_the_two_swappable_teachers():
+    import hashlib
+    import tomllib
+    amendment = tomllib.loads((ROOT / "experiments" / "bakeoff-prereg-amendment-2.toml").read_text())
+    for path_key, sha_key in (("amends", "amends_sha256"), ("original", "original_sha256")):
+        assert hashlib.sha256((ROOT / amendment[path_key]).read_bytes()).hexdigest() == amendment[sha_key]  # never edited
+    assert amendment["swapped_if_both_fail"] == ["qwen/qwen3.5-397b-a17b", "openai/gpt-oss-120b"]
+    assert amendment["registered_at"] < amendment["swap_check_at"] < amendment["swap_commit_by"]
+    assert amendment["swap_commit_by"] < datetime(2026, 11, 17, 21, 0, tzinfo=UTC)  # before session 1's first call
+    assert amendment["applies_from"] == sessions.FIRST_SESSION
+
+
 # ---------- amendment 1: availability ----------
 
 def failed_row(conn, model: str, ticker: str, step: str, text: str, day: date = BAKEOFF_DAY, status: str = "failed"):
