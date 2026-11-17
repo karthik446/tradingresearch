@@ -23,7 +23,7 @@ from gigai_core.score import JudgeNote, Score, ScoreRecord
 from gigai_core.trace import ModelExchange
 from pydantic import ValidationError
 
-from . import analyze as an, checks, journal, label, thesis as th
+from . import analyze as an, checks, journal, label, masking, thesis as th
 from .analyze import ClaimsValid, hidden_of, snapshot_rows, validate_claims
 from .hashing import new_id
 from .reconcile_run import BarSource
@@ -123,6 +123,81 @@ class InferencesGrounded:
             if extra := sorted(used - allowed):
                 ungrounded.append(f"{claim_id}: {', '.join(extra)}")
         return Score(value=0.0 if ungrounded else 1.0, explanation="; ".join(ungrounded) or None)
+
+
+class SectionGrounded:
+    """Per-section grounding: the share of the claims citing a row of `section` that validate_claims keeps.
+
+    Spec: evals/specs/section_grounding.md. A claim citing rows of two sections counts in both. A section no claim
+    cites raises CannotGrade `not_cited`, so it gets no score and a mean never counts it as 1.0. A `drop` arm sets
+    `drop`: a claim citing a row the arm never saw fails (`dropped_source`). One registered subclass per section.
+    """
+
+    section = ""
+    version = "1"
+    kind = "code"
+    drop: tuple[str, ...] = ()
+
+    def grade(self, sample, expected) -> Score:
+        if sample.parse_status != "ok":
+            raise CannotGrade("output did not parse")
+        names: dict[str, str] = expected["names"]
+        items = sample.output_parsed.get("claims") if isinstance(sample.output_parsed, dict) else None
+        claims = [c for c in items if isinstance(c, dict)] if isinstance(items, list) else []
+        citing = [str(c.get("id")) for c in claims if self.cites(c, names)]
+        if not citing:
+            raise CannotGrade(f"not_cited: no claim cites a {self.section} row")
+        _, rejected = validate_claims(sample.output_parsed, expected["values"], "an_grade",
+                                      hidden_of(expected, self.drop))
+        reasons = {r.claim: r.reason for r in rejected}
+        failed = [reasons[claim] for claim in citing if claim in reasons]
+        n = len(citing)
+        if not failed:
+            return Score(value=1.0, explanation=f"{n} of {n} claims citing {self.section} pass")
+        return Score(value=(n - len(failed)) / n,
+                     explanation=f"{', '.join(sorted(set(failed)))}: {len(failed)} of {n} claims citing "
+                                 f"{self.section} fail")
+
+    def cites(self, claim: dict, names: dict[str, str]) -> bool:
+        """Whether one of the claim's `source_ids` is a row of this section (masking.section_of its table name)."""
+        sources = claim.get("source_ids")
+        return isinstance(sources, list) and any(
+            isinstance(source, str) and source in names and masking.section_of(names[source]) == self.section
+            for source in sources)
+
+
+@grader
+class IndicatorsGrounded(SectionGrounded):
+    """Claims citing the computed indicator rows (close, sma_20, regime_spy, ...)."""
+
+    id = "indicators_grounded"
+    section = "indicators"
+
+
+@grader
+class LevelsGrounded(SectionGrounded):
+    """Claims citing the support/resistance level rows (tools.LEVEL_PREFIXES)."""
+
+    id = "levels_grounded"
+    section = "levels"
+
+
+@grader
+class EdgarGrounded(SectionGrounded):
+    """Claims citing the EDGAR fundamentals rows (`<metric>_<frame>`)."""
+
+    id = "edgar_grounded"
+    section = "edgar"
+
+
+@grader
+class HeadlinesGrounded(SectionGrounded):
+    """Claims citing headline rows (analyze-3 only). A headline row has no number, so past the checks every claim gets
+    (no digit in the text, a fact's value must match a cited row) such a claim passes on its citation alone: nothing
+    checks that the claim says what the headline says."""
+
+    id = "headlines_grounded"
+    section = "headlines"
 
 
 @grader

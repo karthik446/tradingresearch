@@ -1,0 +1,38 @@
+# Week 5: which SOURCES sections does an analysis need? Full analyze-3 context vs no headlines vs no EDGAR on the
+# same 20 ticker-days as week 4 (ADR-007). Headlines come from the local news store: run
+# `tr news TICKER --session S` for every ticker and session first (the config refuses unfetched windows).
+#
+# Pre-registered before any paid run (ADR-007):
+# - Primary metric: claims_valid, the share of an analysis's claims that pass validate_claims, per ticker-day, paired
+#   by item (drop arm minus full), clustered by ticker (10 clusters), 95% interval from `compare`.
+#   Why: all_claims_valid was 0.100 in both week-4 arms (ADR-005), a floor at which one bad claim zeroes an analysis,
+#   so it cannot separate arms. claims_valid is a rate with room on both sides (0.798 in week 4) and showed a
+#   +/-0.085 interval at n=20, so it can see a moderate loss.
+# - Guard metric: parsed must not drop in either drop arm.
+# - Rule: a section stays if dropping it lowers claims_valid with the whole 95% interval below 0. It goes if the
+#   interval is not wholly below 0, the guard holds and dropping it lowers the mean input tokens. Otherwise it stays.
+# - Reported only, not deciding: all_claims_valid, the four <section>_grounded graders (their n differs by arm,
+#   not-cited sections get no score), tokens, cost and latency per item.
+name = "context-ablation"
+model = "anthropic/claude-sonnet-5.5"
+max_usd_per_arm = 1.00
+tickers = ["AAPL", "MSFT", "NVDA", "AMZN", "JPM", "XOM", "UNH", "HD", "KO", "CAT"]
+sessions = ["2026-11-12", "2026-11-13"]
+cluster = "ticker"
+graders = ["parsed", "claims_valid", "all_claims_valid", "indicators_grounded", "levels_grounded", "edgar_grounded",
+           "headlines_grounded"]
+
+[[arms]]
+name = "full"
+prompt = "analyze-3"
+drop = []
+
+[[arms]]
+name = "no-headlines"
+prompt = "analyze-3"
+drop = ["headlines"]
+
+[[arms]]
+name = "no-edgar"
+prompt = "analyze-3"
+drop = ["edgar"]
