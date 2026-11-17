@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import sqlite3
-import time
 from datetime import UTC, date, datetime
 from pathlib import Path
 
@@ -13,6 +12,7 @@ import pandas as pd
 from . import sessions
 from .hashing import digest
 from .records import SourceRef
+from .retry import DEFAULT, HttpError, Policy
 
 DATA_HOST = "https://data.alpaca.markets"
 DATA_URL = f"{DATA_HOST}/v2/stocks/bars"
@@ -28,17 +28,15 @@ def client(key_id: str, secret: str) -> httpx.Client:
     )
 
 
-def get_json(http: httpx.Client, url: str, params: dict[str, str], *, tries: int = 4) -> dict:
-    """GET with a short backoff on 429 and 5xx. Any other error is raised with Alpaca's message."""
-    for attempt in range(tries):
+def get_json(http: httpx.Client, url: str, params: dict[str, str], *, policy: Policy = DEFAULT) -> dict:
+    """GET under the shared retry policy (429, 5xx, connection errors). Any other error is raised with Alpaca's message."""
+    def once() -> dict:
         response = http.get(url, params=params)
-        if response.status_code == 429 or response.status_code >= 500:
-            time.sleep(float(response.headers.get("Retry-After", 2**attempt)))
-            continue
         if response.status_code != 200:
-            raise RuntimeError(f"Alpaca {response.status_code}: {response.text[:200]}")
+            raise HttpError.of("Alpaca", response)
         return response.json()
-    raise RuntimeError(f"Alpaca: gave up after {tries} tries ({response.status_code})")
+
+    return policy.call(once)
 
 
 def fetch_bars(

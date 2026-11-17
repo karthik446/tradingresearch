@@ -85,6 +85,17 @@ uv run tr report                    # per-horizon scorecards; --horizon / --arm 
 | `late: the entry window ...` | The run came after 09:30 ET next session | Nothing; that session has no theses |
 | `missed: <session>` | No run for a completed session | Nothing; it is not backfilled |
 
+### Retries
+
+Every HTTP call (Alpaca bars and news, EDGAR, OpenRouter calls, prices and key reads) goes through one policy,
+`retry.DEFAULT`: up to 4 tries, a full-jitter wait of `uniform(0, min(30, 2**retry))` seconds, or the server's
+`Retry-After` (seconds or a date) capped at 30 s, and never more than 300 s in all. Only 429, 5xx and connection or
+timeout errors are retried; a 400, 401, 403 or 404, and any reply that arrived and parsed, fails at once. An error
+after retries ends with `(gave up after N tries)` (or `; a Xs wait would pass the 300s budget`). A model call that
+was retried records `retry_count` and `last_error_class` on its trace call, and its cost includes any cost a failed
+try reported; a call that gives up names that amount in its error. Repeated `gave up` lines: check the provider's
+status page before rerunning.
+
 ## Teacher bake-off
 
 `tr daily --teachers` runs it. Session 1 is the first session on or after 2026-11-17 with a stored teacher analysis
@@ -100,6 +111,13 @@ uv run tr bakeoff report                 # inputs to the pick rule; the operator
 
 Measured teacher cost so far: `deepseek/deepseek-v4-pro`, one analyze call $0.004119 (run_7d0a596b94a44095) and one
 thesis call $0.003016 (G6c's fixture capture, 2026-11-17).
+
+## Experiment arms: `mode`
+
+An arm may set `mode = "fixed"` (the default: the context goes in the prompt) or `mode = "tools"` (the model asks for
+context with tool calls, week 4). Any other value fails `tr exp run` at config load. A `tools` arm is accepted but
+`tr exp run` stops with `NotImplementedError: mode=tools: week 4 learner work` before the first model call, until the
+tool loop exists. OpenRouter already carries the tools (fixture `tests/fixtures/tools/`).
 
 ## Labels (P1, blind)
 

@@ -16,6 +16,7 @@ Each chapter of the build guide starts at a tag (`week-1-start`) and ends at one
 - `experiments/*.toml`: experiments as config (`uv run tr exp run experiments/observe.toml`).
 - `evals/`: your labels, taxonomy and eval specs. `src/tradingresearch/evals.py` is the grader registry.
 - `data/` (or `$TR_DATA_DIR`): journal, bars, EDGAR cache, traces, run files. Never committed.
+- `src/tradingresearch/retry.py`: the one retry policy every HTTP call uses (runbook, "Retries").
 
 The desk's daily loop, one command each (`uv run tr <command> --help` has the flags):
 

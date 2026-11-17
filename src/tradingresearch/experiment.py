@@ -1,9 +1,10 @@
 """Experiments as config: the same ticker-days, one run per arm, the registry's graders, a paired comparison.
 
 A config is a TOML file (see experiments/). Every arm asks the same gigai-core Dataset, so `compare` pairs the
-answers item by item; an arm differs from the baseline only in what the config names (prompt version, model, and an
-OpenRouter `provider` routing table such as a teacher's DeepInfra pin, SPIKE §9.4). `cluster` names the unit the
-intervals resample: `ticker` (week 1, the default) or `session` (the live stream), REPO-PLAN D5.
+answers item by item; an arm differs from the baseline only in what the config names (prompt version, model, an
+OpenRouter `provider` routing table such as a teacher's DeepInfra pin, SPIKE §9.4, and `mode`: `fixed` context or
+`tools`, REPO-PLAN §2.4). `cluster` names the unit the intervals resample: `ticker` (week 1, the default) or `session`
+(the live stream), REPO-PLAN D5.
 """
 
 from __future__ import annotations
@@ -23,6 +24,7 @@ from .openrouter import Routing
 
 REQUIRED = ("name", "model", "max_usd_per_arm", "tickers", "sessions", "graders", "arms")
 CLUSTERS = ("ticker", "session")
+MODES = ("fixed", "tools")  # context handed over up front, or asked for with tool calls (week 4)
 
 
 @dataclass(frozen=True)
@@ -31,6 +33,7 @@ class Arm:
     prompt: str
     model: str
     provider: Routing | None = None  # recorded in every call's ProviderIdentity, so the run shows how it was routed
+    mode: str = "fixed"
 
 
 @dataclass(frozen=True)
@@ -49,7 +52,8 @@ def load(path: Path) -> Config:
     missing = [key for key in REQUIRED if key not in raw]
     if missing:
         raise SystemExit(f"{path}: missing {missing}")
-    arms = tuple(Arm(a["name"], a["prompt"], a.get("model", raw["model"]), routing(path, a)) for a in raw["arms"])
+    arms = tuple(Arm(a["name"], a["prompt"], a.get("model", raw["model"]), routing(path, a), mode(path, a))
+                 for a in raw["arms"])
     for arm in arms:
         an.system_prompt(arm.prompt)  # fail before any spend if a prompt file is missing
     registry(raw["graders"])  # and if a grader is not registered
@@ -81,6 +85,14 @@ def routing(path: Path, arm: dict) -> Routing | None:
         raise SystemExit(f"{path}: arm {arm.get('name')}: {exc}") from None
 
 
+def mode(path: Path, arm: dict) -> str:
+    """An arm's `mode`, refused before any spend unless it is one of MODES."""
+    value = arm.get("mode", "fixed")
+    if value not in MODES:
+        raise SystemExit(f"{path}: arm {arm.get('name')}: mode must be one of {', '.join(MODES)}, not {value!r}")
+    return value
+
+
 @dataclass
 class ArmResult:
     arm: Arm
@@ -92,6 +104,8 @@ class ArmResult:
 def run_arms(conn, config: Config, contexts: list[an.Context], provider, prices: dict, data_dir: Path
              ) -> list[ArmResult]:
     """One run per arm on one Dataset. Each parsed sample is also stored as an Analysis, so `tr check` reads it."""
+    if any(arm.mode == "tools" for arm in config.arms):  # before the first arm, so no call is made
+        raise NotImplementedError("mode=tools: week 4 learner work")
     dataset = Dataset.of(config.name, items(config, contexts))
     by_item = {f"{ctx.ticker}:{ctx.session}": ctx for ctx in contexts}
     results = []

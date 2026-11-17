@@ -1,7 +1,8 @@
 """OpenRouter as a gigai-core ModelProvider (gigai-core ships no OpenRouter adapter), plus prices and key spend.
 
 A `Routing` pins which hosts may serve a call (the teacher arm's DeepInfra pin, SPIKE §9.4, P12); without one the
-request is the plain Claude-route request."""
+request is the plain Claude-route request. Every request runs under the shared retry policy (`retry.py`). Tools travel
+as gigai-core's own `ToolSpec` / `ToolCall` types (week 4 plumbing: no tool loop here)."""
 
 from __future__ import annotations
 
@@ -15,8 +16,10 @@ import httpx
 from gigai_core.budget import Price
 from gigai_core.providers import (
     AuthenticationRequired, Capability, ModelRequest, ModelResult, OutputNotJSON, ProviderError, ProviderIdentity,
-    TokenUsage, UnsupportedRequestField,
+    TokenUsage, ToolCall, ToolSpec, Turn, UnsupportedRequestField,
 )
+
+from .retry import DEFAULT, HttpError, Policy
 
 API = "https://openrouter.ai/api/v1"
 FINISH = {"stop": "stop", "length": "length", "tool_calls": "tool_calls", "content_filter": "content_filter"}
@@ -94,10 +97,32 @@ class Routing:
         return f"openrouter:{host or 'unknown'}" + (f"/{tier}" if tier and tier != "default" else "")
 
 
+def message(turn: Turn) -> dict:
+    """One turn as a chat message; the tool-call fields only when set, so a plain request is unchanged."""
+    out: dict = {"role": turn.role, "content": turn.content}
+    if turn.tool_calls:
+        out["tool_calls"] = [{"id": c.id, "type": "function", "function": {"name": c.name, "arguments": c.arguments}}
+                             for c in turn.tool_calls]
+    if turn.tool_call_id is not None:
+        out["tool_call_id"] = turn.tool_call_id
+    return out
+
+
+def tool(spec: ToolSpec) -> dict:
+    return {"type": "function",
+            "function": {"name": spec.name, "description": spec.description, "parameters": spec.parameters}}
+
+
+def tool_choice(value: str) -> str | dict:
+    """`auto`, `none` or `required` as is; any other value names the one tool the model must call."""
+    return value if value in ("auto", "none", "required") else {"type": "function", "function": {"name": value}}
+
+
 class OpenRouter:
     """Chat completions over httpx. No temperature or seed: the Claude 5.5 routes do not accept them."""
 
-    def __init__(self, api_key: str, *, timeout: float = 120.0, routing: Routing | None = None) -> None:
+    def __init__(self, api_key: str, *, timeout: float = 120.0, routing: Routing | None = None,
+                 policy: Policy = DEFAULT) -> None:
         if not api_key:
             raise AuthenticationRequired("OPENROUTER_API_KEY is not set")
         self._http = httpx.Client(
@@ -106,6 +131,7 @@ class OpenRouter:
         )
         self.routes: dict[str, str] = {}  # last user turn -> the upstream that served it (Analysis.provider_route)
         self.routing = routing
+        self.policy = policy
 
     def routed(self, routing: Routing) -> OpenRouter:
         """The same client pinned by `routing` (an experiment arm's `provider` knob)."""
@@ -123,16 +149,46 @@ class OpenRouter:
 
     @property
     def capabilities(self) -> frozenset[Capability]:
-        return frozenset({"text", "json", "schema", "system", "messages"})
+        return frozenset({"text", "json", "schema", "system", "messages", "tools"})
 
     def invoke(self, request: ModelRequest, *, cancel: threading.Event | None = None) -> ModelResult:
+        """One model call under the shared retry policy: a retryable failure (429, 5xx, connection) is tried again,
+        a reply that arrived and parsed never is. Cost any failed try reported is added to the result, never dropped."""
         s = request.settings
         refused = [name for name in ("temperature", "top_p", "seed") if getattr(s, name) is not None]
         if refused:
             raise UnsupportedRequestField(refused)
+        body = self.body(request)
+        failures: list[Exception] = []
+        billed: list[float] = []  # usage.cost of failed tries (a 200 carrying an error body may have billed)
+
+        def attempt() -> ModelResult:
+            try:
+                return self._post(request, body, billed)
+            except Exception as exc:
+                failures.append(exc)
+                raise
+
+        try:
+            result = self.policy.call(attempt)
+        except ProviderError as exc:
+            if billed:
+                exc.args = (f"{exc} (failed tries billed ${sum(billed):.6f})",)
+            raise
+        if not failures:
+            return result
+        cost = result.cost_usd if not billed else (result.cost_usd or 0.0) + sum(billed)
+        return result.model_copy(update={
+            "retry_count": len(failures), "last_error_class": type(failures[-1]).__name__,
+            "cost_usd": cost, "cost_status": "provider_reported" if cost is not None else result.cost_status,
+        })
+
+    def body(self, request: ModelRequest) -> dict:
+        """The chat-completions request. Tool fields appear only when the request has tools or tool turns."""
+        s = request.settings
         body: dict = {
             "model": s.model,
-            "messages": [{"role": t.role, "content": t.content} for t in request.turns],
+            "messages": [message(t) for t in request.turns],
             "max_tokens": s.max_output_tokens,
         }
         if s.output_mode == "json":
@@ -141,10 +197,18 @@ class OpenRouter:
             body["response_format"] = {
                 "type": "json_schema", "json_schema": {"name": "output", "strict": True, "schema": s.json_schema},
             }
+        if request.tools:
+            body["tools"] = [tool(spec) for spec in request.tools]
+            body["tool_choice"] = tool_choice(s.tool_choice)
         if self.routing is not None:
             body["provider"] = self.routing.block()
             if self.routing.tier:
                 body["service_tier"] = self.routing.tier
+        return body
+
+    def _post(self, request: ModelRequest, body: dict, billed: list[float]) -> ModelResult:
+        """One HTTP try. A failed try that reported a cost appends it to `billed`."""
+        s = request.settings
         started = datetime.now(UTC)
         t0 = time.monotonic()
         response = self._http.post("/chat/completions", json=body)
@@ -155,6 +219,8 @@ class OpenRouter:
             raise OpenRouterError(response.status_code, response.text[:300])
         data = response.json()
         if "error" in data:  # some upstream failures arrive as 200 with an error body
+            if (data.get("usage") or {}).get("cost"):
+                billed.append(float(data["usage"]["cost"]))
             raise OpenRouterError(int(data["error"].get("code", 502)), str(data["error"].get("message"))[:300])
         if self.routing is None:
             self.routes[request.turns[-1].content] = f"openrouter:{data.get('provider', 'unknown')}"
@@ -162,7 +228,11 @@ class OpenRouter:
             self.routes[request.turns[-1].content] = self.routing.served(data)
         choice = data["choices"][0]
         text = choice["message"].get("content") or ""
-        if s.output_mode != "text" and not text.strip():
+        calls = tuple(
+            ToolCall(id=c["id"], name=c["function"]["name"], arguments=c["function"]["arguments"])
+            for c in choice["message"].get("tool_calls") or ()
+        )
+        if s.output_mode != "text" and not text.strip() and not calls:
             raise OutputNotJSON("empty reply in JSON mode")
         usage = data.get("usage", {})
         cost = usage.get("cost")
@@ -179,16 +249,28 @@ class OpenRouter:
             latency_ms=latency_ms,
             started_at=started,
             completed_at=datetime.now(UTC),
+            tool_calls=calls,
         )
 
     def close(self) -> None:
         self._http.close()
 
 
+def get(url: str, *, headers: dict[str, str] | None = None, policy: Policy = DEFAULT) -> dict:
+    """A GET of the model list or the key, under the shared retry policy."""
+    def once() -> dict:
+        response = httpx.get(url, headers=headers, timeout=30.0)
+        if not response.is_success:
+            raise HttpError.of("OpenRouter", response)
+        return response.json()
+
+    return policy.call(once)
+
+
 def prices(models: list[str]) -> dict[str, Price]:
     """Per-token prices from the public model list (no key needed). CallBudget refuses a model with no price."""
     fetched = datetime.now(UTC)
-    rows = httpx.get(f"{API}/models", timeout=30.0).raise_for_status().json()["data"]
+    rows = get(f"{API}/models")["data"]
     out = {}
     for row in rows:
         if row["id"] in models:
@@ -204,5 +286,4 @@ def prices(models: list[str]) -> dict[str, Price]:
 
 def key_usage(api_key: str) -> float:
     """All-time credits used by this key, in USD (GET /key). Read it before and after a paid step."""
-    response = httpx.get(f"{API}/key", headers={"Authorization": f"Bearer {api_key}"}, timeout=30.0)
-    return float(response.raise_for_status().json()["data"]["usage"])
+    return float(get(f"{API}/key", headers={"Authorization": f"Bearer {api_key}"})["data"]["usage"])

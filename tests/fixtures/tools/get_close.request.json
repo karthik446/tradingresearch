@@ -1,0 +1,42 @@
+{
+  "model": "openai/gpt-4.1-nano",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Answer stock questions with the tools."
+    },
+    {
+      "role": "user",
+      "content": "What was AAPL's last close?"
+    }
+  ],
+  "max_tokens": 64,
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "get_close",
+        "description": "The last daily close of a US stock, in USD.",
+        "parameters": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "ticker"
+          ],
+          "properties": {
+            "ticker": {
+              "type": "string",
+              "description": "The ticker, e.g. AAPL."
+            }
+          }
+        }
+      }
+    }
+  ],
+  "tool_choice": {
+    "type": "function",
+    "function": {
+      "name": "get_close"
+    }
+  }
+}

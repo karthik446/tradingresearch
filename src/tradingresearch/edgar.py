@@ -12,6 +12,7 @@ import httpx
 
 from .hashing import digest
 from .records import SourceRef
+from .retry import DEFAULT, HttpError, Policy
 
 TICKERS_URL = "https://www.sec.gov/files/company_tickers.json"
 FACTS_URL = "https://data.sec.gov/api/xbrl/companyfacts/CIK{cik:010d}.json"
@@ -22,7 +23,7 @@ LICENCE = "SEC EDGAR: US government public data"
 class Edgar:
     """A polite client: one declared User-Agent, at most `per_second` requests, everything cached on disk."""
 
-    def __init__(self, user_agent: str, cache_dir: Path, per_second: float = 8.0) -> None:
+    def __init__(self, user_agent: str, cache_dir: Path, per_second: float = 8.0, policy: Policy = DEFAULT) -> None:
         if "@" not in user_agent:
             raise ValueError("SEC asks for a User-Agent with a contact email, e.g. 'tradingresearch you@example.com'")
         self._http = httpx.Client(headers={"User-Agent": user_agent}, timeout=30.0)
@@ -30,20 +31,27 @@ class Edgar:
         self._gap = 1.0 / per_second
         self._last = 0.0
         self._lock = threading.Lock()
+        self._policy = policy
 
     def _get(self, url: str, path: Path) -> dict:
         if path.exists():
             return json.loads(path.read_bytes())
+        response = self._policy.call(lambda: self._fetch(url))  # the retry sleep happens outside the lock
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(response.content)
+        return response.json()
+
+    def _fetch(self, url: str) -> httpx.Response:
+        """One rate-limited GET; a non-2xx reply raises HttpError (retryable on 429 and 5xx)."""
         with self._lock:  # keep under SEC's 10 requests/s even with threads
             wait = self._last + self._gap - time.monotonic()
             if wait > 0:
                 time.sleep(wait)
             response = self._http.get(url)
             self._last = time.monotonic()
-        response.raise_for_status()
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_bytes(response.content)
-        return response.json()
+        if not response.is_success:
+            raise HttpError.of("EDGAR", response)
+        return response
 
     def cik(self, ticker: str) -> int:
         table = self._get(TICKERS_URL, self._cache / "company_tickers.json")
