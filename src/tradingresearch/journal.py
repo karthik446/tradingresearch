@@ -63,6 +63,13 @@ CREATE TABLE IF NOT EXISTS screen_result (
   filtered_out TEXT, rank INTEGER, code_version TEXT NOT NULL, created_at TEXT NOT NULL,
   PRIMARY KEY (session, ticker, code_version));
 
+-- REPO-PLAN G4a: one row per (session, step, ticker) of each `tr daily` run; `missed` rows feed the week-3 SLO.
+CREATE TABLE IF NOT EXISTS daily_run (
+  seq INTEGER PRIMARY KEY, daily_id TEXT NOT NULL, session TEXT NOT NULL,
+  step TEXT NOT NULL CHECK (step IN ('session', 'screen', 'analyze', 'thesis', 'reconcile')), ticker TEXT,
+  status TEXT NOT NULL CHECK (status IN ('ok', 'skipped', 'failed', 'stopped', 'missed')), reason TEXT NOT NULL,
+  ids TEXT NOT NULL, cost_usd REAL NOT NULL, created_at TEXT NOT NULL);
+
 -- SPIKE §6.7: at most one PROPOSED-or-OPEN thesis per (ticker, horizon, arm) for champion and challenger.
 -- The latest event is the one with the highest seq (ids are random hex, so they cannot order events).
 CREATE TRIGGER IF NOT EXISTS one_live BEFORE INSERT ON thesis
@@ -76,7 +83,7 @@ BEGIN SELECT RAISE(ABORT, 'one live thesis per (ticker, horizon, arm)'); END;
 
 IMMUTABLE = (
     "source_ref", "analysis", "claim", "thesis", "no_trade", "event", "grade", "shadow", "shadow_outcome",
-    "teacher_outcome", "training_split", "claim_label", "screen_result",
+    "teacher_outcome", "training_split", "claim_label", "screen_result", "daily_run",
 )
 
 # record type -> (table, columns copied out of the record for queries and triggers)
@@ -256,3 +263,47 @@ def add_settlement(
             _insert(conn, event)
         if outcome is not None:
             _insert(conn, outcome)
+
+
+def analyses(conn: sqlite3.Connection, session: date, arm: str) -> list[Analysis]:
+    """Every stored analysis of one session for one analysis arm, oldest first."""
+    rows = conn.execute("SELECT body FROM analysis WHERE session = ? AND arm = ? ORDER BY created_at, analysis_id",
+                        (session.isoformat(), arm))
+    return [Analysis.model_validate_json(body) for (body,) in rows]
+
+
+def has_decision(conn: sqlite3.Connection, analysis_id: str) -> bool:
+    """A champion thesis or a no-trade was stored from this analysis: its thesis call is done."""
+    query = ("SELECT 1 FROM thesis WHERE analysis_id = ? AND arm = 'champion' "
+             "UNION ALL SELECT 1 FROM no_trade WHERE analysis_id = ? LIMIT 1")
+    return conn.execute(query, (analysis_id, analysis_id)).fetchone() is not None
+
+
+DAILY_COLUMNS = ("daily_id", "session", "step", "ticker", "status", "reason", "ids", "cost_usd")
+
+
+def add_daily_run(conn: sqlite3.Connection, row: dict) -> None:
+    """One `tr daily` row, committed at once, so a crash mid-run keeps every row before it."""
+    marks = ", ".join(f":{name}" for name in (*DAILY_COLUMNS, "created_at"))
+    with conn:
+        conn.execute(f"INSERT INTO daily_run ({', '.join(DAILY_COLUMNS)}, created_at) VALUES ({marks})",
+                     row | {"ids": json.dumps(list(row["ids"])), "created_at": datetime.now(UTC).isoformat()})
+
+
+def daily_runs(conn: sqlite3.Connection, session: date | None = None) -> list[dict]:
+    """Stored `tr daily` rows in insertion order, for one session or all."""
+    cursor = conn.execute(f"SELECT {', '.join(DAILY_COLUMNS)} FROM daily_run WHERE ? IS NULL OR session = ? "
+                          "ORDER BY seq", (session and session.isoformat(),) * 2)
+    rows = [dict(zip(DAILY_COLUMNS, values)) for values in cursor]
+    return [row | {"ids": json.loads(row["ids"])} for row in rows]
+
+
+def daily_sessions(conn: sqlite3.Connection) -> set[date]:
+    """Sessions with any `tr daily` row, `missed` rows included (a missed session is listed once)."""
+    return {date.fromisoformat(day) for (day,) in conn.execute("SELECT DISTINCT session FROM daily_run")}
+
+
+def first_daily_session(conn: sqlite3.Connection) -> date | None:
+    """The earliest session `tr daily` actually ran for: sessions before it are not misses."""
+    found = conn.execute("SELECT min(session) FROM daily_run WHERE status != 'missed'").fetchone()[0]
+    return date.fromisoformat(found) if found else None

@@ -1,0 +1,14 @@
+# `tr daily` after each NYSE close (REPO-PLAN §7 G4a; SPIKE L22: a scheduler, not a service).
+#
+# Install: `crontab -e`, paste the two lines below, and replace /path/to/tradingresearch and /path/to/uv
+# (`which uv`; cron's PATH is minimal).
+#
+# CRON_TZ makes 16:30 mean New York time whatever the machine's zone (cronie and most Linux crons; macOS cron
+# ignores CRON_TZ and uses local time, so use the launchd example there). 16:30 ET is after the 16:15 ET
+# cutoff `tr daily` waits for. On a holiday the default session is the last completed one, already run, so it
+# makes no model call.
+#
+# Keys: tr reads them from ~/.config/tradingresearch/verify.env itself (TR_SEC_USER_AGENT may go there too).
+# Never put a key in the crontab.
+CRON_TZ=America/New_York
+30 16 * * 1-5 cd /path/to/tradingresearch && /path/to/uv run tr daily >> data/daily.log 2>&1

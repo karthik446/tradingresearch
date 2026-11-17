@@ -2,6 +2,6 @@
 
 from __future__ import annotations
 
-from . import analyze, check, data, exp, news, reconcile, screen, thesis, usage
+from . import analyze, check, daily, data, exp, news, reconcile, screen, thesis, usage
 
-COMMANDS = (data, news, screen, analyze, thesis, reconcile, check, exp, usage)
+COMMANDS = (data, news, screen, analyze, thesis, reconcile, daily, check, exp, usage)

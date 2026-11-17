@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  `tr daily` after each NYSE close (REPO-PLAN §7 G4a; SPIKE L22: a scheduler, not a service).
+
+  Install:
+    1. Copy to ~/Library/LaunchAgents/com.tradingresearch.daily.plist.
+    2. Replace /path/to/tradingresearch (three times) with the repo path and /path/to/uv with `which uv`.
+
+  Time zone: launchd reads Hour/Minute in the Mac's own time zone. 16:30 is for a Mac set to New York time
+  (after the 16:15 ET cutoff `tr daily` waits for). Elsewhere, convert 16:30 ET to local time, and mind the
+  daylight-saving weeks when New York and your zone change on different dates.
+  On a holiday the default session is the last completed one, already run, so it makes no model call.
+
+  Keys: tr reads them from ~/.config/tradingresearch/verify.env itself (TR_SEC_USER_AGENT may go there too).
+  Never put a key in this file.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.tradingresearch.daily</string>
+  <key>WorkingDirectory</key>
+  <string>/path/to/tradingresearch</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/path/to/uv</string>
+    <string>run</string>
+    <string>tr</string>
+    <string>daily</string>
+  </array>
+  <key>StartCalendarInterval</key>
+  <array>
+    <dict><key>Weekday</key><integer>1</integer><key>Hour</key><integer>16</integer><key>Minute</key><integer>30</integer></dict>
+    <dict><key>Weekday</key><integer>2</integer><key>Hour</key><integer>16</integer><key>Minute</key><integer>30</integer></dict>
+    <dict><key>Weekday</key><integer>3</integer><key>Hour</key><integer>16</integer><key>Minute</key><integer>30</integer></dict>
+    <dict><key>Weekday</key><integer>4</integer><key>Hour</key><integer>16</integer><key>Minute</key><integer>30</integer></dict>
+    <dict><key>Weekday</key><integer>5</integer><key>Hour</key><integer>16</integer><key>Minute</key><integer>30</integer></dict>
+  </array>
+  <key>StandardOutPath</key>
+  <string>/path/to/tradingresearch/data/daily.log</string>
+  <key>StandardErrorPath</key>
+  <string>/path/to/tradingresearch/data/daily.log</string>
+</dict>
+</plist>
