@@ -80,8 +80,36 @@ the mean share of a query's gold quotes found. Run:
 - The default query stays `store.DEFAULT_QUERY` ("{ticker} quarterly results: revenue, earnings, guidance, outlook
   and risks"). On the 20 experiment ticker-days it returns 5 passages each: 72 from press releases, 24 from 10-Qs,
   4 from 8-K cover documents and no headlines.
-- Pre-registered for the experiment (the config's comment): primary metric `claims_valid`, paired by item and
-  clustered by ticker; guard `parsed`; `citation_accuracy` reported for the hybrid arm, not deciding.
+- The experiment's decision rule is the pre-registration below, written before any paid call.
+
+**Pre-registration (written before the run, 2026-11-17; not to change after it).** One run of
+`experiments/retrieval.toml`: arm `none` (analyze-3, SOURCES only) against arm `hybrid` (the same prompt plus the top
+5 hybrid passages from the pinned index above), `anthropic/claude-sonnet-5.5`, the 20 ticker-days of weeks 4 and 5.
+Exactly one paid run; no rerun for a better result. If `tr exp run` refuses a comparison, the same gigai-core
+`compare` runs on the stored runs (`tr exp compare`, $0), one grader at a time, and the ADR says so.
+- **Unit:** the ticker-day, paired by item (hybrid minus none), clustered by ticker (10 clusters), 95% interval from
+  `tr exp` (gigai-core `compare`).
+- **Primary:** `claims_valid`, hybrid minus none. Hybrid is **non-inferior** if the lower bound of the 95% interval
+  is above −0.05. The margin is a rule chosen before the run, not a measured number: a loss of up to 5 points of
+  valid claims per analysis is accepted as the price of passages that are used and cited correctly.
+- **Secondary (reported, descriptive, not deciding):** `all_claims_valid`; `parsed`; the share of hybrid items in
+  which any claim cites a passage (items with a `citation_accuracy` score over all 20 hybrid items, failed calls
+  included in the 20); `citation_accuracy` in the hybrid arm, the mean over the items that have graded claims, with
+  that n stated and no interval claimed if n is below 10 items; mean input tokens, cost and latency per item for
+  each arm.
+- **Decision:** the retrieval default stays `none` UNLESS all three hold: (1) hybrid is non-inferior on
+  `claims_valid`; (2) passage-citing claims occur in at least 25% of hybrid items (5 of 20); (3) the hybrid arm's
+  `citation_accuracy` is at least 0.90. Then the default becomes `hybrid`, k = 5, on this index.
+- **Otherwise:** no change, and the result is a measured negative, read as such. It covers one model, one prompt
+  and 20 ticker-days (10 tickers, two adjacent sessions with the same retrieved passages per ticker). A model that
+  cites no passage says nothing about retrieval quality, only that this prompt did not lead it to use passages. A
+  failed condition is not evidence that passages hurt, unless the interval says so.
+
+**Free pre-run** (before the registration, no model call; `data-dev/scratch/w6refb/prerun.py`): the pinned index
+loads and its manifest hashes to the pinned digest; 0 of the 100 retrieved chunks (20 items × 5) became public after
+their session's close; 12 of 20 items have a 10-Q or 8-K chunk in their top 5 (all 20 counting the 8-K's EX-99.1
+press release); the `none` request is byte-identical to week 5's `full` request on all 20 items (dataset sha256
+`6b185e21…`).
 
 **Experiment: none vs hybrid** (one run of `experiments/retrieval.toml`, 20 ticker-days):
 

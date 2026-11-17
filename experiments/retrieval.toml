@@ -3,21 +3,24 @@
 # weeks 4 and 5 (ADR-007). analyze-3 shows headlines, so run `tr news TICKER --session S` for every ticker and
 # session first (the config refuses unfetched windows). The index digest is the one `tr retrieval build` printed for
 # the 10 tickers below with --quarters 4 --dense; rebuild if `<data dir>/retrieval/` has no folder of that digest.
+# The hybrid arm embeds its query with bge-small, so run it as `uv run --extra retrieval tr exp run <this file>`.
 #
-# Pre-registered before any paid run (ADR-009):
-# - Primary metric: claims_valid per ticker-day, paired by item (hybrid minus none), clustered by ticker
-#   (10 clusters), 95% interval from `compare`. Same metric and reasons as ADR-007: all_claims_valid sits at a floor.
-# - Guard metric: parsed must not drop in the hybrid arm.
-# - Rule: passages earn a place in analyze's default if claims_valid does not drop (the whole 95% interval is not
-#   below 0) and the guard holds. If the interval is wholly below 0, they stay out of the default.
-# - Reported only, not deciding: citation_accuracy in the hybrid arm (the share of claims citing a passage whose
-#   chunk was retrieved and whose value is written in it; it says whether the model used the passages at all; the
-#   none arm has no passages, so an analysis there can only be ungradable or not_retrieved), all_claims_valid,
-#   tokens, cost and latency per item. Expected cost: $0.33-0.36 for a 20-item analyze-3 arm, about $0.39 with 5
-#   passages (RETRIEVAL-SPIKE §4.4), so $0.60 per arm is the cap.
+# Pre-registered before any paid run (ADR-009 "Pre-registration" has the full text):
+# - Unit: the ticker-day, paired by item (hybrid minus none), clustered by ticker (10 clusters), 95% interval from
+#   `tr exp` (gigai-core `compare`).
+# - Primary: claims_valid. Hybrid is non-inferior if the lower bound of the 95% interval is above -0.05.
+# - Secondary, reported and not deciding: all_claims_valid; parsed; the share of hybrid items in which any claim cites
+#   a passage (items with a citation_accuracy score over all 20 hybrid items); citation_accuracy in the hybrid arm over
+#   the items with graded claims (n stated, no interval if n < 10); input tokens, cost and latency per item.
+# - Decision: the retrieval default stays `none` UNLESS hybrid is non-inferior on claims_valid AND passage-citing
+#   claims occur in at least 25% of hybrid items AND their citation_accuracy is at least 0.90. Otherwise no change,
+#   read as a measured negative (one model, one prompt, 20 ticker-days).
+# Cap: gigai-core plans each arm's worst case (ceil(chars/4) input + 4,000 output tokens per call) before its first
+# call: $0.85 for `none`, $0.90 for `hybrid` on these 20 items, so the cap is $1.00 per arm. Expected spend is about
+# $0.34 for `none` (week 5's identical requests) and $0.40 for `hybrid` (RETRIEVAL-SPIKE §4.4 put it at $0.39).
 name = "retrieval"
 model = "anthropic/claude-sonnet-5.5"
-max_usd_per_arm = 0.60
+max_usd_per_arm = 1.00
 tickers = ["AAPL", "MSFT", "NVDA", "AMZN", "JPM", "XOM", "UNH", "HD", "KO", "CAT"]
 sessions = ["2026-11-12", "2026-11-13"]
 cluster = "ticker"
