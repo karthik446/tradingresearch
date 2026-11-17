@@ -4,7 +4,8 @@ usage: tr split register [-h] --cutoff CUTOFF --embargo EMBARGO
 options:
   -h, --help          show this help message and exit
   --cutoff CUTOFF     first test session, YYYY-MM-DD (a future NYSE session)
-  --embargo EMBARGO   sessions left out before the cutoff (>= 20)
+  --embargo EMBARGO   sessions left out before the cutoff (>= 22: swing entry
+                      window + longest hold)
   --prereg-json FILE  Prereg fields as JSON, without registered_at (default:
                       the TRAINING-SPIKE §7.3 gate)
   --note NOTE         the hypothesis the Prereg tests

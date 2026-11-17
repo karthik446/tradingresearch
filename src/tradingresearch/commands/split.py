@@ -41,7 +41,7 @@ def register(sub) -> None:
     p = actions.add_parser("register", help="store a TrainingSplit before its cutoff session (append-only)")
     p.add_argument("--cutoff", required=True, help="first test session, YYYY-MM-DD (a future NYSE session)")
     p.add_argument("--embargo", type=int, required=True, help=f"sessions left out before the cutoff (>= "
-                   f"{split.MIN_EMBARGO})")
+                   f"{split.MIN_EMBARGO}: swing entry window + longest hold)")
     p.add_argument("--prereg-json", metavar="FILE", help="Prereg fields as JSON, without registered_at (default: the "
                    "TRAINING-SPIKE §7.3 gate)")
     p.add_argument("--note", help="the hypothesis the Prereg tests")

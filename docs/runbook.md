@@ -37,10 +37,12 @@ change under the stream. Two rules follow, and they are separate on purpose.
 
    Who may write the live journal, and what (operator ruling 2026-11-17): the agent writes the daily rows. Two more
    writes are sanctioned and logged (what, when, spend), run by the coordinator from the pinned worktree with
-   `TR_DATA_DIR=<repo>/data`: registering a rule change, once per change, and `grade --judge`. **`label add` is human
-   only**: the operator's labels are the ground truth the judge's kappa is measured against, and a label written by
-   a model or a worker would make kappa model against model. `learn --decide` runs only after the operator's go (the
-   decision is an ADR, at `n_planned`). Everything else stays on `data-dev`.
+   `TR_DATA_DIR=<repo>/data`: registering a rule change, once per change, and `grade --judge`. `tr split register` is
+   the operator's decision (the cutoff): the coordinator registers it from the pinned worktree only on the operator's
+   go through Main, once per split. **`label add` is human only** (so is `label --claims add`): the operator's labels
+   are the ground truth the judge's kappa is measured against, and a label written by a model or a worker would make
+   kappa model against model. `learn --decide` runs only after the operator's go (the decision is an ADR, at
+   `n_planned`). Everything else stays on `data-dev`.
 
 Moving the pin, only to a commit whose tests and `ci/gate.py` pass, and never between 14:15 and 14:45 or between
 18:45 and 19:15 America/Denver (the two run windows):
@@ -276,8 +278,8 @@ gate (§7.3); register it before its cutoff session opens. Which cutoff to use i
 §10 Q8).
 
 ```
-uv run tr split register --cutoff YYYY-MM-DD --embargo 20 --note "hypothesis"   # a future NYSE session, embargo >= 20
-uv run tr split register --cutoff YYYY-MM-DD --embargo 20 --prereg-json FILE    # your own Prereg, no registered_at
+uv run tr split register --cutoff YYYY-MM-DD --embargo 22 --note "hypothesis"   # a future NYSE session, embargo >= 22
+uv run tr split register --cutoff YYYY-MM-DD --embargo 22 --prereg-json FILE    # your own Prereg, no registered_at
 uv run tr split show [SPLIT_ID]               # train/val, embargoed and test sessions with counts (read-only)
 uv run tr label --claims list                 # teacher claims without a claim label; n unlabelled, n labelled
 uv run tr label --claims show CLAIM_ID        # claim text, value, cited source rows; never the model's tag
@@ -287,10 +289,17 @@ uv run tr label --claims add CLAIM_ID --tag fact|inference|opinion [--supported|
 The default Prereg is the §7.3 gate (claims_valid NoWorseThan, CI lower bound >= -0.15, 40 test sessions, guard
 parse_ok Wilson lower bound >= 0.95). The split id is a digest of the cutoff, the embargo and the Prereg: registering
 the same split again writes nothing, and a different split is a new row (nothing is rewritten). `show` without an id
-reads the latest. The sessions are derived when you read them: train/val is before the embargo window (the 20 NYSE
-sessions before the cutoff), test is on or after the cutoff, and sessions inside the window are in neither. Claim labels
-are only for claims from teacher analyses (§7.4), one label per claim, and a second label is refused. Label from `show`
-alone.
+reads the latest. The sessions are derived when you read them: train/val is before the embargo window (the
+`--embargo` NYSE sessions before the cutoff), test is on or after the cutoff, and sessions inside the window are in
+neither. The floor is 22: a swing thesis enters within the 2 sessions after it is written and exits at most 20
+sessions after its entry, so with 22 the last train/val session's latest exit is the session before the cutoff and no
+train/val outcome reads a test-period bar. (SPIKE §1.1 says 20; that was 2 sessions short.)
+
+Claim labels are only for claims from teacher analyses (§7.4), one label per claim, and a second label is refused.
+Label from `show` alone. The view is not fully blind. It leaks the fact/non-fact axis: a claim with cited source rows is
+almost always a fact, and "none cited" means the model did not tag it a fact. It also prints the analysis id, and
+`tr analyze` prints the model's tags. So the tagger's kappa on fact versus inference against these labels is
+optimistic, and you should not run `tr analyze` (or look up the analysis) before labelling.
 
 ## Playbook and rule changes (`tr learn`)
 

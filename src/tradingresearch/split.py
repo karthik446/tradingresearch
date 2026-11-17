@@ -19,9 +19,8 @@ from pydantic import ValidationError
 
 from . import journal, sessions
 from .hashing import digest
-from .records import TrainingSplit
+from .records import EMBARGO_WHY, MIN_EMBARGO, TrainingSplit  # the floor and its reason live with the record
 
-MIN_EMBARGO = 20  # the longest swing hold (Thesis rule 3): no train/val outcome can reach into the test period
 # TRAINING-SPIKE §7.3: the gate the test sessions are scored by, pre-registered with the split.
 GATE_METRIC = "claims_valid"
 GATE_PASS = "NoWorseThan(claims_valid, bound=ci_lower) >= -0.15"
@@ -84,11 +83,11 @@ def split_id_for(cutoff_session: date, embargo_sessions: int, prereg: Prereg) ->
 
 def register(conn: sqlite3.Connection, cutoff_session: date, embargo_sessions: int, prereg: Prereg,
              now: datetime) -> TrainingSplit:
-    """Store the split once, or return the stored one with the same parameters. Refused: an embargo under 20, a
-    cutoff that is not an NYSE session, and a cutoff that is not still ahead (after the last completed session and
-    not yet open), for the record and for its Prereg."""
+    """Store the split once, or return the stored one with the same parameters. Refused: an embargo under
+    MIN_EMBARGO, a cutoff that is not an NYSE session, and a cutoff that is not still ahead (after the last completed
+    session and not yet open), for the record and for its Prereg."""
     if embargo_sessions < MIN_EMBARGO:
-        raise Refused(f"embargo {embargo_sessions} < {MIN_EMBARGO} sessions (the longest swing hold, Thesis rule 3)")
+        raise Refused(f"embargo {embargo_sessions} < {MIN_EMBARGO} sessions ({EMBARGO_WHY})")
     split_id = split_id_for(cutoff_session, embargo_sessions, prereg)
     held = find(conn, split_id)
     if held is not None:
@@ -133,7 +132,8 @@ def governing(conn: sqlite3.Connection, split_id: str | None = None) -> Training
         return found
     registered = splits(conn)
     if not registered:
-        raise Refused("no training split registered yet: `tr split register --cutoff YYYY-MM-DD --embargo 20`")
+        raise Refused(f"no training split registered yet: `tr split register --cutoff YYYY-MM-DD --embargo "
+                      f"{MIN_EMBARGO}`")
     return registered[-1]
 
 

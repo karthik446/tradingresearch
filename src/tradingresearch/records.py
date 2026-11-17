@@ -24,6 +24,13 @@ EventReason = Literal[
 
 # Thesis rule 3: hold_sessions per horizon (sessions after the entry session).
 HOLD_RANGE: dict[str, tuple[int, int]] = {"day": (0, 0), "short": (2, 5), "swing": (5, 20)}
+# TrainingSplit embargo floor: a thesis written after session S enters on one of the next SWING_ENTRY_SESSIONS
+# sessions (thesis.windows, swing) and exits at most the longest hold after its entry session (reconcile
+# `exit_session`), so its outcome reads bars up to S + MIN_EMBARGO. With this embargo the last train/val session's
+# latest exit is the session before the cutoff. thesis.py holds the window as code, not a constant, hence the name here.
+SWING_ENTRY_SESSIONS = 2
+MIN_EMBARGO = SWING_ENTRY_SESSIONS + max(hi for _, hi in HOLD_RANGE.values())
+EMBARGO_WHY = f"entry window {SWING_ENTRY_SESSIONS} + longest hold {MIN_EMBARGO - SWING_ENTRY_SESSIONS}"
 MAX_CONTEXT_TOKENS = 14_000
 RULES_VERSION = "rules-1"  # the reconcile rules (SPIKE §6) a thesis or event is settled by; reconcile picks rules by it
 
@@ -287,8 +294,8 @@ class TrainingSplit(CoreModel):
 
     @model_validator(mode="after")
     def _rules(self) -> Self:
-        if self.embargo_sessions < 20:
-            raise ValueError("embargo_sessions must be >= 20 (the longest swing hold)")
+        if self.embargo_sessions < MIN_EMBARGO:
+            raise ValueError(f"embargo_sessions must be >= {MIN_EMBARGO} ({EMBARGO_WHY})")
         if self.registered_at.date() >= self.cutoff_session:
             raise ValueError("a split is registered before its cutoff session")
         return self
