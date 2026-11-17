@@ -11,4 +11,5 @@ wheels/
 
 # tradingresearch: never commit data, caches, traces or keys (SPIKE §11)
 data/
+data-dev/
 .env
