@@ -199,19 +199,29 @@ Both arms share one dataset (the items keep the full prompt); `masking.Masked` r
 before the call, and a drop arm runs on the in-repo loop (as a tools arm does), so the trace's `request_sha256`,
 `last_turn` and `Sample.input` hold the masked request. A drop arm takes code graders only. A stored analysis adds
 the sorted drop list to its `input_hash` (unchanged when `drop` is empty), and a claim citing a dropped row is rejected
-as `dropped_source`, so any inference derived from it falls too.
+as `dropped_source`, so any inference derived from it falls too. `tr check` on a drop arm's analysis reads the rows
+the call never showed from the run's `Sample.input` (in the item's table, absent from the masked user turn), names
+them in a `drop arm: N SOURCES rows not shown to the model (<sections>)` line, marks each dropped `src:` line, and
+gives the same `dropped_source` verdicts the store wrote.
 
 ## Headlines in the analyze prompt
 
 `analyze-3` (the only prompt in `analyze.HEADLINE_PROMPTS`) is analyze-2 plus news rules: its SOURCES table ends with
 the latest 5 stored headlines of the session's news window (previous session's close to this close, the look-ahead
 guard of `tr news`), oldest first, one row each: `src_<digest> | headline 2026-11-13 15:05Z benzinga | "<text>" | -`.
-The text has newlines, control and bidi/zero-width characters turned into spaces, `|` and `"` replaced, and a cap of
-200 characters. Rows are read from `data/news/<TICKER>/`, never fetched: run `tr news TICKER --session DATE` first,
-or the table has no headline rows. A claim about a headline is a fact citing its source_id with `value: null` (a number
-is `unsourced_number`, digits in the text `number_in_text`); the headline SourceRefs join the analysis's `input_hash`
-and are stored with it. analyze-1, analyze-2 and `tr daily` never read the store, so their prompts and hashes are
-unchanged. Fixed arms of one experiment share a dataset, so they all use a headline prompt or none (refused at load).
+The text has newlines, control and bidi/zero-width characters, variation selectors and tag characters turned into
+spaces, `|` and `"` replaced, and a cap of 200 characters. Rows are read from `data/news/<TICKER>/`, never fetched:
+run `tr news TICKER --session DATE` first; `tr exp run` with a headline arm refuses before the dataset and any call
+when a ticker-day's news window was not fetched, listing those `tr news` commands. A claim about a headline is a fact
+citing its source_id with `value: null` (a number is `unsourced_number`, digits in the text `number_in_text`); the
+headline SourceRefs join the analysis's `input_hash` and are stored with it. analyze-1, analyze-2 and `tr daily` never
+read the store, so their prompts and hashes are unchanged. Fixed arms of one experiment share a dataset, so they all
+use a headline prompt or none, and no tool serves headlines, so a tools arm is refused next to a headline prompt (both
+at load).
+A thesis on an analyze-3 analysis shows, after the computed rows, the headline rows its claims cite (rendered by
+analyze, same ids), read from the news store; a cited headline missing from the store refuses the thesis before the
+call. Other analyses read nothing and their thesis prompts are unchanged. thesis-1 and thesis-2 have no rule telling
+the model that a headline row is untrusted (prompts are immutable; a later thesis prompt adds it).
 `experiments/headlines.toml` only records the prompt for `ci/gate.py`; the learner's ablation is its own file. The
 headlines are untrusted text and analyze-3 says so, but nothing here stops an instruction phrased as a headline, a false
 headline or a homoglyph: those are week 7 (`guards.py`, the injection set).
@@ -297,6 +307,14 @@ through a registered `PromptVariant("thesis-2")` rule (none is in `rules.CHALLEN
 `experiments/tools-vs-fixed.toml`, `docs/adr/ADR-005-tools-vs-fixed-context.md` and the first rule change
 `experiments/rule-change-1.toml` exist and match it. The loop is checked by replaying one recorded real exchange
 (`tests/fixtures/week4/`, no key, no spend).
+
+## Week 5 acceptance
+
+`uv run pytest tests/test_week5.py -q` is the week-5 contract: it passes when the per-section grounding graders
+(`indicators_grounded`, `levels_grounded`, `edgar_grounded`, `headlines_grounded`), `experiments/context-ablation.toml`,
+`docs/adr/ADR-007-which-context-sections-stay.md` and `docs/adr/ADR-008-mcp-gateway-registry.md` exist and match it.
+The ablation arms are checked by replaying one recorded real analyze-3 exchange (`tests/fixtures/week5/`, no key, no
+spend).
 
 ## CI
 
