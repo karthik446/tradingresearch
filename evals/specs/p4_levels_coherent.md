@@ -42,3 +42,19 @@ short, market_open, target beyond the next level by more than 0.5·ATR vs within
 
 **Out of scope:** level strength and kind (all levels count equally); reward-to-risk ratio; whether the setup type
 fits the levels (P1).
+
+## Amendment (week-2-end)
+
+**Prices compare at cents.** Stored levels are unrounded floats (`hvn` 343.40978, `low_20` 160.1101) while the model
+quotes cents, so before the rule `p4_levels_coherent` rounds E, `stop`, `target` and every level price to 2
+decimals; the 0.5·ATR allowance stays exact. A level that rounds to E is "at E" and ignored; a stop that rounds onto
+a level is on it, not beyond, and fails.
+
+Real examples from the six stored week-1 theses: JPM swing (entry limit 335.11, target 344.4) failed on raw floats
+because `hvn` 335.11379 counted as the next level above, so the target had to be ≤ 338.77; at cents that level is at E,
+the next level is `pivot_high` 344.4 and the thesis passes. XOM swing (entry 163.38, stop 160.11) passed on raw floats
+because its stop sat 0.0001 below `low_20` 160.1101 (and `hvn` 163.37702 counted as the nearest level below); at
+cents the hvn is at E, the nearest support is `low_20` 160.11 and the stop is on it, so it fails.
+
+P3 is unchanged: it compares only the entry (or the snapshot close), the stop and the invalidation, all quoted prices,
+and reads no level.

@@ -3,11 +3,15 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 
 from gigai_core.graders.protocol import CannotGrade
 from gigai_core.score import Score
+from pydantic import ValidationError
 
-from .analyze import ClaimsValid, validate_claims
+from . import checks, thesis as th
+from .analyze import ClaimsValid, snapshot_rows, validate_claims
+from .records import Analysis, Thesis
 
 
 GRADERS: dict[str, type] = {}
@@ -90,6 +94,94 @@ class InferencesGrounded:
             if extra := sorted(used - allowed):
                 ungrounded.append(f"{claim_id}: {', '.join(extra)}")
         return Score(value=0.0 if ungrounded else 1.0, explanation="; ".join(ungrounded) or None)
+
+
+def built_theses(sample, expected) -> tuple[Analysis, list[Thesis]]:
+    """The items of a thesis-run sample that build into a Thesis (`thesis.build`), with their analysis. A P2-P4 check
+    needs a whole thesis, so an item that does not build is not graded here (`theses_valid` counts it)."""
+    if sample.parse_status != "ok":
+        raise CannotGrade("output did not parse")
+    analysis = Analysis.model_validate_json(expected["analysis"])
+    written = th.Written(expected["arm"], sample.recorded_at, sample.trace_id, "grade", "unknown", "grade")
+    items = sample.output_parsed.get("theses") if isinstance(sample.output_parsed, dict) else None
+    built = []
+    for item in items if isinstance(items, list) else []:
+        try:
+            built.append(th.build(item, analysis, written))
+        except (ValidationError, KeyError, TypeError, ValueError):
+            continue
+    if not built:
+        raise CannotGrade("no item builds into a thesis")
+    return analysis, built
+
+
+def every_thesis(theses: list[Thesis], passes: Callable[[Thesis], bool]) -> Score:
+    """1 if every thesis passes, else 0 (binary, so compare uses McNemar); the explanation names the failing horizons."""
+    failed = [t.horizon for t in theses if not passes(t)]
+    return Score(value=0.0 if failed else 1.0, explanation=f"fails: {', '.join(failed)}" if failed else None)
+
+
+@grader
+class EvidenceValid:
+    """P2: every evidence id is a fact or inference whose numbers match the thesis prompt's source table.
+
+    Spec: evals/specs/p2_evidence_valid.md. The table is the snapshot rows only, so a fact citing only EDGAR fails.
+    """
+
+    id = "p2_evidence_valid"
+    version = "1"
+    kind = "code"
+
+    def grade(self, sample, expected) -> Score:
+        analysis, theses = built_theses(sample, expected)
+        values = {row.source_id: row.value for row in snapshot_rows(analysis.snapshot)[1]}
+        return every_thesis(theses, lambda t: checks.p2_evidence_valid(t, analysis.claims, values))
+
+
+@grader
+class InvalidationTestable:
+    """P3: the invalidation price lies between entry and stop. Spec: evals/specs/p3_invalidation_testable.md."""
+
+    id = "p3_invalidation_testable"
+    version = "1"
+    kind = "code"
+
+    def grade(self, sample, expected) -> Score:
+        analysis, theses = built_theses(sample, expected)
+        close = analysis.snapshot.values["close"]
+        return every_thesis(theses, lambda t: checks.p3_invalidation_testable(t, close))
+
+
+@grader
+class LevelsCoherent:
+    """P4: stop beyond the nearest level, target at or before the next one. Spec: evals/specs/p4_levels_coherent.md."""
+
+    id = "p4_levels_coherent"
+    version = "1"
+    kind = "code"
+
+    def grade(self, sample, expected) -> Score:
+        analysis, theses = built_theses(sample, expected)
+        snap = analysis.snapshot
+        return every_thesis(theses, lambda t: checks.p4_levels_coherent(t, snap.levels, snap.values["atr_14"],
+                                                                       snap.values["close"]))
+
+
+@grader
+class P1Judge:
+    """P1, did the mechanism in `reason` happen: a draft judge, registered but unvalidated (evals/specs/p1_judge.md).
+
+    Week 3 wraps gigai-core `llm_judge` with evals/rubrics/p1_thesis_quality.md on closed trades; `validated` turns
+    True only by an ADR that records kappa on the operator's labels (SPIKE §7.3).
+    """
+
+    id = "p1_judge"
+    version = "1"
+    kind = "model"
+    validated = False
+
+    def grade(self, sample, expected) -> Score:
+        raise CannotGrade("p1_judge is a draft: no model call until it runs on closed trades in week 3")
 
 
 def graders(names: list[str]) -> list:

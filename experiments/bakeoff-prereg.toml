@@ -1,0 +1,40 @@
+# The teacher bake-off's pre-registration (SPIKE §9.4, TRAINING-SPIKE §7.1): a gigai-core Prereg, committed before
+# bake-off session 1 and never edited afterwards. `tr bakeoff report` prints the inputs; the operator picks.
+# Load check: uv run python -c "from pathlib import Path; from tradingresearch import bakeoff;
+#             print(bakeoff.prereg(Path('experiments/bakeoff-prereg.toml')))"
+#
+# Teachers (pinned in teacher.py; prices per 1M tokens in/out on the pinned DeepInfra endpoint, TRAINING-SPIKE §7.1,
+# read 2026-11-16):
+#   deepseek/deepseek-v4-pro   deepinfra/fp8/flex   $1.04 / $2.08
+#   qwen/qwen3.5-397b-a17b     deepinfra/fp8/flex   $0.36 / $2.40
+#   openai/gpt-oss-120b        deepinfra/bf16       $0.037 / $0.17  (no flex endpoint)
+# Measured so far: one DeepSeek teacher analyze call, run_7d0a596b94a44095, $0.004119. No other teacher cost exists yet.
+#
+# Sessions: session 1 is the first NYSE session on or after 2026-11-17 (live-stream day 1) with a stored teacher
+# analysis; sessions 1-10 are the first 10 such sessions. The two teacher analyses stored for 2026-11-16 (AAPL, KO,
+# deepseek-v4-pro) were a pre-live end-to-end test, not drawn names, and are excluded by that start date.
+# TO-BE: bakeoff.plan() does not filter by date yet (it counts the first 10 sessions with any stored teacher
+# analysis, so today it would count 2026-11-16); a start-date filter is planned in a later packet.
+# Draws: tr daily has no teacher step yet. Each session's 4 names come from `tr bakeoff draw --session D` (seeded by
+# sha256 of the session date, not by screen rank), and each teacher runs on them with
+# `tr analyze TICKER --session D --arm teacher --teacher MODEL` then `tr thesis TICKER --session D --arm teacher
+# --teacher MODEL`. All three teachers run on the same 4 names: 40 paired ticker:session items per teacher in 10
+# session clusters (10 = gigai-core MIN_CLUSTERS).
+#
+# Pick rule:
+# 1. Eligible: on its 40 items, parse_ok >= 38/40 (an item parses when its analysis and a thesis-step decision are
+#    stored) and >= 90% of the fact claims it wrote pass the claim validators (incl. P2's rtol 0.5% value check).
+#    A teacher thesis that reconcile cannot settle (an error, not a terminal state) counts as a P3 failure.
+# 2. Leader: the eligible teacher with the highest p2_p4_pass point estimate (P2, P3 and P4 all true).
+# 3. Winner: the leader, unless a cheaper eligible teacher is within margin (0.10, i.e. <= 4 of 40 items) of it; then
+#    the cheapest such teacher wins. Ties go to the higher fact-claim validation share, then to the lower price.
+# 4. Reported, not used: paired cluster-bootstrap intervals and teacher_outcome R. With n = 40 the SE of a paired
+#    difference is about 0.12-0.17, so this is a decision procedure, not a significance test.
+
+primary_metric = "p2_p4_pass"
+guard_metric = "parse_ok"
+margin = 0.10
+n_planned = 40
+pass_rule = "eligible (parse_ok >= 38/40, fact claims valid >= 90%); leader on p2_p4_pass wins unless a cheaper eligible teacher is within margin, then the cheapest such; ties: higher claim-validation share, then lower price"
+hypothesis = "On the same 40 drawn items, at least one pinned open-weights teacher is eligible, and the cheapest eligible teacher's p2_p4_pass is within 0.10 of the leader's."
+registered_at = 2026-11-17T04:55:00Z

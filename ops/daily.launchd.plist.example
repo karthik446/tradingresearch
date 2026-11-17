@@ -5,7 +5,8 @@
 
   Install:
     1. Copy to ~/Library/LaunchAgents/com.tradingresearch.daily.plist.
-    2. Replace /path/to/tradingresearch (three times) with the repo path and /path/to/uv with `which uv`.
+    2. Replace /path/to/tradingresearch (three times) with the repo path, /path/to/uv with `which uv` and
+       /path/to/uv-folder with the folder that holds it. Create the folder data/logs/ (launchd does not).
 
   Time zone: launchd reads Hour/Minute in the Mac's own time zone. 16:30 is for a Mac set to New York time
   (after the 16:15 ET cutoff `tr daily` waits for). Elsewhere, convert 16:30 ET to local time, and mind the
@@ -28,6 +29,11 @@
     <string>tr</string>
     <string>daily</string>
   </array>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/path/to/uv-folder:/usr/bin:/bin:/usr/sbin:/sbin</string>
+  </dict>
   <key>StartCalendarInterval</key>
   <array>
     <dict><key>Weekday</key><integer>1</integer><key>Hour</key><integer>16</integer><key>Minute</key><integer>30</integer></dict>
@@ -35,10 +41,16 @@
     <dict><key>Weekday</key><integer>3</integer><key>Hour</key><integer>16</integer><key>Minute</key><integer>30</integer></dict>
     <dict><key>Weekday</key><integer>4</integer><key>Hour</key><integer>16</integer><key>Minute</key><integer>30</integer></dict>
     <dict><key>Weekday</key><integer>5</integer><key>Hour</key><integer>16</integer><key>Minute</key><integer>30</integer></dict>
+    <!-- catch-up: tr daily is idempotent per session, so a second run on a finished session spends $0 -->
+    <dict><key>Weekday</key><integer>1</integer><key>Hour</key><integer>21</integer><key>Minute</key><integer>0</integer></dict>
+    <dict><key>Weekday</key><integer>2</integer><key>Hour</key><integer>21</integer><key>Minute</key><integer>0</integer></dict>
+    <dict><key>Weekday</key><integer>3</integer><key>Hour</key><integer>21</integer><key>Minute</key><integer>0</integer></dict>
+    <dict><key>Weekday</key><integer>4</integer><key>Hour</key><integer>21</integer><key>Minute</key><integer>0</integer></dict>
+    <dict><key>Weekday</key><integer>5</integer><key>Hour</key><integer>21</integer><key>Minute</key><integer>0</integer></dict>
   </array>
   <key>StandardOutPath</key>
-  <string>/path/to/tradingresearch/data/daily.log</string>
+  <string>/path/to/tradingresearch/data/logs/daily.log</string>
   <key>StandardErrorPath</key>
-  <string>/path/to/tradingresearch/data/daily.log</string>
+  <string>/path/to/tradingresearch/data/logs/daily.log</string>
 </dict>
 </plist>
