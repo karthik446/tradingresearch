@@ -175,3 +175,36 @@ total                    61     191836       49432  $0.877992       6319 ms
 
 `--by arm` prints latency per call; the tools arm's 5,331 ms per call × 41 calls ÷ 20 items is the 10,929 ms per item
 above.
+
+## Week 5: context ablation
+
+One run of `experiments/context-ablation.toml` on 2026-11-17 under `TR_DATA_DIR=data-dev` (ADR-007 has the result
+and the decision): the same 20 ticker-days, analyze-3 on `anthropic/claude-sonnet-5.5`, one call per item, three arms
+that differ only in the SOURCES rows masked out of the request. All measured, from `tr usage` on that data directory;
+per-item latency is the item's model-call `latency_ms` in the trace.
+
+| Arm | Run id | Items | Model calls | Tokens in | Tokens out | Cost | Per item: tokens in / out, cost, latency |
+|---|---|---|---|---|---|---|---|
+| full | run_c32ea07781a54982 | 20 | 20 | 59,274 | 22,529 | $0.343838 | 2,963.7 / 1,126.45, $0.017192, 8,028.95 ms |
+| no-headlines | run_acb9119f015e4911 | 20 | 20 | 56,494 | 22,459 | $0.337578 | 2,824.7 / 1,122.95, $0.016879, 7,812.75 ms |
+| no-edgar | run_95536ffe7c5e4b78 | 20 | 20 | 48,630 | 21,061 | $0.307870 | 2,431.5 / 1,053.05, $0.015394, 7,434.85 ms |
+
+Each request differs from `full`'s only by the masked rows, so the per-item difference in input tokens is what those
+rows cost: headlines 139.0 tokens per item (4.69% of `full`'s input; 5.83% over the 16 days with headlines, 0 on the
+4 without), EDGAR 532.2 (17.96%, 471 to 550 on every day). analyze-3 `full` costs 1.3% more per item than week 4's
+analyze-1 fixed arm ($0.017192 against $0.016968) on 16.8% more input tokens (2,963.7 against 2,537.7). The three arms
+total $0.989286 in the traces.
+
+```
+$ TR_DATA_DIR=data-dev uv run tr usage --by arm
+arm                            calls  tokens in  tokens out       cost  mean latency
+context-ablation:full             20      59274       22529  $0.343838       8029 ms
+context-ablation:no-headlines     20      56494       22459  $0.337578       7813 ms
+context-ablation:no-edgar         20      48630       21061  $0.307870       7435 ms
+```
+
+(The same command also lists the two week-4 arms in that data directory; they are left out above.)
+
+The key's lifetime spend read $62.922903 before the run and $63.896139 at the last read after it (two reads several
+minutes apart agreed), a delta of $0.973236, $0.016050 below the trace total; earlier reads after the run were lower
+still ($63.643149, $63.741341). The key lags the traces, so the trace total, $0.989286, is the measured cost.
