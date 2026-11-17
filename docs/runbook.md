@@ -164,10 +164,32 @@ thesis call $0.003016 (G6c's fixture capture, 2026-11-17).
 ## Experiment arms: `mode`
 
 An arm may set `mode = "fixed"` (the default: the context goes in the prompt) or `mode = "tools"` (the model asks for
-context with tool calls, week 4). Any other value fails `tr exp run` at config load. Until the learner's tool loop
-exists, a `tools` arm stops `tr exp run` with `NotImplementedError: mode=tools: week 4 learner work` before the first
-model call; `tests/test_week4.py` then expects it to run through the loop, at most `analyze.MAX_TOOL_TURNS` calls per
-item. OpenRouter already carries the tools (fixtures `tests/fixtures/tools/`, `tests/fixtures/week4/`).
+context with tool calls, week 4). Any other value fails `tr exp run` at config load.
+
+**Tools mode.** The user turn holds only the ticker and session; the model asks for rows with `get_indicators`,
+`get_levels` and `get_fundamentals` (`src/tradingresearch/tools.py`, offline, over the same Context rows the fixed
+table shows). A bad call comes back to the model as `{"error": ...}`, never as a crash. The loop stops at the first
+reply without tool calls, or after `analyze.MAX_TOOL_TURNS` (5) calls with a failed sample (`max_tool_turns`), so
+nothing is stored for that item. The budget is planned on each item's first request and every later call is reserved;
+a refused reservation ends `tr exp run` with `BudgetExceeded`, as a fixed arm's does, and the trace keeps the items
+done so far. A tools arm takes code graders only (a model grader is refused before the first call). The trace
+(`data/traces/<run_id>.jsonl`) holds one `model_call` span per call, one `tool_call` span per tool call and the trial
+span last; `tool_calls_ok` scores 0 for a tool error, a repeated call or more than 6 calls, and 1.0 for an arm with no
+tool calls. `tr exp run` has no dry run; this prints a config's arms and graders with no call:
+
+```
+uv run python -c "from pathlib import Path; from tradingresearch import experiment as e; print(e.load(Path('experiments/tools-vs-fixed.toml')))"
+```
+
+## Provenance: the route
+
+`provider_route` on an analysis or thesis says which upstream served the call; the teacher terms filter and the
+fine-tuning set depend on it. `OpenRouter` logs the route of every call (`served`) under the exchange's first user
+turn, so all turns of a tool loop count: one route as is (`openrouter:DeepInfra`), turns from different routes
+`openrouter:mixed(Azure+Google)`, any turn with no provider `openrouter:unknown`. Each `routed()` arm keeps its own
+log. A `trainable` (teacher) record with an unknown or mixed route is refused (`records.clean_route`); a teacher run
+pinned to one host never hits this, so a refusal means the pin or the reply changed: look at the run's replies before
+rerunning.
 
 ## Labels (P1, blind)
 

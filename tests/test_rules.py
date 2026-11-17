@@ -96,16 +96,26 @@ def arm_theses(conn, arm: str) -> list[tuple[str, str]]:
 # ---------- the registry ----------
 
 def test_the_registry_ships_one_example_filter_and_one_example_prompt_variant():
-    assert all(ref.startswith("example-") for ref in rules.CHALLENGER_RULES)
-    kinds = sorted(type(rule).__name__ for rule in rules.CHALLENGER_RULES.values())
+    examples = {ref: rule for ref, rule in rules.CHALLENGER_RULES.items() if ref.startswith("example-")}
+    kinds = sorted(type(rule).__name__ for rule in examples.values())
     assert kinds == ["Filter", "PromptVariant"]
-    for ref, rule in rules.CHALLENGER_RULES.items():
+    for ref, rule in examples.items():
         assert rules.resolve(ref) is rule and rule.description.startswith("example")
     variant = rules.resolve("example-same-prompt")
     assert (an.PROMPTS_DIR / f"{variant.prompt}.txt").is_file()
     assert variant.prompt in json.loads(PROMPT_HASHES.read_text())  # locked by ci/gate.py like every prompt
     assert rules.prompt_of(variant) == variant.prompt
     assert rules.prompt_of(rules.resolve("example-breakout-volume")) == th.DEFAULT_PROMPT
+
+
+def test_the_proposed_entries_are_filters_on_the_champion_prompt():
+    """A real entry (week 4: rule-change-1) is a reviewed Filter, not an example, and keeps the champion prompt."""
+    proposed = {ref: rule for ref, rule in rules.CHALLENGER_RULES.items() if not ref.startswith("example-")}
+    assert "short-sma50-trend" in proposed
+    for ref, rule in proposed.items():
+        assert rules.resolve(ref) is rule and isinstance(rule, rules.Filter)
+        assert rule.description.strip() and not rule.description.startswith("example")
+        assert rules.prompt_of(rule) == th.DEFAULT_PROMPT
 
 
 def test_the_example_filter_drops_a_breakout_without_volume_before_the_store():

@@ -1,0 +1,16 @@
+# Week 4: the first RuleChange (SPIKE §8.2), pre-registered before any session it covers. Commit this file first,
+# then store it once: rules.register(conn, RuleChange.model_validate(tomllib.loads(text))). The challenger arm
+# answers every session that opens after registered_at; the decision comes after 20 paired sessions (week 9).
+change_id = "rc_1"
+description = "drop short-horizon theses against the 50-session trend (long below sma_50, short above)"
+diff_ref = "short-sma50-trend"
+decided = "pending"
+
+[prereg]
+primary_metric = "session_r_net_delta:short"
+pass_rule = "delta_ci_lower > 0"
+guard_metric = "p1_met_rate"
+margin = 0.10
+n_planned = 20
+registered_at = 2026-11-17T07:08:00Z
+hypothesis = "short-horizon theses that trade against the sma_50 trend lose R; dropping them raises per-session net R"

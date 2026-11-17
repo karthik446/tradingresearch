@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import re
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
@@ -10,8 +11,12 @@ from pathlib import Path
 
 import pandas as pd
 from gigai_core import CallBudget, CallSettings, Dataset, DatasetItem, run as run_eval, save_run
+from gigai_core.graders.builtin import parse_json_text
 from gigai_core.graders.protocol import CannotGrade
+from gigai_core.providers import ModelRequest, ProviderError, TokenUsage, ToolCall, Turn, request_sha256
+from gigai_core.sample import Sample
 from gigai_core.score import Score
+from gigai_core.trace import CallError, ListTrace, ModelCall, ModelSpan, ToolSpan, TraceSink, TrialSpan
 from pydantic import ValidationError
 from tokenizers import Tokenizer
 
@@ -360,6 +365,111 @@ def save(run, data_dir) -> Path:
     run_path.parent.mkdir(parents=True, exist_ok=True)
     save_run(run, run_path, inputs_by_reference=False)  # the prompt lives in the run file, not in a dataset file
     return run_path
+
+
+# ---------- tools mode (REPO-PLAN week 4 and §2.4 `mode = "tools"`) ----------
+
+MAX_TOOL_TURNS = 5  # model calls per item: up to 4 rounds of tool calls, then the answer
+
+
+def tools_prompt(ctx: Context) -> str:
+    """The tools-mode user turn: the ticker and session only, so every number the model cites came through a tool."""
+    return "\n".join([
+        f"TICKER: {ctx.ticker}", f"SESSION: {ctx.session.isoformat()} (the last completed NYSE session)", "",
+        "The SOURCES table is not included. Ask for the rows you need with the tools; every row they return "
+        "carries the source_id to cite.", "",
+        "Write the claims as JSON with the key \"claims\".",
+    ])
+
+
+def analyze_with_tools(ctx: Context, provider, *, model: str, prompt_version: str, max_turns: int = MAX_TOOL_TURNS,
+                       item: DatasetItem | None = None, run_id: str | None = None,
+                       trace: TraceSink | None = None) -> Sample:
+    """One ticker-day through the tool loop, as one gigai-core Sample.
+
+    Call with TOOLS, run every tool call and answer it as a `tool` turn, until a reply asks for no tool (that reply
+    is parsed) or `max_turns` calls went by (a failed sample). A ProviderError fails the sample as in core `run`; a
+    BudgetExceeded propagates. Each span goes to `trace` when it ends, the trial span last."""
+    from .tools import TOOLS  # tools.py imports this module
+    if max_turns < 1:
+        raise ValueError(f"max_turns must be at least 1, got {max_turns}")
+    item = item or item_for(ctx)
+    sink = trace if trace is not None else ListTrace()
+    trial_id, started = new_id("span"), datetime.now(UTC)
+    first = (Turn(role="system", content=system_prompt(prompt_version)), Turn(role="user", content=tools_prompt(ctx)))
+    turns = list(first)
+    spans: list[ModelSpan | ToolSpan] = []
+    text, error = "", None
+    for _ in range(max_turns):
+        span = _model_span(provider, ModelRequest(settings=call_settings(model), turns=tuple(turns), tools=TOOLS),
+                           trial_id)
+        sink.write(span)
+        spans.append(span)
+        if span.error is not None:
+            error = span.error
+            break
+        text = span.text
+        if not span.tool_calls:
+            break
+        turns.append(Turn(role="assistant", content=span.text, tool_calls=span.tool_calls))
+        for call in span.tool_calls:
+            tool_span, content = _tool_span(ctx, call, trial_id)
+            sink.write(tool_span)
+            spans.append(tool_span)
+            turns.append(Turn(role="tool", content=content, tool_call_id=call.id))
+    else:
+        error = CallError(code="max_tool_turns", message=f"no final reply after {max_turns} model calls",
+                          retryable=False)
+    parsed = parse_json_text(text) if error is None else None
+    completed = datetime.now(UTC)
+    outcome = "failed" if error is not None else "succeeded"
+    trial = TrialSpan(span_id=trial_id, turn=0, started_at=started, completed_at=completed, item_id=item.id,
+                      repeat_index=0, outcome=outcome, error=error)
+    sink.write(trial)
+    return Sample(trace_id=new_id("trace"), run_id=run_id or new_id("run"), item_id=item.id,
+                  item_version=item.version, cluster_id=item.cluster_id, repeat_index=0, input=first,
+                  output_text=text, output_parsed=parsed.value if parsed else None,
+                  parse_status=parsed.status if parsed else "not_parsed", outcome=outcome, error=error,
+                  spans=(trial, *spans), recorded_at=completed)
+
+
+def _model_span(provider, request: ModelRequest, parent_id: str) -> ModelSpan:
+    """One loop call as a ModelSpan; a ProviderError is kept in the span's `error` the way core `run` records it."""
+    started = datetime.now(UTC)
+    try:
+        result = provider.invoke(request)
+    except ProviderError as exc:
+        completed = datetime.now(UTC)
+        call = ModelCall(identity=provider.identity, target=None, settings=request.settings,
+                         resolved_model=request.settings.model,
+                         usage=TokenUsage(input_tokens=None, output_tokens=None, total_tokens=None), cost_usd=None,
+                         cost_status="unavailable",
+                         latency_ms=max(0, int((completed - started).total_seconds() * 1000)))
+        return ModelSpan(span_id=new_id("span"), parent_id=parent_id, turn=0, started_at=started,
+                         completed_at=completed, call=call, request_sha256=request_sha256(request),
+                         last_turn=request.turns[-1], text="", finish_reason="error",
+                         error=CallError(code=exc.code, message=str(exc), retryable=exc.retryable))
+    return ModelSpan(span_id=new_id("span"), parent_id=parent_id, turn=0, started_at=started,
+                     completed_at=datetime.now(UTC), call=ModelCall.of(request, result, provider.identity),
+                     request_sha256=request_sha256(request), last_turn=request.turns[-1], text=result.text,
+                     finish_reason=result.finish_reason, tool_calls=result.tool_calls)
+
+
+def _tool_span(ctx: Context, call: ToolCall, parent_id: str) -> tuple[ToolSpan, str]:
+    """Run one tool call; the span and the text sent back. A crash in the tool is recorded, not raised (ToolSpan)."""
+    from .tools import run_tool
+    started = datetime.now(UTC)
+    error = None
+    try:
+        content = run_tool(ctx, call.name, call.arguments)
+    except Exception as exc:  # noqa: BLE001 - core's ToolSpan contract: the loop records a tool crash and goes on
+        error = CallError(code="tool_exception", message=f"{type(exc).__name__}: {exc}", retryable=False)
+        content = json.dumps({"error": f"{call.name} failed inside the tool ({type(exc).__name__})"})
+    completed = datetime.now(UTC)
+    span = ToolSpan(span_id=new_id("span"), parent_id=parent_id, turn=0, started_at=started, completed_at=completed,
+                    call=call, result=json.loads(content), error=error,
+                    latency_ms=max(0, int((completed - started).total_seconds() * 1000)))
+    return span, content
 
 
 def analyze(conn, ctx: Context, provider, *, model: str, max_usd: float, prices: dict, data_dir,

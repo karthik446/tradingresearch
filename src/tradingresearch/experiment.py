@@ -11,15 +11,23 @@ from __future__ import annotations
 
 import tomllib
 from dataclasses import dataclass
-from datetime import date
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 from gigai_core import CallBudget, Dataset, DatasetItem, Run, compare
 from gigai_core import run as run_eval
+from gigai_core.budget import budgeted
+from gigai_core.graders.protocol import CannotGrade, Grader
+from gigai_core.providers import ModelRequest, Turn
+from gigai_core.records import RunRecord
+from gigai_core.sample import Sample
+from gigai_core.score import ScoreRecord
 from gigai_core.stats.intervals import MIN_CLUSTERS
+from gigai_core.trace import JsonlTrace
 
 from . import analyze as an
 from .evals import graders as registry
+from .hashing import new_id
 from .openrouter import Routing
 
 REQUIRED = ("name", "model", "max_usd_per_arm", "tickers", "sessions", "graders", "arms")
@@ -104,27 +112,86 @@ class ArmResult:
 def run_arms(conn, config: Config, contexts: list[an.Context], provider, prices: dict, data_dir: Path
              ) -> list[ArmResult]:
     """One run per arm on one Dataset. Each parsed sample is also stored as an Analysis, so `tr check` reads it."""
-    if any(arm.mode == "tools" for arm in config.arms):  # before the first arm, so no call is made
-        raise NotImplementedError("mode=tools: week 4 learner work")
+    graders = registry(list(config.graders))
+    judges = [g.id for g in graders if g.kind != "code"]
+    if judges and any(arm.mode == "tools" for arm in config.arms):  # before the first arm, so no call is made
+        raise SystemExit(f"{config.name}: a tools arm grades with code graders only, not {', '.join(judges)}")
     dataset = Dataset.of(config.name, items(config, contexts))
     by_item = {f"{ctx.ticker}:{ctx.session}": ctx for ctx in contexts}
     results = []
     for arm in config.arms:
         routed = provider.routed(arm.provider) if arm.provider else provider
-        run = run_eval(dataset, routed, registry(list(config.graders)), settings=an.call_settings(arm.model),
-                       budget=CallBudget(max_usd=config.max_usd_per_arm, prices=prices),
-                       system=an.system_prompt(arm.prompt), trace_dir=data_dir / "traces",
-                       tag=f"{config.name}:{arm.name}:{arm.prompt}")
+        if arm.mode == "tools":
+            run = run_tools(config, arm, dataset, by_item, routed, graders, prices, data_dir)
+        else:
+            run = run_eval(dataset, routed, graders, settings=an.call_settings(arm.model),
+                           budget=CallBudget(max_usd=config.max_usd_per_arm, prices=prices),
+                           system=an.system_prompt(arm.prompt), trace_dir=data_dir / "traces",
+                           tag=f"{config.name}:{arm.name}:{arm.prompt}")
         path = an.save(run, data_dir)
         stored = 0
         for sample in run.samples:
             if sample.parse_status == "ok":
                 ctx = by_item[sample.item_id]
+                # the route of the exchange's first user turn: the item's prompt, or in tools mode the tools prompt
+                first_user = an.tools_prompt(ctx) if arm.mode == "tools" else run.items[sample.item_id].prompt
                 an.store(conn, ctx, sample, run.record.run_id, model=arm.model, prompt_version=arm.prompt,
-                         route=routed.route_for(run.items[sample.item_id].prompt))
+                         route=routed.route_for(first_user))
                 stored += 1
         results.append(ArmResult(arm, run, path, stored))
     return results
+
+
+def run_tools(config: Config, arm: Arm, dataset: Dataset, by_item: dict[str, an.Context], provider,
+              graders: list[Grader], prices: dict, data_dir: Path) -> Run:
+    """A `mode = "tools"` arm as a gigai-core Run: core `run` asks once per item, so the tool loop runs here.
+
+    Same contract as core `run`: the budget is planned on every item's first request before any call and every call
+    is reserved; one trace file per run; code graders score each succeeded sample; `CannotGrade` leaves no score."""
+    from .tools import TOOLS
+    budget = CallBudget(max_usd=config.max_usd_per_arm, prices=prices)
+    system = Turn(role="system", content=an.system_prompt(arm.prompt))
+    settings = an.call_settings(arm.model)
+    budget.plan([ModelRequest(settings=settings, tools=TOOLS,
+                              turns=(system, Turn(role="user", content=an.tools_prompt(by_item[item.id]))))
+                 for item in dataset.items])
+    run_id, created_at = new_id("run"), datetime.now(UTC)
+    (data_dir / "traces").mkdir(parents=True, exist_ok=True)
+    trace = JsonlTrace(data_dir / "traces" / f"{run_id}.jsonl")
+    subject = budgeted(provider, budget)
+    samples: list[Sample] = []
+    scores: list[ScoreRecord] = []
+    try:
+        for item in dataset.items:
+            sample = an.analyze_with_tools(by_item[item.id], subject, model=arm.model, prompt_version=arm.prompt,
+                                           item=item, run_id=run_id, trace=trace)
+            samples.append(sample)
+            if sample.outcome == "succeeded":
+                scores.extend(graded(sample, item, graders))
+    finally:
+        trace.close()
+    calls = [span.call for sample in samples for span in sample.model_spans]
+    record = RunRecord(run_id=run_id, dataset=dataset.ref, settings=settings, provider=provider.identity,
+                       created_at=created_at, completed_at=datetime.now(UTC), prereg=None, trace_path=trace.path,
+                       spent_usd=round(sum(call.cost_usd or 0.0 for call in calls), 6), calls_made=len(calls),
+                       repeats=1, tag=f"{config.name}:{arm.name}:{arm.prompt}")
+    return Run(record=record, items={item.id: item for item in dataset.items}, samples=tuple(samples),
+               scores=tuple(scores))
+
+
+def graded(sample: Sample, item: DatasetItem, graders: list[Grader]) -> list[ScoreRecord]:
+    """Each code grader's score of one sample as core `run` stores it; `CannotGrade` means no score for that grader."""
+    found = []
+    for grader in graders:
+        try:
+            score = grader.grade(sample, item.expected)
+        except CannotGrade:
+            continue
+        found.append(ScoreRecord(score_id=new_id("score"), trace_id=sample.trace_id, grader_id=grader.id,
+                                 grader_version=grader.version, kind=grader.kind, value=score.value,
+                                 explanation=score.explanation, judge_model=None, judge_prompt_sha256=None,
+                                 position_swapped=None, judge_span_ids=(), recorded_at=datetime.now(UTC)))
+    return found
 
 
 def items(config: Config, contexts: list[an.Context]) -> list[DatasetItem]:

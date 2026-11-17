@@ -1,0 +1,19 @@
+# Week 4: does analyze with tools (the model asks for rows) beat the fixed context on the same 20 ticker-days?
+# Pre-registered before the run (ADR-005): primary metric all_claims_valid; guard metric parsed must not drop.
+# Also read from the runs: tool_calls_ok, tokens, cost, latency and tool calls per item from the traces.
+name = "tools-vs-fixed"
+model = "anthropic/claude-sonnet-5.5"
+max_usd_per_arm = 1.00
+tickers = ["AAPL", "MSFT", "NVDA", "AMZN", "JPM", "XOM", "UNH", "HD", "KO", "CAT"]
+sessions = ["2026-11-12", "2026-11-13"]
+graders = ["parsed", "claims_valid", "all_claims_valid", "inferences_grounded", "tool_calls_ok"]
+
+[[arms]]
+name = "fixed"
+prompt = "analyze-1"
+mode = "fixed"
+
+[[arms]]
+name = "tools"
+prompt = "analyze-1"
+mode = "tools"

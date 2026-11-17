@@ -6,6 +6,7 @@ from `tr grade --judge`, not from an experiment config.
 
 from __future__ import annotations
 
+import json
 import re
 import sqlite3
 from collections.abc import Callable
@@ -27,6 +28,7 @@ from .analyze import ClaimsValid, snapshot_rows, validate_claims
 from .hashing import new_id
 from .reconcile_run import BarSource
 from .records import Analysis, Thesis
+from .tools import TOOLS
 
 RUBRICS = Path(__file__).resolve().parents[2] / "evals" / "rubrics"
 JUDGE_MODEL = "openai/gpt-6-sol"  # ADR-003: a different vendor from the thesis writer
@@ -113,6 +115,52 @@ class InferencesGrounded:
             if extra := sorted(used - allowed):
                 ungrounded.append(f"{claim_id}: {', '.join(extra)}")
         return Score(value=0.0 if ungrounded else 1.0, explanation="; ".join(ungrounded) or None)
+
+
+@grader
+class ToolCallsOk:
+    """1 if the tool loop used its tools cleanly, else 0 with the first fault: tool_error, repeated_call or
+    too_many_calls. No tool calls (the fixed arm) is 1.0, so `compare` does not drop the grader for a missing arm."""
+
+    id = "tool_calls_ok"
+    version = "1"
+    kind = "code"
+    max_calls = 2 * len(TOOLS)  # every tool once plus one follow-up each; more is a loop, not a lookup
+
+    def grade(self, sample, expected) -> Score:
+        spans = sample.tool_spans
+        if not spans:
+            return Score(value=1.0, explanation="no tool calls")
+        seen: set[tuple[str, str]] = set()
+        for span in spans:
+            name = span.call.name
+            if span.error is not None or _is_error(span.result):
+                return Score(value=0.0, explanation=f"tool_error: {name} {span.call.arguments}")
+            key = (name, _canonical(span.call.arguments))
+            if key in seen:
+                return Score(value=0.0, explanation=f"repeated_call: {name} {span.call.arguments}")
+            seen.add(key)
+        if len(spans) > self.max_calls:
+            return Score(value=0.0, explanation=f"too_many_calls: {len(spans)} > {self.max_calls}")
+        return Score(value=1.0, explanation=f"{len(spans)} tool calls")
+
+
+def _is_error(result: object) -> bool:
+    """A tool result that is an {"error": ...} object, stored as parsed JSON or as the JSON text sent back."""
+    if isinstance(result, str):
+        try:
+            result = json.loads(result)
+        except json.JSONDecodeError:
+            return False
+    return isinstance(result, dict) and "error" in result
+
+
+def _canonical(arguments: str) -> str:
+    """Arguments with key order and spacing normalised, so the same request written twice counts as a repeat."""
+    try:
+        return json.dumps(json.loads(arguments), sort_keys=True)
+    except json.JSONDecodeError:
+        return arguments
 
 
 def built_theses(sample, expected) -> tuple[Analysis, list[Thesis]]:

@@ -48,9 +48,23 @@ def breakout_needs_volume(t: Thesis, a: Analysis) -> str | None:
     return None
 
 
+def short_with_sma50_trend(t: Thesis, a: Analysis) -> str | None:
+    """rule-change-1: a short-horizon thesis trades with the 50-session trend (long above sma_50, short below)."""
+    if t.horizon != "short":
+        return None
+    dist = a.snapshot.values.get("dist_sma_50_atr")
+    if dist is None:
+        return "short horizon needs dist_sma_50_atr to check the trend, got None"
+    if (t.direction == "long" and dist < 0) or (t.direction == "short" and dist > 0):
+        return f"short-horizon {t.direction} against the sma_50 trend (dist_sma_50_atr {dist:.2f})"
+    return None
+
+
 CHALLENGER_RULES: dict[str, Rule] = {
     "example-breakout-volume": Filter("example: drop breakout_20d theses with rel_volume < 1.5", breakout_needs_volume),
     "example-same-prompt": PromptVariant("example: the champion's own prompt, an A/A check of the pairing", "thesis-1"),
+    "short-sma50-trend": Filter("drop short-horizon theses against the 50-session trend (long below sma_50, short "
+                                "above)", short_with_sma50_trend),
 }
 
 
