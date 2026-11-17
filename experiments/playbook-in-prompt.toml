@@ -1,0 +1,19 @@
+# Week 5 plumbing (G12c): the recording config for prompts/thesis-2 (the playbook block in the thesis prompt).
+# ci/gate.py records a prompt only when an experiment arm names it; this file is that record. Not run, not
+# pre-registered: `tr experiment` runs analyze arms, while thesis-2 runs through thesis.thesis(prompt_version=
+# "thesis-2"), e.g. a challenger RuleChange with PromptVariant("thesis-2") registered by the learner (rules.py).
+# The block is computed from the journal as of the analysed session (playbook.prompt_block); no arm fetches.
+name = "playbook-in-prompt"
+model = "anthropic/claude-sonnet-5.5"
+max_usd_per_arm = 1.00
+tickers = ["AAPL", "MSFT", "NVDA", "AMZN", "JPM", "XOM", "UNH", "HD", "KO", "CAT"]
+sessions = ["2026-11-16"]
+graders = ["parsed"]
+
+[[arms]]
+name = "champion"
+prompt = "thesis-1"
+
+[[arms]]
+name = "playbook-in-prompt"
+prompt = "thesis-2"

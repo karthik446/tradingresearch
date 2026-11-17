@@ -69,10 +69,10 @@ def test_new_prompt_with_an_arm_fails_until_recorded(tmp_path, capsys):
 
 def test_baseline_only_for_a_first_prompt(tmp_path):
     root = layout(tmp_path)
-    (root / "prompts" / "thesis-2.txt").write_text("A second thesis prompt.\n")
-    assert "thesis-2.txt" in gate.record_prompts(root)[0]  # no arm and not *-1: nothing to record it under
+    (root / "prompts" / "thesis-9.txt").write_text("A second thesis prompt.\n")
+    assert "thesis-9.txt" in gate.record_prompts(root)[0]  # no arm and not *-1: nothing to record it under
     hashes = json.loads((root / gate.HASHES).read_text())
-    hashes["thesis-2"] = {"experiment": "baseline", "sha256": gate._sha256(root / "prompts" / "thesis-2.txt")}
+    hashes["thesis-9"] = {"experiment": "baseline", "sha256": gate._sha256(root / "prompts" / "thesis-9.txt")}
     (root / gate.HASHES).write_text(json.dumps(hashes))
     assert "does not justify it" in gate.check_prompts(root)[0]
 

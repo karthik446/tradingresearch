@@ -1,5 +1,6 @@
 """`tr thesis`: one stored Analysis becomes 0–3 theses (one per horizon) or NoTrade rows; code checks every thesis
-against the SPIKE §1.1 Thesis rules and the §6.6 stop floor before anything is written (SPIKE §6.2, §6.7, P5)."""
+against the SPIKE §1.1 Thesis rules and the §6.6 stop floor before anything is written (SPIKE §6.2, §6.7, P5).
+The thesis-2 prompt also shows the playbook (SPIKE §8.1) as computed sources a thesis may cite in `playbook`."""
 
 from __future__ import annotations
 
@@ -7,6 +8,7 @@ import sqlite3
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, time
+from typing import TYPE_CHECKING
 
 import pandas as pd
 from gigai_core import CallBudget, CallSettings, Dataset, DatasetItem, run as run_eval
@@ -16,9 +18,14 @@ from pydantic import ValidationError
 
 from . import analyze as an, journal, sessions
 from .hashing import digest, new_id
-from .records import HOLD_RANGE, RULES_VERSION, Analysis, EntryRule, Event, NoTrade, SetupType, Thesis, clean_route
+from .records import (HOLD_RANGE, RULES_VERSION, Analysis, EntryRule, Event, NoTrade, SetupType, SourceRef, Thesis,
+                      clean_route)
+
+if TYPE_CHECKING:
+    from .playbook import Playbook
 
 DEFAULT_PROMPT = "thesis-1"
+PLAYBOOK_PROMPTS = ("thesis-2",)  # prompts whose user turn ends with the PLAYBOOK block
 DEFAULT_MODEL = "anthropic/claude-sonnet-5.5"  # SPIKE §9.1, thesis row
 HORIZONS = ("day", "short", "swing")
 STOP_FLOOR_BPS = 50.0  # SPIKE §6.6: a stop closer than this, or than 0.25·ATR14, is rejected
@@ -63,6 +70,13 @@ OUTPUT_SCHEMA = {
         },
     },
 }
+PLAYBOOK_ITEM = {  # thesis-2: playbook row ids go here, never in `evidence` (P2 reads evidence as analysis claims)
+    **THESIS_ITEM,
+    "required": [*THESIS_ITEM["required"], "playbook"],
+    "properties": {**THESIS_ITEM["properties"], "playbook": {"type": "array", "items": {"type": "string"}}},
+}
+PLAYBOOK_SCHEMA = {**OUTPUT_SCHEMA,
+                   "properties": {**OUTPUT_SCHEMA["properties"], "theses": {"type": "array", "items": PLAYBOOK_ITEM}}}
 
 
 @dataclass(frozen=True)
@@ -120,7 +134,8 @@ def stop_floor(analysis: Analysis, entry: float) -> float:
     return max(entry * STOP_FLOOR_BPS / 10_000, STOP_FLOOR_ATR * analysis.snapshot.values["atr_14"])
 
 
-def check_thesis(item: dict, analysis: Analysis, written: Written) -> tuple[str, str] | None:
+def check_thesis(item: dict, analysis: Analysis, written: Written,
+                 playbook_ids: frozenset[str] | None = None) -> tuple[str, str] | None:
     """The first broken Thesis rule as (reason, detail), or None. Rules the record checks alone are re-checked here
     so each failure gets its own reason in the run output."""
     if (written.arm == "teacher") != (analysis.arm == "teacher"):  # rule 6
@@ -134,6 +149,10 @@ def check_thesis(item: dict, analysis: Analysis, written: Written) -> tuple[str,
         return "unknown_evidence", f"not a claim of {analysis.analysis_id}: {', '.join(unknown)}"
     if all(claims[e].tag == "opinion" for e in evidence):  # rule 2
         return "opinion_only_evidence", "evidence needs at least one fact or inference claim"
+    if playbook_ids is not None:  # thesis-2: a cited playbook row must be one the block showed
+        invented = [p for p in item["playbook"] if p not in playbook_ids]
+        if invented:
+            return "unknown_playbook_row", f"not a row of the PLAYBOOK block: {', '.join(map(str, invented))}"
     horizon, direction, hold = item["horizon"], item["direction"], item["hold_sessions"]
     lo, hi = HOLD_RANGE[horizon]
     if not (isinstance(hold, int) and lo <= hold <= hi):  # rule 3
@@ -183,8 +202,10 @@ def horizon_problem(horizon: str, asked: tuple[str, ...], seen: set[str]) -> tup
     return None
 
 
-def validate(raw: object, analysis: Analysis, asked: tuple[str, ...], written: Written) -> Checked:
-    """Every reply item becomes a Thesis, a NoTrade or a Rejection with a reason; nothing is dropped silently."""
+def validate(raw: object, analysis: Analysis, asked: tuple[str, ...], written: Written,
+             playbook_ids: frozenset[str] | None = None) -> Checked:
+    """Every reply item becomes a Thesis, a NoTrade or a Rejection with a reason; nothing is dropped silently.
+    `playbook_ids` are the PLAYBOOK block's source ids for a thesis-2 reply, None for a prompt without the block."""
     out = Checked([], [], [])
     if not (isinstance(raw, dict) and isinstance(raw.get("theses"), list) and isinstance(raw.get("no_trade"), list)):
         out.rejected.append(Rejection("-", "not_json_theses", "output needs 'theses' and 'no_trade' lists"))
@@ -196,7 +217,7 @@ def validate(raw: object, analysis: Analysis, asked: tuple[str, ...], written: W
         seen.add(horizon)
         if problem is None:
             try:
-                problem = check_thesis(item, analysis, written)
+                problem = check_thesis(item, analysis, written, playbook_ids)
                 if problem is None:
                     out.theses.append(build(item, analysis, written))
             except (ValidationError, KeyError, TypeError, ValueError) as exc:
@@ -229,7 +250,9 @@ class ThesesValid:
             raise CannotGrade("output did not parse")
         analysis = Analysis.model_validate_json(expected["analysis"])
         written = Written(expected["arm"], sample.recorded_at, sample.trace_id, "grade", "unknown", "grade")
-        checked = validate(sample.output_parsed, analysis, tuple(expected["horizons"]), written)
+        ids = expected.get("playbook")  # present only for a thesis-2 item
+        checked = validate(sample.output_parsed, analysis, tuple(expected["horizons"]), written,
+                           None if ids is None else frozenset(ids))
         failed = [r for r in checked.rejected if r.reason != "horizon_missing"]
         total = len(checked.theses) + len(failed)
         why = "; ".join(f"{r.horizon} {r.reason}: {r.detail}" for r in checked.rejected)
@@ -245,7 +268,8 @@ def source_block(analysis: Analysis) -> str:
     return an.render(ctx).rsplit("\n\n", 1)[0]  # drop analyze's closing instruction
 
 
-def render(analysis: Analysis, asked: tuple[str, ...]) -> str:
+def render(analysis: Analysis, asked: tuple[str, ...], playbook_block: str | None = None) -> str:
+    """The thesis user turn; a thesis-2 call gets the PLAYBOOK block after the horizons, before the closing line."""
     close, atr = analysis.snapshot.values["close"], analysis.snapshot.values["atr_14"]
     lines = [source_block(analysis), "", "CLAIMS (claim_id | tag | text | cites)"]
     for c in analysis.claims:
@@ -261,13 +285,30 @@ def render(analysis: Analysis, asked: tuple[str, ...]) -> str:
         lo, hi = HOLD_RANGE[horizon]
         lines.append(f"{horizon}: entry window {start.astimezone(sessions.NY):%Y-%m-%d %H:%M} to "
                      f"{end.astimezone(sessions.NY):%Y-%m-%d %H:%M} ET, hold_sessions {lo}-{hi}")
+    if playbook_block is not None:
+        lines += ["", playbook_block]
     lines += ["", "Write the JSON with the keys \"theses\" and \"no_trade\"."]
     return "\n".join(lines)
 
 
-def input_hash(analysis: Analysis, asked: tuple[str, ...], prompt_version: str) -> str:
-    return digest({"analysis_id": analysis.analysis_id, "analysis_input": analysis.input_hash,
-                   "horizons": list(asked), "prompt_version": prompt_version})
+def input_hash(analysis: Analysis, asked: tuple[str, ...], prompt_version: str,
+               playbook_digest: str | None = None) -> str:
+    """The playbook digest joins only when a block was shown, so every thesis-1 hash is unchanged."""
+    fields = {"analysis_id": analysis.analysis_id, "analysis_input": analysis.input_hash,
+              "horizons": list(asked), "prompt_version": prompt_version}
+    return digest(fields if playbook_digest is None else {**fields, "playbook": playbook_digest})
+
+
+def playbook_for(conn: sqlite3.Connection, analysis: Analysis, prompt_version: str,
+                 playbook: Playbook | None) -> tuple[str, list[SourceRef]] | None:
+    """The PLAYBOOK block and its sources for a thesis-2 call: the given playbook, else the champion's as of the
+    analysed session (what was closed by then). None for a prompt without the block, which refuses a playbook."""
+    if prompt_version not in PLAYBOOK_PROMPTS:
+        if playbook is not None:
+            raise ValueError(f"prompt {prompt_version} shows no playbook (only {', '.join(PLAYBOOK_PROMPTS)} do)")
+        return None
+    from . import playbook as pb  # imported here: playbook -> report -> daily -> thesis is an import cycle
+    return pb.prompt_block(playbook if playbook is not None else pb.compute(conn, analysis.session))
 
 
 # ---------- the command ----------
@@ -280,15 +321,21 @@ class Result:
     trace_path: str
 
 
-def call_settings(model: str) -> CallSettings:
-    return CallSettings(model=model, max_output_tokens=3000, output_mode="schema", json_schema=OUTPUT_SCHEMA)
+def call_settings(model: str, prompt_version: str = DEFAULT_PROMPT) -> CallSettings:
+    schema = PLAYBOOK_SCHEMA if prompt_version in PLAYBOOK_PROMPTS else OUTPUT_SCHEMA
+    return CallSettings(model=model, max_output_tokens=3000, output_mode="schema", json_schema=schema)
 
 
-def item_for(analysis: Analysis, asked: tuple[str, ...], arm: str) -> DatasetItem:
-    """One analysis as a gigai-core dataset item; `expected` holds what ThesesValid needs to re-run the checks."""
+def item_for(analysis: Analysis, asked: tuple[str, ...], arm: str,
+             playbook: tuple[str, list[SourceRef]] | None = None) -> DatasetItem:
+    """One analysis as a gigai-core dataset item; `expected` holds what ThesesValid needs to re-run the checks
+    (the playbook ids only when the block is shown, so a thesis-1 item is unchanged)."""
+    expected = {"analysis": analysis.model_dump_json(), "horizons": list(asked), "arm": arm}
+    if playbook is not None:
+        expected["playbook"] = [s.source_id for s in playbook[1]]
     return DatasetItem(id=f"{analysis.ticker}:{analysis.session}:{arm}", cluster_id=analysis.ticker,
-                       prompt=render(analysis, asked), tags=(analysis.ticker, arm),
-                       expected={"analysis": analysis.model_dump_json(), "horizons": list(asked), "arm": arm})
+                       prompt=render(analysis, asked, None if playbook is None else playbook[0]),
+                       tags=(analysis.ticker, arm), expected=expected)
 
 
 def terms_class(model: str) -> str:
@@ -313,11 +360,15 @@ def store(conn: sqlite3.Connection, checked: Checked) -> Checked:
 
 def thesis(conn: sqlite3.Connection, analysis: Analysis, provider, *, asked: tuple[str, ...], arm: str, model: str,
            max_usd: float, prices: dict, data_dir, prompt_version: str = DEFAULT_PROMPT,
-           terms: str | None = None, post: Callable[[Checked], Checked] | None = None) -> Result:
+           terms: str | None = None, post: Callable[[Checked], Checked] | None = None,
+           playbook: Playbook | None = None) -> Result:
     """One model call, checked and stored; `terms` None means `terms_class(model)`, the teacher arm passes trainable.
-    `post` is a challenger rule's filter (rules.py), applied before the store because stored theses never go away."""
-    item = item_for(analysis, asked, arm)
-    run = run_eval(Dataset.of("thesis", [item]), provider, [ThesesValid()], settings=call_settings(model),
+    `post` is a challenger rule's filter (rules.py), applied before the store because stored theses never go away.
+    `playbook` is for thesis-2 only (default: computed from the journal, see `playbook_for`)."""
+    shown = playbook_for(conn, analysis, prompt_version, playbook)
+    item = item_for(analysis, asked, arm, shown)
+    run = run_eval(Dataset.of("thesis", [item]), provider, [ThesesValid()],
+                   settings=call_settings(model, prompt_version),
                    budget=CallBudget(max_usd=max_usd, prices=prices), system=an.system_prompt(prompt_version),
                    trace_dir=data_dir / "traces", tag=prompt_version)
     run_path = an.save(run, data_dir)
@@ -328,7 +379,8 @@ def thesis(conn: sqlite3.Connection, analysis: Analysis, provider, *, asked: tup
     if (terms or terms_class(model)) == "trainable" and not clean_route(route):
         raise SystemExit(f"route lost provenance ({route}): a trainable thesis needs one known provider ({run_path})")
     written = Written(arm, datetime.now(UTC), sample.trace_id, route, terms or terms_class(model),
-                      input_hash(analysis, asked, prompt_version))
-    checked = validate(sample.output_parsed, analysis, asked, written)
+                      input_hash(analysis, asked, prompt_version, None if shown is None else digest(shown[0])))
+    ids = None if shown is None else frozenset(s.source_id for s in shown[1])
+    checked = validate(sample.output_parsed, analysis, asked, written, ids)
     checked = store(conn, checked if post is None else post(checked))
     return Result(checked, run.record.spent_usd, str(run_path), str(run.record.trace_path))

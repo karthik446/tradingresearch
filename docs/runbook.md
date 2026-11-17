@@ -273,6 +273,18 @@ uv run tr learn --decide CHANGE_ID  # applies SPIKE §8.3; writes adopted/reject
   pairs stop there (rerun `tr daily` to retry); after that it is left out for good, the list goes on past it, and
   `--status` prints `left out N, the challenger never answered: <dates>`.
 
+## Playbook in the thesis prompt
+
+`thesis-2` (the only prompt in `thesis.PLAYBOOK_PROMPTS`) is thesis-1 plus a PLAYBOOK block after the horizons: the
+champion playbook as of the analysed session (`playbook.prompt_block`), one row per (horizon, setup_type) with n ≥ 5,
+each a computed source `pb_<digest> | short | breakout_20d | 5 | 3/5 = 60.0% [..] | ...`; cells with n < 5 are one
+`insufficient (n < 5, no rate shown)` line with no id, and no closed trade is one `PLAYBOOK: no closed trades yet`
+line. A thesis cites rows in its own `playbook` list, never in `evidence` (P2 reads evidence as claims); an id not in
+the block rejects the thesis (`unknown_playbook_row`). The block's digest joins the thesis `input_hash`; the cited ids
+stay in the trace (not stored on the thesis). thesis-1 and `tr daily` are unchanged; a challenger runs thesis-2 only
+through a registered `PromptVariant("thesis-2")` rule (none is in `rules.CHALLENGER_RULES` yet).
+`experiments/playbook-in-prompt.toml` only records the prompt for `ci/gate.py`.
+
 ## Week 3 acceptance
 
 `uv run pytest tests/test_week3.py -q` is the week-3 contract: it passes when the P1 judge, `tr grade --judge`,

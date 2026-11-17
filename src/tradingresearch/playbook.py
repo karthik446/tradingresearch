@@ -1,8 +1,9 @@
 """The playbook (SPIKE §8.1): code-computed statistics per (horizon, setup_type) over graded theses of one arm, the
-table `tr learn` prints and week 5 puts into the thesis prompt as computed facts. Reuses the `tr report` statistics
-(Wilson, session-cluster bootstrap, P1 sources); no model call, no network.
+table `tr learn` prints and the thesis-2 prompt shows as computed facts (`prompt_block`). Reuses the `tr report`
+statistics (Wilson, session-cluster bootstrap, P1 sources); no model call, no network.
 
 Cells with fewer than THIN closed trades are flagged, never hidden: a 5-trade cell is where in-sample lessons overfit.
+In the prompt such a cell is "insufficient": its n is shown, never a rate.
 """
 
 from __future__ import annotations
@@ -13,10 +14,11 @@ from dataclasses import dataclass
 from datetime import date
 from typing import get_args
 
-from gigai_core.stats import ClusterBootstrap, WilsonInterval, wilson_interval
+from gigai_core.stats import MIN_CLUSTERS, ClusterBootstrap, WilsonInterval, wilson_interval
 
 from . import journal, report, sessions
-from .records import SetupType, Thesis
+from .hashing import digest
+from .records import SetupType, SourceRef, Thesis
 
 THIN = 5  # n below this is flagged `thin`
 SOURCE_URI = "tradingresearch:playbook.py#compute"
@@ -142,3 +144,50 @@ def as_facts(playbook: Playbook) -> list[dict]:
             "median_mfe_r": row.median_mfe, "median_mae_r": row.median_mae,
         })
     return facts
+
+
+def row_source(playbook: Playbook, row: Row, fact: dict) -> SourceRef:
+    """A cell as a computed source: the id is the digest of its computed values, so a thesis can cite exactly it.
+    `retrieved_at` is the as-of session close, so the same rows give the same SourceRef."""
+    content = digest(fact)
+    return SourceRef(
+        source_id="pb_" + content.removeprefix("sha256:")[:16], kind="computed",
+        uri=f"{SOURCE_URI}?arm={playbook.arm}&session={playbook.session}&horizon={row.horizon}"
+            f"&setup_type={row.setup_type}",
+        retrieved_at=sessions.open_close(playbook.session)[1], content_sha256=content, feed=None,
+        licence_note="computed by tradingresearch from its own graded theses",
+    )
+
+
+def prompt_row(row: Row, source_id: str) -> str:
+    w, ci, delta = row.wins, row.mean_r_ci, row.shadow_delta
+    mean = (f"{row.mean_r:+.2f} [{ci.ci.lower:+.2f}, {ci.ci.upper:+.2f}]" if ci
+            else f"insufficient ({report.cluster_count(row.trades)} sessions < {MIN_CLUSTERS})")
+    shadow = (f"{delta:+.2f} R over {len(report.paired(row.trades))} pairs" if delta is not None
+              else "no shadow outcome yet")
+    return " | ".join([source_id, row.horizon, row.setup_type, str(row.n),
+                       f"{report.ratio(w.successes, w.n)} [{w.ci.lower:.1%}, {w.ci.upper:.1%}]", mean, shadow,
+                       p1_text(row), f"{row.median_mfe:+.2f} / {row.median_mae:+.2f}"])
+
+
+def prompt_block(playbook: Playbook) -> tuple[str, list[SourceRef]]:
+    """The PLAYBOOK block of the thesis-2 prompt and one source per cell it shows with rates. A cell under THIN
+    trades is listed as insufficient with its n and no id (nothing to cite); no cell is one honest line."""
+    scope = f"{playbook.arm} theses graded and closed by {playbook.session}"
+    if not playbook.rows:
+        return f"PLAYBOOK: no closed trades yet ({scope})", []
+    lines = [f"PLAYBOOK ({scope}; one row per horizon and setup_type, never pooled; base rates of this system's own "
+             "trades, not predictions)"]
+    sources: list[SourceRef] = []
+    shown = [(row, fact) for row, fact in zip(playbook.rows, as_facts(playbook), strict=True) if not row.thin]
+    if shown:
+        lines.append("source_id | horizon | setup_type | n closed | win rate [95% Wilson CI] | mean r_net R [95% CI] | "
+                     "real - shadow | P1 | median MFE / MAE R")
+    for row, fact in shown:
+        sources.append(row_source(playbook, row, fact))
+        lines.append(prompt_row(row, sources[-1].source_id))
+    thin = [row for row in playbook.rows if row.thin]
+    if thin:
+        lines.append(f"insufficient (n < {THIN}, no rate shown): "
+                     + "; ".join(f"{row.horizon} {row.setup_type} n {row.n}" for row in thin))
+    return "\n".join(lines), sources

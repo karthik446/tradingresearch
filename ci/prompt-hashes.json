@@ -14,5 +14,9 @@
   "thesis-1": {
     "experiment": "baseline",
     "sha256": "sha256:906a62d063b11d0197f7137c6c458cd10e062db0a3691e8184c9ea1f4055bd13"
+  },
+  "thesis-2": {
+    "experiment": "playbook-in-prompt",
+    "sha256": "sha256:fb516368410f2c8bd3c9aec34e44f068f6e8fe3efc1f5146aeac4eca4f30954f"
   }
 }
