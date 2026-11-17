@@ -1,15 +1,19 @@
-usage: tr [-h] {sessions,bars,facts,snapshot,news,analyze,check,exp,usage} ...
+usage: tr [-h]
+          {sessions,bars,facts,snapshot,news,screen,analyze,check,exp,usage}
+          ...
 
 tradingresearch: educational, not investment advice
 
 positional arguments:
-  {sessions,bars,facts,snapshot,news,analyze,check,exp,usage}
+  {sessions,bars,facts,snapshot,news,screen,analyze,check,exp,usage}
     sessions            NYSE sessions ending at a date
     bars                fetch and store daily bars
     facts               framed EDGAR facts for one concept
     snapshot            indicators, levels and regime for one ticker-day
     news                stored Alpaca headlines for one ticker (untrusted
                         input)
+    screen              code-only daily shortlist of the universe (no model
+                        call)
     analyze             write a checked Analysis for one ticker-day (paid
                         call)
     check               every claim of an analysis beside the source values it

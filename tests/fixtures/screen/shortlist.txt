@@ -1,0 +1,7 @@
+rank ticker points triggers
+   1 BBB         3 breakout high 111.00; rel_volume 3.00; 8-K x1 accepted 2026-11-09T21:30:40.000Z
+   2 AAA         2 level pivot_high 111.00 (-0.34 ATR); rel_volume 2.00
+   3 DDD         1 rel_volume 1.60
+   4 CCC         1 nr7
+filtered 1 (atr_pct_high 1)
+zero points 0

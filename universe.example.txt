@@ -1,0 +1,13 @@
+# tr screen universe: one ticker per line, `#` starts a comment. Copy to $TR_DATA_DIR/universe.txt (data/universe.txt).
+# Bring your own list: SPIKE §4.2 screens the S&P 500, but no constituent file ships with the repo (index licences).
+# SPY is always loaded for the regime tag and never screened, so it is dropped from this list if present.
+AAPL
+MSFT
+NVDA
+AMZN
+JPM
+XOM
+UNH
+HD
+KO
+CAT

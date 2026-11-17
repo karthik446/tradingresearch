@@ -1,4 +1,4 @@
-"""SEC EDGAR XBRL company facts: public, keyless, 10 requests/s, User-Agent required."""
+"""SEC EDGAR XBRL company facts and filing lists: public, keyless, 10 requests/s, User-Agent required."""
 
 from __future__ import annotations
 
@@ -15,6 +15,7 @@ from .records import SourceRef
 
 TICKERS_URL = "https://www.sec.gov/files/company_tickers.json"
 FACTS_URL = "https://data.sec.gov/api/xbrl/companyfacts/CIK{cik:010d}.json"
+SUBMISSIONS_URL = "https://data.sec.gov/submissions/CIK{cik:010d}.json"
 LICENCE = "SEC EDGAR: US government public data"
 
 
@@ -46,14 +47,35 @@ class Edgar:
 
     def cik(self, ticker: str) -> int:
         table = self._get(TICKERS_URL, self._cache / "company_tickers.json")
+        wanted = ticker.upper().replace(".", "-")  # SEC writes BRK-B where Alpaca writes BRK.B
         for row in table.values():
-            if row["ticker"] == ticker.upper():
+            if row["ticker"] == wanted:
                 return int(row["cik_str"])
         raise KeyError(f"no CIK for {ticker}")
 
     def company_facts(self, ticker: str) -> dict:
         cik = self.cik(ticker)
         return self._get(FACTS_URL.format(cik=cik), self._cache / "companyfacts" / f"CIK{cik:010d}.json")
+
+    def recent_8k(self, ticker: str, since: datetime, until: datetime | None = None) -> list[dict]:
+        """8-Ks accepted after `since` and up to `until` (aware datetimes), oldest first (SPIKE §4.2 trigger).
+
+        acceptanceDateTime is UTC (AAPL's 16:30 New York earnings 8-Ks read 21:30Z in winter, 20:30Z in summer).
+        The filing date is not used: an 8-K accepted after 16:00 keeps that day's date. The submissions list grows
+        every day, so its cache is refetched once per UTC day; `until` keeps a past session from seeing later filings.
+        """
+        cik = self.cik(ticker)
+        path = self._cache / "submissions" / f"CIK{cik:010d}.json"
+        if path.exists() and datetime.fromtimestamp(path.stat().st_mtime, UTC).date() < datetime.now(UTC).date():
+            path.unlink()
+        recent = self._get(SUBMISSIONS_URL.format(cik=cik), path)["filings"]["recent"]
+        rows = [dict(zip(recent, values)) for values in zip(*recent.values())]
+
+        def wanted(row: dict) -> bool:
+            accepted = datetime.fromisoformat(row["acceptanceDateTime"])
+            return row["form"] == "8-K" and since < accepted and (until is None or accepted <= until)
+
+        return sorted(filter(wanted, rows), key=lambda r: r["acceptanceDateTime"])
 
 
 def fact_for_frame(facts: dict, concept: str, frame: str, unit: str = "USD", taxonomy: str = "us-gaap") -> dict:

@@ -1,0 +1,8 @@
+usage: tr screen [-h] [--session SESSION] [--universe UNIVERSE] [--top TOP]
+
+options:
+  -h, --help           show this help message and exit
+  --session SESSION
+  --universe UNIVERSE  one ticker per line (default:
+                       $TR_DATA_DIR/universe.txt)
+  --top TOP
