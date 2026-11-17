@@ -1,0 +1,6 @@
+usage: tr sessions [-h] [--session SESSION] [--count COUNT]
+
+options:
+  -h, --help         show this help message and exit
+  --session SESSION
+  --count COUNT

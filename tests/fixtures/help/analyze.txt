@@ -1,0 +1,13 @@
+usage: tr analyze [-h] [--session SESSION] [--prompt PROMPT] [--model MODEL]
+                  [--max-usd MAX_USD]
+                  ticker
+
+positional arguments:
+  ticker
+
+options:
+  -h, --help         show this help message and exit
+  --session SESSION
+  --prompt PROMPT    prompt version: prompts/<version>.txt
+  --model MODEL
+  --max-usd MAX_USD

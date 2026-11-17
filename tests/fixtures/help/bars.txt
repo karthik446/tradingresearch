@@ -1,0 +1,10 @@
+usage: tr bars [-h] [--session SESSION] [--sessions SESSIONS]
+               tickers [tickers ...]
+
+positional arguments:
+  tickers
+
+options:
+  -h, --help           show this help message and exit
+  --session SESSION
+  --sessions SESSIONS

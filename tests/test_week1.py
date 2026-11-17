@@ -3,7 +3,7 @@
 import pytest
 
 from tradingresearch import experiment
-from tradingresearch.cli import source_table
+from tradingresearch.commands.check import source_table
 from tradingresearch.config import Secret, read_env_file, require
 from tradingresearch.evals import GRADERS, graders
 

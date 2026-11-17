@@ -1,0 +1,9 @@
+usage: tr exp [-h] {run} ...
+
+positional arguments:
+  {run}
+    run       run every arm of a config on the same ticker-days, then compare
+              (paid calls)
+
+options:
+  -h, --help  show this help message and exit

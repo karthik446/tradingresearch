@@ -1,0 +1,13 @@
+usage: tr facts [-h] [--concept CONCEPT] [--kind {year,quarter,instant}]
+                [--unit UNIT] [--count COUNT]
+                ticker
+
+positional arguments:
+  ticker
+
+options:
+  -h, --help            show this help message and exit
+  --concept CONCEPT
+  --kind {year,quarter,instant}
+  --unit UNIT
+  --count COUNT

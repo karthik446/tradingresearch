@@ -1,0 +1,7 @@
+usage: tr check [-h] analysis_id
+
+positional arguments:
+  analysis_id
+
+options:
+  -h, --help   show this help message and exit

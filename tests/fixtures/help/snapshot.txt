@@ -1,0 +1,9 @@
+usage: tr snapshot [-h] [--session SESSION] [--prompt] ticker
+
+positional arguments:
+  ticker
+
+options:
+  -h, --help         show this help message and exit
+  --session SESSION
+  --prompt           print the analyze prompt instead

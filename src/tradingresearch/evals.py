@@ -1,4 +1,4 @@
-"""The eval registry: every grader an experiment config can name. A new grader is a class here plus a test."""
+"""The eval registry: every grader an experiment config can name. A new grader is a `@grader` class plus a test."""
 
 from __future__ import annotations
 
@@ -10,6 +10,18 @@ from gigai_core.score import Score
 from .analyze import ClaimsValid, validate_claims
 
 
+GRADERS: dict[str, type] = {}
+
+
+def grader(cls: type) -> type:
+    """Register a grader class under its `id`; a duplicate id would silently shadow a grader, so it raises."""
+    if cls.id in GRADERS:
+        raise ValueError(f"grader id {cls.id!r} is already registered by {GRADERS[cls.id].__name__}")
+    GRADERS[cls.id] = cls
+    return cls
+
+
+@grader
 class Parsed:
     """1 if the reply parsed against the output schema, else 0."""
 
@@ -21,6 +33,10 @@ class Parsed:
         return Score(value=1.0 if sample.parse_status == "ok" else 0.0, explanation=sample.parse_status)
 
 
+grader(ClaimsValid)  # defined in analyze.py beside validate_claims
+
+
+@grader
 class AllClaimsValid:
     """1 if every claim in the reply passes validate_claims, else 0. Binary, so compare uses McNemar."""
 
@@ -35,6 +51,7 @@ class AllClaimsValid:
         return Score(value=0.0 if rejected else 1.0, explanation=", ".join(sorted({r.reason for r in rejected})) or None)
 
 
+@grader
 class InferencesGrounded:
     """1 if every inference names only indicators its parents cite (through derived_from, recursively), else 0.
 
@@ -73,9 +90,6 @@ class InferencesGrounded:
             if extra := sorted(used - allowed):
                 ungrounded.append(f"{claim_id}: {', '.join(extra)}")
         return Score(value=0.0 if ungrounded else 1.0, explanation="; ".join(ungrounded) or None)
-
-
-GRADERS = {grader.id: grader for grader in (Parsed, ClaimsValid, AllClaimsValid, InferencesGrounded)}
 
 
 def graders(names: list[str]) -> list:

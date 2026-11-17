@@ -1,0 +1,20 @@
+usage: tr [-h] {sessions,bars,facts,snapshot,analyze,check,exp,usage} ...
+
+tradingresearch: educational, not investment advice
+
+positional arguments:
+  {sessions,bars,facts,snapshot,analyze,check,exp,usage}
+    sessions            NYSE sessions ending at a date
+    bars                fetch and store daily bars
+    facts               framed EDGAR facts for one concept
+    snapshot            indicators, levels and regime for one ticker-day
+    analyze             write a checked Analysis for one ticker-day (paid
+                        call)
+    check               every claim of an analysis beside the source values it
+                        cites
+    exp                 experiments as config
+    usage               the OpenRouter key's total spend so far (log it before
+                        and after paid runs)
+
+options:
+  -h, --help            show this help message and exit
