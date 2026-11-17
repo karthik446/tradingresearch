@@ -4,9 +4,13 @@
   `tr daily` after each NYSE close (REPO-PLAN §7 G4a; SPIKE L22: a scheduler, not a service).
 
   Install:
-    1. Copy to ~/Library/LaunchAgents/com.tradingresearch.daily.plist.
-    2. Replace /path/to/tradingresearch (three times) with the repo path, /path/to/uv with `which uv` and
+    1. Pin the code that writes evidence: `git worktree add --detach ../tradingresearch-live <verified-sha>`, then
+       `uv sync` inside it (docs/runbook.md, "Pinned code, live data"). Dev never runs from it.
+    2. Copy this file to ~/Library/LaunchAgents/com.tradingresearch.daily.plist.
+    3. Replace /path/to/tradingresearch-live (once) with the worktree path, /path/to/tradingresearch (three times:
+       TR_DATA_DIR and the two log paths) with the repo path that holds data/, /path/to/uv with `which uv` and
        /path/to/uv-folder with the folder that holds it. Create the folder data/logs/ (launchd does not).
+    `--teachers` runs the teacher bake-off after the champion run; drop it to run the champion only.
 
   Time zone: launchd reads Hour/Minute in the Mac's own time zone. 16:30 is for a Mac set to New York time
   (after the 16:15 ET cutoff `tr daily` waits for). Elsewhere, convert 16:30 ET to local time, and mind the
@@ -21,18 +25,21 @@
   <key>Label</key>
   <string>com.tradingresearch.daily</string>
   <key>WorkingDirectory</key>
-  <string>/path/to/tradingresearch</string>
+  <string>/path/to/tradingresearch-live</string>
   <key>ProgramArguments</key>
   <array>
     <string>/path/to/uv</string>
     <string>run</string>
     <string>tr</string>
     <string>daily</string>
+    <string>--teachers</string>
   </array>
   <key>EnvironmentVariables</key>
   <dict>
     <key>PATH</key>
     <string>/path/to/uv-folder:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    <key>TR_DATA_DIR</key>
+    <string>/path/to/tradingresearch/data</string>
   </dict>
   <key>StartCalendarInterval</key>
   <array>
