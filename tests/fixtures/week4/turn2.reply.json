@@ -1,0 +1,46 @@
+{
+  "id": "gen-1794898105-87Cc3rq2ON2Dro6qcwgI",
+  "object": "chat.completion",
+  "created": 1794898105,
+  "model": "anthropic/claude-sonnet-5.5",
+  "provider": "Google",
+  "system_fingerprint": null,
+  "service_tier": null,
+  "choices": [
+    {
+      "index": 0,
+      "logprobs": null,
+      "finish_reason": "stop",
+      "native_finish_reason": "end_turn",
+      "message": {
+        "role": "assistant",
+        "content": "{\"claims\":[{\"id\":\"c1\",\"tag\":\"fact\",\"text\":\"FAKEA closed at {value} on 2026-11-13, above its sma_200.\",\"value\":101.4,\"unit\":\"USD\",\"source_ids\":[\"src_98651de31e6271aa\",\"src_b2c76d99962d70fc\"],\"derived_from\":[],\"steps\":null},{\"id\":\"c2\",\"tag\":\"fact\",\"text\":\"The sma_50 is {value}, which is below the close and above the sma_200.\",\"value\":96.2,\"unit\":\"USD\",\"source_ids\":[\"src_7727cab7649949fb\",\"src_b2c76d99962d70fc\",\"src_98651de31e6271aa\"],\"derived_from\":[],\"steps\":null},{\"id\":\"c3\",\"tag\":\"inference\",\"text\":\"The close is above the sma_20, sma_50 and sma_200, and the sma_50 is above the sma_200. That is an uptrend structure across the time frames.\",\"value\":null,\"unit\":null,\"source_ids\":[],\"derived_from\":[\"c1\",\"c2\"],\"steps\":\"The close sits above all three moving averages, and the sma_50 is above the sma_200, so the trend is up on each horizon.\"},{\"id\":\"c4\",\"tag\":\"fact\",\"text\":\"The high_20 is {value}. The close is just below it, and the pivot high at the same price is the nearest resistance.\",\"value\":102.1,\"unit\":\"USD\",\"source_ids\":[\"src_7f4d62f55353a80f\",\"src_4ee8de1eca966ce7\"],\"derived_from\":[],\"steps\":null},{\"id\":\"c5\",\"tag\":\"fact\",\"text\":\"The rsi_14 is {value}, a moderately strong reading that is not overbought.\",\"value\":61.3,\"unit\":\"index\",\"source_ids\":[\"src_e80e4812c8cf9f6d\"],\"derived_from\":[],\"steps\":null},{\"id\":\"c6\",\"tag\":\"fact\",\"text\":\"Relative volume was {value}, so volume was above average on the session.\",\"value\":1.45,\"unit\":\"x\",\"source_ids\":[\"src_576c0033eee0f1b2\"],\"derived_from\":[],\"steps\":null},{\"id\":\"c7\",\"tag\":\"fact\",\"text\":\"The congestion box has run for {value} sessions, between a low of 99.6 and a high of 102.1.\",\"value\":7,\"unit\":\"sessions\",\"source_ids\":[\"src_26d5033711cf7dcb\",\"src_324d6afd7dac1d00\",\"src_ad1a870a3bd81f07\"],\"derived_from\":[],\"steps\":null},{\"id\":\"c8\",\"tag\":\"inference\",\"text\":\"Price is at the top of a tight congestion box, on higher volume and below the high_20. A move through the box high would be a breakout. A rejection would send price back into the range.\",\"value\":null,\"unit\":null,\"source_ids\":[],\"derived_from\":[\"c4\",\"c6\",\"c7\"],\"steps\":\"The close is near the congestion high, which matches the high_20 and the pivot high, and volume is above average. Together these put price at a decision point.\"},{\"id\":\"c9\",\"tag\":\"fact\",\"text\":\"The SPY regime is {value}.\",\"value\":null,\"unit\":null,\"source_ids\":[\"src_efa3f8d4561c4f63\"],\"derived_from\":[],\"steps\":null},{\"id\":\"c10\",\"tag\":\"fact\",\"text\":\"Diluted EPS for CY2026Q3 was {value}, and net income rose from 210000000 in CY2026Q2 to 240000000 in CY2026Q3.\",\"value\":1.12,\"unit\":\"USD/shares\",\"source_ids\":[\"src_d28e0e2beb3cb31c\",\"src_f9d7d2b09f747291\",\"src_0d51305ad1df9e2e\"],\"derived_from\":[],\"steps\":null},{\"id\":\"c11\",\"tag\":\"opinion\",\"text\":\"The trend and the market backdrop are constructive, but price is close to resistance. The setup looks better judged after a decisive break or a pullback than at the current spot.\",\"value\":null,\"unit\":null,\"source_ids\":[],\"derived_from\":[\"c3\",\"c8\",\"c9\"],\"steps\":null}]}",
+        "refusal": null,
+        "reasoning": null
+      }
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 2911,
+    "completion_tokens": 1312,
+    "total_tokens": 4223,
+    "cost": 0.018942,
+    "is_byok": false,
+    "prompt_tokens_details": {
+      "cached_tokens": 0,
+      "cache_write_tokens": 0,
+      "audio_tokens": 0,
+      "video_tokens": 0
+    },
+    "cost_details": {
+      "upstream_inference_cost": 0.018942,
+      "upstream_inference_prompt_cost": 0.005822,
+      "upstream_inference_completions_cost": 0.01312
+    },
+    "completion_tokens_details": {
+      "reasoning_tokens": 0,
+      "image_tokens": 0,
+      "audio_tokens": 0
+    }
+  }
+}

@@ -260,9 +260,7 @@ def p1_judge(conn: sqlite3.Connection, bars: BarSource, thesis_id: str, provider
                          grader_version=P1Judge.version, kind="model", value=score.value, explanation=reason,
                          judge_model=JUDGE_MODEL, judge_prompt_sha256=judge.prompt_sha256,
                          judge_span_ids=tuple(span.span_id for span in spans), recorded_at=datetime.now(UTC))
-    with conn:  # the ScoreRecord and the verdict that points at it land in one transaction
-        journal._insert_score(conn, t.thesis_id, record)
-        journal.add_judge_verdict(conn, t.thesis_id, verdict, reason, record.score_id)
+    journal.add_judge_score(conn, t.thesis_id, record, verdict, reason)
     return score
 
 

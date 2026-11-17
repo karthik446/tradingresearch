@@ -43,7 +43,7 @@ def judge_lines(conn, args, cfg) -> list[str]:
 
 
 def register(sub) -> None:
-    p = sub.add_parser("grade", help="shadow baselines and grades for closed theses (no model call)")
+    p = sub.add_parser("grade", help="shadow baselines and grades for closed theses (a paid P1 judge with --judge)")
     p.add_argument("--session", help="a completed session (default: the latest, after 16:15 ET)")
     p.add_argument("--dry-run", action="store_true", help="print what would be created or graded; write nothing")
     p.add_argument("--judge", action="store_true",

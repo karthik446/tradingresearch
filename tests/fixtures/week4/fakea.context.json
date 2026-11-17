@@ -1,0 +1,698 @@
+{
+  "ticker": "FAKEA",
+  "session": "2026-11-13",
+  "snapshot": {
+    "ticker": "FAKEA",
+    "session": "2026-11-13",
+    "values": {
+      "close": 101.4,
+      "sma_20": 98.75,
+      "sma_50": 96.2,
+      "sma_200": 88.9,
+      "ema_9": 100.6,
+      "ema_21": 99.1,
+      "rsi_14": 61.3,
+      "atr_14": 2.2,
+      "atr_pct": 2.17,
+      "rel_volume": 1.45,
+      "high_20": 102.1,
+      "low_20": 94.3,
+      "gap_pct": 0.4,
+      "nr7": 0.0,
+      "vwap_session": 101.1,
+      "dist_sma_20_atr": 1.2,
+      "dist_sma_50_atr": 2.36,
+      "dist_sma_200_atr": 5.68,
+      "dist_high_20_atr": -0.32,
+      "dist_low_20_atr": 3.23
+    },
+    "levels": [
+      {
+        "price": 97.5,
+        "kind": "hvn",
+        "strength": 2.4,
+        "distance_atr": 1.77
+      },
+      {
+        "price": 99.8,
+        "kind": "hvn",
+        "strength": 3.1,
+        "distance_atr": 0.73
+      },
+      {
+        "price": 102.1,
+        "kind": "pivot_high",
+        "strength": 1.0,
+        "distance_atr": -0.32
+      },
+      {
+        "price": 95.6,
+        "kind": "pivot_low",
+        "strength": 1.0,
+        "distance_atr": 2.64
+      },
+      {
+        "price": 102.1,
+        "kind": "high_20",
+        "strength": 1.0,
+        "distance_atr": -0.32
+      },
+      {
+        "price": 94.3,
+        "kind": "low_20",
+        "strength": 1.0,
+        "distance_atr": 3.23
+      }
+    ],
+    "congestion": {
+      "low": 99.6,
+      "high": 102.1,
+      "sessions": 7,
+      "range_atr": 1.14
+    },
+    "regime": "bull-normal",
+    "bars_source_id": "src_bcb535b3f43b2708",
+    "code_version": "indicators-1"
+  },
+  "sources": [
+    {
+      "source_id": "src_bcb535b3f43b2708",
+      "kind": "bars_daily",
+      "uri": "https://data.alpaca.markets/v2/stocks/bars?symbols=FAKEA&timeframe=1Day&start=2025-09-02&end=2026-11-13&feed=sip&adjustment=split",
+      "retrieved_at": "2026-11-17T06:48:21.545172Z",
+      "content_sha256": "sha256:bcb535b3f43b2708f991cbd014745bb076f1201a56700f3f46ff621fb0341515",
+      "feed": "sip",
+      "licence_note": "made-up bars for a test fixture"
+    },
+    {
+      "source_id": "src_98651de31e6271aa",
+      "kind": "computed",
+      "uri": "tradingresearch:indicators.py#close?ticker=FAKEA&session=2026-11-13",
+      "retrieved_at": "2026-11-17T06:48:21.545425Z",
+      "content_sha256": "sha256:98651de31e6271aaed2d20bb8ecb0e5689608aa93b66ce6677a2d8a23db0de3a",
+      "feed": null,
+      "licence_note": "computed by tradingresearch from licensed bars"
+    },
+    {
+      "source_id": "src_4cb0b4e2917174f1",
+      "kind": "computed",
+      "uri": "tradingresearch:indicators.py#sma_20?ticker=FAKEA&session=2026-11-13",
+      "retrieved_at": "2026-11-17T06:48:21.545445Z",
+      "content_sha256": "sha256:4cb0b4e2917174f1993c9ef6948c01dc6df6bca711ed3a8d6de035e9b08b9ecd",
+      "feed": null,
+      "licence_note": "computed by tradingresearch from licensed bars"
+    },
+    {
+      "source_id": "src_7727cab7649949fb",
+      "kind": "computed",
+      "uri": "tradingresearch:indicators.py#sma_50?ticker=FAKEA&session=2026-11-13",
+      "retrieved_at": "2026-11-17T06:48:21.545458Z",
+      "content_sha256": "sha256:7727cab7649949fb4880ecb17b94f5b29940cdd90056fd5e4fbd231fe0956c23",
+      "feed": null,
+      "licence_note": "computed by tradingresearch from licensed bars"
+    },
+    {
+      "source_id": "src_b2c76d99962d70fc",
+      "kind": "computed",
+      "uri": "tradingresearch:indicators.py#sma_200?ticker=FAKEA&session=2026-11-13",
+      "retrieved_at": "2026-11-17T06:48:21.545472Z",
+      "content_sha256": "sha256:b2c76d99962d70fc5df88042ca261418a12e678b1fbb789e2f22dc9ceb7d1535",
+      "feed": null,
+      "licence_note": "computed by tradingresearch from licensed bars"
+    },
+    {
+      "source_id": "src_fab7e3f863968954",
+      "kind": "computed",
+      "uri": "tradingresearch:indicators.py#ema_9?ticker=FAKEA&session=2026-11-13",
+      "retrieved_at": "2026-11-17T06:48:21.545482Z",
+      "content_sha256": "sha256:fab7e3f8639689545e135c234a560594e34393468eb86eed367c6092ba6b9a58",
+      "feed": null,
+      "licence_note": "computed by tradingresearch from licensed bars"
+    },
+    {
+      "source_id": "src_802430b79cd4c30f",
+      "kind": "computed",
+      "uri": "tradingresearch:indicators.py#ema_21?ticker=FAKEA&session=2026-11-13",
+      "retrieved_at": "2026-11-17T06:48:21.545491Z",
+      "content_sha256": "sha256:802430b79cd4c30f19f81311c6e65f416cec780407d8765ffb5be2a6cfa0de20",
+      "feed": null,
+      "licence_note": "computed by tradingresearch from licensed bars"
+    },
+    {
+      "source_id": "src_e80e4812c8cf9f6d",
+      "kind": "computed",
+      "uri": "tradingresearch:indicators.py#rsi_14?ticker=FAKEA&session=2026-11-13",
+      "retrieved_at": "2026-11-17T06:48:21.545499Z",
+      "content_sha256": "sha256:e80e4812c8cf9f6d7c4c825c992a5d91bf2d9fa275c511aa851a32f41794f7d5",
+      "feed": null,
+      "licence_note": "computed by tradingresearch from licensed bars"
+    },
+    {
+      "source_id": "src_7cecbaeb8f0beea0",
+      "kind": "computed",
+      "uri": "tradingresearch:indicators.py#atr_14?ticker=FAKEA&session=2026-11-13",
+      "retrieved_at": "2026-11-17T06:48:21.545509Z",
+      "content_sha256": "sha256:7cecbaeb8f0beea0070a668e5a6e9467e421f9da33b4a8913b71c406e63fe3fe",
+      "feed": null,
+      "licence_note": "computed by tradingresearch from licensed bars"
+    },
+    {
+      "source_id": "src_03257110d4e26bce",
+      "kind": "computed",
+      "uri": "tradingresearch:indicators.py#atr_pct?ticker=FAKEA&session=2026-11-13",
+      "retrieved_at": "2026-11-17T06:48:21.545518Z",
+      "content_sha256": "sha256:03257110d4e26bceb9a448fa1f6b030650ccb053ea14cd6e8008bfad9f936e59",
+      "feed": null,
+      "licence_note": "computed by tradingresearch from licensed bars"
+    },
+    {
+      "source_id": "src_576c0033eee0f1b2",
+      "kind": "computed",
+      "uri": "tradingresearch:indicators.py#rel_volume?ticker=FAKEA&session=2026-11-13",
+      "retrieved_at": "2026-11-17T06:48:21.545526Z",
+      "content_sha256": "sha256:576c0033eee0f1b27401f7d1ae59c13f61bd936a7e96576ca7d2f60fab51827c",
+      "feed": null,
+      "licence_note": "computed by tradingresearch from licensed bars"
+    },
+    {
+      "source_id": "src_7f4d62f55353a80f",
+      "kind": "computed",
+      "uri": "tradingresearch:indicators.py#high_20?ticker=FAKEA&session=2026-11-13",
+      "retrieved_at": "2026-11-17T06:48:21.545534Z",
+      "content_sha256": "sha256:7f4d62f55353a80f1b536ac8c1bf226e7be4a4f74d0346d39bc7131b9d2096b2",
+      "feed": null,
+      "licence_note": "computed by tradingresearch from licensed bars"
+    },
+    {
+      "source_id": "src_874bb01bd0054d02",
+      "kind": "computed",
+      "uri": "tradingresearch:indicators.py#low_20?ticker=FAKEA&session=2026-11-13",
+      "retrieved_at": "2026-11-17T06:48:21.545542Z",
+      "content_sha256": "sha256:874bb01bd0054d02e51df44a49179a313318f2bc4e722726b3d3c11902544dad",
+      "feed": null,
+      "licence_note": "computed by tradingresearch from licensed bars"
+    },
+    {
+      "source_id": "src_b9ccd4fd7dc8a60e",
+      "kind": "computed",
+      "uri": "tradingresearch:indicators.py#gap_pct?ticker=FAKEA&session=2026-11-13",
+      "retrieved_at": "2026-11-17T06:48:21.545552Z",
+      "content_sha256": "sha256:b9ccd4fd7dc8a60e3129971e63aa63631d5297557d2bdb886803f0871f161a52",
+      "feed": null,
+      "licence_note": "computed by tradingresearch from licensed bars"
+    },
+    {
+      "source_id": "src_f586696df3e73606",
+      "kind": "computed",
+      "uri": "tradingresearch:indicators.py#nr7?ticker=FAKEA&session=2026-11-13",
+      "retrieved_at": "2026-11-17T06:48:21.545560Z",
+      "content_sha256": "sha256:f586696df3e7360674779a8777da621c0445bdf61534ae7d3002a95b7d7b214c",
+      "feed": null,
+      "licence_note": "computed by tradingresearch from licensed bars"
+    },
+    {
+      "source_id": "src_f5dc1884be9b21e5",
+      "kind": "computed",
+      "uri": "tradingresearch:indicators.py#vwap_session?ticker=FAKEA&session=2026-11-13",
+      "retrieved_at": "2026-11-17T06:48:21.545567Z",
+      "content_sha256": "sha256:f5dc1884be9b21e5e6e072bf86470f1f75689fe5b9146186ceaa39dac2926b2d",
+      "feed": null,
+      "licence_note": "computed by tradingresearch from licensed bars"
+    },
+    {
+      "source_id": "src_9be6ad21f0cf4dc7",
+      "kind": "computed",
+      "uri": "tradingresearch:indicators.py#dist_sma_20_atr?ticker=FAKEA&session=2026-11-13",
+      "retrieved_at": "2026-11-17T06:48:21.545575Z",
+      "content_sha256": "sha256:9be6ad21f0cf4dc77a0e8fdc378c3f40a4f9e798c04e5799a2d8b8dd0523aa9a",
+      "feed": null,
+      "licence_note": "computed by tradingresearch from licensed bars"
+    },
+    {
+      "source_id": "src_4c88f1672fdcd9f5",
+      "kind": "computed",
+      "uri": "tradingresearch:indicators.py#dist_sma_50_atr?ticker=FAKEA&session=2026-11-13",
+      "retrieved_at": "2026-11-17T06:48:21.545583Z",
+      "content_sha256": "sha256:4c88f1672fdcd9f5453e79654ea0aa81f24d89b71c57f0a2ffafe0bb6ce7b0f1",
+      "feed": null,
+      "licence_note": "computed by tradingresearch from licensed bars"
+    },
+    {
+      "source_id": "src_aeba4240f3590351",
+      "kind": "computed",
+      "uri": "tradingresearch:indicators.py#dist_sma_200_atr?ticker=FAKEA&session=2026-11-13",
+      "retrieved_at": "2026-11-17T06:48:21.545591Z",
+      "content_sha256": "sha256:aeba4240f3590351330939901dcfae9de0364e5e52ca4baee6b4f1fd2a1b6e82",
+      "feed": null,
+      "licence_note": "computed by tradingresearch from licensed bars"
+    },
+    {
+      "source_id": "src_30999799f47d31d5",
+      "kind": "computed",
+      "uri": "tradingresearch:indicators.py#dist_high_20_atr?ticker=FAKEA&session=2026-11-13",
+      "retrieved_at": "2026-11-17T06:48:21.545598Z",
+      "content_sha256": "sha256:30999799f47d31d5b2cc6f8b0bdd50afc1a5bdac708c08ff4eacffc7a4506952",
+      "feed": null,
+      "licence_note": "computed by tradingresearch from licensed bars"
+    },
+    {
+      "source_id": "src_82075ade3ff4cca9",
+      "kind": "computed",
+      "uri": "tradingresearch:indicators.py#dist_low_20_atr?ticker=FAKEA&session=2026-11-13",
+      "retrieved_at": "2026-11-17T06:48:21.545605Z",
+      "content_sha256": "sha256:82075ade3ff4cca9e3ee17177780941d0043365825f89644ce0e77bc1812a582",
+      "feed": null,
+      "licence_note": "computed by tradingresearch from licensed bars"
+    },
+    {
+      "source_id": "src_954256091e618501",
+      "kind": "computed",
+      "uri": "tradingresearch:indicators.py#level_hvn_1?ticker=FAKEA&session=2026-11-13",
+      "retrieved_at": "2026-11-17T06:48:21.545613Z",
+      "content_sha256": "sha256:954256091e6185014dcbfe64dd46247316e37a465741da9a18532e4971c483ce",
+      "feed": null,
+      "licence_note": "computed by tradingresearch from licensed bars"
+    },
+    {
+      "source_id": "src_54745dda76ecd21a",
+      "kind": "computed",
+      "uri": "tradingresearch:indicators.py#dist_level_hvn_1_atr?ticker=FAKEA&session=2026-11-13",
+      "retrieved_at": "2026-11-17T06:48:21.545620Z",
+      "content_sha256": "sha256:54745dda76ecd21a87cef2ba5540d3610dbc9260cd8056083cf728c7d2b2a0a3",
+      "feed": null,
+      "licence_note": "computed by tradingresearch from licensed bars"
+    },
+    {
+      "source_id": "src_07d42ee39214d524",
+      "kind": "computed",
+      "uri": "tradingresearch:indicators.py#level_hvn_2?ticker=FAKEA&session=2026-11-13",
+      "retrieved_at": "2026-11-17T06:48:21.545627Z",
+      "content_sha256": "sha256:07d42ee39214d524e1523f335690004088552fb36ce1af1233221028256ffcc8",
+      "feed": null,
+      "licence_note": "computed by tradingresearch from licensed bars"
+    },
+    {
+      "source_id": "src_76d93deef6b54ec5",
+      "kind": "computed",
+      "uri": "tradingresearch:indicators.py#dist_level_hvn_2_atr?ticker=FAKEA&session=2026-11-13",
+      "retrieved_at": "2026-11-17T06:48:21.545635Z",
+      "content_sha256": "sha256:76d93deef6b54ec5924f4558ab7d2447bf99f432c6c0db1d120691060ffb09e6",
+      "feed": null,
+      "licence_note": "computed by tradingresearch from licensed bars"
+    },
+    {
+      "source_id": "src_4ee8de1eca966ce7",
+      "kind": "computed",
+      "uri": "tradingresearch:indicators.py#level_pivot_high_1?ticker=FAKEA&session=2026-11-13",
+      "retrieved_at": "2026-11-17T06:48:21.545642Z",
+      "content_sha256": "sha256:4ee8de1eca966ce7cda476edb5890fa4cbe5ba8155afc22999095080294d91e6",
+      "feed": null,
+      "licence_note": "computed by tradingresearch from licensed bars"
+    },
+    {
+      "source_id": "src_53983f94283c0a33",
+      "kind": "computed",
+      "uri": "tradingresearch:indicators.py#dist_level_pivot_high_1_atr?ticker=FAKEA&session=2026-11-13",
+      "retrieved_at": "2026-11-17T06:48:21.545650Z",
+      "content_sha256": "sha256:53983f94283c0a3369cc7288eea42f433b48e708b2b5208903093e6bb9484e3e",
+      "feed": null,
+      "licence_note": "computed by tradingresearch from licensed bars"
+    },
+    {
+      "source_id": "src_3d1781eaa5189125",
+      "kind": "computed",
+      "uri": "tradingresearch:indicators.py#level_pivot_low_1?ticker=FAKEA&session=2026-11-13",
+      "retrieved_at": "2026-11-17T06:48:21.545657Z",
+      "content_sha256": "sha256:3d1781eaa51891251eef43ead4a941453a1c1fc3328cd2ec985665eb5aa7f23c",
+      "feed": null,
+      "licence_note": "computed by tradingresearch from licensed bars"
+    },
+    {
+      "source_id": "src_af928b02f69ca699",
+      "kind": "computed",
+      "uri": "tradingresearch:indicators.py#dist_level_pivot_low_1_atr?ticker=FAKEA&session=2026-11-13",
+      "retrieved_at": "2026-11-17T06:48:21.545665Z",
+      "content_sha256": "sha256:af928b02f69ca699baf884afb428326bdc01bc58f470f29fc41162805bbbd516",
+      "feed": null,
+      "licence_note": "computed by tradingresearch from licensed bars"
+    },
+    {
+      "source_id": "src_324d6afd7dac1d00",
+      "kind": "computed",
+      "uri": "tradingresearch:indicators.py#congestion_low?ticker=FAKEA&session=2026-11-13",
+      "retrieved_at": "2026-11-17T06:48:21.545672Z",
+      "content_sha256": "sha256:324d6afd7dac1d00088843d056727ddee8764fc4452e42a9b3bbf3424d888a64",
+      "feed": null,
+      "licence_note": "computed by tradingresearch from licensed bars"
+    },
+    {
+      "source_id": "src_ad1a870a3bd81f07",
+      "kind": "computed",
+      "uri": "tradingresearch:indicators.py#congestion_high?ticker=FAKEA&session=2026-11-13",
+      "retrieved_at": "2026-11-17T06:48:21.545680Z",
+      "content_sha256": "sha256:ad1a870a3bd81f0704d2a33718acfc82a3045bd9f25ab4fe52d4cb7253975038",
+      "feed": null,
+      "licence_note": "computed by tradingresearch from licensed bars"
+    },
+    {
+      "source_id": "src_26d5033711cf7dcb",
+      "kind": "computed",
+      "uri": "tradingresearch:indicators.py#congestion_sessions?ticker=FAKEA&session=2026-11-13",
+      "retrieved_at": "2026-11-17T06:48:21.545687Z",
+      "content_sha256": "sha256:26d5033711cf7dcb967198a0a97e6f72296cf6911e9d0d4c16e3fc4f0a4332d8",
+      "feed": null,
+      "licence_note": "computed by tradingresearch from licensed bars"
+    },
+    {
+      "source_id": "src_f7c8389d56c5344d",
+      "kind": "computed",
+      "uri": "tradingresearch:indicators.py#congestion_range_atr?ticker=FAKEA&session=2026-11-13",
+      "retrieved_at": "2026-11-17T06:48:21.545694Z",
+      "content_sha256": "sha256:f7c8389d56c5344d5605425b1c31650e088fe1b732732c8fcf150732dc19a450",
+      "feed": null,
+      "licence_note": "computed by tradingresearch from licensed bars"
+    },
+    {
+      "source_id": "src_efa3f8d4561c4f63",
+      "kind": "computed",
+      "uri": "tradingresearch:indicators.py#regime_spy?ticker=FAKEA&session=2026-11-13",
+      "retrieved_at": "2026-11-17T06:48:21.545702Z",
+      "content_sha256": "sha256:efa3f8d4561c4f63fdf09eef2c60fafadc64a1fd771e6463f53c595f2d7cc562",
+      "feed": null,
+      "licence_note": "computed by tradingresearch from licensed bars"
+    },
+    {
+      "source_id": "src_348fffce6f4300ef",
+      "kind": "edgar_fact",
+      "uri": "https://data.sec.gov/api/xbrl/companyfacts/CIK0000000001.json#Revenues/CY2026Q2/accn=0000000001-26-000000",
+      "retrieved_at": "2026-11-17T06:48:21.545716Z",
+      "content_sha256": "sha256:348fffce6f4300ef88a5d84e621a4f5b991f897ef96ddd77ac06e3db896ccea1",
+      "feed": null,
+      "licence_note": "SEC EDGAR: US government public data"
+    },
+    {
+      "source_id": "src_c08d535a8d5bc924",
+      "kind": "edgar_fact",
+      "uri": "https://data.sec.gov/api/xbrl/companyfacts/CIK0000000001.json#Revenues/CY2026Q3/accn=0000000001-26-000001",
+      "retrieved_at": "2026-11-17T06:48:21.545740Z",
+      "content_sha256": "sha256:c08d535a8d5bc924c34253429857d6cc0a2406334d2f80dd0da45dbb4d95a437",
+      "feed": null,
+      "licence_note": "SEC EDGAR: US government public data"
+    },
+    {
+      "source_id": "src_f9d7d2b09f747291",
+      "kind": "edgar_fact",
+      "uri": "https://data.sec.gov/api/xbrl/companyfacts/CIK0000000001.json#NetIncomeLoss/CY2026Q2/accn=0000000001-26-000002",
+      "retrieved_at": "2026-11-17T06:48:21.545750Z",
+      "content_sha256": "sha256:f9d7d2b09f74729198c77a89ff03bc681beafe235d67a3364e5aafb5c49351f0",
+      "feed": null,
+      "licence_note": "SEC EDGAR: US government public data"
+    },
+    {
+      "source_id": "src_0d51305ad1df9e2e",
+      "kind": "edgar_fact",
+      "uri": "https://data.sec.gov/api/xbrl/companyfacts/CIK0000000001.json#NetIncomeLoss/CY2026Q3/accn=0000000001-26-000003",
+      "retrieved_at": "2026-11-17T06:48:21.545759Z",
+      "content_sha256": "sha256:0d51305ad1df9e2eb018573a9c6c3c71c31ea7210aad312ff00dd73d13549e19",
+      "feed": null,
+      "licence_note": "SEC EDGAR: US government public data"
+    },
+    {
+      "source_id": "src_d28e0e2beb3cb31c",
+      "kind": "edgar_fact",
+      "uri": "https://data.sec.gov/api/xbrl/companyfacts/CIK0000000001.json#EarningsPerShareDiluted/CY2026Q3/accn=0000000001-26-000004",
+      "retrieved_at": "2026-11-17T06:48:21.545767Z",
+      "content_sha256": "sha256:d28e0e2beb3cb31c87d7b5244331ce0c95ef65a7e7065de6f6b53b4c2e3a1548",
+      "feed": null,
+      "licence_note": "SEC EDGAR: US government public data"
+    }
+  ],
+  "rows": [
+    {
+      "source_id": "src_98651de31e6271aa",
+      "name": "close",
+      "value": 101.4,
+      "unit": "USD",
+      "label": null
+    },
+    {
+      "source_id": "src_4cb0b4e2917174f1",
+      "name": "sma_20",
+      "value": 98.75,
+      "unit": "USD",
+      "label": null
+    },
+    {
+      "source_id": "src_7727cab7649949fb",
+      "name": "sma_50",
+      "value": 96.2,
+      "unit": "USD",
+      "label": null
+    },
+    {
+      "source_id": "src_b2c76d99962d70fc",
+      "name": "sma_200",
+      "value": 88.9,
+      "unit": "USD",
+      "label": null
+    },
+    {
+      "source_id": "src_fab7e3f863968954",
+      "name": "ema_9",
+      "value": 100.6,
+      "unit": "USD",
+      "label": null
+    },
+    {
+      "source_id": "src_802430b79cd4c30f",
+      "name": "ema_21",
+      "value": 99.1,
+      "unit": "USD",
+      "label": null
+    },
+    {
+      "source_id": "src_e80e4812c8cf9f6d",
+      "name": "rsi_14",
+      "value": 61.3,
+      "unit": "index",
+      "label": null
+    },
+    {
+      "source_id": "src_7cecbaeb8f0beea0",
+      "name": "atr_14",
+      "value": 2.2,
+      "unit": "USD",
+      "label": null
+    },
+    {
+      "source_id": "src_03257110d4e26bce",
+      "name": "atr_pct",
+      "value": 2.17,
+      "unit": "%",
+      "label": null
+    },
+    {
+      "source_id": "src_576c0033eee0f1b2",
+      "name": "rel_volume",
+      "value": 1.45,
+      "unit": "x",
+      "label": null
+    },
+    {
+      "source_id": "src_7f4d62f55353a80f",
+      "name": "high_20",
+      "value": 102.1,
+      "unit": "USD",
+      "label": null
+    },
+    {
+      "source_id": "src_874bb01bd0054d02",
+      "name": "low_20",
+      "value": 94.3,
+      "unit": "USD",
+      "label": null
+    },
+    {
+      "source_id": "src_b9ccd4fd7dc8a60e",
+      "name": "gap_pct",
+      "value": 0.4,
+      "unit": "%",
+      "label": null
+    },
+    {
+      "source_id": "src_f586696df3e73606",
+      "name": "nr7",
+      "value": 0.0,
+      "unit": "flag",
+      "label": null
+    },
+    {
+      "source_id": "src_f5dc1884be9b21e5",
+      "name": "vwap_session",
+      "value": 101.1,
+      "unit": "USD",
+      "label": null
+    },
+    {
+      "source_id": "src_9be6ad21f0cf4dc7",
+      "name": "dist_sma_20_atr",
+      "value": 1.2,
+      "unit": "ATR",
+      "label": null
+    },
+    {
+      "source_id": "src_4c88f1672fdcd9f5",
+      "name": "dist_sma_50_atr",
+      "value": 2.36,
+      "unit": "ATR",
+      "label": null
+    },
+    {
+      "source_id": "src_aeba4240f3590351",
+      "name": "dist_sma_200_atr",
+      "value": 5.68,
+      "unit": "ATR",
+      "label": null
+    },
+    {
+      "source_id": "src_30999799f47d31d5",
+      "name": "dist_high_20_atr",
+      "value": -0.32,
+      "unit": "ATR",
+      "label": null
+    },
+    {
+      "source_id": "src_82075ade3ff4cca9",
+      "name": "dist_low_20_atr",
+      "value": 3.23,
+      "unit": "ATR",
+      "label": null
+    },
+    {
+      "source_id": "src_954256091e618501",
+      "name": "level_hvn_1",
+      "value": 97.5,
+      "unit": "USD",
+      "label": null
+    },
+    {
+      "source_id": "src_54745dda76ecd21a",
+      "name": "dist_level_hvn_1_atr",
+      "value": 1.77,
+      "unit": "ATR",
+      "label": null
+    },
+    {
+      "source_id": "src_07d42ee39214d524",
+      "name": "level_hvn_2",
+      "value": 99.8,
+      "unit": "USD",
+      "label": null
+    },
+    {
+      "source_id": "src_76d93deef6b54ec5",
+      "name": "dist_level_hvn_2_atr",
+      "value": 0.73,
+      "unit": "ATR",
+      "label": null
+    },
+    {
+      "source_id": "src_4ee8de1eca966ce7",
+      "name": "level_pivot_high_1",
+      "value": 102.1,
+      "unit": "USD",
+      "label": null
+    },
+    {
+      "source_id": "src_53983f94283c0a33",
+      "name": "dist_level_pivot_high_1_atr",
+      "value": -0.32,
+      "unit": "ATR",
+      "label": null
+    },
+    {
+      "source_id": "src_3d1781eaa5189125",
+      "name": "level_pivot_low_1",
+      "value": 95.6,
+      "unit": "USD",
+      "label": null
+    },
+    {
+      "source_id": "src_af928b02f69ca699",
+      "name": "dist_level_pivot_low_1_atr",
+      "value": 2.64,
+      "unit": "ATR",
+      "label": null
+    },
+    {
+      "source_id": "src_324d6afd7dac1d00",
+      "name": "congestion_low",
+      "value": 99.6,
+      "unit": "USD",
+      "label": null
+    },
+    {
+      "source_id": "src_ad1a870a3bd81f07",
+      "name": "congestion_high",
+      "value": 102.1,
+      "unit": "USD",
+      "label": null
+    },
+    {
+      "source_id": "src_26d5033711cf7dcb",
+      "name": "congestion_sessions",
+      "value": 7.0,
+      "unit": "sessions",
+      "label": null
+    },
+    {
+      "source_id": "src_f7c8389d56c5344d",
+      "name": "congestion_range_atr",
+      "value": 1.14,
+      "unit": "ATR",
+      "label": null
+    },
+    {
+      "source_id": "src_efa3f8d4561c4f63",
+      "name": "regime_spy",
+      "value": null,
+      "unit": null,
+      "label": "bull-normal"
+    },
+    {
+      "source_id": "src_348fffce6f4300ef",
+      "name": "revenue_CY2026Q2",
+      "value": 1820000000.0,
+      "unit": "USD",
+      "label": null
+    },
+    {
+      "source_id": "src_c08d535a8d5bc924",
+      "name": "revenue_CY2026Q3",
+      "value": 1950000000.0,
+      "unit": "USD",
+      "label": null
+    },
+    {
+      "source_id": "src_f9d7d2b09f747291",
+      "name": "net_income_CY2026Q2",
+      "value": 210000000.0,
+      "unit": "USD",
+      "label": null
+    },
+    {
+      "source_id": "src_0d51305ad1df9e2e",
+      "name": "net_income_CY2026Q3",
+      "value": 240000000.0,
+      "unit": "USD",
+      "label": null
+    },
+    {
+      "source_id": "src_d28e0e2beb3cb31c",
+      "name": "eps_diluted_CY2026Q3",
+      "value": 1.12,
+      "unit": "USD/shares",
+      "label": null
+    }
+  ]
+}

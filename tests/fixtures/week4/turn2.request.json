@@ -1,0 +1,145 @@
+{
+  "model": "anthropic/claude-sonnet-5.5",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are an equity research assistant. You write short, checkable claims about one US stock on one\ntrading day. You never compute numbers: every number you use is in the SOURCES table, computed by code.\n\nRules for every claim:\n- tag \"fact\": restates one or more sources. source_ids lists them; derived_from is empty; steps is null.\n  If the claim has a number, put it in \"value\" and \"unit\" exactly as in the cited source.\n- tag \"inference\": a conclusion drawn from earlier claims. derived_from lists their ids; steps says how in one\n  sentence; source_ids is empty. value is null unless the number appears in a cited source.\n- tag \"opinion\": a judgement. value is null and the text contains no digits.\n- Write numbers ONLY in \"value\". In \"text\", refer to it as {value}. Name indicators by their table name\n  (sma_200, high_20, rsi_14). Dates as YYYY-MM-DD are allowed.\n- Use only the source_ids in the table. Do not invent sources, news or events.\nWrite 6 to 12 claims. Ids are c1, c2, ... in order; an inference may only derive from earlier ids.\nThis is educational research, not investment advice. Do not recommend buying or selling."
+    },
+    {
+      "role": "user",
+      "content": "TICKER: FAKEA\nSESSION: 2026-11-13 (the last completed NYSE session)\n\nThe SOURCES table is not included here: fetch the rows you need with the get_sources tool.\n\nWrite the claims as JSON with the key \"claims\"."
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "tool_calls": [
+        {
+          "id": "toolu_01FAABR9tQJYBK8Xr5g6ZhrU",
+          "type": "function",
+          "function": {
+            "name": "get_sources",
+            "arguments": "{\"groups\": [\"price_and_indicators\",\"levels_and_congestion\",\"regime\",\"fundamentals\"]}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "src_98651de31e6271aa | close | 101.4 | USD\nsrc_4cb0b4e2917174f1 | sma_20 | 98.75 | USD\nsrc_7727cab7649949fb | sma_50 | 96.2 | USD\nsrc_b2c76d99962d70fc | sma_200 | 88.9 | USD\nsrc_fab7e3f863968954 | ema_9 | 100.6 | USD\nsrc_802430b79cd4c30f | ema_21 | 99.1 | USD\nsrc_e80e4812c8cf9f6d | rsi_14 | 61.3 | index\nsrc_7cecbaeb8f0beea0 | atr_14 | 2.2 | USD\nsrc_03257110d4e26bce | atr_pct | 2.17 | %\nsrc_576c0033eee0f1b2 | rel_volume | 1.45 | x\nsrc_7f4d62f55353a80f | high_20 | 102.1 | USD\nsrc_874bb01bd0054d02 | low_20 | 94.3 | USD\nsrc_b9ccd4fd7dc8a60e | gap_pct | 0.4 | %\nsrc_f586696df3e73606 | nr7 | 0 | flag\nsrc_f5dc1884be9b21e5 | vwap_session | 101.1 | USD\nsrc_9be6ad21f0cf4dc7 | dist_sma_20_atr | 1.2 | ATR\nsrc_4c88f1672fdcd9f5 | dist_sma_50_atr | 2.36 | ATR\nsrc_aeba4240f3590351 | dist_sma_200_atr | 5.68 | ATR\nsrc_30999799f47d31d5 | dist_high_20_atr | -0.32 | ATR\nsrc_82075ade3ff4cca9 | dist_low_20_atr | 3.23 | ATR\nsrc_954256091e618501 | level_hvn_1 | 97.5 | USD\nsrc_54745dda76ecd21a | dist_level_hvn_1_atr | 1.77 | ATR\nsrc_07d42ee39214d524 | level_hvn_2 | 99.8 | USD\nsrc_76d93deef6b54ec5 | dist_level_hvn_2_atr | 0.73 | ATR\nsrc_4ee8de1eca966ce7 | level_pivot_high_1 | 102.1 | USD\nsrc_53983f94283c0a33 | dist_level_pivot_high_1_atr | -0.32 | ATR\nsrc_3d1781eaa5189125 | level_pivot_low_1 | 95.6 | USD\nsrc_af928b02f69ca699 | dist_level_pivot_low_1_atr | 2.64 | ATR\nsrc_324d6afd7dac1d00 | congestion_low | 99.6 | USD\nsrc_ad1a870a3bd81f07 | congestion_high | 102.1 | USD\nsrc_26d5033711cf7dcb | congestion_sessions | 7 | sessions\nsrc_f7c8389d56c5344d | congestion_range_atr | 1.14 | ATR\nsrc_efa3f8d4561c4f63 | regime_spy | bull-normal | -\nsrc_348fffce6f4300ef | revenue_CY2026Q2 | 1820000000 | USD\nsrc_c08d535a8d5bc924 | revenue_CY2026Q3 | 1950000000 | USD\nsrc_f9d7d2b09f747291 | net_income_CY2026Q2 | 210000000 | USD\nsrc_0d51305ad1df9e2e | net_income_CY2026Q3 | 240000000 | USD\nsrc_d28e0e2beb3cb31c | eps_diluted_CY2026Q3 | 1.12 | USD/shares",
+      "tool_call_id": "toolu_01FAABR9tQJYBK8Xr5g6ZhrU"
+    }
+  ],
+  "max_tokens": 4000,
+  "response_format": {
+    "type": "json_schema",
+    "json_schema": {
+      "name": "output",
+      "strict": true,
+      "schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "claims"
+        ],
+        "properties": {
+          "claims": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "id",
+                "tag",
+                "text",
+                "value",
+                "unit",
+                "source_ids",
+                "derived_from",
+                "steps"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "tag": {
+                  "type": "string",
+                  "enum": [
+                    "fact",
+                    "inference",
+                    "opinion"
+                  ]
+                },
+                "text": {
+                  "type": "string"
+                },
+                "value": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "unit": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "source_ids": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "derived_from": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "steps": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "get_sources",
+        "description": "Rows of the SOURCES table for this ticker and session, one per line as `source_id | name | value | unit`. Ask for every group you need in one call. Cite the source_id of every row a claim uses.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "groups": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string",
+                "enum": [
+                  "price_and_indicators",
+                  "levels_and_congestion",
+                  "regime",
+                  "fundamentals"
+                ]
+              },
+              "description": "Which rows: price_and_indicators (close, moving averages, RSI, ATR, volume, 20-day range), levels_and_congestion (volume and pivot levels, congestion box), regime (SPY regime), fundamentals (EDGAR revenue, net income, EPS)."
+            }
+          },
+          "required": [
+            "groups"
+          ],
+          "additionalProperties": false
+        }
+      }
+    }
+  ],
+  "tool_choice": "auto"
+}

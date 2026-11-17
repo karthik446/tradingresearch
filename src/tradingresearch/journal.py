@@ -395,13 +395,24 @@ def first_daily_session(conn: sqlite3.Connection) -> date | None:
 VERDICT_COLUMNS = ("thesis_id", "verdict", "reason", "score_id", "created_at")
 
 
+def _insert_verdict(conn: sqlite3.Connection, thesis_id: str, verdict: str, reason: str, score_id: str | None) -> None:
+    conn.execute(f"INSERT INTO judge_verdict ({', '.join(VERDICT_COLUMNS)}) VALUES (?, ?, ?, ?, ?)",
+                 (thesis_id, verdict, reason, score_id, datetime.now(UTC).isoformat()))
+
+
 def add_judge_verdict(conn: sqlite3.Connection, thesis_id: str, verdict: str, reason: str,
                       score_id: str | None = None) -> None:
     """One P1 judge reply (rubric "Verdict format": `pass` or `fail`, unknown = `fail` with `unknown:`), one row per
     call, committed at once; a later row for the same thesis supersedes it."""
     with conn:
-        conn.execute(f"INSERT INTO judge_verdict ({', '.join(VERDICT_COLUMNS)}) VALUES (?, ?, ?, ?, ?)",
-                     (thesis_id, verdict, reason, score_id, datetime.now(UTC).isoformat()))
+        _insert_verdict(conn, thesis_id, verdict, reason, score_id)
+
+
+def add_judge_score(conn: sqlite3.Connection, thesis_id: str, record: ScoreRecord, verdict: str, reason: str) -> None:
+    """The P1 judge's ScoreRecord and the verdict row that points at it, in one transaction."""
+    with conn:
+        _insert_score(conn, thesis_id, record)
+        _insert_verdict(conn, thesis_id, verdict, reason, record.score_id)
 
 
 def judge_verdicts(conn: sqlite3.Connection) -> dict[str, dict]:

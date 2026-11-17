@@ -1,5 +1,4 @@
-"""The `mode` arm knob (REPO-PLAN §2.4, week 4): parsed and checked at config load, refused at run time until the
-learner's tool loop exists, before any call is made."""
+"""The `mode` arm knob (REPO-PLAN §2.4, week 4), checked at config load. tests/test_week4.py runs a tools arm."""
 
 from pathlib import Path
 
@@ -35,9 +34,3 @@ def test_an_unknown_mode_is_refused_at_load(tmp_path):
     path = config(tmp_path, "agentic")
     with pytest.raises(SystemExit, match=r"arm baseline: mode must be one of fixed, tools, not 'agentic'"):
         experiment.load(path)
-
-
-def test_a_tools_arm_stops_before_any_call(tmp_path):
-    loaded = experiment.load(config(tmp_path, "tools"))
-    with pytest.raises(NotImplementedError, match="mode=tools: week 4 learner work"):
-        experiment.run_arms(None, loaded, [], provider=None, prices={}, data_dir=tmp_path)

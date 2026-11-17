@@ -21,8 +21,8 @@ positional arguments:
     open                theses whose last event is PROPOSED or OPEN
     reconcile           settle PROPOSED and OPEN theses from raw bars (no
                         model call)
-    grade               shadow baselines and grades for closed theses (no
-                        model call)
+    grade               shadow baselines and grades for closed theses (a paid
+                        P1 judge with --judge)
     daily               the evening run for one session: screen, analyze,
                         thesis, reconcile, grade (paid)
     report              per-horizon scorecards: win rate, r_net, shadow,

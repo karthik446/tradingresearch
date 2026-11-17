@@ -34,4 +34,4 @@ The desk's daily loop, one command each (`uv run tr <command> --help` has the fl
 | `tr usage` | cost per call, run, arm or day from the trace |
 | `tr bakeoff draw` / `report` | the date-seeded 4-name draw and the per-teacher report for the teacher bake-off |
 
-`uv run python ci/gate.py` is the free CI gate (reconcile goldens and prompt hashes). `tests/test_week2.py` fails by design at `week-2-start`: it is your week-2 acceptance test.
+`uv run python ci/gate.py` is the free CI gate (reconcile goldens and prompt hashes). `tests/test_week2.py` fails by design at `week-2-start`: it is your week-2 acceptance test. Likewise `tests/test_week4.py` is the week-4 acceptance test (tools, the tool loop, ADR-005, the first rule change; runbook "Week 4 acceptance").

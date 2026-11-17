@@ -164,9 +164,10 @@ thesis call $0.003016 (G6c's fixture capture, 2026-11-17).
 ## Experiment arms: `mode`
 
 An arm may set `mode = "fixed"` (the default: the context goes in the prompt) or `mode = "tools"` (the model asks for
-context with tool calls, week 4). Any other value fails `tr exp run` at config load. A `tools` arm is accepted but
-`tr exp run` stops with `NotImplementedError: mode=tools: week 4 learner work` before the first model call, until the
-tool loop exists. OpenRouter already carries the tools (fixture `tests/fixtures/tools/`).
+context with tool calls, week 4). Any other value fails `tr exp run` at config load. Until the learner's tool loop
+exists, a `tools` arm stops `tr exp run` with `NotImplementedError: mode=tools: week 4 learner work` before the first
+model call; `tests/test_week4.py` then expects it to run through the loop, at most `analyze.MAX_TOOL_TURNS` calls per
+item. OpenRouter already carries the tools (fixtures `tests/fixtures/tools/`, `tests/fixtures/week4/`).
 
 ## Labels (P1, blind)
 
@@ -219,6 +220,14 @@ uv run tr learn --decide CHANGE_ID  # applies SPIKE §8.3; writes adopted/reject
 
 `uv run pytest tests/test_week3.py -q` is the week-3 contract: it passes when the P1 judge, `tr grade --judge`,
 `docs/adr/ADR-004-trace-policy.md`, `docs/slo-review.md` and `docs/measured-costs.md` exist and match it.
+
+## Week 4 acceptance
+
+`uv run pytest tests/test_week4.py -q` is the week-4 contract: it passes when `tradingresearch.tools`,
+`analyze.analyze_with_tools`, the `tool_calls_ok` grader, a `mode="tools"` arm in `tr exp run`,
+`experiments/tools-vs-fixed.toml`, `docs/adr/ADR-005-tools-vs-fixed-context.md` and the first rule change
+`experiments/rule-change-1.toml` exist and match it. The loop is checked by replaying one recorded real exchange
+(`tests/fixtures/week4/`, no key, no spend).
 
 ## CI
 
