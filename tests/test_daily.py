@@ -392,7 +392,7 @@ def test_a_dry_run_prints_the_teacher_plan_and_calls_nothing(conn, runs_dir, cap
     run(conn, Recorded(conn, runs_dir, ranked("AAPL")), runs_dir, dry_run=True, teachers=teachers.steps())
     assert (teachers.calls, journal.daily_runs(conn)) == ([], [])
     out = capsys.readouterr().out
-    assert f"would analyze AAPL with teacher {TEACHER.model}, then thesis" in out
+    assert (f"would analyze AAPL with teacher {TEACHER.model} (prompt analyze-3, drop headlines), then thesis") in out
     assert ("teachers 2026-11-16 (dry run): 1 names (AAPL) x 3 teachers; would analyze 3, thesis 3; each call's worst "
             "case must fit what is left of --teacher-max-usd $0.40 ($0.0000 spent this session); nothing written") in out
 

@@ -3,7 +3,7 @@ Prereg template and `tr bakeoff`. Everything is offline at $0: seeded journal ro
 Pro call of 2026-11-16 replayed at the HTTP transport for the run-file columns; no fake model."""
 
 import dataclasses
-from datetime import date
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 import pytest
@@ -211,3 +211,59 @@ def test_tr_bakeoff_draw_prints_the_stored_sessions_names_and_refuses_an_unscree
         main(["bakeoff", "draw", "--session", "2026-11-13"])
     main(["bakeoff", "report"])
     assert "bake-off sessions none yet (0 of 10), 0 drawn items" in capsys.readouterr().out
+
+
+def test_amendment_1_changes_only_the_teacher_prompt_and_leaves_the_prereg_untouched():
+    import hashlib
+    import tomllib
+    amendment = tomllib.loads((ROOT / "experiments" / "bakeoff-prereg-amendment-1.toml").read_text())
+    original = ROOT / amendment["amends"]
+    assert hashlib.sha256(original.read_bytes()).hexdigest() == amendment["amends_sha256"]  # never edited
+    assert (amendment["teacher_prompt"], tuple(amendment["drop"])) == (teacher.PROMPT, teacher.DROP)
+    assert amendment["missing_sessions_max"] == bakeoff.MISSING_SESSIONS_MAX
+    assert amendment["registered_at"] < datetime(2026, 11, 17, 21, 0, tzinfo=UTC)  # before session 1's first call
+    assert amendment["applies_from"] == sessions.FIRST_SESSION
+
+
+# ---------- amendment 1: availability ----------
+
+def failed_row(conn, model: str, ticker: str, step: str, text: str, day: date = BAKEOFF_DAY, status: str = "failed"):
+    journal.add_daily_run(conn, dict(daily_id=new_id("dr"), session=day.isoformat(), step=step, ticker=ticker,
+                                     status=status, reason=f"teacher {model}: {text}", ids=(), cost_usd=0.0))
+
+
+def test_an_item_the_endpoint_never_served_is_missing_not_a_parse_failure(tmp_path):
+    conn, _ = seeded()
+    oss = list(teacher.TEACHERS)[2]
+    failed_row(conn, oss, "KO", "analyze", "model call failed: http_503 (run x.jsonl)")
+    failed_row(conn, oss, "KO", "analyze", "model call failed: http_503 (run y.jsonl)")  # a catch-up failed again
+    failed_row(conn, oss, "NVDA", "analyze", "model call failed: model_output_not_json (run z.jsonl)")  # the model's
+    ds, qwen, found = bakeoff.report(conn, tmp_path)[1]
+    assert (found.items, found.parse_ok, found.missing, found.missing_sessions) == (4, 0, 1, 1)
+    assert (qwen.missing, ds.missing) == (0, 0)  # the unreached items of the others stay parse failures
+    assert "(1 missing)" in found.verdict and "1/1s" in bakeoff.render(*bakeoff.report(conn, tmp_path))
+
+
+def test_a_later_answer_replaces_an_earlier_endpoint_failure_so_attempts_do_not_count(tmp_path):
+    conn, _ = seeded()
+    ds = TEACHER.model
+    failed_row(conn, ds, "XOM", "analyze", "model call failed: rate_limited (run a.jsonl)")  # XOM: still failing
+    failed_row(conn, ds, "KO", "thesis", "model call failed: http_500 (run b.jsonl)")  # KO's analysis is stored
+    failed_row(conn, ds, "UNH", "thesis", "model call failed: rate_limited (run c.jsonl)", status="failed")
+    failed_row(conn, ds, "UNH", "thesis", "no setup", status="ok")  # the catch-up answered: UNH stays parse_ok
+    row = bakeoff.report(conn, tmp_path)[1][0]
+    assert (row.parse_ok, row.missing, row.missing_sessions) == (2, 2, 1)  # NVDA, UNH ok; XOM analysis, KO thesis
+
+
+def test_a_teacher_missing_in_more_than_two_sessions_is_out_of_the_pick_with_the_reason(tmp_path):
+    conn = journal.connect(":memory:")
+    oss = list(teacher.TEACHERS)[2]
+    for n in range(3):
+        day = date.fromordinal(BAKEOFF_DAY.toordinal() + n)
+        screened(conn, day, TEN)
+        stored(conn, TEACHER.model, "KO", day)  # puts the session in the plan
+        for name in teacher.draw(day, TEN):
+            failed_row(conn, oss, name, "analyze", "model call failed: http_503 (run q.jsonl)", day)
+    found = bakeoff.report(conn, tmp_path)[1][2]
+    assert (found.items, found.missing, found.missing_sessions) == (12, 12, 3)
+    assert found.verdict == "not eligible: endpoint missing in 3 of 10 sessions"

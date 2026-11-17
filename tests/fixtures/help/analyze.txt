@@ -8,7 +8,9 @@ positional arguments:
 options:
   -h, --help            show this help message and exit
   --session SESSION
-  --prompt PROMPT       prompt version: prompts/<version>.txt
+  --prompt PROMPT       prompt version: prompts/<version>.txt (default
+                        analyze-1; the teacher arm: analyze-3 with the
+                        headlines withheld)
   --model MODEL
   --arm {main,teacher}
   --teacher MODEL       the teacher arm's model, pinned to its DeepInfra

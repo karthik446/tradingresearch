@@ -85,7 +85,7 @@ def teacher_steps(conn, cfg, http, provider) -> daily.TeacherSteps:
     def analyze_step(ticker, day, t, max_usd):
         return an.analyze(conn, context(ticker, day), provider.routed(t.routing), model=t.model,
                           max_usd=min(CALL_USD, max_usd), prices=prices(), data_dir=cfg.data_dir, arm="teacher",
-                          terms_class=t.terms_class)
+                          terms_class=t.terms_class, prompt_version=tc.PROMPT, drop=tc.DROP)
 
     def thesis_step(a, t, max_usd):
         a = analysis_for(conn, SimpleNamespace(ticker=a.ticker, analysis=a.analysis_id, arm="teacher", teacher=t.model))

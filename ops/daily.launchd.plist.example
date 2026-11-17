@@ -15,8 +15,8 @@
     `--teachers` runs the teacher bake-off after the champion run; drop it to run the champion only.
 
   Time zone: launchd reads Hour/Minute in the Mac's own time zone. 16:30 is for a Mac set to New York time
-  (after the 16:15 ET cutoff `tr daily` waits for) and 21:00 is the catch-up. Elsewhere, convert 16:30 and 21:00 ET
-  to local time, and convert again if the Mac changes zone.
+  (after the 16:15 ET cutoff `tr daily` waits for), 21:00 is the catch-up and 07:00 (Tuesday to Saturday) the second one.
+  Elsewhere, convert 16:30, 21:00 and 07:00 ET to local time, and convert again if the Mac changes zone.
   On a holiday the default session is the last completed one, already run, so it makes no model call.
 
   Keys: tr reads them from ~/.config/tradingresearch/verify.env itself (TR_SEC_USER_AGENT may go there too).
@@ -56,6 +56,12 @@
     <dict><key>Weekday</key><integer>3</integer><key>Hour</key><integer>21</integer><key>Minute</key><integer>0</integer></dict>
     <dict><key>Weekday</key><integer>4</integer><key>Hour</key><integer>21</integer><key>Minute</key><integer>0</integer></dict>
     <dict><key>Weekday</key><integer>5</integer><key>Hour</key><integer>21</integer><key>Minute</key><integer>0</integer></dict>
+    <!-- second catch-up, before the 09:30 ET entry window: retries what an upstream failure (429, 503) left undone -->
+    <dict><key>Weekday</key><integer>2</integer><key>Hour</key><integer>7</integer><key>Minute</key><integer>0</integer></dict>
+    <dict><key>Weekday</key><integer>3</integer><key>Hour</key><integer>7</integer><key>Minute</key><integer>0</integer></dict>
+    <dict><key>Weekday</key><integer>4</integer><key>Hour</key><integer>7</integer><key>Minute</key><integer>0</integer></dict>
+    <dict><key>Weekday</key><integer>5</integer><key>Hour</key><integer>7</integer><key>Minute</key><integer>0</integer></dict>
+    <dict><key>Weekday</key><integer>6</integer><key>Hour</key><integer>7</integer><key>Minute</key><integer>0</integer></dict>
   </array>
   <key>StandardOutPath</key>
   <string>/path/to/tradingresearch/data/logs/daily.log</string>

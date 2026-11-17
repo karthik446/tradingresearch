@@ -10,6 +10,7 @@ analysis (`grade.code_checks`), so they count before any thesis settles.
 
 from __future__ import annotations
 
+import re
 import tomllib
 from collections import Counter
 from dataclasses import dataclass
@@ -28,6 +29,9 @@ N_PLANNED = 40  # items per teacher: 4 names x 10 sessions (SPIKE §9.4)
 SESSIONS = N_PLANNED // teacher.BAKEOFF_NAMES
 PARSE_OK_MIN = 38  # eligible at parse_ok >= 38/40 ...
 FACT_VALID_MIN = 0.90  # ... and >= 90% of fact claims valid (TRAINING-SPIKE §7.1)
+MISSING_SESSIONS_MAX = 2  # amendment 1: a teacher missing (endpoint) in more than 2 sessions is out of the pick
+# A failed teacher step the model did not cause: the pinned endpoint did not answer (429, 5xx, timeout, wrong route).
+ENDPOINT_FAILURE = re.compile(r"model call failed: (?:rate_limited|http_5\d\d|model_call_timed_out|route_mismatch)\b")
 STATES = ("CLOSED", "CANCELLED", "EXPIRED", "OPEN", "PROPOSED")
 
 
@@ -47,7 +51,9 @@ class Plan:
 
 @dataclass(frozen=True)
 class TeacherRow:
-    """One teacher's pick-rule inputs. `facts_total` is None when a stored analysis's run file is missing."""
+    """One teacher's pick-rule inputs. `facts_total` is None when a stored analysis's run file is missing. `missing`
+    counts the items with no analysis or no thesis-step decision after every run because the endpoint failed
+    (amendment 1): reported, and not a parse failure; `missing_sessions` is the sessions holding any such item."""
 
     model: str
     items: int
@@ -57,6 +63,8 @@ class TeacherRow:
     cost: usage.Usage | None
     states: dict[str, int]
     p2_p4: float | None  # the share of items passing P2-P4; None before any item is drawn
+    missing: int = 0
+    missing_sessions: int = 0
 
     @property
     def fact_share(self) -> float | None:
@@ -66,8 +74,10 @@ class TeacherRow:
     def verdict(self) -> str:
         """Eligibility under the pre-registered rule; `incomplete` until all planned items are in."""
         failed = []
-        if self.items - self.parse_ok > N_PLANNED - PARSE_OK_MIN:
-            failed.append(f"parse_ok {self.parse_ok}/{self.items}")
+        if self.items - self.missing - self.parse_ok > N_PLANNED - PARSE_OK_MIN:
+            failed.append(f"parse_ok {self.parse_ok}/{self.items}" + (f" ({self.missing} missing)" if self.missing else ""))
+        if self.missing_sessions > MISSING_SESSIONS_MAX:
+            failed.append(f"endpoint missing in {self.missing_sessions} of {SESSIONS} sessions")
         share = self.fact_share
         if self.items >= N_PLANNED and share is not None and share < FACT_VALID_MIN:
             failed.append(f"fact claims valid {share:.1%}")
@@ -102,27 +112,48 @@ def report(conn, data_dir: Path) -> tuple[Plan, list[TeacherRow]]:
 
 def row(conn, data_dir: Path, model: str, items: tuple[tuple[date, str], ...], calls: list[trace.Call]) -> TeacherRow:
     analyses = first_analyses(conn, model)
+    failures = last_failures(conn, model)
     parse_ok = facts_valid = 0
     facts_total: int | None = 0
     states: Counter[str] = Counter()
     theses_by_item: list[list[str] | None] = []
+    missing: set[tuple[date, str]] = set()
     for item in items:
         analysis = analyses.get(item)
         if analysis is None:
             theses_by_item.append(None)
+            if endpoint_failed(failures.get((*item, "analyze"))):
+                missing.add(item)
             continue
         theses = [tid for (tid,) in conn.execute(
             "SELECT thesis_id FROM thesis WHERE analysis_id = ? AND arm = 'teacher'", (analysis.analysis_id,))]
         ok = decided(conn, analysis.analysis_id)
         parse_ok += ok
         theses_by_item.append(theses if ok else None)
+        if not ok and endpoint_failed(failures.get((*item, "thesis"))):
+            missing.add(item)
         states.update(state(conn, tid) for tid in theses)
         facts_valid += sum(claim.tag == "fact" for claim in analysis.claims)
         replied = reply_facts(data_dir, analysis)
         facts_total = None if facts_total is None or replied is None else facts_total + replied
     cost = usage.summarize(model, calls) if calls else None
     return TeacherRow(model, len(items), parse_ok, facts_valid, facts_total, cost, dict(states),
-                      p2_p4(conn, theses_by_item))
+                      p2_p4(conn, theses_by_item), len(missing), len({day for day, _ in missing}))
+
+
+def last_failures(conn, model: str) -> dict[tuple[date, str, str], str]:
+    """The reason of each (session, name, step)'s LAST non-skipped `tr daily` row for `model`, kept only when it
+    failed: a later run that answered, or a later success, replaces it, so this is the final state, not the attempts."""
+    prefix = f"{daily.TEACHER} {model}: "
+    last: dict[tuple[date, str, str], str | None] = {}
+    for r in journal.daily_runs(conn):
+        if r["step"] in ("analyze", "thesis") and r["reason"].startswith(prefix) and r["status"] != "skipped":
+            last[(date.fromisoformat(r["session"]), r["ticker"], r["step"])] = r["reason"] if r["status"] == "failed" else None
+    return {key: reason for key, reason in last.items() if reason}
+
+
+def endpoint_failed(reason: str | None) -> bool:
+    return reason is not None and ENDPOINT_FAILURE.search(reason) is not None
 
 
 def decided(conn, analysis_id: str) -> bool:
@@ -200,13 +231,16 @@ def render(bakeoff: Plan, rows: list[TeacherRow]) -> str:
     lines = [f"bake-off sessions {span} ({len(bakeoff.sessions)} of {SESSIONS}), {len(bakeoff.items)} drawn items "
              f"(n_planned {N_PLANNED})"]
     lines += [f"  {day}: no stored screen, nothing drawn (run `tr screen --session {day}`)" for day in bakeoff.unscreened]
-    lines += ["", f"{'teacher':<28}{'items':>6}{'parse_ok':>10}{'facts valid':>19}{'cost_usd':>11}  states"]
+    lines += ["", f"{'teacher':<28}{'items':>6}{'parse_ok':>10}{'missing':>9}{'facts valid':>19}{'cost_usd':>11}  states"]
     for r in rows:
         facts = f"{r.facts_valid}/{r.facts_total} ({r.fact_share:.1%})" if r.fact_share is not None else "n/a"
         cost = "n/a" if r.cost is None else f"{'>=' if r.cost.prices_missing else ''}{r.cost.cost_usd:.4f}"
         states = " ".join(f"{s}={r.states[s]}" for s in STATES if r.states.get(s)) or "-"
-        lines.append(f"{r.model:<28}{r.items:>6}{f'{r.parse_ok}/{r.items}':>10}{facts:>19}{cost:>11}  {states}")
-    lines += ["", f"eligibility: parse_ok >= {PARSE_OK_MIN}/{N_PLANNED} and fact claims valid >= {FACT_VALID_MIN:.0%}",
+        missing = f"{r.missing}/{r.missing_sessions}s" if r.missing else "0"
+        lines.append(f"{r.model:<28}{r.items:>6}{f'{r.parse_ok}/{r.items}':>10}{missing:>9}{facts:>19}{cost:>11}  {states}")
+    lines += ["", f"eligibility: parse_ok >= {PARSE_OK_MIN}/{N_PLANNED} and fact claims valid >= {FACT_VALID_MIN:.0%}; "
+                  f"'missing' = items the endpoint never served after the last run (n items/n sessions): not parse "
+                  f"failures, but more than {MISSING_SESSIONS_MAX} sessions out of the pick (amendment 1)",
               f"{'teacher':<28}{'verdict':<36}p2_p4_pass"]
     for r in rows:
         p2 = "n/a" if r.p2_p4 is None else f"{r.p2_p4:.1%}"

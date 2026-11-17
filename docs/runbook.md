@@ -8,7 +8,7 @@ How the daily loop runs, how to check it, and what to do when it fails. Live str
 
 | Setting | Value |
 |---|---|
-| When | Monday–Friday 14:30 and 19:00, Mac time zone America/Denver (16:30 and 21:00 New York). 19:00 is a catch-up |
+| When | Monday–Friday 14:30 and 19:00, and Tuesday–Saturday 05:00, Mac time zone America/Denver (16:30, 21:00 and 07:00 New York). 19:00 and 05:00 are catch-ups: 05:00 is the second one, before the 09:30 ET entry window, and retries what an upstream failure left undone (15 runs a week) |
 | Program | `/Users/kar/.local/bin/uv run tr daily --teachers` (uv by absolute path; `--teachers` runs the bake-off) |
 | WorkingDirectory | `/Users/kar/Developer/projects/tradingresearch-live` (the pinned worktree, below) |
 | TR_DATA_DIR | `/Users/kar/Developer/projects/tradingresearch/data` (the live journal) |
@@ -17,8 +17,8 @@ How the daily loop runs, how to check it, and what to do when it fails. Live str
 | Keys | `tr` reads `~/.config/tradingresearch/verify.env` itself, including `TR_SEC_USER_AGENT`. No key goes in the plist |
 
 launchd reads Hour/Minute in the Mac's time zone. If the Mac changes zone, the times must be converted again.
-`ops/daily.launchd.plist.example` is the template
-(written for a Mac on New York time: 16:30 and a 21:00 catch-up); the installed agent has the same shape in Denver time.
+`ops/daily.launchd.plist.example` is the template (written for a Mac on New York time: 16:30 and a 21:00 catch-up on
+Monday–Friday, 07:00 on Tuesday–Saturday); the installed agent has the same shape in Denver time.
 
 The LaunchAgent owns live runs. To look at what a live run would do, use `--dry-run`.
 
@@ -44,8 +44,8 @@ change under the stream. Two rules follow, and they are separate on purpose.
    kappa model against model. `learn --decide` runs only after the operator's go (the decision is an ADR, at
    `n_planned`). Everything else stays on `data-dev`.
 
-Moving the pin, only to a commit whose tests and `ci/gate.py` pass, and never between 14:15 and 14:45 or between
-18:45 and 19:15 America/Denver (the two run windows):
+Moving the pin, only to a commit whose tests and `ci/gate.py` pass, and never between 14:15 and 14:45, between
+18:45 and 19:15, or between 04:45 and 05:15 on Tuesday–Saturday, America/Denver (the three run windows):
 
 ```sh
 git -C ~/Developer/projects/tradingresearch-live checkout --detach <sha> && (cd ~/Developer/projects/tradingresearch-live && uv sync -q)
@@ -64,8 +64,9 @@ shortlist (`--top`, default 10), write one thesis-step decision per analysis, th
 `--session`, `--top`, `--max-usd` (default 1.00), `--dry-run` (free steps only, writes nothing), `--no-model`,
 `--no-challenger`, `--teachers`, `--teacher-max-usd` (default 0.40).
 
-- **Reruns are free.** Finished work prints `already done` and makes no model call, so the 19:00 catch-up only does
-  what 14:30 missed. A holiday works the same way: the default session is the last completed one, already done.
+- **Reruns are free.** Finished work prints `already done` and makes no model call, so the 19:00 and 05:00 catch-ups
+  only do what 14:30 missed (a teacher call that failed upstream is retried; a stored answer never is). A holiday works
+  the same way: the default session is the last completed one, already done.
 - **Budget.** Each paid step is estimated before it runs (`daily.py`: $0.02 per analyze, $0.03 per thesis). If the
   estimate would take the run past `--max-usd`, the step gets a `stopped` row. 2026-11-16 measured $0.085262 for
   5 analyze calls and $0.104072 for 5 thesis calls.
@@ -158,7 +159,12 @@ status page before rerunning.
 
 `tr daily --teachers` runs it. Session 1 is the first session on or after 2026-11-17 with a stored teacher analysis
 (`sessions.FIRST_SESSION`, `experiments/bakeoff-prereg.toml`); earlier teacher analyses are tests and the report
-ignores them. By hand, for one session D:
+ignores them.
+
+The teachers are asked with analyze-3 and the headlines withheld (`teacher.PROMPT`, `teacher.DROP`; amendment 1,
+`experiments/bakeoff-prereg-amendment-1.toml`, ADR-007's last section); the champion stays on analyze-1. A teacher
+call that fails upstream (429, 503) stores nothing, writes a `failed teacher <model>` row, and the next
+`--teachers` run for that session retries it. By hand, for one session D:
 
 ```
 uv run tr bakeoff draw --session D       # the 4 names, seeded by the date

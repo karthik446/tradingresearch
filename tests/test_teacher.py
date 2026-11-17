@@ -191,3 +191,35 @@ def test_a_teacher_thesis_needs_an_analysis_by_the_same_teacher():
     assert analysis_for(conn, args) == teacher
     with pytest.raises(SystemExit, match="written by deepseek/deepseek-v4-pro, not qwen/qwen3.5-397b-a17b"):
         analysis_for(conn, SimpleNamespace(**{**vars(args), "teacher": "qwen/qwen3.5-397b-a17b"}))
+
+
+def test_the_teacher_prompt_is_analyze3_with_the_headlines_withheld(tmp_path, pinned_tokens):
+    from tradingresearch import news
+    ctx = context()
+    retrieved = datetime(2026, 11, 16, 22, 0, tzinfo=UTC)
+    article = {"id": 7, "headline": "Placeholder headline", "url": "https://x.test", "source": "benzinga",
+               "symbols": ["AAPL"], "created_at": "2026-11-16T15:00:00Z"}
+    news.store(tmp_path, "AAPL", [news.normalise(article, retrieved)])  # in the store, so only the drop keeps it out
+    assert an.with_headlines(ctx, tmp_path, "analyze-3").headlines != ()
+    seen: list[dict] = []
+    conn = journal.connect(":memory:")
+    result = an.analyze(conn, ctx, replaying(REPLY, seen), model=TEACHER.model, max_usd=0.10,
+                        prices={TEACHER.model: PRICE}, data_dir=tmp_path, arm="teacher",
+                        terms_class=TEACHER.terms_class, prompt_version=tc.PROMPT, drop=tc.DROP)
+    [body] = seen
+    system, user = (m["content"] for m in body["messages"])
+    assert (tc.PROMPT, tc.DROP) == ("analyze-3", ("headlines",))
+    assert system == an.system_prompt("analyze-3") and "| headline " not in user and user == an.render(ctx)
+    a = result.analysis
+    assert a.prompt_version == "analyze-3" and a.arm == "teacher"
+    assert a.input_hash == an.input_hash(ctx, "analyze-3", drop=tc.DROP) != an.input_hash(ctx, "analyze-3")
+    assert conn.execute("SELECT count(*) FROM source_ref WHERE kind = 'news'").fetchone() == (0,)
+    assert th.cited_headlines(conn, a, tmp_path) == ()  # the thesis step sees no untrusted headline either
+
+
+@pytest.mark.parametrize(("prompt", "drop"), [("analyze-1", ("headlines",)), ("analyze-3", ("edgar",)),
+                                              ("analyze-3", ("headlines", "edgar"))])
+def test_analyze_drops_only_the_headlines_and_only_on_a_prompt_that_shows_them(tmp_path, prompt, drop):
+    with pytest.raises(ValueError, match="only"):
+        an.analyze(journal.connect(":memory:"), context(), replaying(REPLY, []), model=TEACHER.model, max_usd=0.10,
+                   prices={TEACHER.model: PRICE}, data_dir=tmp_path, prompt_version=prompt, drop=drop)

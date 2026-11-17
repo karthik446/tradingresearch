@@ -14,6 +14,13 @@ from .openrouter import Routing
 
 QUANTIZATIONS = ("fp8", "bf16")
 BAKEOFF_NAMES = 4  # names per bake-off session, drawn from that session's shortlist of 10 (SPIKE §9.4)
+# The teacher arm's analyze prompt (decision 2026-11-17, before bake-off session 1): analyze-3 with the headlines
+# withheld, because the bake-off must run on the prompt the student is trained on, and that prompt carries no news
+# text (none reaches the teacher or a published dataset; a thesis never sees an untrusted headline). ADR-007 measured
+# the no-headlines arm on Sonnet only (claims_valid 0.969 against analyze-1's 0.798, not a teacher): the gain for
+# teachers is not shown. The champion stays on analyze-1.
+PROMPT = "analyze-3"
+DROP = ("headlines",)
 
 
 @dataclass(frozen=True)

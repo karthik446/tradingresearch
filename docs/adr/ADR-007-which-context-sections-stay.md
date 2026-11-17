@@ -169,3 +169,22 @@ What the analyses did with the sections (the counts above):
 - `tr exp run` cannot compare a drop arm whose config lists the dropped section's grader (`metric_missing`), nor a
   section grader scored on no common item (`no_paired_items`); until that is fixed, a drop-arm config's comparison has
   to be computed from the run files as here.
+
+## Amendment 2026-11-17: the teacher arm moves to analyze-3 without headlines
+
+The decision above is unchanged for the champion: `tr daily` still analyzes with `DEFAULT_PROMPT` analyze-1, and the
+champion changes only through a RuleChange. One thing changed, before bake-off session 1: the **teacher arm** (`tr daily
+--teachers`, and the default of `tr analyze --arm teacher`) now asks analyze-3 with `drop = ["headlines"]`
+(`teacher.PROMPT`, `teacher.DROP`; recorded as `experiments/bakeoff-prereg-amendment-1.toml`, which pins the sha256 of
+the untouched bake-off pre-registration).
+
+Why: the bake-off has to run on the prompt the student will be trained on, and that prompt carries no headlines: the
+headlines are untrusted third-party text, and withholding them keeps it out of the teacher's input and out of any
+dataset made from teacher rows (so no thesis prompt change is needed). Two earlier numbers point the same way and
+prove nothing about teachers: the two live teacher analyses on analyze-1 kept 4 of 11 and 3 of 12 claims (n = 2), and
+G16a2 found 0 of 72 dev analyses fit for a published dataset; the no-headlines arm above scored `claims_valid` 0.969 on
+analyze-3 (Sonnet, 20 items) against analyze-1's 0.798 in week 4 (not a controlled comparison, see the caveats).
+
+What is not shown: that this helps the teachers. The pre-live check (one AAPL call per teacher, $0.0042) gave
+deepseek-v4-pro 6 valid of 12 claims (`all_claims_valid` 0); qwen and gpt-oss returned no reply (429 and 503 from
+DeepInfra, the same on analyze-1). The bake-off's own results are the evidence.

@@ -550,8 +550,15 @@ def _tool_span(ctx: Context, call: ToolCall, parent_id: str) -> tuple[ToolSpan, 
 
 
 def analyze(conn, ctx: Context, provider, *, model: str, max_usd: float, prices: dict, data_dir,
-            prompt_version: str = DEFAULT_PROMPT, arm: str = "main", terms_class: str | None = None) -> Result:
-    ctx = with_headlines(ctx, data_dir, prompt_version)
+            prompt_version: str = DEFAULT_PROMPT, arm: str = "main", terms_class: str | None = None,
+            drop: tuple[str, ...] = ()) -> Result:
+    """One paid analysis. `drop` is `("headlines",)` or empty: this path only withholds the headlines (it never
+    reads the news store, so the prompt is the masked one the context ablation measured); the other sections are
+    dropped by `tr exp run`'s arms."""
+    if drop and (drop != ("headlines",) or not shows_headlines(prompt_version)):
+        raise ValueError(f"drop {list(drop)} on {prompt_version}: only [\"headlines\"], on a prompt that shows them")
+    if not drop:
+        ctx = with_headlines(ctx, data_dir, prompt_version)
     item = item_for(ctx)
     run = run_eval(Dataset.of("analyze", [item]), provider, [ClaimsValid()], settings=call_settings(model),
                    budget=CallBudget(max_usd=max_usd, prices=prices), system=system_prompt(prompt_version),
@@ -562,5 +569,5 @@ def analyze(conn, ctx: Context, provider, *, model: str, max_usd: float, prices:
         raise SystemExit(f"model call failed: {sample.error.code if sample.error else '?'} (run {run_path})")
     analysis, rejected = store(conn, ctx, sample, run.record.run_id, model=model, prompt_version=prompt_version,
                                route=provider.route_for(item.prompt) if hasattr(provider, "route_for") else "unknown",
-                               arm=arm, terms_class=terms_class)
+                               arm=arm, terms_class=terms_class, drop=drop)
     return Result(analysis, rejected, run.record.spent_usd, str(run_path), str(run.record.trace_path))

@@ -14,10 +14,12 @@ def cmd_analyze(args, cfg) -> None:
     key = require(cfg.openrouter_key, "OPENROUTER_API_KEY")
     conn, ctx = context_for(args, cfg)
     provider = openrouter.OpenRouter(key, routing=teacher.routing if teacher else None)
+    prompt = args.prompt or (tc.PROMPT if teacher else an.DEFAULT_PROMPT)
+    drop = tc.DROP if teacher and not args.prompt else ()  # the teacher default is analyze-3 without headlines
     try:
-        result = an.analyze(conn, ctx, provider, model=model, max_usd=args.max_usd,
-                            prices=openrouter.prices([model]), data_dir=cfg.data_dir, prompt_version=args.prompt,
-                            arm=args.arm, terms_class=teacher.terms_class if teacher else None)
+        result = an.analyze(conn, ctx, provider, model=model, max_usd=args.max_usd, prices=openrouter.prices([model]),
+                            data_dir=cfg.data_dir, prompt_version=prompt, arm=args.arm, drop=drop,
+                            terms_class=teacher.terms_class if teacher else None)
     finally:
         provider.close()
     a = result.analysis
@@ -38,7 +40,8 @@ def register(sub) -> None:
     p = sub.add_parser("analyze", help="write a checked Analysis for one ticker-day (paid call)")
     p.add_argument("ticker")
     p.add_argument("--session")
-    p.add_argument("--prompt", default=an.DEFAULT_PROMPT, help="prompt version: prompts/<version>.txt")
+    p.add_argument("--prompt", help=f"prompt version: prompts/<version>.txt (default {an.DEFAULT_PROMPT}; "
+                                    f"the teacher arm: {tc.PROMPT} with the headlines withheld)")
     p.add_argument("--model", default=an.DEFAULT_MODEL)
     p.add_argument("--arm", choices=("main", "teacher"), default="main")
     p.add_argument("--teacher", choices=tuple(tc.TEACHERS), metavar="MODEL",

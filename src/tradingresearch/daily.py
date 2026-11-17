@@ -457,7 +457,8 @@ def teacher_analyze(daily: Daily, steps: TeacherSteps, spend: TeacherSpend, name
         daily.record(Row("analyze", name, "skipped", label(t) + gate))
     elif daily.dry_run:
         spend.planned += [("analyze", name, t.model), ("thesis", name, t.model)]
-        print(f"would analyze {name} with {TEACHER} {t.model}, then thesis")
+        print(f"would analyze {name} with {TEACHER} {t.model} (prompt {tc.PROMPT}, drop {','.join(tc.DROP)}), "
+              "then thesis")
     else:
         result, cost = teacher_call(daily, spend, "analyze", name, t,
                                     lambda left: steps.analyze(name, daily.session, t, left))

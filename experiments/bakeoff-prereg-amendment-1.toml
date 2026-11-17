@@ -1,0 +1,53 @@
+# Amendment 1 to the teacher bake-off's pre-registration (experiments/bakeoff-prereg.toml), registered BEFORE bake-off
+# session 1 (2026-11-17; the first teacher call is after that day's 14:00 America/Denver close). The original file is
+# not edited: the test in tests/test_bakeoff.py pins its sha256. This file changes three things and nothing else:
+# (1) the prompt the teachers are asked with, (2) how a teacher the endpoint did not serve is counted, (3) what happens
+# to a teacher whose endpoint is down. Every pick-rule number in the original (eligibility parse_ok >= 38/40 and >= 90%
+# of fact claims valid, margin 0.10, n_planned 40, the tie-breaks) stands unchanged.
+#
+# 1. The prompt. The original does not name one: `tr analyze --arm teacher` used the default, analyze-1. From session 1
+# the teachers use analyze-3 with the headlines withheld. Why: the bake-off has to run on the prompt the student will be
+# trained on, and that prompt carries no headlines (they are untrusted third-party text; withholding them keeps it out
+# of the teacher's input and out of any dataset made from teacher rows, and a teacher analysis cites no headline, so no
+# thesis prompt change is needed). It is not claimed that the prompt helps the teachers. Checks made before this
+# amendment, all n = 1 or n = 2, none an inference:
+# - ADR-007 (Sonnet, not a teacher; 20 ticker-days): analyze-3 with the headlines withheld scored claims_valid 0.969 and
+#   all_claims_valid 0.75; analyze-1 scored 0.798 and 0.100 in week 4 (a different run, not a controlled comparison).
+#   Dropping the headlines moved claims_valid by +0.005, 95% CI [-0.027, +0.042].
+# - Both live teacher replies on analyze-1 (deepseek-v4-pro, AAPL and KO, 2026-11-16) kept 4 of 11 and 3 of 12 claims.
+# - One call per teacher on analyze-3 without headlines, data-dev, AAPL 2026-11-16, 2026-11-17 (about $0.01 in total):
+#   deepseek/deepseek-v4-pro   6 valid of 12 claims, all_claims_valid 0 (all 6 rejections number_in_text); a second
+#                              call later the same night: 10 valid of 12, all_claims_valid 0 (number_in_text, and its
+#                              bad_derivation follow-on)
+#   qwen/qwen3.5-397b-a17b     no reply: OpenRouter 429 "temporarily rate-limited upstream" (DeepInfra), 4 tries
+#   openai/gpt-oss-120b        no reply: OpenRouter 503 "not ready to serve requests" (DeepInfra), 4 tries
+#   The two failures repeat on analyze-1, so they are the endpoints, not the prompt.
+# The champion stays on analyze-1 and changes only through a RuleChange.
+#
+# 2. Availability. The original counts a (session, name, teacher) cell with no stored analysis as a parse failure. That
+# is wrong for a cell the endpoint never served: the model did not fail to answer, it was not asked. A cell is
+# "missing (endpoint)" when, after the last run of the session, it has no stored analysis (or an analysis but no
+# stored decision) and the last `daily_run` row for it is a failed call whose reason is an upstream failure: a 429
+# (rate_limited), a 5xx, a timeout, or route_mismatch. Counts use the FINAL state of a cell, never the attempts: a failed
+# call followed by a stored analysis counts as parse_ok. A missing cell is not a parse failure and is reported per
+# teacher. Everything else stays a parse failure: model_output_not_json, an analysis with no valid claim, a budget stop,
+# a cell with no row at all. A session counts as missing for a teacher when any of its drawn cells is missing.
+# A teacher missing in more than 2 of the 10 sessions is excluded from the pick, and the reason is stated.
+# Missing cells are retried by `tr daily --teachers`: runs at 14:30 and 19:00 Monday-Friday and at 05:00 Tuesday-Saturday
+# America/Denver (15 a week); a rerun makes no call for stored work.
+#
+# 3. A dead endpoint. If the DeepInfra endpoint of openai/gpt-oss-120b is still not serving (OpenRouter status -5 or
+# not ready) at 12:30 America/Denver on 2026-11-17, it is replaced before session 1 by ONE open-weight model served by
+# DeepInfra whose licence allows training on its outputs (terms_class trainable) and whose endpoint is healthy at that
+# time, shown by one test call in data-dev (at most $0.01). The replacement, its licence, price and test result are
+# written in a `[swap]` table appended to this file in the commit that changes teacher.py. If no candidate passes by
+# 13:15, gpt-oss-120b stays and rule 2 applies to it.
+
+amends = "experiments/bakeoff-prereg.toml"
+amends_sha256 = "6a8c269591986785746562c967236a8a536d31a39bcd073849840f0dcd3ab585"
+teacher_prompt = "analyze-3"
+drop = ["headlines"]
+missing_sessions_max = 2  # of the 10 bake-off sessions
+swap_check_at = 2026-11-17T19:30:00Z  # 12:30 America/Denver
+applies_from = 2026-11-17  # bake-off session 1
+registered_at = 2026-11-17T09:25:00Z
