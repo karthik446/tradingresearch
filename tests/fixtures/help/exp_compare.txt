@@ -1,0 +1,10 @@
+usage: tr exp compare [-h] [--graders GRADERS] run_a run_b
+
+positional arguments:
+  run_a              the baseline run id
+  run_b              the run compared against it
+
+options:
+  -h, --help         show this help message and exit
+  --graders GRADERS  comma-separated grader ids (default: every grader either
+                     run scored)

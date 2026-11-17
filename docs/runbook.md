@@ -238,7 +238,12 @@ metric (`claims_valid`), the guard (`parsed`) and the keep/drop rule. First fetc
 `tr news TICKER --session 2026-11-12` and `--session 2026-11-13` for each ticker (Alpaca, free); `tr exp run`
 refuses before the dataset and any call while a window is missing and lists the commands. Days with no headline
 are fine (on the 2026-11-17 fetch: UNH on both days, HD and CAT on 2026-11-12): those items send the same request in
-`full` and `no-headlines`. Then `tr exp run experiments/context-ablation.toml` and `tr exp compare` on its run ids.
+`full` and `no-headlines`. Then `tr exp run experiments/context-ablation.toml`; it compares each drop arm with `full`
+at the end, and `tr exp compare RUN_A RUN_B [--graders a,b]` prints the same block again from the stored runs ($0).
+A drop arm never cites its dropped section, and two arms can cite one section on disjoint items; each such grader is
+printed as `skipped <grader>: not scored in both arms (n=6 vs 0)` or `no item scored in both arms (n=1 vs 2)` and
+the others are compared (`n=` on a metric line is the items it paired); only with no grader left is the compare
+refused.
 Cost: one recorded analyze-3 call (`tests/fixtures/week5/analyze3.reply.json`) was 2,714 prompt and 1,062 completion
 tokens, $0.016048, so about 20 × $0.016 ≈ $0.32 per arm and about $1 for the three (an estimate; the drop arms send
 fewer tokens), inside each arm's `CallBudget` of `max_usd_per_arm = 1.00`. Fill ADR-007's table from `compare`, with

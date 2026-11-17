@@ -1,9 +1,12 @@
-"""`tr exp run`: every arm of an experiment config on the same ticker-days, then compare (paid calls)."""
+"""`tr exp run`: every arm of an experiment config on the same ticker-days, then compare (paid calls);
+`tr exp compare`: the same compare block for two stored runs ($0)."""
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 
+from gigai_core import Run, open_run
 from gigai_core.comparison import ComparisonRefused
 
 from .. import analyze as an, experiment, journal, openrouter
@@ -35,17 +38,45 @@ def cmd_exp_run(args, cfg) -> None:
         print(f"    {scores}")
     baseline = results[0]
     for r in results[1:]:
-        try:
-            comparison = experiment.compare(baseline.run, r.run, config.graders)
-        except ComparisonRefused as exc:
-            print(f"compare {baseline.arm.name} -> {r.arm.name} refused: {exc}")
-            continue
-        print(f"compare {baseline.arm.name} -> {r.arm.name}: {comparison.items} items, {comparison.clusters} clusters")
-        for m in comparison.metrics:
-            ci = f"[{m.ci.lower:+.3f}, {m.ci.upper:+.3f}] ({m.ci.level:.0%})" if m.ci else "none"
-            mde = "-" if m.minimum_detectable is None else f"{m.minimum_detectable:.3f}"
-            print(f"    {m.metric:<18} {m.mean_a:.3f} -> {m.mean_b:.3f}  diff {m.difference:+.3f}  CI {ci}  "
-                  f"{m.test} p={m.p:.3g}  mde={mde}")
+        show(baseline.arm.name, r.arm.name, baseline.run, r.run, config.graders)
+
+
+def cmd_exp_compare(args, cfg) -> None:
+    """Two stored runs compared as `tr exp run` compares its arms, read back from `data_dir/runs`; no call."""
+    a, b = (stored(cfg.data_dir, run_id) for run_id in (args.run_a, args.run_b))
+    graders = args.graders.split(",") if args.graders else scored(a, b)
+    show(args.run_a, args.run_b, a, b, graders)
+
+
+def stored(data_dir: Path, run_id: str) -> Run:
+    """A run as `analyze.save` wrote it."""
+    path = data_dir / "runs" / f"{run_id}.jsonl"
+    if not path.exists():
+        raise SystemExit(f"no stored run {run_id} ({path} not found)")
+    return open_run(path)
+
+
+def scored(a: Run, b: Run) -> list[str]:
+    """Every grader either run scored, in the order each was first written (so `--graders` sets the order)."""
+    return list(dict.fromkeys(score.grader_id for score in (*a.scores, *b.scores)))
+
+
+def show(label_a: str, label_b: str, a: Run, b: Run, graders: Sequence[str]) -> None:
+    """The compare block: B against A per grader, each skipped grader with its reason, or the refusal."""
+    try:
+        compared = experiment.compare(a, b, graders)
+    except ComparisonRefused as exc:
+        print(f"compare {label_a} -> {label_b} refused: {exc}")
+        return
+    comparison = compared.comparison
+    print(f"compare {label_a} -> {label_b}: {comparison.items} items, {comparison.clusters} clusters")
+    for why in compared.skipped:
+        print(f"    skipped {why}")
+    for m in comparison.metrics:
+        ci = f"[{m.ci.lower:+.3f}, {m.ci.upper:+.3f}] ({m.ci.level:.0%})" if m.ci else "none"
+        mde = "-" if m.minimum_detectable is None else f"{m.minimum_detectable:.3f}"
+        print(f"    {m.metric:<18} {m.mean_a:.3f} -> {m.mean_b:.3f}  diff {m.difference:+.3f}  CI {ci}  "
+              f"{m.test} p={m.p:.3g}  mde={mde}  n={m.items}")
 
 
 def register(sub) -> None:
@@ -54,3 +85,8 @@ def register(sub) -> None:
     p = exp.add_parser("run", help="run every arm of a config on the same ticker-days, then compare (paid calls)")
     p.add_argument("config", help="an experiments/*.toml file")
     p.set_defaults(func=cmd_exp_run)
+    p = exp.add_parser("compare", help="compare two stored runs as `exp run` compares its arms (no calls)")
+    p.add_argument("run_a", help="the baseline run id")
+    p.add_argument("run_b", help="the run compared against it")
+    p.add_argument("--graders", help="comma-separated grader ids (default: every grader either run scored)")
+    p.set_defaults(func=cmd_exp_compare)

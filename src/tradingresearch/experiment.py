@@ -11,13 +11,16 @@ REPO-PLAN D5.
 from __future__ import annotations
 
 import tomllib
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from pathlib import Path
 
-from gigai_core import CallBudget, Dataset, DatasetItem, Run, compare
+from gigai_core import CallBudget, Dataset, DatasetItem, Run
+from gigai_core import compare as core_compare
 from gigai_core import run as run_eval
 from gigai_core.budget import budgeted
+from gigai_core.comparison import Comparison, ComparisonRefused
 from gigai_core.graders.builtin import parse_json_text
 from gigai_core.graders.protocol import CannotGrade, Grader
 from gigai_core.providers import ModelRequest, Turn
@@ -310,3 +313,31 @@ def means(run: Run) -> dict[str, tuple[float, int]]:
     for score in run.scores:
         found.setdefault(score.grader_id, []).append(score.value)
     return {grader: (sum(values) / len(values), len(values)) for grader, values in sorted(found.items())}
+
+
+@dataclass(frozen=True)
+class Compared:
+    comparison: Comparison
+    skipped: tuple[str, ...]  # "<grader>: <why>", one per grader left out, so no grader drops silently
+
+
+def compare(a: Run, b: Run, graders: Sequence[str]) -> Compared:
+    """Core `compare` on the graders both runs scored on a common item. A drop arm never cites its dropped section, so
+    that section's grader has no score in it (core: metric_missing), and two arms can grade one section on disjoint
+    items (core: no_paired_items); either refuses the whole comparison, so such a grader is skipped and named with
+    its counts. With none left, refused as core refuses."""
+    kept: list[str] = []
+    skipped: list[str] = []
+    for grader in graders:
+        values_a, values_b = a.values(grader), b.values(grader)
+        counts = f"n={len(values_a)} vs {len(values_b)}"
+        if not values_a or not values_b:
+            skipped.append(f"{grader}: not scored in both arms ({counts})")
+        elif not values_a.keys() & values_b.keys():
+            skipped.append(f"{grader}: no item scored in both arms ({counts})")
+        else:
+            kept.append(grader)
+    if not kept:
+        raise ComparisonRefused("no_shared_metric", f"no grader is scored on a common item in both runs "
+                                                    f"({'; '.join(skipped) or 'no grader named'})")
+    return Compared(core_compare(a, b, kept), tuple(skipped))
