@@ -98,8 +98,13 @@ def trade(conn: sqlite3.Connection, grade: Grade, opened: Event) -> Trade:
 
 
 def p1_result(conn: sqlite3.Connection, grade: Grade) -> P1 | None:
-    """The trade's P1 verdict. Today's only source is the Grade's process score (pass = 1.0; an `unknown:` explanation
-    is unknown, rubric p1_thesis_quality); G9b's judge store plugs in here."""
+    """The trade's P1 verdict: the latest stored judge verdict, else the Grade's process score (pass = 1.0; an
+    `unknown:` explanation is unknown, rubric p1_thesis_quality)."""
+    verdict = journal.judge_verdict(conn, grade.thesis_id)
+    if verdict is not None:
+        if journal.abstained(verdict):
+            return "unknown"
+        return "met" if verdict["verdict"] == "pass" else "not_met"
     if grade.process_score_id is None:
         return None
     row = conn.execute("SELECT body FROM score WHERE score_id = ?", (grade.process_score_id,)).fetchone()

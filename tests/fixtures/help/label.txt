@@ -1,0 +1,13 @@
+usage: tr label [-h] {list,show,add,agree} ...
+
+positional arguments:
+  {list,show,add,agree}
+    list                graded champion/challenger theses without a label
+    show                thesis, cited claims and post-trade summary; never a
+                        judge verdict
+    add                 store a blind label (P1 rubric: met, not met, unknown)
+    agree               Cohen's kappa of your latest labels against stored
+                        judge verdicts
+
+options:
+  -h, --help            show this help message and exit

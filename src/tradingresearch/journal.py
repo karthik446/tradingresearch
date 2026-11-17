@@ -7,6 +7,7 @@ import sqlite3
 from datetime import UTC, date, datetime
 from pathlib import Path
 
+from gigai_core.records import LabelRecord
 from gigai_core.score import ScoreRecord
 from pydantic import BaseModel
 
@@ -75,6 +76,16 @@ CREATE TABLE IF NOT EXISTS daily_run (
   status TEXT NOT NULL CHECK (status IN ('ok', 'skipped', 'failed', 'stopped', 'missed')), reason TEXT NOT NULL,
   ids TEXT NOT NULL, cost_usd REAL NOT NULL, created_at TEXT NOT NULL);
 
+-- G9b: the operator's blind P1 labels (gigai-core LabelRecord, item_id = thesis id); a relabel is a new row.
+CREATE TABLE IF NOT EXISTS label (
+  label_id TEXT PRIMARY KEY, item_id TEXT NOT NULL REFERENCES thesis(thesis_id),
+  body TEXT NOT NULL, record_sha256 TEXT NOT NULL, created_at TEXT NOT NULL);
+-- G9b: the P1 judge's verdicts, one row per judge call; the latest (highest seq) per thesis wins.
+CREATE TABLE IF NOT EXISTS judge_verdict (
+  seq INTEGER PRIMARY KEY, thesis_id TEXT NOT NULL REFERENCES thesis(thesis_id),
+  verdict TEXT NOT NULL CHECK (verdict IN ('pass', 'fail')), reason TEXT NOT NULL, score_id TEXT,
+  created_at TEXT NOT NULL);
+
 -- SPIKE §6.7: at most one PROPOSED-or-OPEN thesis per (ticker, horizon, arm) for champion and challenger.
 -- The latest event is the one with the highest seq (ids are random hex, so they cannot order events).
 CREATE TRIGGER IF NOT EXISTS one_live BEFORE INSERT ON thesis
@@ -88,7 +99,7 @@ BEGIN SELECT RAISE(ABORT, 'one live thesis per (ticker, horizon, arm)'); END;
 
 IMMUTABLE = (
     "source_ref", "analysis", "claim", "thesis", "no_trade", "event", "grade", "shadow", "shadow_outcome", "score",
-    "teacher_outcome", "training_split", "claim_label", "screen_result", "daily_run",
+    "teacher_outcome", "training_split", "claim_label", "screen_result", "daily_run", "label", "judge_verdict",
 )
 
 # record type -> (table, columns copied out of the record for queries and triggers)
@@ -105,6 +116,7 @@ TABLES: dict[type[BaseModel], tuple[str, tuple[str, ...]]] = {
     TeacherOutcome: ("teacher_outcome", ("teacher_outcome_id", "thesis_id")),
     TrainingSplit: ("training_split", ("split_id",)),
     ClaimLabel: ("claim_label", ("claim_label_id", "claim_id")),
+    LabelRecord: ("label", ("label_id", "item_id")),
 }
 
 
@@ -359,3 +371,33 @@ def first_daily_session(conn: sqlite3.Connection) -> date | None:
     """The earliest session `tr daily` actually ran for: sessions before it are not misses."""
     found = conn.execute("SELECT min(session) FROM daily_run WHERE status != 'missed'").fetchone()[0]
     return date.fromisoformat(found) if found else None
+
+
+VERDICT_COLUMNS = ("thesis_id", "verdict", "reason", "score_id", "created_at")
+
+
+def add_judge_verdict(conn: sqlite3.Connection, thesis_id: str, verdict: str, reason: str,
+                      score_id: str | None = None) -> None:
+    """One P1 judge reply (rubric "Verdict format": `pass` or `fail`, unknown = `fail` with `unknown:`), one row per
+    call, committed at once; a later row for the same thesis supersedes it."""
+    with conn:
+        conn.execute(f"INSERT INTO judge_verdict ({', '.join(VERDICT_COLUMNS)}) VALUES (?, ?, ?, ?, ?)",
+                     (thesis_id, verdict, reason, score_id, datetime.now(UTC).isoformat()))
+
+
+def judge_verdicts(conn: sqlite3.Connection) -> dict[str, dict]:
+    """The latest judge verdict per thesis (highest seq), keyed by thesis id."""
+    cursor = conn.execute(f"SELECT {', '.join(VERDICT_COLUMNS)} FROM judge_verdict ORDER BY seq")
+    return {values[0]: dict(zip(VERDICT_COLUMNS, values)) for values in cursor}  # a later row overwrites
+
+
+def judge_verdict(conn: sqlite3.Connection, thesis_id: str) -> dict | None:
+    """One thesis's latest judge verdict, or None when the judge never ran on it."""
+    row = conn.execute(f"SELECT {', '.join(VERDICT_COLUMNS)} FROM judge_verdict WHERE thesis_id = ? "
+                       "ORDER BY seq DESC LIMIT 1", (thesis_id,)).fetchone()
+    return dict(zip(VERDICT_COLUMNS, row)) if row else None
+
+
+def abstained(verdict: dict) -> bool:
+    """The rubric's unknown: a `fail` whose reason starts `unknown:`."""
+    return verdict["verdict"] == "fail" and verdict["reason"].startswith("unknown:")

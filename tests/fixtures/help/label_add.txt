@@ -1,0 +1,12 @@
+usage: tr label add [-h] [--note NOTE] [--relabel]
+                    thesis_id {met,not_met,unknown}
+
+positional arguments:
+  thesis_id
+  {met,not_met,unknown}
+
+options:
+  -h, --help            show this help message and exit
+  --note NOTE           why, in a sentence (stored as the label's critique)
+  --relabel             replace the thesis's latest label; the new one points
+                        at it

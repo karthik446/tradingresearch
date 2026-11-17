@@ -1,6 +1,7 @@
 import sqlite3
 
 import pytest
+from gigai_core.records import LabelRecord
 from gigai_core.score import ScoreRecord
 
 from factories import T0, analysis, event, thesis
@@ -46,6 +47,21 @@ def test_score_rows_are_append_only(conn, sql):
                       score, event(t.thesis_id, "GRADED", reason="graded"))
     assert journal.scores_for(conn, t.thesis_id) == [score]
     with pytest.raises(sqlite3.IntegrityError, match="score is append-only"):
+        conn.execute(sql)
+
+
+@pytest.mark.parametrize(("table", "sql"), [
+    ("label", "UPDATE label SET item_id = 'th_y'"), ("label", "DELETE FROM label"),
+    ("judge_verdict", "UPDATE judge_verdict SET verdict = 'pass'"), ("judge_verdict", "DELETE FROM judge_verdict"),
+])
+def test_label_and_judge_verdict_rows_are_append_only(conn, table, sql):
+    a = analysis()
+    journal.add_analysis(conn, a, sources=[])
+    t = thesis(a.analysis_id)
+    journal.add(conn, t, LabelRecord(label_id="lb_0", dataset_id="p1_thesis_quality", item_id=t.thesis_id,
+                                     item_version="v0", label="met", source="human", recorded_at=T0, blind=True))
+    journal.add_judge_verdict(conn, t.thesis_id, "fail", "the stop level was never tested")
+    with pytest.raises(sqlite3.IntegrityError, match=f"{table} is append-only"):
         conn.execute(sql)
 
 

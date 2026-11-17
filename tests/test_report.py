@@ -167,6 +167,25 @@ def test_a_process_score_on_the_grade_is_the_p1_result(conn):
     assert report.p1_result(conn, g) is None
 
 
+def test_the_latest_stored_judge_verdict_is_the_p1_result_ahead_of_the_process_score(conn):
+    seed(conn, "FAKEJ")
+    bars = Bars()
+    for day in (D1, D2, D3):
+        settle(conn, bars, day)
+    grade.run(conn, bars, D3, now=NOW)
+    [(body,)] = conn.execute("SELECT body FROM grade").fetchall()
+    g = report.Grade.model_validate_json(body)
+    score = ScoreRecord(score_id="sc_met", trace_id="tr_0", grader_id="p1_thesis_quality", grader_version="1",
+                        kind="model", value=1.0, explanation="held", recorded_at=datetime.now(UTC))
+    journal._insert_score(conn, g.thesis_id, score)
+    scored = g.model_copy(update={"process_score_id": "sc_met"})
+    for verdict, reason, want in [("fail", "the stop broke first", "not_met"), ("pass", "held", "met"),
+                                  ("fail", "unknown: sector rotation", "unknown")]:
+        journal.add_judge_verdict(conn, g.thesis_id, verdict, reason)
+        assert report.p1_result(conn, scored) == want  # the latest row wins over the earlier rows and the score
+    assert report.p1_result(conn, g) == "unknown"
+
+
 def test_run_costs_group_by_daily_run_and_split_out_the_teacher_part(conn):
     for daily_id, reason, cost in [("dy_1", "accepted 1", 0.10), ("dy_1", "teacher m: accepted 1", 0.02),
                                    ("dy_2", "already done", 0.0)]:

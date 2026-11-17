@@ -1,0 +1,7 @@
+usage: tr label show [-h] thesis_id
+
+positional arguments:
+  thesis_id
+
+options:
+  -h, --help  show this help message and exit

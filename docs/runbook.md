@@ -101,6 +101,23 @@ uv run tr bakeoff report                 # inputs to the pick rule; the operator
 Measured teacher cost so far: `deepseek/deepseek-v4-pro`, one analyze call $0.004119 (run_7d0a596b94a44095) and one
 thesis call $0.003016 (G6c's fixture capture, 2026-11-17).
 
+## Labels (P1, blind)
+
+Label after `tr grade` has graded a thesis; teacher theses are never labelled. ADR-003 asks for 30 labels before
+agreement is read, spread across horizons where possible.
+
+```
+uv run tr label list                          # graded champion/challenger theses without a label
+uv run tr label show TH_ID                    # thesis, cited claims, post-trade summary (reads Alpaca daily bars)
+uv run tr label add TH_ID met|not_met|unknown --note "why"
+uv run tr label add TH_ID not_met --relabel   # a new label pointing at the old one; the latest wins
+uv run tr label agree                         # kappa vs stored judge verdicts once 2 pairs exist
+```
+
+Decide from `show` alone (rubric `evals/rubrics/p1_thesis_quality.md`); `show` never prints a judge verdict or an
+earlier label. `agree` leaves out `unknown` labels and judge `unknown:` abstains and counts them. Its kappa
+thresholds are PROPOSED (ADR-003, decision Q1) and nothing it prints sets `validated`.
+
 ## CI
 
 `uv run python ci/gate.py` is the free gate (no model call).
