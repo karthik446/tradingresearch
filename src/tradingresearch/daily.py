@@ -293,7 +293,8 @@ def grade(daily: Daily, steps: Steps) -> None:
     lines = gr.render(report)
     for text in lines[:-1]:
         print(f"  {text}")
-    daily.record(Row("reconcile", None, "ok", f"{GRADE}: {lines[-1]}", gr.written_ids(report)))
+    total = lines[-1].removeprefix(f"{GRADE} ")  # render's "grade <session>: ..." would read "grade: grade ..."
+    daily.record(Row("reconcile", None, "ok", f"{GRADE}: {total}", gr.written_ids(report)))
 
 
 def summary(daily: Daily) -> str:

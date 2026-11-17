@@ -53,7 +53,23 @@ shortlist (`--top`, default 10), write one thesis-step decision per analysis, th
 tail -20 data/logs/daily.log        # "daily <session>: N ok, ..." or "already done, no model call"; then "teachers ..."
 launchctl list | grep tradingresearch   # second column is the last exit status
 uv run tr usage --by day            # spend per New York day, then the key's lifetime spend
+uv run tr slo                       # the SLOs for the latest session tr daily ran for; exit 1 on a breach
+uv run tr report                    # per-horizon scorecards; --horizon / --arm pick one
 ```
+
+- **SLOs** (`tr slo`, or `uv run python -m tradingresearch.slo_check`; reads the journal only). One line per SLO,
+  then `slo <session>: k/3 met`. `finished`: the first run that reached reconcile ended by 17:30 ET on the session
+  date, timed by its last non-teacher `daily_run` row (the teacher arm is not on the deadline). `missed`: 0 sessions
+  with a `missed` row or no row at all in the last `--window` sessions (default 10), counted from the first run.
+  `fresh`: the session has a screen result, and every screened ticker has that session's daily bars on `TR_FEED`.
+  `--inject-delay-minutes M` adds M minutes to the measured finish, to check the breach path without waiting.
+  `--session D` checks another session. 2026-11-16 breaches `finished`: its first run ended at 23:21 ET.
+- **Scorecards** (`tr report`, no model call). One block per arm and horizon, never pooled: last-state counts,
+  fill rate (filled ÷ (filled + expired)), abstention (no-trades ÷ main-analysis decisions for the horizon), and,
+  over graded trades only, the Wilson win rate, mean r_net and real − shadow with a cluster bootstrap over entry
+  sessions (`insufficient (n sessions < 10)` under 10 sessions), median MFE/MAE, the MDE line, and the P1 2x2 once
+  P1 results exist. The last line is the cost per `tr daily` run from `daily_run.cost_usd`. Teacher theses never
+  appear. With no graded trade, a card prints `no closed trades yet`.
 
 ## When something fails
 

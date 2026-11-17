@@ -173,7 +173,7 @@ def render(report: Report) -> list[str]:
             lines.append(f"  teacher_outcome {o.final_state}{r}")
         lines.extend(f"  note: {note}" for note in s.notes)
     if report.shadows:
-        lines.append(f"skipped {len(report.shadows)} shadow(s): settle does not support shadow subjects yet")
+        lines.append(f"skipped {len(report.shadows)} shadow(s): shadows are settled by tr grade")
     changed = [s for s in report.settled if s.events]
     outcomes = sum(1 for s in report.settled if s.teacher_outcome)
     written = "dry run: nothing written" if report.dry_run else "appended"

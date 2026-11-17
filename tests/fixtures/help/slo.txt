@@ -1,0 +1,11 @@
+usage: tr slo [-h] [--session SESSION]
+              [--inject-delay-minutes INJECT_DELAY_MINUTES] [--window WINDOW]
+
+options:
+  -h, --help            show this help message and exit
+  --session SESSION     an NYSE session (default: the latest one tr daily ran
+                        for)
+  --inject-delay-minutes INJECT_DELAY_MINUTES
+                        add this many minutes to the measured finish, to
+                        exercise the breach path
+  --window WINDOW       sessions looked back for misses (default 10)

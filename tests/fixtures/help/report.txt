@@ -1,0 +1,10 @@
+usage: tr report [-h] [--horizon {day,short,swing}]
+                 [--arm {champion,challenger}]
+
+options:
+  -h, --help            show this help message and exit
+  --horizon {day,short,swing}
+                        one horizon (default: each, never pooled)
+  --arm {champion,challenger}
+                        one arm (default: champion, plus challenger once it
+                        has a thesis)

@@ -122,7 +122,7 @@ def test_a_full_run_screens_analyzes_writes_theses_and_reconciles(conn, runs_dir
     assert statuses(conn) == [("screen", None, "ok"), ("analyze", "AAPL", "ok"), ("thesis", "AAPL", "ok"),
                               ("reconcile", None, "ok"), ("reconcile", None, "ok")]
     grade_row = journal.daily_runs(conn, SESSION)[4]["reason"]
-    assert grade_row == "grade: grade 2026-11-16: 0 graded, 0 shadow(s) created, 1 waiting"
+    assert grade_row == "grade: 2026-11-16: 0 graded, 0 shadow(s) created, 1 waiting"
     rows = journal.daily_runs(conn, SESSION)
     assert rows[1]["ids"] == [ANALYSIS.analysis_id] and rows[1]["cost_usd"] == 0.017304
     [t] = [t for t, _ in journal.open_theses(conn)]

@@ -1,11 +1,11 @@
 usage: tr [-h]
-          {sessions,bars,facts,snapshot,news,screen,analyze,thesis,open,reconcile,grade,daily,check,exp,usage,bakeoff}
+          {sessions,bars,facts,snapshot,news,screen,analyze,thesis,open,reconcile,grade,daily,report,slo,check,exp,usage,bakeoff}
           ...
 
 tradingresearch: educational, not investment advice
 
 positional arguments:
-  {sessions,bars,facts,snapshot,news,screen,analyze,thesis,open,reconcile,grade,daily,check,exp,usage,bakeoff}
+  {sessions,bars,facts,snapshot,news,screen,analyze,thesis,open,reconcile,grade,daily,report,slo,check,exp,usage,bakeoff}
     sessions            NYSE sessions ending at a date
     bars                fetch and store daily bars
     facts               framed EDGAR facts for one concept
@@ -25,6 +25,10 @@ positional arguments:
                         model call)
     daily               the evening run for one session: screen, analyze,
                         thesis, reconcile, grade (paid)
+    report              per-horizon scorecards: win rate, r_net, shadow,
+                        power, P1 (no model call)
+    slo                 check finish by 17:30 ET, zero missed sessions, fresh
+                        data; exit 1 on a breach
     check               every claim of an analysis beside the source values it
                         cites
     exp                 experiments as config

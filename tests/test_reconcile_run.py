@@ -195,7 +195,7 @@ def test_open_shadows_are_listed_not_settled(conn):
                       reason="entry_fill", bars_source_id=None, rules_version=RULES_VERSION))
     report = reconcile_run.run(conn, FixtureBars(), D1, now=NOW)
     assert report.shadows == ("sh_1",)
-    assert "skipped 1 shadow(s): settle does not support shadow subjects yet" in reconcile_run.render(report)
+    assert "skipped 1 shadow(s): shadows are settled by tr grade" in reconcile_run.render(report)
 
 
 def test_a_session_before_close_plus_15_minutes_is_refused():
