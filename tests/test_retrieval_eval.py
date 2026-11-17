@@ -128,7 +128,7 @@ def test_two_builds_have_the_same_digest_and_no_dense_fields(tmp_path):
     assert manifest.digest(first) == manifest.digest(second)
     assert manifest.digest(manifest.build(docs_for(tmp_path / "c"), 128)[0]) != manifest.digest(first)
     assert set(first) == {"schema", "chunker", "bm25", "docs", "chunks"}
-    assert first["chunker"]["version"] == "chunk-v1" and first["bm25"] == {"k1": 1.5, "b": 0.75,
+    assert first["chunker"]["version"] == "chunk-v2" and first["bm25"] == {"k1": 1.5, "b": 0.75,
                                                                            "tokenizer": "bm25-tok-v1"}
     assert len(first["docs"]) == 7 and len(first["chunks"]) == len(records)
     folder = manifest.write(tmp_path / "retrieval", first, records)

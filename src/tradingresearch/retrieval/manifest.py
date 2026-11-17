@@ -3,10 +3,18 @@
 `index_digest = sha256(canonical JSON of the manifest)`. The manifest holds what decides the chunks and the BM25
 scores: chunker version, `max_tokens`, the token counter, BM25 `k1`/`b` and tokeniser rule, the sorted
 `(doc_id, raw_content_sha256)` of every document and the sorted `(chunk_id, sha256(chunk text))` of every chunk.
-Build time is not in it, so two builds of the same documents have the same digest. The dense and reranker pins
-join it in G13b. `as_of` is a query-time mask, not part of the index, so one index serves every session.
+Build time is not in it, so two builds of the same documents have the same digest. `as_of` is a query-time mask, not
+part of the index, so one index serves every session.
 
-Layout: `<data_dir>/retrieval/<hex digest>/manifest.json` (exactly the hashed manifest) and `chunks.jsonl`.
+A `tr retrieval build --dense` index adds three sections, so its digest names the vectors' recipe too (never the
+vectors themselves, whose bytes vary with the CPU's float rounding): `dense` (package and version, model id, ONNX
+source repo and revision, dtype, normalize, max sequence length, query prefix, the vector cache-key rule and the
+spot-check rule, `dense.pins`), `rerank` (cross-encoder id, revision, depth, `rerank.pins`) and `hybrid` (RRF k). The
+observed `vectors_sha256` sits beside the manifest in `vectors.json`, outside the digest. A BM25-only build has none
+of the three.
+
+Layout: `<data_dir>/retrieval/<hex digest>/manifest.json` (exactly the hashed manifest) and `chunks.jsonl`; dense
+vectors are cached per chunk under `<data_dir>/retrieval/vectors/` (see `dense.py`), shared across indexes.
 """
 
 from __future__ import annotations
@@ -49,8 +57,9 @@ class Record:
         return cls(**{**row, "available_at": datetime.fromisoformat(row["available_at"])})
 
 
-def build(docs: list[Doc], max_tokens: int) -> tuple[dict, list[Record]]:
-    """The manifest and chunk records of `docs` (deduplicated by doc id, first kept)."""
+def build(docs: list[Doc], max_tokens: int, dense: dict | None = None) -> tuple[dict, list[Record]]:
+    """The manifest and chunk records of `docs` (deduplicated by doc id, first kept). `dense` holds the `dense`,
+    `rerank` and `hybrid` sections of a dense index (`evaluate.dense_sections`); None for BM25 only."""
     unique = list({doc.doc_id: doc for doc in reversed(docs)}.values())[::-1]
     records = [Record(chunk.chunk_id, doc.doc_id, chunk.ordinal, doc.ticker, doc.kind, doc.available_at, chunk.sha256,
                       chunk.tokens, chunk.text)
@@ -63,7 +72,7 @@ def build(docs: list[Doc], max_tokens: int) -> tuple[dict, list[Record]]:
         "docs": sorted([doc.doc_id, doc.raw_content_sha256] for doc in unique),
         "chunks": sorted([record.chunk_id, record.sha256] for record in records),
     }
-    return manifest, records
+    return manifest | (dense or {}), records
 
 
 def digest(manifest: dict) -> str:

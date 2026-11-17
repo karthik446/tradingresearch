@@ -45,7 +45,6 @@ positional arguments:
     dataset             cut teacher analyses into a release; refill a public
                         one (no model call)
     retrieval           filing and headline index: build, query, recall eval
-                        (BM25)
 
 options:
   -h, --help            show this help message and exit

@@ -8,12 +8,18 @@
   The mask is given to the retriever, which ranks only allowed chunks: post-filtering a top k returns fewer than k.
 - **Recall.** `recall_any@k`: 1 if any chunk of any gold quote is in the top k. `recall_frac@k`: the share of gold
   quotes with a chunk in the top k. Both are macro means over queries, at k in 1, 5, 10, 20.
+- **Retrievers.** `bm25`; `dense` (cosine over the cached bge vectors, `dense.py`); `hybrid`, reciprocal rank fusion
+  (k = 60, `fuse.py`) of the full BM25 and dense rankings of the allowed chunks; `hybrid+rerank`, the hybrid top 20
+  reordered by the cross-encoder (`rerank.py`), so its top 20 is the hybrid's top 20 as a set.
+- **Citation hook.** A retrieval arm hands its graders `expected["passages"]` (chunk id -> text, in rank order).
+  `CITATION_GRADER` names the grader slot that will check a claim's quote against the passage it cites; it is not
+  written yet, and `citation_grader()` says so instead of failing as a generic unknown grader.
 """
 
 from __future__ import annotations
 
 import json
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from datetime import date, datetime
 from pathlib import Path
@@ -21,6 +27,7 @@ from pathlib import Path
 import numpy as np
 
 from .. import news, sessions
+from . import dense, fuse, rerank
 from .bm25 import tokenize, top_k
 from .manifest import Index
 
@@ -57,6 +64,57 @@ def cutoff(as_of: date, now: datetime | None = None) -> datetime:
 
 def bm25_retriever(index: Index) -> Retriever:
     return lambda text, allowed, k: top_k(index.bm25.scores(tokenize(text)), allowed, k)
+
+
+RETRIEVERS = ("bm25", "dense", "hybrid", "hybrid+rerank")
+CITATION_GRADER = "citation_accuracy"
+
+
+def dense_sections(embedder: dense.Embedder, reranker_pins: dict = rerank.PINS) -> dict:
+    """The manifest sections a dense index adds: the vectors' recipe, the reranker and the fusion constant."""
+    return {"dense": embedder.pins(), "rerank": reranker_pins, "hybrid": {"rrf_k": fuse.RRF_K}}
+
+
+def hybrid_retriever(lexical: Retriever, semantic: Retriever, rrf_k: int = fuse.RRF_K) -> Retriever:
+    """RRF over each retriever's full ranking of the allowed chunks; the score is the fused score."""
+    def retrieve(text: str, allowed: np.ndarray, k: int) -> list[tuple[int, float]]:
+        depth = int(allowed.sum())
+        lists = [[i for i, _ in r(text, allowed, depth)] for r in (lexical, semantic)]
+        ranks = [{item: rank for rank, item in enumerate(ranked, start=1)} for ranked in lists]
+        return [(i, sum(1.0 / (rrf_k + r[i]) for r in ranks if i in r)) for i in fuse.rrf(lists, rrf_k)[:k]]
+    return retrieve
+
+
+def retrievers(index: Index, names: Iterable[str], root: Path, embedder: dense.Embedder | None = None,
+               reranker: rerank.Reranker | None = None) -> dict[str, Retriever]:
+    """The named retrievers over `index`. Dense ones load the cached vectors under `root` (spot-checked) and, unless
+    a test injects them, the pinned local models; a model differing from the index's pins is refused."""
+    names = list(names)
+    unknown = sorted(set(names) - set(RETRIEVERS))
+    if unknown:
+        raise SystemExit(f"unknown retriever(s) {', '.join(unknown)}; choose from {', '.join(RETRIEVERS)}")
+    out: dict[str, Retriever] = {"bm25": bm25_retriever(index)}
+    if set(names) - {"bm25"}:
+        embedder = embedder or dense.FastEmbedder(dense.models_dir(root))
+        out["dense"] = dense.retriever(dense.matrix(index, embedder, root), embedder)
+        out["hybrid"] = hybrid_retriever(out["bm25"], out["dense"], index.manifest["hybrid"]["rrf_k"])
+    if "hybrid+rerank" in names:
+        reranker = reranker or rerank.FastReranker(dense.models_dir(root))
+        if index.manifest["rerank"] != reranker.pins():
+            raise SystemExit(f"index {index.digest} pins another reranker than this install's; rebuild it with "
+                             "`tr retrieval build --dense`")
+        out["hybrid+rerank"] = rerank.retriever(out["hybrid"], [r.text for r in index.records], reranker,
+                                                index.manifest["rerank"]["depth"])
+    return {name: out[name] for name in names}
+
+
+def citation_grader() -> type:
+    """The registered `citation_accuracy` grader class, or a clear error while nobody has written it."""
+    from .. import evals
+    if CITATION_GRADER not in evals.GRADERS:
+        raise SystemExit(f"no grader named {CITATION_GRADER!r} is registered: write it in evals.py with "
+                         f"@grader({CITATION_GRADER!r}); it gets the cited passages as expected['passages']")
+    return evals.GRADERS[CITATION_GRADER]
 
 
 def search(index: Index, retriever: Retriever, text: str, ticker: str, as_of: date, k: int,

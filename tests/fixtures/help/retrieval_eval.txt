@@ -1,7 +1,10 @@
 usage: tr retrieval eval [-h] [--queries QUERIES] [--index INDEX]
+                         [--retriever {bm25,dense,hybrid,hybrid+rerank} [{bm25,dense,hybrid,hybrid+rerank} ...]]
 
 options:
-  -h, --help         show this help message and exit
-  --queries QUERIES  labelled queries, one JSON object per line (default
-                     evals/retrieval_query.jsonl)
-  --index INDEX      index digest or prefix (default: the newest)
+  -h, --help            show this help message and exit
+  --queries QUERIES     labelled queries, one JSON object per line (default
+                        evals/retrieval_query.jsonl)
+  --index INDEX         index digest or prefix (default: the newest)
+  --retriever {bm25,dense,hybrid,hybrid+rerank} [{bm25,dense,hybrid,hybrid+rerank} ...]
+                        one or more, one table block each (default bm25)

@@ -114,11 +114,20 @@ WHEN old.decided != 'pending' OR new.decided NOT IN ('adopted', 'rejected', 'ins
 BEGIN SELECT RAISE(ABORT, 'rule_change: only a pending decision changes, once'); END;
 CREATE TRIGGER IF NOT EXISTS rule_change_no_delete BEFORE DELETE ON rule_change
 BEGIN SELECT RAISE(ABORT, 'rule_change is append-only'); END;
+
+-- G13b: one row per stored analysis of a `retrieval` arm (retrieval/store.py): the query, its template and the
+-- ordered (chunk_id, chunk_sha256, score) list the model saw, as JSON, linked by analysis_id and input_hash.
+CREATE TABLE IF NOT EXISTS retrieval (
+  seq INTEGER PRIMARY KEY, analysis_id TEXT NOT NULL REFERENCES analysis(analysis_id), input_hash TEXT NOT NULL,
+  ticker TEXT NOT NULL, as_of TEXT NOT NULL, mode TEXT NOT NULL, k INTEGER NOT NULL, index_digest TEXT NOT NULL,
+  query TEXT NOT NULL, query_template TEXT NOT NULL, chunks TEXT NOT NULL, masked_docs INTEGER NOT NULL,
+  created_at TEXT NOT NULL);
 """
 
 IMMUTABLE = (
     "source_ref", "analysis", "claim", "thesis", "no_trade", "event", "grade", "shadow", "shadow_outcome", "score",
     "teacher_outcome", "training_split", "claim_label", "screen_result", "daily_run", "label", "judge_verdict",
+    "retrieval",
 )
 
 # record type -> (table, columns copied out of the record for queries and triggers)

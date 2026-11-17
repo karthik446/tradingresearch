@@ -9,6 +9,7 @@ from dataclasses import dataclass, replace
 from datetime import UTC, date, datetime
 from functools import cache
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pandas as pd
 from gigai_core import CallBudget, CallSettings, Dataset, DatasetItem, run as run_eval, save_run
@@ -25,6 +26,9 @@ from . import alpaca, indicators, news, sessions
 from .edgar import Edgar, fact_source, latest_frames
 from .hashing import digest, new_id
 from .records import Analysis, Claim, IndicatorSnapshot, SourceRef
+
+if TYPE_CHECKING:
+    from .retrieval.store import Retrieved
 
 DEFAULT_PROMPT = "analyze-1"
 PROMPTS_DIR = Path(__file__).resolve().parents[2] / "prompts"  # prompts/<version>.txt: you write these, not code
@@ -266,12 +270,18 @@ def context_tokens(system: str, prompt: str) -> int:
     return len(student_tokenizer().encode(system + "\n" + prompt).ids)
 
 
-def input_hash(ctx: Context, prompt_version: str, drop: tuple[str, ...] = ()) -> str:
+def input_hash(ctx: Context, prompt_version: str, drop: tuple[str, ...] = (), retrieval: Retrieved | None = None
+               ) -> str:
     """What the model was given; a `drop` arm's list joins the digest only when non-empty, so old hashes stand.
-    Headline SourceRefs (analyze-3) join the sorted source digests; without headlines the list is as before."""
+    Headline SourceRefs (analyze-3) join the sorted source digests; without headlines the list is as before. A
+    retrieval arm's mode, k, index digest and ordered chunk sha256 list join only when it retrieved (mode not none)."""
     given = {"snapshot": ctx.snapshot.model_dump(mode="json"),
              "sources": sorted(s.content_sha256 for s in ctx.cited_sources()), "prompt_version": prompt_version}
-    return digest(given | {"drop": sorted(drop)} if drop else given)
+    if drop:
+        given |= {"drop": sorted(drop)}
+    if retrieval is not None:
+        given |= {"retrieval": retrieval.hashed()}
+    return digest(given)
 
 
 # ---------- validation ----------
@@ -415,22 +425,24 @@ def call_settings(model: str) -> CallSettings:
 
 def store(conn, ctx: Context, sample, run_id: str, *, model: str, prompt_version: str, route: str,
           arm: str = "main", terms_class: str | None = None,
-          drop: tuple[str, ...] = ()) -> tuple[Analysis, list[Rejection]]:
+          drop: tuple[str, ...] = (), retrieval: Retrieved | None = None) -> tuple[Analysis, list[Rejection]]:
     """Validate one sample's claims and write the Analysis (valid claims only) with its sources to the journal.
 
     `terms_class` None means the route's default: restricted for Claude, unknown otherwise; the teacher arm passes
     `trainable`. A `drop` arm passes its list: it joins the input hash, the token count is of the masked prompt, and
-    a claim citing a dropped row is rejected."""
-    from .masking import hidden, mask  # masking imports tools, which imports this module
+    a claim citing a dropped row is rejected. A retrieval arm passes what it retrieved: it joins the input hash, the
+    token count is of the prompt with the passages, and a claim may cite a passage's chunk_id."""
+    from .masking import augment, hidden, mask  # masking imports tools, which imports this module
     analysis_id = new_id("an")
-    claims, rejected = validate_claims(sample.output_parsed, ctx.values(), analysis_id,
-                                       hidden(ctx.names(), drop))
+    values = ctx.values() | retrieval.values() if retrieval else ctx.values()
+    claims, rejected = validate_claims(sample.output_parsed, values, analysis_id, hidden(ctx.names(), drop))
     analysis = Analysis(
         analysis_id=analysis_id, ticker=ctx.ticker, session=ctx.session, created_at=datetime.now(UTC),
-        run_id=run_id, snapshot=ctx.snapshot, claims=tuple(claims), input_hash=input_hash(ctx, prompt_version, drop),
+        run_id=run_id, snapshot=ctx.snapshot, claims=tuple(claims),
+        input_hash=input_hash(ctx, prompt_version, drop, retrieval),
         prompt_version=prompt_version, model=model, sample_trace_id=sample.trace_id, provider_route=route, arm=arm,
         terms_class=terms_class or ("restricted" if model.startswith("anthropic/") else "unknown"),
-        context_tokens=context_tokens(system_prompt(prompt_version), mask(render(ctx), drop)),
+        context_tokens=context_tokens(system_prompt(prompt_version), augment(mask(render(ctx), drop), retrieval)),
     )
     from . import journal  # local import keeps this module importable without a database
     journal.add_analysis(conn, analysis, ctx.cited_sources())

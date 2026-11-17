@@ -40,6 +40,15 @@ def test_10q_row_with_br_inside_a_cell_stays_one_row():
     assert rows[:2] == ["(in millions) | September 30, 2026 | December 31, 2025", "Cash and cash equivalents | $2,980 | $2,410"]
 
 
+def test_an_sgml_wrapped_exhibit_keeps_only_its_html_text():
+    lines = lines_of("fakea-ex991-sgml.htm")
+    assert [line.text for line in lines][:2] == ["Exhibit 99.1", "FakeA Reports Third Quarter 2026 Results"]
+    joined = "\n".join(line.text for line in lines)
+    assert "fakea-ex991-sgml.htm" not in joined and "EX-99.1" not in joined and "DOCUMENT" not in joined
+    assert chunk.chunk_document("x", (FIX / "fakea-ex991-sgml.htm").read_text(), "html")[0].text.startswith(
+        "Exhibit 99.1")
+
+
 def test_glue_joins_signs_to_numbers():
     assert extract.glue(["Net", "$", "(", "12", ")", "%", "x"]) == ["Net", "$(12)%", "x"]
     assert extract.glue(["$"]) == ["$"]

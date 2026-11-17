@@ -20,7 +20,7 @@ from dataclasses import dataclass
 
 from .extract import Line, lines as html_lines
 
-CHUNKER_VERSION = "chunk-v1"
+CHUNKER_VERSION = "chunk-v2"  # v2: the EDGAR SGML wrapper of an exhibit file is no longer text (extract.SGML_WRAPPER)
 COUNTER = r"regex-v1: len(re.findall(r'\w+|[^\w\s]', text))"
 DEFAULT_MAX_TOKENS = 256
 HEADER_ROWS = 3

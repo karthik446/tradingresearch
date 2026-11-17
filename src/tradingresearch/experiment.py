@@ -3,7 +3,8 @@
 A config is a TOML file (see experiments/). Every arm asks the same gigai-core Dataset, so `compare` pairs the
 answers item by item; an arm differs from the baseline only in what the config names (prompt version, model, an
 OpenRouter `provider` routing table such as a teacher's DeepInfra pin, SPIKE §9.4, `mode`: `fixed` context or
-`tools`, REPO-PLAN §2.4, and `drop`: SOURCES sections masked out of a fixed arm's prompt, REPO-PLAN §2.5 / masking.py).
+`tools`, REPO-PLAN §2.4, `drop`: SOURCES sections masked out of a fixed arm's prompt, REPO-PLAN §2.5 / masking.py,
+and `retrieval`: passages from a pinned index added to a fixed arm's prompt, week 6 / retrieval/store.py).
 `cluster` names the unit the intervals resample: `ticker` (week 1, the default) or `session` (the live stream),
 REPO-PLAN D5.
 """
@@ -34,6 +35,7 @@ from . import analyze as an, masking, news
 from .evals import graders as registry
 from .hashing import new_id
 from .openrouter import Routing
+from .retrieval import store as retrieval_store
 
 REQUIRED = ("name", "model", "max_usd_per_arm", "tickers", "sessions", "graders", "arms")
 CLUSTERS = ("ticker", "session")
@@ -48,6 +50,7 @@ class Arm:
     provider: Routing | None = None  # recorded in every call's ProviderIdentity, so the run shows how it was routed
     mode: str = "fixed"
     drop: tuple[str, ...] = ()  # masking.SECTIONS this arm never sees; empty = the full prompt, the default
+    retrieval: retrieval_store.Knob | None = None  # passages added to the prompt; None = mode "none", the default
 
 
 @dataclass(frozen=True)
@@ -67,7 +70,7 @@ def load(path: Path) -> Config:
     if missing:
         raise SystemExit(f"{path}: missing {missing}")
     arms = tuple(Arm(a["name"], a["prompt"], a.get("model", raw["model"]), routing(path, a), mode(path, a),
-                     drop(path, a)) for a in raw["arms"])
+                     drop(path, a), retrieval(path, a)) for a in raw["arms"])
     for arm in arms:
         an.system_prompt(arm.prompt)  # fail before any spend if a prompt file is missing
     headlines(path, arms)
@@ -130,6 +133,44 @@ def drop(path: Path, arm: dict) -> tuple[str, ...]:
     return tuple(value)
 
 
+def retrieval(path: Path, arm: dict) -> retrieval_store.Knob | None:
+    """An arm's `retrieval` table (mode, k, index, query), refused before any spend: an unknown key or mode, k not
+    in 1..20, an index that is not a full `sha256:<64 hex>` digest, a query template with other placeholders than
+    `{ticker}` and `{session}`, a tools arm (no fixed prompt to add passages to), or `drop` in the same arm (one knob
+    per arm, so a comparison names one difference). `mode = "none"`, like no table, is no knob."""
+    value = arm.get("retrieval")
+    if value is None:
+        return None
+    where = f"{path}: arm {arm.get('name')}: retrieval"
+    keys = ("mode", "k", "index", "query")
+    if not isinstance(value, dict):
+        raise SystemExit(f"{where} must be a table with {', '.join(keys)}")
+    if unknown := sorted(set(value) - set(keys)):
+        raise SystemExit(f"{where}: unknown key(s) {', '.join(unknown)}; keys: {', '.join(keys)}")
+    chosen = value.get("mode", "none")
+    if chosen not in retrieval_store.MODES:
+        raise SystemExit(f"{where}: mode must be one of {', '.join(retrieval_store.MODES)}, not {chosen!r}")
+    if chosen == "none":
+        return None
+    k = value.get("k", retrieval_store.DEFAULT_K)
+    if not isinstance(k, int) or isinstance(k, bool) or not 1 <= k <= retrieval_store.MAX_K:
+        raise SystemExit(f"{where}: k must be an integer from 1 to {retrieval_store.MAX_K}, not {k!r}")
+    index = value.get("index")
+    if not isinstance(index, str) or not retrieval_store.DIGEST.fullmatch(index):
+        raise SystemExit(f"{where}: index must be the full sha256:<64 hex> digest `tr retrieval build` prints, "
+                         f"not {index!r}")
+    query = value.get("query", retrieval_store.DEFAULT_QUERY)
+    if not isinstance(query, str):
+        raise SystemExit(f"{where}: query must be a string template")
+    if why := retrieval_store.check_template(query):
+        raise SystemExit(f"{where}: {why}")
+    if arm.get("mode", "fixed") == "tools":
+        raise SystemExit(f"{where} adds passages to the fixed prompt; a tools arm has none")
+    if arm.get("drop"):
+        raise SystemExit(f"{where} and drop in one arm: give each knob its own arm")
+    return retrieval_store.Knob(chosen, k, index, query)
+
+
 def headlines(path: Path, arms: tuple[Arm, ...]) -> None:
     """Fixed arms share one dataset, so they all show headlines (analyze-3) or none, and no tool serves headlines, so a
     tools arm never sits next to a headline prompt (it would differ in more than the config names); refused before
@@ -170,21 +211,33 @@ def run_arms(conn, config: Config, contexts: list[an.Context], provider, prices:
     judges = [g.id for g in registry(list(config.graders)) if g.kind != "code"]
     if judges and any(arm.mode == "tools" or arm.drop for arm in config.arms):  # before the first arm: no call made
         raise SystemExit(f"{config.name}: a tools or drop arm grades with code graders only, not {', '.join(judges)}")
+    if judges and any(arm.retrieval for arm in config.arms):  # a judge would read the prompt without the passages
+        raise SystemExit(f"{config.name}: a retrieval arm grades with code graders only, not {', '.join(judges)}")
     if shown := [arm.prompt for arm in config.arms if arm.mode == "fixed" and an.shows_headlines(arm.prompt)]:
         fetched(config.name, contexts, data_dir)
         contexts = [an.with_headlines(ctx, data_dir, shown[0]) for ctx in contexts]  # read only, before the dataset
     dataset = Dataset.of(config.name, items(config, contexts))
     by_item = {f"{ctx.ticker}:{ctx.session}": ctx for ctx in contexts}
+    keys = {item_id: (ctx.ticker, ctx.session) for item_id, ctx in by_item.items()}
+    # every retrieval arm's index loaded and every query run before the first arm: a missing index costs no call
+    retrieved = {arm.name: retrieval_store.retrieve_all(arm.retrieval, keys, data_dir / "retrieval")
+                 for arm in config.arms if arm.retrieval}
     results = []
     for arm in config.arms:
         graders = registry(list(config.graders), arm.drop)
         routed = provider.routed(arm.provider) if arm.provider else provider
+        found = retrieved.get(arm.name, {})
         if arm.drop:
             routed = masking.Masked(routed, arm.drop)
+        elif arm.retrieval:
+            routed = masking.Augmented(routed, {item.prompt: masking.augment(item.prompt, found[item.id])
+                                                for item in dataset.items})
         if arm.mode == "tools":
             run = run_tools(config, arm, dataset, by_item, routed, graders, prices, data_dir)
-        elif arm.drop:
-            run = run_masked(config, arm, dataset, routed, graders, prices, data_dir)
+        elif arm.drop or arm.retrieval:
+            grade_as = {item.id: with_passages(item.expected, found[item.id])
+                        for item in dataset.items} if arm.retrieval else None
+            run = run_masked(config, arm, dataset, routed, graders, prices, data_dir, grade_as)
         else:
             run = run_eval(dataset, routed, graders, settings=an.call_settings(arm.model),
                            budget=CallBudget(max_usd=config.max_usd_per_arm, prices=prices),
@@ -195,14 +248,24 @@ def run_arms(conn, config: Config, contexts: list[an.Context], provider, prices:
         for sample in run.samples:
             if sample.parse_status == "ok":
                 ctx = by_item[sample.item_id]
-                # the route of the exchange's first user turn: the item's prompt (a drop arm's Masked looks it up by
-                # the masked text it sent), or in tools mode the tools prompt
+                # the route of the exchange's first user turn: the item's prompt (a drop or retrieval arm's wrapper
+                # looks it up by the text it sent), or in tools mode the tools prompt
                 first_user = an.tools_prompt(ctx) if arm.mode == "tools" else run.items[sample.item_id].prompt
-                an.store(conn, ctx, sample, run.record.run_id, model=arm.model, prompt_version=arm.prompt,
-                         route=routed.route_for(first_user), drop=arm.drop)
+                analysis, _ = an.store(conn, ctx, sample, run.record.run_id, model=arm.model,
+                                       prompt_version=arm.prompt, route=routed.route_for(first_user), drop=arm.drop,
+                                       retrieval=found.get(sample.item_id))
+                if arm.retrieval:
+                    retrieval_store.add(conn, found[sample.item_id], analysis.analysis_id, analysis.input_hash)
                 stored += 1
         results.append(ArmResult(arm, run, path, stored))
     return results
+
+
+def with_passages(expected: dict, retrieved: retrieval_store.Retrieved) -> dict:
+    """A retrieval arm's grading view of an item's `expected`: each passage's chunk_id citable (no number) and the
+    passage texts under `passages`, the input of a `citation_accuracy` grader (retrieval/evaluate.citation_grader)."""
+    return expected | {"values": expected["values"] | retrieved.values(),
+                       "passages": {p.chunk_id: p.text for p in retrieved.passages}}
 
 
 def run_tools(config: Config, arm: Arm, dataset: Dataset, by_item: dict[str, an.Context], provider,
@@ -221,10 +284,11 @@ def run_tools(config: Config, arm: Arm, dataset: Dataset, by_item: dict[str, an.
     return run_items(config, arm, dataset, provider, graders, budget, data_dir, ask)
 
 
-def run_masked(config: Config, arm: Arm, dataset: Dataset, provider: masking.Masked, graders: list[Grader],
-               prices: dict, data_dir: Path) -> Run:
-    """A fixed arm with `drop` as a gigai-core Run. Core `run` traces the request it built (the full item prompt),
-    so the masked request, what the model saw, is built and traced here; the dataset, and its digest, stay full."""
+def run_masked(config: Config, arm: Arm, dataset: Dataset, provider: masking.Masked | masking.Augmented,
+               graders: list[Grader], prices: dict, data_dir: Path, grade_as: dict[str, dict] | None = None) -> Run:
+    """A fixed arm with `drop` or `retrieval` as a gigai-core Run. Core `run` traces the request it built (the full
+    item prompt), so the masked or augmented request, what the model saw, is built and traced here; the dataset, and
+    its digest, stay full. `grade_as` replaces an item's `expected` for the graders (a retrieval arm's passages)."""
     budget = CallBudget(max_usd=config.max_usd_per_arm, prices=prices)
     system = Turn(role="system", content=an.system_prompt(arm.prompt))
     sent = {item.id: provider.request(ModelRequest(
@@ -235,14 +299,15 @@ def run_masked(config: Config, arm: Arm, dataset: Dataset, provider: masking.Mas
 
     def ask(item: DatasetItem, subject, run_id: str, trace: JsonlTrace) -> Sample:
         return asked_once(item, sent[item.id], subject, run_id, trace)
-    return run_items(config, arm, dataset, provider, graders, budget, data_dir, ask)
+    return run_items(config, arm, dataset, provider, graders, budget, data_dir, ask, grade_as)
 
 
 def run_items(config: Config, arm: Arm, dataset: Dataset, provider, graders: list[Grader], budget: CallBudget,
-              data_dir: Path, ask) -> Run:
+              data_dir: Path, ask, grade_as: dict[str, dict] | None = None) -> Run:
     """Core `run`'s contract for an arm asked here (the budget already planned on every item's first request):
     every call reserved, one trace file per run, code graders score each succeeded sample, `CannotGrade` leaves no
     score."""
+    grade_as = grade_as or {}
     run_id, created_at = new_id("run"), datetime.now(UTC)
     (data_dir / "traces").mkdir(parents=True, exist_ok=True)
     trace = JsonlTrace(data_dir / "traces" / f"{run_id}.jsonl")
@@ -254,7 +319,7 @@ def run_items(config: Config, arm: Arm, dataset: Dataset, provider, graders: lis
             sample = ask(item, subject, run_id, trace)
             samples.append(sample)
             if sample.outcome == "succeeded":
-                scores.extend(graded(sample, item, graders))
+                scores.extend(graded(sample, grade_as.get(item.id, item.expected), graders))
     finally:
         trace.close()
     calls = [span.call for sample in samples for span in sample.model_spans]
@@ -284,12 +349,12 @@ def asked_once(item: DatasetItem, request: ModelRequest, subject, run_id: str, t
                   spans=(trial, span), recorded_at=completed)
 
 
-def graded(sample: Sample, item: DatasetItem, graders: list[Grader]) -> list[ScoreRecord]:
+def graded(sample: Sample, expected: dict, graders: list[Grader]) -> list[ScoreRecord]:
     """Each code grader's score of one sample as core `run` stores it; `CannotGrade` means no score for that grader."""
     found = []
     for grader in graders:
         try:
-            score = grader.grade(sample, item.expected)
+            score = grader.grade(sample, expected)
         except CannotGrade:
             continue
         found.append(ScoreRecord(score_id=new_id("score"), trace_id=sample.trace_id, grader_id=grader.id,

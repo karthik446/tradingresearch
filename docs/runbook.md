@@ -469,8 +469,9 @@ bake-off draw 2026-11-16: AMZN HD KO XOM  (4 of a shortlist of 5, seeded by sha2
 
 ## Retrieval
 
-Week-6 plumbing (RETRIEVAL-SPIKE §4.1): filing text and stored headlines, cut into chunks, ranked by keywords. No
-model call; nothing is written to the journal.
+Week-6 plumbing (RETRIEVAL-SPIKE §4.1): filing text and stored headlines, cut into chunks, ranked by keywords (BM25) or,
+with the `retrieval` extra, by embeddings and a reranker (below). `build`, `query` and `eval` make no model call and
+write nothing to the journal; only an arm run with the `retrieval` knob writes the `retrieval` table.
 
 ```
 uv run tr retrieval build --ticker KO MSFT [--quarters 4] [--max-tokens 256]
@@ -509,5 +510,48 @@ uv run tr retrieval eval [--queries evals/retrieval_query.jsonl] [--index <diges
   request per ticker for its filing list, 1 per 10-Q and 3 per earnings 8-K (index page, 8-K, press release).
 - **Changed CIK.** The CIK is the one in SEC's ticker table today. XOM files under CIK 2115436 now, and its history is
   under 34088, which is not fetched: XOM's older filings are missing from the index.
-- **Later.** G13b adds dense (embedding) retrieval, the reranker, the hybrid modes, the `retrieval` table and analyze
-  integration.
+
+### Dense retrieval, reranking and the arm knob (G13b)
+
+```
+uv sync --extra retrieval                       # once: fastembed + onnxruntime, about +95 MB in .venv
+uv run tr retrieval build --ticker KO --dense   # also embeds every chunk and fetches both models
+uv run tr retrieval query "What drove the margin change?" --ticker KO --as-of 2026-11-13 --retriever hybrid+rerank
+uv run tr retrieval eval --retriever bm25 dense hybrid hybrid+rerank   # one recall table, a row per retriever
+uv sync                                         # back to the base install; BM25 needs no extra
+```
+
+- **Dense.** Every chunk and the query become vectors from `BAAI/bge-small-en-v1.5`, and chunks are ranked by
+  cosine similarity, so a chunk can match without sharing a word with the query
+  (https://arxiv.org/abs/2004.04906). bge-small needs no query prefix with fastembed.
+- **Hybrid.** Reciprocal rank fusion (above) of the full BM25 and dense rankings of the allowed chunks.
+- **Rerank.** `Xenova/ms-marco-MiniLM-L-6-v2`, a cross-encoder, reads the query and a chunk together and scores the
+  pair (https://arxiv.org/abs/1901.04085, https://www.sbert.net/examples/applications/cross-encoder/README.html). It
+  reorders the hybrid top 20, so `hybrid+rerank` takes `-k` up to 20.
+- **Downloads.** Both models are pinned to a Hugging Face commit and stored in `data/retrieval/models/` (152 MB,
+  measured on KO in `data-dev`). Only `build --dense` downloads; `query` and `eval` refuse with the command to run if
+  a model or a chunk vector is missing. On KO (339 chunks) the first `build --dense` took 15.8 s with the download and
+  0.9 s when cached; a `query` took 0.5 s (bm25), 1.2 s (dense), 1.3 s (hybrid) and 1.4 s (hybrid+rerank).
+- **Vector cache.** `data/retrieval/vectors/<model>@<revision>/<chunk sha256>.npy`: a chunk whose text did not change
+  is not embedded again, and a new model revision gets new files. The index manifest records the model pins; an
+  index embedded under other pins is refused until rebuilt.
+- **Arm knob.** An experiment arm can add retrieved passages to the analyze prompt:
+
+  ```toml
+  [arms.retrieval]
+  mode = "hybrid+rerank"   # none | bm25 | dense | hybrid | hybrid+rerank
+  k = 5                    # 1-20, default 5
+  index = "sha256:<64 hex>" # the full digest, so a rerun uses the same index
+  query = "{ticker} quarterly results: revenue, earnings, guidance, outlook and risks"   # the default
+  ```
+
+  `{ticker}` and `{session}` are filled per item. The passages come after the data and before the closing instruction,
+  as numbered `[chunk_id] "text"` lines marked as untrusted data, and come only from the item's ticker, public by the
+  session's close. A claim cites a passage by its chunk id in `source_ids`. Without the table, or with `mode = "none"`,
+  the prompt and the input hash are as before. With it, the input hash also covers mode, k, index digest and the
+  ordered chunk hashes. A retrieval arm cannot also `drop` sources, cannot be a tools arm, and grades with code
+  graders only. `tr check` does not know chunk ids and lists a passage citation as not in the table.
+- **`retrieval` table.** One append-only journal row per stored analysis of a retrieval arm: analysis id, input hash,
+  ticker, session, mode, k, index digest, the filled query and its template, the chunks as ordered
+  `[chunk_id, sha256, score]` and the number of documents hidden as future. Opening an older journal adds the table
+  and changes nothing else.

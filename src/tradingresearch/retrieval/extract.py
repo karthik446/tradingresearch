@@ -1,5 +1,8 @@
 """Filing HTML to text lines (RETRIEVAL-SPIKE §1.4 step 1), stdlib `html.parser` only.
 
+- An EDGAR SGML wrapper (`<DOCUMENT>`, then `<TYPE>`, `<SEQUENCE>`, `<FILENAME>`, `<DESCRIPTION>` up to `<TEXT>`, and
+  the closing `</TEXT></DOCUMENT>`), which some exhibit files carry, is cut before parsing: its unclosed tags would
+  leave `EX-99.1 2 <file name> EX-99.1` as text.
 - `script`, `style`, `head`, `title` and `ix:header` (the hidden inline-XBRL block) are dropped.
 - Source newlines are spaces, so a pretty-printed table row stays one row.
 - Block tags end a line, except inside a `td`/`th`, where they are a space (a cell made of several `<p>` keeps its
@@ -20,6 +23,7 @@ BLOCK = frozenset({"p", "div", "br", "li", "h1", "h2", "h3", "h4", "h5", "h6", "
 CELL = frozenset({"td", "th"})
 OPENERS = frozenset({"$", "(", "$(", "($"})
 CLOSERS = re.compile(r"[)%]+")
+SGML_WRAPPER = re.compile(r"\A\s*<DOCUMENT>.*?<TEXT>|</TEXT>\s*</DOCUMENT>\s*\Z", re.DOTALL | re.IGNORECASE)
 
 
 @dataclass(frozen=True)
@@ -145,7 +149,7 @@ class _Lines(HTMLParser):
 def lines(html: str) -> list[Line]:
     """The document's prose lines and table rows, in reading order."""
     parser = _Lines()
-    parser.feed(html)
+    parser.feed(SGML_WRAPPER.sub("", html))
     parser.close()
     return parser.lines
 
