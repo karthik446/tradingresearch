@@ -2,9 +2,10 @@
 
 A config is a TOML file (see experiments/). Every arm asks the same gigai-core Dataset, so `compare` pairs the
 answers item by item; an arm differs from the baseline only in what the config names (prompt version, model, an
-OpenRouter `provider` routing table such as a teacher's DeepInfra pin, SPIKE §9.4, and `mode`: `fixed` context or
-`tools`, REPO-PLAN §2.4). `cluster` names the unit the intervals resample: `ticker` (week 1, the default) or `session`
-(the live stream), REPO-PLAN D5.
+OpenRouter `provider` routing table such as a teacher's DeepInfra pin, SPIKE §9.4, `mode`: `fixed` context or
+`tools`, REPO-PLAN §2.4, and `drop`: SOURCES sections masked out of a fixed arm's prompt, REPO-PLAN §2.5 / masking.py).
+`cluster` names the unit the intervals resample: `ticker` (week 1, the default) or `session` (the live stream),
+REPO-PLAN D5.
 """
 
 from __future__ import annotations
@@ -17,15 +18,16 @@ from pathlib import Path
 from gigai_core import CallBudget, Dataset, DatasetItem, Run, compare
 from gigai_core import run as run_eval
 from gigai_core.budget import budgeted
+from gigai_core.graders.builtin import parse_json_text
 from gigai_core.graders.protocol import CannotGrade, Grader
 from gigai_core.providers import ModelRequest, Turn
 from gigai_core.records import RunRecord
 from gigai_core.sample import Sample
 from gigai_core.score import ScoreRecord
 from gigai_core.stats.intervals import MIN_CLUSTERS
-from gigai_core.trace import JsonlTrace
+from gigai_core.trace import JsonlTrace, TrialSpan
 
-from . import analyze as an
+from . import analyze as an, masking
 from .evals import graders as registry
 from .hashing import new_id
 from .openrouter import Routing
@@ -42,6 +44,7 @@ class Arm:
     model: str
     provider: Routing | None = None  # recorded in every call's ProviderIdentity, so the run shows how it was routed
     mode: str = "fixed"
+    drop: tuple[str, ...] = ()  # masking.SECTIONS this arm never sees; empty = the full prompt, the default
 
 
 @dataclass(frozen=True)
@@ -60,8 +63,8 @@ def load(path: Path) -> Config:
     missing = [key for key in REQUIRED if key not in raw]
     if missing:
         raise SystemExit(f"{path}: missing {missing}")
-    arms = tuple(Arm(a["name"], a["prompt"], a.get("model", raw["model"]), routing(path, a), mode(path, a))
-                 for a in raw["arms"])
+    arms = tuple(Arm(a["name"], a["prompt"], a.get("model", raw["model"]), routing(path, a), mode(path, a),
+                     drop(path, a)) for a in raw["arms"])
     for arm in arms:
         an.system_prompt(arm.prompt)  # fail before any spend if a prompt file is missing
     registry(raw["graders"])  # and if a grader is not registered
@@ -101,6 +104,24 @@ def mode(path: Path, arm: dict) -> str:
     return value
 
 
+def drop(path: Path, arm: dict) -> tuple[str, ...]:
+    """An arm's `drop` list, refused before any spend: not a list of known, distinct section names, every section,
+    or with `mode = "tools"` (the tools prompt has no SOURCES table to mask)."""
+    value = arm.get("drop", [])
+    where = f"{path}: arm {arm.get('name')}: drop"
+    if not isinstance(value, list) or not all(isinstance(name, str) for name in value):
+        raise SystemExit(f"{where} must be a list of section names ({', '.join(masking.SECTIONS)})")
+    if unknown := [name for name in value if name not in masking.SECTIONS]:
+        raise SystemExit(f"{where}: unknown section(s) {', '.join(unknown)}; sections: {', '.join(masking.SECTIONS)}")
+    if len(set(value)) != len(value):
+        raise SystemExit(f"{where} names a section twice: {', '.join(value)}")
+    if set(value) == set(masking.SECTIONS):
+        raise SystemExit(f"{where} names every section, which leaves no SOURCES row to cite")
+    if value and arm.get("mode", "fixed") == "tools":
+        raise SystemExit(f"{where} masks the fixed prompt's SOURCES table; a tools arm has none")
+    return tuple(value)
+
+
 @dataclass
 class ArmResult:
     arm: Arm
@@ -112,17 +133,21 @@ class ArmResult:
 def run_arms(conn, config: Config, contexts: list[an.Context], provider, prices: dict, data_dir: Path
              ) -> list[ArmResult]:
     """One run per arm on one Dataset. Each parsed sample is also stored as an Analysis, so `tr check` reads it."""
-    graders = registry(list(config.graders))
-    judges = [g.id for g in graders if g.kind != "code"]
-    if judges and any(arm.mode == "tools" for arm in config.arms):  # before the first arm, so no call is made
-        raise SystemExit(f"{config.name}: a tools arm grades with code graders only, not {', '.join(judges)}")
+    judges = [g.id for g in registry(list(config.graders)) if g.kind != "code"]
+    if judges and any(arm.mode == "tools" or arm.drop for arm in config.arms):  # before the first arm: no call made
+        raise SystemExit(f"{config.name}: a tools or drop arm grades with code graders only, not {', '.join(judges)}")
     dataset = Dataset.of(config.name, items(config, contexts))
     by_item = {f"{ctx.ticker}:{ctx.session}": ctx for ctx in contexts}
     results = []
     for arm in config.arms:
+        graders = registry(list(config.graders), arm.drop)
         routed = provider.routed(arm.provider) if arm.provider else provider
+        if arm.drop:
+            routed = masking.Masked(routed, arm.drop)
         if arm.mode == "tools":
             run = run_tools(config, arm, dataset, by_item, routed, graders, prices, data_dir)
+        elif arm.drop:
+            run = run_masked(config, arm, dataset, routed, graders, prices, data_dir)
         else:
             run = run_eval(dataset, routed, graders, settings=an.call_settings(arm.model),
                            budget=CallBudget(max_usd=config.max_usd_per_arm, prices=prices),
@@ -133,10 +158,11 @@ def run_arms(conn, config: Config, contexts: list[an.Context], provider, prices:
         for sample in run.samples:
             if sample.parse_status == "ok":
                 ctx = by_item[sample.item_id]
-                # the route of the exchange's first user turn: the item's prompt, or in tools mode the tools prompt
+                # the route of the exchange's first user turn: the item's prompt (a drop arm's Masked looks it up by
+                # the masked text it sent), or in tools mode the tools prompt
                 first_user = an.tools_prompt(ctx) if arm.mode == "tools" else run.items[sample.item_id].prompt
                 an.store(conn, ctx, sample, run.record.run_id, model=arm.model, prompt_version=arm.prompt,
-                         route=routed.route_for(first_user))
+                         route=routed.route_for(first_user), drop=arm.drop)
                 stored += 1
         results.append(ArmResult(arm, run, path, stored))
     return results
@@ -144,17 +170,42 @@ def run_arms(conn, config: Config, contexts: list[an.Context], provider, prices:
 
 def run_tools(config: Config, arm: Arm, dataset: Dataset, by_item: dict[str, an.Context], provider,
               graders: list[Grader], prices: dict, data_dir: Path) -> Run:
-    """A `mode = "tools"` arm as a gigai-core Run: core `run` asks once per item, so the tool loop runs here.
-
-    Same contract as core `run`: the budget is planned on every item's first request before any call and every call
-    is reserved; one trace file per run; code graders score each succeeded sample; `CannotGrade` leaves no score."""
+    """A `mode = "tools"` arm as a gigai-core Run: core `run` asks once per item, so the tool loop runs here."""
     from .tools import TOOLS
     budget = CallBudget(max_usd=config.max_usd_per_arm, prices=prices)
     system = Turn(role="system", content=an.system_prompt(arm.prompt))
-    settings = an.call_settings(arm.model)
-    budget.plan([ModelRequest(settings=settings, tools=TOOLS,
+    budget.plan([ModelRequest(settings=an.call_settings(arm.model), tools=TOOLS,
                               turns=(system, Turn(role="user", content=an.tools_prompt(by_item[item.id]))))
                  for item in dataset.items])
+
+    def ask(item: DatasetItem, subject, run_id: str, trace: JsonlTrace) -> Sample:
+        return an.analyze_with_tools(by_item[item.id], subject, model=arm.model, prompt_version=arm.prompt,
+                                     item=item, run_id=run_id, trace=trace)
+    return run_items(config, arm, dataset, provider, graders, budget, data_dir, ask)
+
+
+def run_masked(config: Config, arm: Arm, dataset: Dataset, provider: masking.Masked, graders: list[Grader],
+               prices: dict, data_dir: Path) -> Run:
+    """A fixed arm with `drop` as a gigai-core Run. Core `run` traces the request it built (the full item prompt),
+    so the masked request, what the model saw, is built and traced here; the dataset, and its digest, stay full."""
+    budget = CallBudget(max_usd=config.max_usd_per_arm, prices=prices)
+    system = Turn(role="system", content=an.system_prompt(arm.prompt))
+    sent = {item.id: provider.request(ModelRequest(
+                settings=an.call_settings(arm.model), turns=(system, Turn(role="user", content=item.prompt)),
+                metadata={"item_id": item.id, "repeat_index": 0}))
+            for item in dataset.items}
+    budget.plan(list(sent.values()))
+
+    def ask(item: DatasetItem, subject, run_id: str, trace: JsonlTrace) -> Sample:
+        return asked_once(item, sent[item.id], subject, run_id, trace)
+    return run_items(config, arm, dataset, provider, graders, budget, data_dir, ask)
+
+
+def run_items(config: Config, arm: Arm, dataset: Dataset, provider, graders: list[Grader], budget: CallBudget,
+              data_dir: Path, ask) -> Run:
+    """Core `run`'s contract for an arm asked here (the budget already planned on every item's first request):
+    every call reserved, one trace file per run, code graders score each succeeded sample, `CannotGrade` leaves no
+    score."""
     run_id, created_at = new_id("run"), datetime.now(UTC)
     (data_dir / "traces").mkdir(parents=True, exist_ok=True)
     trace = JsonlTrace(data_dir / "traces" / f"{run_id}.jsonl")
@@ -163,20 +214,37 @@ def run_tools(config: Config, arm: Arm, dataset: Dataset, by_item: dict[str, an.
     scores: list[ScoreRecord] = []
     try:
         for item in dataset.items:
-            sample = an.analyze_with_tools(by_item[item.id], subject, model=arm.model, prompt_version=arm.prompt,
-                                           item=item, run_id=run_id, trace=trace)
+            sample = ask(item, subject, run_id, trace)
             samples.append(sample)
             if sample.outcome == "succeeded":
                 scores.extend(graded(sample, item, graders))
     finally:
         trace.close()
     calls = [span.call for sample in samples for span in sample.model_spans]
-    record = RunRecord(run_id=run_id, dataset=dataset.ref, settings=settings, provider=provider.identity,
-                       created_at=created_at, completed_at=datetime.now(UTC), prereg=None, trace_path=trace.path,
-                       spent_usd=round(sum(call.cost_usd or 0.0 for call in calls), 6), calls_made=len(calls),
-                       repeats=1, tag=f"{config.name}:{arm.name}:{arm.prompt}")
+    record = RunRecord(run_id=run_id, dataset=dataset.ref, settings=an.call_settings(arm.model),
+                       provider=provider.identity, created_at=created_at, completed_at=datetime.now(UTC), prereg=None,
+                       trace_path=trace.path, spent_usd=round(sum(call.cost_usd or 0.0 for call in calls), 6),
+                       calls_made=len(calls), repeats=1, tag=f"{config.name}:{arm.name}:{arm.prompt}")
     return Run(record=record, items={item.id: item for item in dataset.items}, samples=tuple(samples),
                scores=tuple(scores))
+
+
+def asked_once(item: DatasetItem, request: ModelRequest, subject, run_id: str, trace: JsonlTrace) -> Sample:
+    """One fixed-mode call as core `run` records it: the model span, then the trial span, `input` = what was sent."""
+    trial_id, started = new_id("span"), datetime.now(UTC)
+    span = an._model_span(subject, request, trial_id)
+    trace.write(span)
+    parsed = parse_json_text(span.text) if span.error is None else None
+    outcome = "failed" if span.error is not None else "succeeded"
+    completed = datetime.now(UTC)
+    trial = TrialSpan(span_id=trial_id, turn=0, started_at=started, completed_at=completed, item_id=item.id,
+                      repeat_index=0, outcome=outcome, error=span.error)
+    trace.write(trial)
+    return Sample(trace_id=new_id("trace"), run_id=run_id, item_id=item.id, item_version=item.version,
+                  cluster_id=item.cluster_id, repeat_index=0, input=request.turns, output_text=span.text,
+                  output_parsed=parsed.value if parsed else None,
+                  parse_status=parsed.status if parsed else "not_parsed", outcome=outcome, error=span.error,
+                  spans=(trial, span), recorded_at=completed)
 
 
 def graded(sample: Sample, item: DatasetItem, graders: list[Grader]) -> list[ScoreRecord]:

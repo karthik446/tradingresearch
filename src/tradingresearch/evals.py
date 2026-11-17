@@ -24,7 +24,7 @@ from gigai_core.trace import ModelExchange
 from pydantic import ValidationError
 
 from . import analyze as an, checks, journal, label, thesis as th
-from .analyze import ClaimsValid, snapshot_rows, validate_claims
+from .analyze import ClaimsValid, hidden_of, snapshot_rows, validate_claims
 from .hashing import new_id
 from .reconcile_run import BarSource
 from .records import Analysis, Thesis
@@ -63,16 +63,20 @@ grader(ClaimsValid)  # defined in analyze.py beside validate_claims
 
 @grader
 class AllClaimsValid:
-    """1 if every claim in the reply passes validate_claims, else 0. Binary, so compare uses McNemar."""
+    """1 if every claim in the reply passes validate_claims, else 0. Binary, so compare uses McNemar.
+
+    A `drop` arm sets `drop`: citing a row the arm never saw fails the claim (`dropped_source`)."""
 
     id = "all_claims_valid"
     version = "1"
     kind = "code"
+    drop: tuple[str, ...] = ()
 
     def grade(self, sample, expected) -> Score:
         if sample.parse_status != "ok":
             raise CannotGrade("output did not parse")
-        _, rejected = validate_claims(sample.output_parsed, expected["values"], "an_grade")
+        _, rejected = validate_claims(sample.output_parsed, expected["values"], "an_grade",
+                                      hidden_of(expected, self.drop))
         return Score(value=0.0 if rejected else 1.0, explanation=", ".join(sorted({r.reason for r in rejected})) or None)
 
 
@@ -81,17 +85,21 @@ class InferencesGrounded:
     """1 if every inference names only indicators its parents cite (through derived_from, recursively), else 0.
 
     Spec: evals/specs/inferences_grounded.md. Only table names with an underscore count (sma_20, high_20), so plain
-    words such as "close" never match; dist_<name>_atr in a parent also grounds <name>.
+    words such as "close" never match; dist_<name>_atr in a parent also grounds <name>. A `drop` arm sets `drop`:
+    a parent citing a row the arm never saw grounds nothing, while the names of every row still count as used.
     """
 
     id = "inferences_grounded"
     version = "1"
     kind = "code"
+    drop: tuple[str, ...] = ()
 
     def grade(self, sample, expected) -> Score:
         if sample.parse_status != "ok":
             raise CannotGrade("output did not parse")
         names: dict[str, str] = expected["names"]
+        hidden = hidden_of(expected, self.drop)
+        visible = {source: name for source, name in names.items() if source not in hidden}
         claims = {c.get("id"): c for c in sample.output_parsed.get("claims", []) if isinstance(c, dict)}
         vocab = sorted({name for name in names.values() if "_" in name}, key=len, reverse=True)
 
@@ -99,7 +107,7 @@ class InferencesGrounded:
             claim = claims.get(claim_id)
             if claim is None or claim_id in seen:
                 return set()
-            found = {names.get(source, "") for source in claim.get("source_ids") or []}
+            found = {visible.get(source, "") for source in claim.get("source_ids") or []}
             found |= {name[5:-4] for name in found if name.startswith("dist_") and name.endswith("_atr")}
             for parent in claim.get("derived_from") or []:
                 found |= cited(parent, seen | {claim_id})
@@ -312,8 +320,13 @@ def p1_judge(conn: sqlite3.Connection, bars: BarSource, thesis_id: str, provider
     return score
 
 
-def graders(names: list[str]) -> list:
+def graders(names: list[str], drop: tuple[str, ...] = ()) -> list:
+    """The named graders; a `drop` arm's list goes to every grader that checks claims against the table."""
     unknown = [name for name in names if name not in GRADERS]
     if unknown:
         raise SystemExit(f"unknown grader(s) {unknown}; registered: {sorted(GRADERS)}")
-    return [GRADERS[name]() for name in names]
+    built = [GRADERS[name]() for name in names]
+    for g in built:
+        if hasattr(g, "drop"):
+            g.drop = drop
+    return built

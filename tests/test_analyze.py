@@ -1,6 +1,13 @@
 """The claim validators. The full analyze round trip is exercised by real runs, never by a fake model."""
 
+import json
+from pathlib import Path
+
+from test_teacher import context as live_context
+from tradingresearch import analyze as an
 from tradingresearch.analyze import validate_claims
+
+RECORDED = json.loads(Path("tests/fixtures/teacher/AAPL_2026-11-16.deepseek-v4-pro.analysis.json").read_text())
 
 VALUES = {"src_close": 230.0, "src_sma": 221.5, "src_regime": None}
 
@@ -65,3 +72,26 @@ def test_a_mis_tagged_claim_is_rejected_by_the_record_rules():
     _, rejected = reasons([claim("c1", tag="inference", text="Price is extended.", source_ids=(), steps=None,
                                  value=None, unit=None)])
     assert rejected == {"c1": "not_a_claim"}  # an inference needs derived_from and steps
+
+
+def test_a_cited_dropped_source_is_rejected_and_its_inference_falls_with_it():
+    raw = [claim("c1"), claim("c2", value=221.5, source_ids=("src_sma",)),
+           claim("c3", tag="inference", text="Price is extended.", value=None, unit=None, source_ids=(),
+                 derived_from=("c2",), steps="Close above the average.")]
+    kept, rejected = validate_claims({"claims": raw}, VALUES, "an_test", hidden=frozenset({"src_sma"}))
+    assert [c.text for c in kept] == ["Close was {value} USD."]
+    assert {r.claim: r.reason for r in rejected} == {"c2": "dropped_source", "c3": "bad_derivation"}
+    assert validate_claims({"claims": raw}, VALUES, "an_test")[1] == []  # the full context accepts all three
+
+
+def test_without_drop_the_input_hash_of_a_recorded_analysis_is_unchanged():
+    ctx = live_context()
+    assert an.input_hash(ctx, "analyze-1") == RECORDED["input_hash"]
+    assert an.input_hash(ctx, "analyze-1", drop=()) == RECORDED["input_hash"]
+
+
+def test_a_drop_list_changes_the_input_hash_whatever_its_order():
+    ctx = live_context()
+    one = an.input_hash(ctx, "analyze-1", drop=("edgar", "levels"))
+    assert one == an.input_hash(ctx, "analyze-1", drop=("levels", "edgar"))
+    assert one != RECORDED["input_hash"] != an.input_hash(ctx, "analyze-1", drop=("edgar",))

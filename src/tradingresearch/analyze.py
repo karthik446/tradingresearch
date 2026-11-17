@@ -211,9 +211,11 @@ def context_tokens(system: str, prompt: str) -> int:
     return len(student_tokenizer().encode(system + "\n" + prompt).ids)
 
 
-def input_hash(ctx: Context, prompt_version: str) -> str:
-    return digest({"snapshot": ctx.snapshot.model_dump(mode="json"),
-                   "sources": sorted(s.content_sha256 for s in ctx.sources), "prompt_version": prompt_version})
+def input_hash(ctx: Context, prompt_version: str, drop: tuple[str, ...] = ()) -> str:
+    """What the model was given; a `drop` arm's list joins the digest only when non-empty, so old hashes stand."""
+    given = {"snapshot": ctx.snapshot.model_dump(mode="json"),
+             "sources": sorted(s.content_sha256 for s in ctx.sources), "prompt_version": prompt_version}
+    return digest(given | {"drop": sorted(drop)} if drop else given)
 
 
 # ---------- validation ----------
@@ -225,9 +227,11 @@ def close_to(a: float, b: float) -> bool:
     return abs(a - b) <= REL_TOL * max(abs(a), abs(b), 1e-12)
 
 
-def validate_claims(raw: object, values: dict[str, float | None], analysis_id: str) -> tuple[list[Claim], list[Rejection]]:
+def validate_claims(raw: object, values: dict[str, float | None], analysis_id: str,
+                    hidden: frozenset[str] = frozenset()) -> tuple[list[Claim], list[Rejection]]:
     """Every claim either becomes a Claim or gets a Rejection with a reason. A claim derived from a rejected one is
-    rejected too, so no inference stands on an unchecked number."""
+    rejected too, so no inference stands on an unchecked number. `hidden` source ids were masked out of a `drop`
+    arm's prompt: citing one is `dropped_source`."""
     items = raw.get("claims") if isinstance(raw, dict) else None
     if not isinstance(items, list):
         return [], [Rejection("-", "not_json_claims", "output has no 'claims' list")]
@@ -236,7 +240,7 @@ def validate_claims(raw: object, values: dict[str, float | None], analysis_id: s
     rejected: list[Rejection] = []
     for item in items:
         local = str(item.get("id")) if isinstance(item, dict) else "?"
-        problem = check_one(item, values, kept, ids)
+        problem = check_one(item, values, kept, ids, hidden)
         if problem:
             rejected.append(Rejection(local, *problem))
             continue
@@ -252,7 +256,7 @@ def validate_claims(raw: object, values: dict[str, float | None], analysis_id: s
 
 
 def check_one(item: object, values: dict[str, float | None], kept: dict[str, Claim],
-              ids: dict[str, str]) -> tuple[str, str] | None:
+              ids: dict[str, str], hidden: frozenset[str] = frozenset()) -> tuple[str, str] | None:
     if not isinstance(item, dict):
         return "not_a_claim", "claim is not an object"
     text, tag, value = str(item.get("text", "")), item.get("tag"), item.get("value")
@@ -267,6 +271,9 @@ def check_one(item: object, values: dict[str, float | None], kept: dict[str, Cla
     unknown = [s for s in cited if s not in values]
     if unknown:
         return "unknown_source", ", ".join(unknown)
+    unseen = [s for s in cited if s in hidden]
+    if unseen:
+        return "dropped_source", ", ".join(unseen)
     if tag == "opinion" and value is not None:
         return "number_in_opinion", f"value={value}"
     if tag == "fact" and value is not None:
@@ -286,19 +293,29 @@ def check_one(item: object, values: dict[str, float | None], kept: dict[str, Cla
 
 
 class ClaimsValid:
-    """A gigai-core code grader: the share of the model's claims that pass validate_claims. Stored in the run file."""
+    """A gigai-core code grader: the share of the model's claims that pass validate_claims. Stored in the run file.
+
+    A `drop` arm sets `drop`: a claim citing a row it never saw is rejected (expected values minus the dropped)."""
 
     id = "claims_valid"
     version = "2"
     kind = "code"
+    drop: tuple[str, ...] = ()
 
     def grade(self, sample, expected) -> Score:
         if sample.parse_status != "ok":
             raise CannotGrade("output did not parse")
-        kept, rejected = validate_claims(sample.output_parsed, expected["values"], "an_grade")
+        kept, rejected = validate_claims(sample.output_parsed, expected["values"], "an_grade",
+                                         hidden_of(expected, self.drop))
         total = len(kept) + len(rejected)
         reasons = sorted({r.reason for r in rejected})
         return Score(value=len(kept) / total if total else 0.0, explanation=", ".join(reasons) or None)
+
+
+def hidden_of(expected, drop: tuple[str, ...]) -> frozenset[str]:
+    """The source ids of a dataset item's `expected` that a `drop` arm never saw."""
+    from .masking import hidden  # masking imports tools, which imports this module
+    return hidden(expected["names"], drop) if drop else frozenset()
 
 
 # ---------- the command ----------
@@ -341,19 +358,23 @@ def call_settings(model: str) -> CallSettings:
 
 
 def store(conn, ctx: Context, sample, run_id: str, *, model: str, prompt_version: str, route: str,
-          arm: str = "main", terms_class: str | None = None) -> tuple[Analysis, list[Rejection]]:
+          arm: str = "main", terms_class: str | None = None,
+          drop: tuple[str, ...] = ()) -> tuple[Analysis, list[Rejection]]:
     """Validate one sample's claims and write the Analysis (valid claims only) with its sources to the journal.
 
     `terms_class` None means the route's default: restricted for Claude, unknown otherwise; the teacher arm passes
-    `trainable`."""
+    `trainable`. A `drop` arm passes its list: it joins the input hash, the token count is of the masked prompt, and
+    a claim citing a dropped row is rejected."""
+    from .masking import hidden, mask  # masking imports tools, which imports this module
     analysis_id = new_id("an")
-    claims, rejected = validate_claims(sample.output_parsed, ctx.values(), analysis_id)
+    claims, rejected = validate_claims(sample.output_parsed, ctx.values(), analysis_id,
+                                       hidden({row.source_id: row.name for row in ctx.rows}, drop))
     analysis = Analysis(
         analysis_id=analysis_id, ticker=ctx.ticker, session=ctx.session, created_at=datetime.now(UTC),
-        run_id=run_id, snapshot=ctx.snapshot, claims=tuple(claims), input_hash=input_hash(ctx, prompt_version),
+        run_id=run_id, snapshot=ctx.snapshot, claims=tuple(claims), input_hash=input_hash(ctx, prompt_version, drop),
         prompt_version=prompt_version, model=model, sample_trace_id=sample.trace_id, provider_route=route, arm=arm,
         terms_class=terms_class or ("restricted" if model.startswith("anthropic/") else "unknown"),
-        context_tokens=context_tokens(system_prompt(prompt_version), render(ctx)),
+        context_tokens=context_tokens(system_prompt(prompt_version), mask(render(ctx), drop)),
     )
     from . import journal  # local import keeps this module importable without a database
     journal.add_analysis(conn, analysis, ctx.sources)

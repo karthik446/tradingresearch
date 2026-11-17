@@ -181,6 +181,18 @@ tool calls. `tr exp run` has no dry run; this prints a config's arms and graders
 uv run python -c "from pathlib import Path; from tradingresearch import experiment as e; print(e.load(Path('experiments/tools-vs-fixed.toml')))"
 ```
 
+## Experiment arms: `drop`
+
+A fixed-mode arm may set `drop = ["edgar"]` (any of `indicators`, `levels`, `edgar`, the same split as the week-4
+tools) to hide those SOURCES rows from the model; the default `drop = []` sends the prompt byte for byte as before.
+`tr exp run` refuses at config load a value that is not a list of section names, an unknown section (`headlines` too:
+headlines are not rendered yet), a section named twice, a list that names every section, and `drop` on a tools arm.
+Both arms share one dataset (the items keep the full prompt); `masking.Masked` removes the rows from each user turn
+before the call, and a drop arm runs on the in-repo loop (as a tools arm does), so the trace's `request_sha256`,
+`last_turn` and `Sample.input` hold the masked request. A drop arm takes code graders only. A stored analysis adds
+the sorted drop list to its `input_hash` (unchanged when `drop` is empty), and a claim citing a dropped row is rejected
+as `dropped_source`, so any inference derived from it falls too.
+
 ## Provenance: the route
 
 `provider_route` on an analysis or thesis says which upstream served the call; the teacher terms filter and the

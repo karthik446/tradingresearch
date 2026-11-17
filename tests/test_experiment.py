@@ -1,5 +1,7 @@
-"""The `mode` arm knob (REPO-PLAN §2.4, week 4), checked at config load. tests/test_week4.py runs a tools arm."""
+"""The `mode` and `drop` arm knobs (REPO-PLAN §2.4 week 4, §2.5 week 5), checked at config load.
+tests/test_week4.py runs a tools arm, tests/test_masking.py two drop arms."""
 
+import re
 from pathlib import Path
 
 import pytest
@@ -34,3 +36,28 @@ def test_an_unknown_mode_is_refused_at_load(tmp_path):
     path = config(tmp_path, "agentic")
     with pytest.raises(SystemExit, match=r"arm baseline: mode must be one of fixed, tools, not 'agentic'"):
         experiment.load(path)
+
+
+def with_drop(tmp_path: Path, line: str) -> Path:
+    path = tmp_path / "drop.toml"
+    path.write_text(CONFIG + line + "\n")
+    return path
+
+
+def test_drop_defaults_to_empty_and_takes_section_names(tmp_path):
+    assert experiment.load(config(tmp_path, None)).arms[0].drop == ()
+    assert experiment.load(with_drop(tmp_path, "drop = []")).arms[0].drop == ()
+    assert experiment.load(with_drop(tmp_path, 'drop = ["edgar", "levels"]')).arms[0].drop == ("edgar", "levels")
+
+
+@pytest.mark.parametrize(("line", "why"), [
+    ('drop = ["headlines"]', "unknown section(s) headlines; sections: indicators, levels, edgar"),
+    ('drop = "edgar"', "must be a list of section names"),
+    ("drop = [1]", "must be a list of section names"),
+    ('drop = ["edgar", "edgar"]', "names a section twice"),
+    ('drop = ["indicators", "levels", "edgar"]', "names every section"),
+    ('mode = "tools"\ndrop = ["edgar"]', "a tools arm has none"),
+])
+def test_a_bad_drop_is_refused_at_load(tmp_path, line, why):
+    with pytest.raises(SystemExit, match=r"arm baseline: drop.*" + re.escape(why)):
+        experiment.load(with_drop(tmp_path, line))
