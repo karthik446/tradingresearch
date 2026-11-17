@@ -1,0 +1,12 @@
+usage: tr retrieval [-h] {build,query,eval} ...
+
+positional arguments:
+  {build,query,eval}
+    build             fetch 8-K earnings and 10-Q text from SEC Archives,
+                      chunk, index
+    query             top chunks for a question, nothing after the session
+                      close
+    eval              recall@k of labelled queries (no calls)
+
+options:
+  -h, --help          show this help message and exit

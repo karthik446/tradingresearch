@@ -1,0 +1,9 @@
+usage: tr retrieval build [-h] --ticker TICKER [TICKER ...]
+                          [--quarters QUARTERS] [--max-tokens MAX_TOKENS]
+
+options:
+  -h, --help            show this help message and exit
+  --ticker TICKER [TICKER ...]
+  --quarters QUARTERS   look back this many 91-day quarters (default 4)
+  --max-tokens MAX_TOKENS
+                        chunk size cap (default 256)

@@ -466,3 +466,48 @@ bake-off draw 2026-11-16: AMZN HD KO XOM  (4 of a shortlist of 5, seeded by sha2
 ```
 
 2026-11-16 is before bake-off session 1; the draw is shown only as an example.
+
+## Retrieval
+
+Week-6 plumbing (RETRIEVAL-SPIKE §4.1): filing text and stored headlines, cut into chunks, ranked by keywords. No
+model call; nothing is written to the journal.
+
+```
+uv run tr retrieval build --ticker KO MSFT [--quarters 4] [--max-tokens 256]
+uv run tr retrieval query "What drove the margin change?" --ticker KO --as-of 2026-11-13 [-k 10] [--index <digest>]
+uv run tr retrieval eval [--queries evals/retrieval_query.jsonl] [--index <digest>]
+```
+
+- **What is indexed.** Per ticker, filings accepted in the last `--quarters` × 91 days: each earnings 8-K (item 2.02)
+  with its press release (the exhibit typed EX-99.1 on the filing's index page; file names mislead), and each 10-Q,
+  whole. 10-Ks and other 8-Ks are left out. Headlines come from `data/news/<TICKER>/` as `tr news` stored them; build
+  fetches none, so run `tr news` first for the days you want.
+- **Chunks.** A sentence or a table row is never split, so a number stays next to its row label. A chunk holding table
+  rows starts with the table's caption and header rows. Chunks are at most `--max-tokens` (a single longer row or
+  sentence gets its own chunk). Tokens are counted by a regex (words and punctuation marks), not a model tokenizer.
+- **Keyword ranking.** BM25 scores a chunk by how often the query's words occur in it, weighted up for rare words and
+  down for long chunks (https://en.wikipedia.org/wiki/Okapi_BM25). A chunk sharing no word with the query is not
+  listed. Reciprocal rank fusion, which merges ranked lists by summing 1/(60 + rank), ships for the hybrid retriever
+  of G13b (https://cormack.uwaterloo.ca/cormacksigir09-rrf.pdf).
+- **No future text.** `query` and `eval` search only the ticker's documents available at or before the `--as-of`
+  session's close (the cutoff `tr news` uses): filings by EDGAR acceptance time, headlines by publication time. The
+  rule is applied before ranking, so the top k is never short because of it; the output prints how many documents
+  were hidden.
+- **Index identity.** An index is named by `sha256` of its manifest: chunker version and size, token counter, BM25
+  settings, every document's content hash and every chunk's text hash. Two builds of the same documents have the same
+  digest. `query` and `eval` use the newest index unless `--index` names one (a digest prefix is enough).
+- **Recall eval.** `evals/retrieval_query.schema.md` defines a labelled query; the learner writes the 30 queries into
+  `evals/retrieval_query.jsonl` (shipped empty: `eval` prints `0 queries`). Every label is checked against the index
+  first; one bad label stops the eval. It prints recall_any@k and recall_frac@k at k 1, 5, 10, 20, with counts.
+- **Where data lives.** Filing files: `data/edgar/archives/<cik>/<accession>/` (fetched once, never refetched).
+  Filing lists: `data/edgar/submissions/` (refetched once per UTC day). Indexes: `data/retrieval/<digest>/` with
+  `manifest.json` and `chunks.jsonl`. All of `data/` is git-ignored: real filing and headline text stays on this
+  machine and never goes into the repo, a fixture or a release. Tests use invented FAKEA documents only.
+- **SEC terms.** SEC allows at most 10 requests per second from a client that declares who it is
+  (https://www.sec.gov/about/privacy-information); `TR_SEC_USER_AGENT` must hold a name and contact email. Build
+  fetches at most 5 requests per second and prints its request count. A first build costs the ticker table once, 1
+  request per ticker for its filing list, 1 per 10-Q and 3 per earnings 8-K (index page, 8-K, press release).
+- **Changed CIK.** The CIK is the one in SEC's ticker table today. XOM files under CIK 2115436 now, and its history is
+  under 34088, which is not fetched: XOM's older filings are missing from the index.
+- **Later.** G13b adds dense (embedding) retrieval, the reranker, the hybrid modes, the `retrieval` table and analyze
+  integration.

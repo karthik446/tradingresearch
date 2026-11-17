@@ -1,0 +1,13 @@
+usage: tr retrieval query [-h] --ticker TICKER --as-of AS_OF [-k K]
+                          [--index INDEX]
+                          text
+
+positional arguments:
+  text
+
+options:
+  -h, --help       show this help message and exit
+  --ticker TICKER
+  --as-of AS_OF    the session (YYYY-MM-DD) whose close is the cutoff
+  -k K             chunks to return (default 10)
+  --index INDEX    index digest or prefix (default: the newest)

@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from . import (analyze, bakeoff, check, daily, data, dataset, exp, grade, label, learn, news, reconcile, report, screen,
-               slo, split, thesis, usage)
+from . import (analyze, bakeoff, check, daily, data, dataset, exp, grade, label, learn, news, reconcile, report,
+               retrieval, screen, slo, split, thesis, usage)
 
 COMMANDS = (data, news, screen, analyze, thesis, reconcile, grade, daily, report, slo, check, exp, usage, bakeoff,
-            label, learn, split, dataset)
+            label, learn, split, dataset, retrieval)

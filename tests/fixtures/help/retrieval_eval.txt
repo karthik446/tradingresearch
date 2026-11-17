@@ -1,0 +1,7 @@
+usage: tr retrieval eval [-h] [--queries QUERIES] [--index INDEX]
+
+options:
+  -h, --help         show this help message and exit
+  --queries QUERIES  labelled queries, one JSON object per line (default
+                     evals/retrieval_query.jsonl)
+  --index INDEX      index digest or prefix (default: the newest)
