@@ -251,16 +251,6 @@ def test_without_fastembed_dense_names_the_extra(tmp_path, monkeypatch):
         evaluate.retrievers(index, ["dense"], tmp_path / "retrieval")
 
 
-def test_unregistered_citation_hook_is_a_clear_error(monkeypatch):
-    from tradingresearch import evals
-
-    assert evaluate.CITATION_GRADER not in evals.GRADERS
-    with pytest.raises(SystemExit, match="no grader named 'citation_accuracy' is registered.*@grader"):
-        evaluate.citation_grader()
-    monkeypatch.setitem(evals.GRADERS, "citation_accuracy", FakeReranker)
-    assert evaluate.citation_grader() is FakeReranker
-
-
 def test_pins_are_models_fastembed_supports():
     pytest.importorskip("fastembed")
     from fastembed import TextEmbedding

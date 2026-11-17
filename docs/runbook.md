@@ -501,7 +501,8 @@ uv run tr retrieval eval [--queries evals/retrieval_query.jsonl] [--index <diges
   manifest schema is refused with a message to rebuild it. `query` and `eval` use the newest index unless `--index`
   names one (a digest prefix is enough).
 - **Recall eval.** `evals/retrieval_query.schema.md` defines a labelled query; the learner writes the 30 queries into
-  `evals/retrieval_query.jsonl` (shipped empty: `eval` prints `0 queries`). Every label is checked against the index
+  `evals/retrieval_query.jsonl` (empty at `week-6-start`, where `eval` prints `0 queries`; the reference at
+  `week-6-end` holds the 30 rows ADR-009 reports). Every label is checked against the index
   first; one bad label stops the eval. It prints recall_any@k and recall_frac@k at k 1, 5, 10, 20, with counts.
 - **Where data lives.** Filing files: `data/edgar/archives/<cik>/<accession>/` (fetched once, never refetched).
   Filing lists: `data/edgar/submissions/` (refetched once per UTC day). Indexes: `data/retrieval/<digest>/` with
@@ -579,3 +580,16 @@ none there, names the `uv run tr retrieval build --ticker ...` command to run.
 - **Recorded exchange.** The fixed checks replay one real analyze-3 call with three BM25 passages from the invented
   FAKEA filings (`tests/fixtures/week6/`, run run_e41138c0dd4a45e0, $0.028106; no key, no spend). Its 12 claims all
   pass `claims_valid` and none cites a passage.
+
+### Reference solution (week 6)
+
+The reference build indexes the 10 experiment tickers, four quarters, with vectors:
+`TR_DATA_DIR=$PWD/data-dev uv run tr retrieval build --ticker AAPL MSFT NVDA AMZN JPM XOM UNH HD KO CAT --quarters 4 --dense`
+(after `uv sync --extra retrieval`; 148 SEC requests, 273 s; index
+`sha256:71917448df40d8bedb619d7937e674591cb3124fcf38a3a12b66758136e761eb`, 166 documents, 8,951 chunks). The 30
+queries are 18 hand-written `lookup` and `event` rows with gold quotes copied from filings (never from headlines) and
+12 `numeric` rows from `TR_DATA_DIR=$PWD/data-dev uv run python evals/make_numeric_queries.py`, which rewrites only
+the `numeric` rows from cached companyfacts and the newest index, so rerun it after a rebuild. Then
+`TR_DATA_DIR=$PWD/data-dev uv run tr retrieval eval --retriever bm25 dense hybrid hybrid+rerank` gives the recall
+tables in ADR-009 (recall_any@5: bm25 0.60, dense 0.53, hybrid 0.60, hybrid+rerank 0.67). `experiments/retrieval.toml`
+pins that digest; its paid run (`tr exp run`) fills ADR-009's experiment table.

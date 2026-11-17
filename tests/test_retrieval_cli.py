@@ -84,7 +84,3 @@ def test_empty_queries_file_prints_zero_and_needs_no_index(data_dir, capsys, tmp
     empty.write_text("")
     main(["retrieval", "eval", "--queries", str(empty)])
     assert capsys.readouterr().out == "0 queries\n"
-
-
-def test_shipped_queries_file_is_empty():
-    assert (Path(__file__).parents[1] / "evals" / "retrieval_query.jsonl").read_text() == ""

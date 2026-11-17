@@ -200,6 +200,63 @@ class HeadlinesGrounded(SectionGrounded):
     section = "headlines"
 
 
+CHUNK_ID = re.compile(r".+#\d+")  # `<doc id>#<n>`, as `tr retrieval query` prints it; SOURCES row ids are `src_...`
+NUMBER_IN_PASSAGE = re.compile(r"\d[\d,]*(?:\.\d+)?")
+
+
+def passage_numbers(text: str) -> list[float]:
+    """Every number written in a passage, thousands separators dropped and signs ignored: `(45)` and `$3,210` give
+    45.0 and 3210.0."""
+    return [float(n.replace(",", "")) for n in NUMBER_IN_PASSAGE.findall(text)]
+
+
+@grader
+class CitationAccuracy:
+    """The share of claims citing a retrieved passage whose citation holds. Spec: evals/specs/citation_accuracy.md.
+
+    A claim cites a passage by putting its chunk id in `source_ids`. A claim citing at least one chunk id is graded:
+    every chunk id it cites must be among `expected["passages"]` (else `not_retrieved`), and its `value`, when not
+    null, must match a number written in one of its cited passages within analyze.REL_TOL, signs ignored (else
+    `number_mismatch`). No graded claim, or a reply that did not parse, raises CannotGrade("no_claims ...")."""
+
+    id = "citation_accuracy"
+    version = "1"
+    kind = "code"
+
+    def grade(self, sample, expected) -> Score:
+        claims = sample.output_parsed.get("claims") if isinstance(sample.output_parsed, dict) else None
+        if sample.parse_status != "ok" or not isinstance(claims, list):
+            raise CannotGrade(f"no_claims: the reply did not parse ({sample.parse_status})")
+        passages: dict[str, str] = expected.get("passages") or {}
+        graded = [c for c in claims if isinstance(c, dict)
+                  and any(CHUNK_ID.fullmatch(str(s)) for s in c.get("source_ids") or [])]
+        if not graded:
+            raise CannotGrade(f"no_claims: none of {len(claims)} claims cites a passage")
+        reasons = [r for r in (self.failure(c, passages) for c in graded) if r]
+        if not reasons:
+            return Score(value=1.0, explanation=f"{len(graded)} claims citing passages")
+        return Score(value=(len(graded) - len(reasons)) / len(graded),
+                     explanation=f"{', '.join(sorted(set(reasons)))}: {len(reasons)} of {len(graded)} claims citing "
+                                 "passages fail")
+
+    @staticmethod
+    def failure(claim: dict, passages: dict[str, str]) -> str | None:
+        """The claim's failure reason, or None when its citation holds."""
+        cited = [str(s) for s in claim.get("source_ids") or [] if CHUNK_ID.fullmatch(str(s))]
+        if any(chunk not in passages for chunk in cited):
+            return "not_retrieved"
+        value = claim.get("value")
+        if value is None:
+            return None
+        try:
+            wanted = abs(float(value))
+        except (TypeError, ValueError):
+            return "number_mismatch"
+        if any(an.close_to(wanted, n) for chunk in cited for n in passage_numbers(passages[chunk])):
+            return None
+        return "number_mismatch"
+
+
 @grader
 class ToolCallsOk:
     """1 if the tool loop used its tools cleanly, else 0 with the first fault: tool_error, repeated_call or
