@@ -40,10 +40,11 @@ TEACHER_THESIS_REPLY = json.loads((FIXTURES / "teacher" / "AAPL_2026-11-16.deeps
 TEACHER_THESIS_REQUEST = json.loads(
     (FIXTURES / "teacher" / "AAPL_2026-11-16.deepseek-v4-pro.thesis.request.json").read_text())
 BAD_SLUG = json.loads((FIXTURES / "teacher" / "nonexistent-slug.error.json").read_text())  # OpenRouter's real 400
-TEACHER_PRICES = {PRICE.model: PRICE} | {  # the pinned DeepInfra listings in experiments/bakeoff-prereg.toml
+TEACHER_PRICES = {PRICE.model: PRICE} | {  # the swapped teachers' pinned DeepInfra listings, read 2026-11-17 (amendment 2)
     model: Price(model=model, prompt_usd_per_token=p, completion_usd_per_token=c, fetched_at=PRICE.fetched_at,
-                 source="experiments/bakeoff-prereg.toml")
-    for model, p, c in (("qwen/qwen3.5-397b-a17b", 0.36e-6, 2.40e-6), ("openai/gpt-oss-120b", 0.037e-6, 0.17e-6))}
+                 source="experiments/bakeoff-prereg-amendment-2.toml")
+    for model, p, c in (("qwen/qwen3-235b-a22b-2507", 0.09e-6, 0.55e-6),
+                        ("qwen/qwen3-next-80b-a3b-instruct", 0.09e-6, 1.10e-6))}
 
 
 def ranked(*tickers: str) -> list[ScreenResult]:
@@ -317,7 +318,7 @@ def test_without_teachers_the_teacher_step_never_runs(conn, runs_dir, capsys):
 
 
 def test_the_teacher_step_runs_after_the_evening_and_skips_what_is_stored(conn, runs_dir, capsys):
-    for model in ("qwen/qwen3.5-397b-a17b", "openai/gpt-oss-120b"):
+    for model in ("qwen/qwen3-235b-a22b-2507", "qwen/qwen3-next-80b-a3b-instruct"):
         done_by(conn, model)
     teachers = Teachers(conn, runs_dir.parent)
     report = run(conn, Recorded(conn, runs_dir, ranked("AAPL")), runs_dir, teachers=teachers.steps())
@@ -340,7 +341,7 @@ def test_the_teacher_step_runs_after_the_evening_and_skips_what_is_stored(conn, 
 
 
 def test_a_teacher_rerun_makes_no_model_call(conn, runs_dir, capsys):
-    for model in ("qwen/qwen3.5-397b-a17b", "openai/gpt-oss-120b"):
+    for model in ("qwen/qwen3-235b-a22b-2507", "qwen/qwen3-next-80b-a3b-instruct"):
         done_by(conn, model)
     teachers = Teachers(conn, runs_dir.parent)
     steps = Recorded(conn, runs_dir, ranked("AAPL"))
@@ -354,8 +355,8 @@ def test_a_teacher_rerun_makes_no_model_call(conn, runs_dir, capsys):
 
 
 def test_a_failed_teacher_call_is_a_row_and_the_evening_still_succeeds(conn, runs_dir, capsys, pinned_tokens):
-    done_by(conn, "openai/gpt-oss-120b")
-    teachers = Teachers(conn, runs_dir.parent, fail=(TEACHER.model, "qwen/qwen3.5-397b-a17b"))
+    done_by(conn, "qwen/qwen3-next-80b-a3b-instruct")
+    teachers = Teachers(conn, runs_dir.parent, fail=(TEACHER.model, "qwen/qwen3-235b-a22b-2507"))
     report = run(conn, Recorded(conn, runs_dir, ranked("AAPL")), runs_dir, teachers=teachers.steps())
     assert not report.screen_failed and statuses(conn)[:5] == MAIN_ROWS
     failed = [r for r in teacher_rows(conn) if r["status"] == "failed"]

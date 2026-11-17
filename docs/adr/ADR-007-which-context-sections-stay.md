@@ -188,3 +188,9 @@ analyze-3 (Sonnet, 20 items) against analyze-1's 0.798 in week 4 (not a controll
 What is not shown: that this helps the teachers. The pre-live check (one AAPL call per teacher, $0.0042) gave
 deepseek-v4-pro 6 valid of 12 claims (`all_claims_valid` 0); qwen and gpt-oss returned no reply (429 and 503 from
 DeepInfra, the same on analyze-1). The bake-off's own results are the evidence.
+
+Swap, 2026-11-17 12:30: both qwen and gpt-oss failed both of amendment 2's calls (qwen `model_output_not_json`, gpt-oss
+`http_503`), so the qwen arm is now `qwen/qwen3-235b-a22b-2507` and the gpt-oss arm `qwen/qwen3-next-80b-a3b-instruct`,
+each on `deepinfra/fp8` (Apache-2.0). The reasons, run ids and candidates are in the `[swap.*]` tables of
+`experiments/bakeoff-prereg-amendment-2.toml`. The "no reply" sentence above describes the 2026-11-16 pre-live check
+and stays as written.

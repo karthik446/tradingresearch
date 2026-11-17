@@ -1,8 +1,9 @@
 """Teacher models: open weights on OpenRouter, each pinned to one DeepInfra endpoint (SPIKE §9.4, P12).
 
 The slugs are the endpoint `tag`s from `GET /api/v1/models/<id>/endpoints` (read 2026-11-16): FP8 or BF16 only, never
-FP4, the flex tier where DeepInfra sells one, no fallback to another host. DeepInfra's terms leave the output with the
-customer, so a teacher record is `terms_class="trainable"` (TRAINING-SPIKE §8)."""
+FP4, the flex tier where DeepInfra sells one and it was tested, no fallback to another host. DeepInfra's terms leave
+the output with the customer, so a teacher record is `terms_class="trainable"` (TRAINING-SPIKE §8). On 2026-11-17 the
+qwen and gpt-oss arms were swapped under amendment 2 (`[swap.*]` tables in experiments/bakeoff-prereg-amendment-2.toml)."""
 
 from __future__ import annotations
 
@@ -42,8 +43,8 @@ class Teacher:
 
 TEACHERS = {t.model: t for t in (
     Teacher("deepseek/deepseek-v4-pro", "deepinfra/fp8/flex"),
-    Teacher("qwen/qwen3.5-397b-a17b", "deepinfra/fp8/flex"),
-    Teacher("openai/gpt-oss-120b", "deepinfra/bf16"),  # DeepInfra lists no flex endpoint for it
+    Teacher("qwen/qwen3-235b-a22b-2507", "deepinfra/fp8"),  # replaces qwen/qwen3.5-397b-a17b; the flex tier was not tested
+    Teacher("qwen/qwen3-next-80b-a3b-instruct", "deepinfra/fp8"),  # replaces openai/gpt-oss-120b
 )}
 
 

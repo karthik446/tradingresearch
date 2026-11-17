@@ -60,12 +60,13 @@ def pinned_tokens(monkeypatch):
 
 
 def test_every_teacher_is_pinned_to_one_deepinfra_endpoint_without_fallback_or_fp4():
-    assert set(tc.TEACHERS) == {"deepseek/deepseek-v4-pro", "qwen/qwen3.5-397b-a17b", "openai/gpt-oss-120b"}
+    assert set(tc.TEACHERS) == {"deepseek/deepseek-v4-pro", "qwen/qwen3-235b-a22b-2507",
+                                "qwen/qwen3-next-80b-a3b-instruct"}
     for t in tc.TEACHERS.values():
         block = t.routing.block()
         assert block["only"] == [t.slug] and t.slug.startswith("deepinfra/") and block["allow_fallbacks"] is False
         assert block["quantizations"] == ["fp8", "bf16"] and t.terms_class == "trainable"
-    assert [t.routing.tier for t in tc.TEACHERS.values()] == ["flex", "flex", None]  # gpt-oss has no flex endpoint
+    assert [t.routing.tier for t in tc.TEACHERS.values()] == ["flex", None, None]  # the swapped two were tested without flex
     with pytest.raises(SystemExit, match="not a teacher"):
         tc.get("anthropic/claude-sonnet-5.5")
 
@@ -189,8 +190,8 @@ def test_a_teacher_thesis_needs_an_analysis_by_the_same_teacher():
     args = SimpleNamespace(ticker="AAPL", session="2026-11-16", analysis=teacher.analysis_id, arm="teacher",
                            teacher=TEACHER.model)
     assert analysis_for(conn, args) == teacher
-    with pytest.raises(SystemExit, match="written by deepseek/deepseek-v4-pro, not qwen/qwen3.5-397b-a17b"):
-        analysis_for(conn, SimpleNamespace(**{**vars(args), "teacher": "qwen/qwen3.5-397b-a17b"}))
+    with pytest.raises(SystemExit, match="written by deepseek/deepseek-v4-pro, not qwen/qwen3-235b-a22b-2507"):
+        analysis_for(conn, SimpleNamespace(**{**vars(args), "teacher": "qwen/qwen3-235b-a22b-2507"}))
 
 
 def test_the_teacher_prompt_is_analyze3_with_the_headlines_withheld(tmp_path, pinned_tokens):

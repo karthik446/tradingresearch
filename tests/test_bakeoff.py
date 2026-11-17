@@ -130,7 +130,7 @@ def settled(conn, thesis_id: str, checks: dict[str, bool]) -> None:
 
 def seeded() -> tuple:
     """Bake-off session 1: DeepSeek parses NVDA (a thesis, cancelled) and UNH (a no-trade), stops after KO's analysis
-    and has no XOM; an off-draw AAPL analysis is ignored. Qwen and gpt-oss have nothing yet."""
+    and has no XOM; an off-draw AAPL analysis is ignored. The other two teachers have nothing yet."""
     conn = journal.connect(":memory:")
     screened(conn, BAKEOFF_DAY, TEN)
     ds = TEACHER.model

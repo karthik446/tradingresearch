@@ -165,9 +165,11 @@ The teachers are asked with analyze-3 and the headlines withheld (`teacher.PROMP
 `experiments/bakeoff-prereg-amendment-1.toml`, ADR-007's last section); the champion stays on analyze-1. A teacher
 call that fails upstream (429, 503) stores nothing, writes a `failed teacher <model>` row, and the next
 `--teachers` run for that session retries it. Amendment 2 (`experiments/bakeoff-prereg-amendment-2.toml`) says what
-happens when a teacher's endpoint is down: at 12:30 on 2026-11-17, qwen and gpt-oss each get two calls on their
-pinned route; if both fail, that arm is swapped for one DeepInfra open-weight model with a trainable licence,
-recorded as a `[swap.<model>]` table in that file.
+happens when a teacher's endpoint is down: at 12:30 on 2026-11-17, qwen and gpt-oss each got two calls on their
+pinned route. Both teachers failed both calls, so both arms were swapped for a DeepInfra open-weight model with a
+trainable licence (Apache-2.0): `qwen/qwen3.5-397b-a17b` became `qwen/qwen3-235b-a22b-2507` and
+`openai/gpt-oss-120b` became `qwen/qwen3-next-80b-a3b-instruct`, each on its `deepinfra/fp8` endpoint. The swap, the
+runs and the candidates tried are the `[swap.<model>]` tables in that file.
 
 By hand, for one session D:
 

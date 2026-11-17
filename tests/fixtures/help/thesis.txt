@@ -16,5 +16,6 @@ options:
   --model MODEL
   --teacher MODEL       the teacher arm's model, pinned to its DeepInfra
                         endpoint: deepseek/deepseek-v4-pro,
-                        qwen/qwen3.5-397b-a17b, openai/gpt-oss-120b
+                        qwen/qwen3-235b-a22b-2507,
+                        qwen/qwen3-next-80b-a3b-instruct
   --max-usd MAX_USD

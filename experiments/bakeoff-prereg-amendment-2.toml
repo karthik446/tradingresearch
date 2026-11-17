@@ -50,3 +50,44 @@ swap_check_at = 2026-11-17T19:30:00Z  # 12:30 America/Denver
 swap_commit_by = 2026-11-17T20:30:00Z  # 13:30 America/Denver
 applies_from = 2026-11-17  # bake-off session 1
 registered_at = 2026-11-17T12:15:00Z
+
+# ---- The record (rule 3), appended in the commit that changes teacher.py ----------------------------------------
+# The check ran at 2026-11-17T19:30:10Z-19:32:54Z (12:30 America/Denver), data-dev, `tr analyze AAPL --session
+# 2026-11-16 --arm teacher` through data-dev/scratch/cand.py, analyze-3 without headlines. OpenRouter credit before:
+# $0.572359; after the two checks and the six candidate tests: $0.544516 ($0.027843 in all). No 402 and no 429 naming
+# budget or credit. Endpoint status read from GET /api/v1/models/<id>/endpoints at the same time: qwen/qwen3.5-397b-a17b
+# deepinfra/fp8/flex status 0 (it still failed twice), openai/gpt-oss-120b deepinfra/bf16 status -5, uptime 0.
+# Candidates were taken from `data-dev/scratch/deepinfra_list.py` (status 0, fp8 or bf16): Apache-2.0 on the model card
+# (checked on Hugging Face), 20B parameters or more, not a deepseek model, so the three arms keep three lineages. Not
+# tried: Gemma, Nemotron, MiniMax, Kimi, GLM, Llama, Phi, Mistral (training-on-output terms not checked here, or
+# smaller than the 20B class) and the deepseek-v4-flash line. The plain deepinfra/fp8 (or bf16) endpoint was tested, not
+# the flex tier (flex showed no uptime figure and the qwen flex route is the one that just failed).
+# Assignment: swaps are taken in teacher order. The qwen arm takes the candidate with the most valid claims (235b, 3);
+# the gpt-oss arm takes the best of the rest (next-80b, 1), because no model fills two arms.
+
+[swap."qwen/qwen3.5-397b-a17b"]
+replacement = "qwen/qwen3-235b-a22b-2507"
+licence = "Apache-2.0"
+slug = "deepinfra/fp8"
+price_usd_per_million_in_out = [0.09, 0.55]  # prompt + completion 0.64 per million
+failed_calls = ["run_658b6bbcc5784d10", "run_c8aec87e9f554321"]  # 19:30:10Z and 19:31:31Z, both model_output_not_json
+test_call = "run_5d53be61da614e80"  # 19:36:28Z, parsed, 3 valid claims, $0.000882
+swapped_at = 2026-11-17T19:47:00Z
+candidates_tried = [
+  "qwen/qwen3-235b-a22b-2507: parsed, 3 valid claims (run_5d53be61da614e80)",
+  "qwen/qwen3-next-80b-a3b-instruct: parsed, 1 valid claim (run_9e31beab12754ff3)",
+  "qwen/qwen3-32b: JSON without a claims list, 0 valid (run_7de2ad9b10e741a9)",
+  "qwen/qwen3.5-35b-a3b: model_output_not_json (run_a8eb3068150a4e0e)",
+  "qwen/qwen3.6-35b-a3b: 429 rate_limited upstream, no reply (run_ee3cdced09754fc3)",
+  "openai/gpt-oss-20b: model_output_not_json (run_bf4390905acc4123)",
+]
+
+[swap."openai/gpt-oss-120b"]
+replacement = "qwen/qwen3-next-80b-a3b-instruct"
+licence = "Apache-2.0"
+slug = "deepinfra/fp8"
+price_usd_per_million_in_out = [0.09, 1.10]  # prompt + completion 1.19 per million
+failed_calls = ["run_7d6eab85b5584e03", "run_63bbce709af5444d"]  # 19:32:52Z and 19:32:54Z, both http_503
+test_call = "run_9e31beab12754ff3"  # 19:36:52Z, parsed, 1 valid claim, $0.001700
+swapped_at = 2026-11-17T19:47:00Z
+candidates_tried = "the same six as the qwen swap; the best one not already taken was qwen/qwen3-next-80b-a3b-instruct"
