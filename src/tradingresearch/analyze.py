@@ -276,18 +276,32 @@ def context_tokens(system: str, prompt: str) -> int:
     return len(student_tokenizer().encode(system + "\n" + prompt).ids)
 
 
-def input_hash(ctx: Context, prompt_version: str, drop: tuple[str, ...] = (), retrieval: Retrieved | None = None
+def input_hash(ctx: Context, prompt_version: str, drop: tuple[str, ...] = (), retrieval: Retrieved | None = None,
+               *, guard_ids: tuple[str, ...] = (), injection: dict | None = None, dropped: frozenset[str] = frozenset()
                ) -> str:
     """What the model was given; a `drop` arm's list joins the digest only when non-empty, so old hashes stand.
     Headline SourceRefs (analyze-3) join the sorted source digests; without headlines the list is as before. A
-    retrieval arm's mode, k, index digest and ordered chunk sha256 list join only when it retrieved (mode not none)."""
+    retrieval arm's mode, k, index digest and ordered chunk sha256 list join only when it retrieved (mode not none).
+    GUARDS-SPIKE §8.2: a guards arm's `id@version` list, an injection's id and text digest and the source ids a
+    detector dropped each join only when non-empty, so `guards = []` with no injection keeps every old hash."""
     given = {"snapshot": ctx.snapshot.model_dump(mode="json"),
              "sources": sorted(s.content_sha256 for s in ctx.cited_sources()), "prompt_version": prompt_version}
     if drop:
         given |= {"drop": sorted(drop)}
     if retrieval is not None:
         given |= {"retrieval": retrieval.hashed()}
+    if guard_ids:
+        given |= {"guards": guard_versions(guard_ids)}
+    if injection is not None:
+        given |= {"injection": injection}
+    if dropped:
+        given |= {"dropped": sorted(dropped)}
     return digest(given)
+
+
+def guard_versions(ids: tuple[str, ...]) -> list[str]:
+    """Sorted `id@version` tags: editing a rule's logic bumps its version, and so the hash (GUARDS-SPIKE §8.2)."""
+    return sorted(f"{rule_id}@{guards.RULES[rule_id].version}" for rule_id in ids)
 
 
 # ---------- validation ----------
@@ -431,27 +445,45 @@ def call_settings(model: str) -> CallSettings:
 
 def store(conn, ctx: Context, sample, run_id: str, *, model: str, prompt_version: str, route: str,
           arm: str = "main", terms_class: str | None = None,
-          drop: tuple[str, ...] = (), retrieval: Retrieved | None = None) -> tuple[Analysis, list[Rejection]]:
-    """Validate one sample's claims and write the Analysis (valid claims only) with its sources to the journal.
+          drop: tuple[str, ...] = (), retrieval: Retrieved | None = None, guard_ids: tuple[str, ...] = (),
+          dropped: frozenset[str] = frozenset(), shown: str | None = None) -> tuple[Analysis, list[Rejection]]:
+    """Validate one sample's claims and write the Analysis (valid claims only) with its sources to the journal."""
+    analysis, rejected = analysis_for(ctx, sample, run_id, model=model, prompt_version=prompt_version, route=route,
+                                      arm=arm, terms_class=terms_class, drop=drop, retrieval=retrieval,
+                                      guard_ids=guard_ids, dropped=dropped, shown=shown)
+    from . import journal  # local import keeps this module importable without a database
+    journal.add_analysis(conn, analysis, ctx.cited_sources())
+    return analysis, rejected
+
+
+def analysis_for(ctx: Context, sample, run_id: str, *, model: str, prompt_version: str, route: str,
+                 arm: str = "main", terms_class: str | None = None, drop: tuple[str, ...] = (),
+                 retrieval: Retrieved | None = None, guard_ids: tuple[str, ...] = (), injection: dict | None = None,
+                 dropped: frozenset[str] = frozenset(), shown: str | None = None) -> tuple[Analysis, list[Rejection]]:
+    """Validate one sample's claims into an Analysis (valid claims only) held in memory; `store` journals it, the
+    pipeline arm (GUARDS-SPIKE §8.5) never does.
 
     `terms_class` None means the route's default: restricted for Claude, unknown otherwise; the teacher arm passes
     `trainable`. A `drop` arm passes its list: it joins the input hash, the token count is of the masked prompt, and
     a claim citing a dropped row is rejected. A retrieval arm passes what it retrieved: it joins the input hash, the
-    token count is of the prompt with the passages, and a claim may cite a passage's chunk_id."""
+    token count is of the prompt with the passages, and a claim may cite a passage's chunk_id. A guards arm passes
+    its ids, the source ids its detectors `dropped` (cited, they are rejected as a dropped row is) and the user turn
+    as `shown` to the model; an injected item passes its injection's hash entry."""
     from .masking import augment, hidden, mask  # masking imports tools, which imports this module
     analysis_id = new_id("an")
     values = ctx.values() | retrieval.values() if retrieval else ctx.values()
-    claims, rejected = validate_claims(sample.output_parsed, values, analysis_id, hidden(ctx.names(), drop))
+    claims, rejected = validate_claims(sample.output_parsed, values, analysis_id,
+                                       hidden(ctx.names(), drop) | dropped)
     analysis = Analysis(
         analysis_id=analysis_id, ticker=ctx.ticker, session=ctx.session, created_at=datetime.now(UTC),
         run_id=run_id, snapshot=ctx.snapshot, claims=tuple(claims),
-        input_hash=input_hash(ctx, prompt_version, drop, retrieval),
+        input_hash=input_hash(ctx, prompt_version, drop, retrieval, guard_ids=guard_ids, injection=injection,
+                              dropped=dropped),
         prompt_version=prompt_version, model=model, sample_trace_id=sample.trace_id, provider_route=route, arm=arm,
         terms_class=terms_class or ("restricted" if model.startswith("anthropic/") else "unknown"),
-        context_tokens=context_tokens(system_prompt(prompt_version), augment(mask(render(ctx), drop), retrieval)),
+        context_tokens=context_tokens(system_prompt(prompt_version),
+                                      shown if shown is not None else augment(mask(render(ctx), drop), retrieval)),
     )
-    from . import journal  # local import keeps this module importable without a database
-    journal.add_analysis(conn, analysis, ctx.cited_sources())
     return analysis, rejected
 
 

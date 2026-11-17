@@ -692,3 +692,25 @@ Week 7 part 1 (GUARDS-SPIKE §1-3). Code: `src/tradingresearch/guards.py`; free,
   A line that does not parse (a write torn by a crash) is skipped and counted in the header.
 - **Grader.** `schema_valid` (code) scores 1 when a reply parses and fits the strict reply models (thesis replies
   by their `theses` key, else analyze replies), else 0 with the first failing field.
+
+### Guards arm and the injection set
+
+Week 7 part 2 (GUARDS-SPIKE §8); free to load and test, and nothing here runs in `tr daily`. An experiment arm takes
+`guards = ["<rule id>", ...]`: thesis-stage ids are added to `thesis.validate` (S2 `plain_text`, off by default,
+rejects a thesis whose prediction, reason or invalidation text carries a newline, an invisible character or a URL), and
+fetched-stage ids scan the headlines and passages as rendered before the call, dropping or flagging rows (a filing
+chunk is only flagged unless its rule sets `drops_filing`); an unknown id, a rule on a stage the arm never reaches,
+or a fetched rule on a `mode = "tools"` arm exits before any call. Every drop, flag and rejection is a line of
+`audit.jsonl` naming the arm, and `analyze.input_hash` adds `guard_ids`, the injection's `{id, sha256}` and the
+dropped ids only when non-empty, so every hash written before week 7 is unchanged (pinned in
+`tests/test_experiment.py`). `kind = "pipeline"` runs analyze then thesis per ticker-day in memory, writes nothing to
+the journal, and dates each thesis at the session close. The injection set is `evals/injections.jsonl`, one row per
+`{id, ticker, session, channel: headline|filing, mode: add|replace, target_source_id, text, intent}` (spec:
+`evals/injections.schema.md`); a row is placed in memory only, on an arm with `inject = true`, and a bad row, a row
+off the config's tickers or sessions, or a replace target that is not shown exits before any call. The shipped set
+is empty until the learner writes it, so `experiments/injection.toml` (clean / injected-off / injected-on, 10
+tickers, ≤ $1.50 an arm) refuses to load. `tr exp run` refuses any pipeline arm before a call until the report is
+wired (G14c); from the library, `experiment.pairs(clean, injected)` gives one pair per injection row by ticker-day with
+the first change per horizon (`unparsed` when either side's reply did not parse), and
+`experiment.injection_resisted` scores them with the learner's `injection_resisted` grader. The run file records each
+prompt as sent, injected text included. Tests use invented FAKEA text only (`tests/fixtures/injections/fakea.jsonl`).

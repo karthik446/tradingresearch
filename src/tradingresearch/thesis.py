@@ -196,6 +196,29 @@ class ThesisRules:
         return None if problem is None else guards.Violation(problem[0], self.version, "reject", problem[1])
 
 
+@guards.rule
+class PlainText:
+    """GUARDS-SPIKE §2.3 S2, off by default: the free-text fields a later reader trusts stay one plain line, so a
+    reply cannot smuggle a second channel (a newline, an invisible character or Hangul filler, a URL) into a record."""
+
+    id = "plain_text"
+    version = "1"
+    stage = "thesis"
+    action = "reject"
+    fields = ("prediction", "reason", "invalidation_text")
+
+    def check(self, item: dict, ctx: guards.ThesisContext) -> guards.Violation | None:
+        for name in self.fields:
+            value = item.get(name)
+            if not isinstance(value, str):
+                continue  # a missing or non-text field is the built-in rules' to reject
+            if any(an.invisible(c) for c in value):
+                return guards.Violation(self.id, self.version, self.action, f"{name}: newline or invisible character")
+            if "://" in value or "www." in value.lower():
+                return guards.Violation(self.id, self.version, self.action, f"{name}: url")
+        return None
+
+
 def build(item: dict, analysis: Analysis, written: Written) -> Thesis:
     start, end = windows(analysis.session, item["horizon"])
     price = item["entry_price"]
@@ -364,6 +387,13 @@ def cited_headlines(conn: sqlite3.Connection, analysis: Analysis, data_dir) -> t
     return found
 
 
+def cited_in(analysis: Analysis, headlines: tuple[news.Headline, ...]) -> tuple[news.Headline, ...]:
+    """The given headlines the analysis's claims cite, in their order: the in-memory twin of `cited_headlines` for the
+    pipeline arm (GUARDS-SPIKE §8.5), whose injected rows are never in the news store."""
+    cited = {sid for claim in analysis.claims for sid in claim.source_ids}
+    return tuple(h for h in headlines if news.source_ref(h).source_id in cited)
+
+
 def render(analysis: Analysis, asked: tuple[str, ...], playbook_block: str | None = None,
            headlines: tuple[news.Headline, ...] = ()) -> str:
     """The thesis user turn; a thesis-2 call gets the PLAYBOOK block after the horizons, before the closing line."""
@@ -389,11 +419,16 @@ def render(analysis: Analysis, asked: tuple[str, ...], playbook_block: str | Non
 
 
 def input_hash(analysis: Analysis, asked: tuple[str, ...], prompt_version: str,
-               playbook_digest: str | None = None) -> str:
-    """The playbook digest joins only when a block was shown, so every thesis-1 hash is unchanged."""
+               playbook_digest: str | None = None, *, guard_ids: tuple[str, ...] = ()) -> str:
+    """The playbook digest joins only when a block was shown, so every thesis-1 hash is unchanged; a guards list joins
+    as sorted `id@version` tags only when non-empty (GUARDS-SPIKE §8.2)."""
     fields = {"analysis_id": analysis.analysis_id, "analysis_input": analysis.input_hash,
               "horizons": list(asked), "prompt_version": prompt_version}
-    return digest(fields if playbook_digest is None else {**fields, "playbook": playbook_digest})
+    if playbook_digest is not None:
+        fields |= {"playbook": playbook_digest}
+    if guard_ids:
+        fields |= {"guards": an.guard_versions(guard_ids)}
+    return digest(fields)
 
 
 def playbook_for(conn: sqlite3.Connection, analysis: Analysis, prompt_version: str,
@@ -494,7 +529,8 @@ def thesis(conn: sqlite3.Connection, analysis: Analysis, provider, *, asked: tup
     if (terms or terms_class(model)) == "trainable" and not clean_route(route):
         raise SystemExit(f"route lost provenance ({route}): a trainable thesis needs one known provider ({run_path})")
     written = Written(arm, datetime.now(UTC), sample.trace_id, route, terms or terms_class(model),
-                      input_hash(analysis, asked, prompt_version, None if shown is None else digest(shown[0])))
+                      input_hash(analysis, asked, prompt_version, None if shown is None else digest(shown[0]),
+                                 guard_ids=guard_ids))
     ids = None if shown is None else frozenset(s.source_id for s in shown[1])
     auditor = guards.Auditor(data_dir, analysis.ticker, analysis.session, run.record.run_id, arm, guard_ids,
                              written.input_hash)

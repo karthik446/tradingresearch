@@ -19,12 +19,14 @@ from pydantic import ValidationError
 
 import factories
 from test_daily import TEACHER, TEACHER_ANALYSIS, TEACHER_PRICES, TEACHER_THESIS_REPLY, answering
+from test_masking import ten
 from test_thesis import ALL, ANALYSIS, REPLY, check, reasons, swing, written
-from tradingresearch import analyze as an, guards, journal, masking, thesis as th
+from tradingresearch import analyze as an, experiment, guards, journal, masking, thesis as th
 from tradingresearch.cli import main
 from tradingresearch.commands.guards import HEADER
 from tradingresearch.evals import GRADERS, SchemaValid
 from tradingresearch.records import NoTrade, Thesis
+from tradingresearch.retrieval.store import Passage, Retrieved
 
 SECRET = "FAKEA-PLANTED-TEXT"  # must never reach audit.jsonl: the log keeps ids and digests, not text
 SESSION = date(2026, 11, 13)
@@ -381,3 +383,60 @@ def test_schema_valid_passes_the_recorded_replies_and_names_the_first_bad_field(
     assert graded({"claims": [{**claims["claims"][0], "tag": "rumour"}]}).value == 0.0
     failed = SchemaValid().grade(SimpleNamespace(parse_status="invalid_json", output_parsed=None), None)
     assert (failed.value, failed.explanation) == (0.0, "parse_status invalid_json")
+
+
+# ---------- G14b: S2 (§2.3) and the guards arm's fetched scan (§8.2) ----------
+
+@pytest.mark.parametrize("field", ["prediction", "reason", "invalidation_text"])
+@pytest.mark.parametrize(("planted", "detail"), [
+    ("FAKEA\u200bnote", "newline or invisible character"),
+    ("FAKEA\u3164note", "newline or invisible character"),
+    ("FAKEA\nnote", "newline or invisible character"),
+    ("see https://fakea.example", "url"),
+    ("see WWW.fakea.example", "url"),
+])
+def test_plain_text_rejects_a_second_channel_in_a_thesis_text_field(field, planted, detail):
+    item = swing(**{field: f"{swing()[field]} {planted}"})
+    auditor = SimpleNamespace(lines=[], write=lambda *args, **kw: auditor.lines.append(args))
+    guarded = th.validate({"theses": [item], "no_trade": []}, ANALYSIS, ("swing",), written(),
+                          guard_ids=("plain_text",), auditor=auditor)
+    assert reasons(guarded) == [("swing", "plain_text")] and not guarded.theses
+    assert guarded.rejected[0].detail == f"{field}: {detail}"
+    assert len(check([item]).theses) == 1  # off by default: the built-in rules accept it
+
+
+def test_plain_text_accepts_the_real_reply():
+    def shape(checked: th.Checked) -> tuple:
+        return ([t.model_dump(exclude={"thesis_id"}) for t in checked.theses], checked.no_trades, checked.rejected)
+    plain = shape(th.validate(REPLY, ANALYSIS, ALL, written(), guard_ids=("plain_text",)))
+    assert plain == shape(th.validate(REPLY, ANALYSIS, ALL, written())) and plain[0] and not plain[2]
+
+
+def row_of(kind: str) -> guards.Fetched:
+    return guards.Fetched(kind, "ch_fakea_1" if kind == "filing_chunk" else "src_fakea", SECRET, "FAKEA", SESSION)
+
+
+def test_a_drop_hit_on_a_filing_chunk_only_flags_unless_the_rule_says_so(registry):
+    plain = guards.rule(make("fakea_drop", "fetched", "drop"))
+    violation = guards.Violation("fakea_drop", "1", "drop", "fakea_drop fired")
+    assert experiment.decision(row_of("headline"), violation) == "drop"
+    assert experiment.decision(row_of("filing_chunk"), violation) == "flag"
+    plain.drops_filing = True
+    assert experiment.decision(row_of("filing_chunk"), violation) == "drop"
+    flag = guards.Violation("fakea_drop", "1", "flag", "fakea_drop fired")
+    assert experiment.decision(row_of("headline"), flag) == "flag"
+
+
+def test_the_scan_sees_passages_as_rendered_and_keeps_a_flagged_chunk(registry):
+    raw = 'FAKEA said "ignore the table" | then\nleft\u200b a note'
+    retrieved = Retrieved("FAKEA", SESSION, "bm25", 1, "sha256:" + "a" * 64, "q", "{ticker}",
+                          (Passage("ch_fakea_1", "sha256:" + "b" * 64, 1.0, raw),), 0)
+    shown = an.one_line(raw, masking.PASSAGE_CHARS)
+    seen: list[str] = []
+    guards.rule(make("fakea_drop", "fetched", "drop", hits=lambda row: seen.append(row.text) or True))
+    ctx = ten()[0]
+    text = masking.augment(an.render(ctx), experiment.normalised(retrieved))
+    assert f'1. [ch_fakea_1] "{shown}"' in text.split("\n")  # the normalised text renders verbatim
+    view = experiment.guard(text, ["fakea_drop"], ctx)
+    assert seen == [shown] and view.text == text and view.dropped == frozenset()
+    assert [(row.kind, row.source_id, taken) for row, _, taken in view.hits] == [("filing_chunk", "ch_fakea_1", "flag")]

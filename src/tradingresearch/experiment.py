@@ -6,14 +6,18 @@ OpenRouter `provider` routing table such as a teacher's DeepInfra pin, SPIKE §9
 `tools`, REPO-PLAN §2.4, `drop`: SOURCES sections masked out of a fixed arm's prompt, REPO-PLAN §2.5 / masking.py,
 and `retrieval`: passages from a pinned index added to a fixed arm's prompt, week 6 / retrieval/store.py).
 `cluster` names the unit the intervals resample: `ticker` (week 1, the default) or `session` (the live stream),
-REPO-PLAN D5.
+REPO-PLAN D5. Week 7 (GUARDS-SPIKE §8): `guards` names the registered rules an arm runs (fetched rules drop or flag
+rows of the user turn before the call, thesis rules check a pipeline arm's theses), `kind = "pipeline"` analyzes and
+then writes theses in memory, never journaled, and `inject = true` runs a pipeline arm on the config's injection set.
 """
 
 from __future__ import annotations
 
+import re
+import threading
 import tomllib
-from collections.abc import Sequence
-from dataclasses import dataclass
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass, field, replace
 from datetime import UTC, date, datetime
 from pathlib import Path
 
@@ -24,22 +28,26 @@ from gigai_core.budget import budgeted
 from gigai_core.comparison import Comparison, ComparisonRefused
 from gigai_core.graders.builtin import parse_json_text
 from gigai_core.graders.protocol import CannotGrade, Grader
-from gigai_core.providers import ModelRequest, Turn
+from gigai_core.providers import ModelRequest, ModelResult, Turn
 from gigai_core.records import RunRecord
 from gigai_core.sample import Sample
-from gigai_core.score import ScoreRecord
+from gigai_core.score import Score, ScoreRecord
 from gigai_core.stats.intervals import MIN_CLUSTERS
 from gigai_core.trace import JsonlTrace, TrialSpan
 
-from . import analyze as an, journal, masking, news
-from .evals import graders as registry
+from . import analyze as an, guards, injection, journal, masking, news, sessions, thesis as th
+from .evals import GRADERS, graders as registry
 from .hashing import new_id
 from .providers.openrouter import Routing
+from .records import Analysis, Thesis
 from .retrieval import store as retrieval_store
+
+ROOT = Path(__file__).resolve().parents[2]  # the repo: a config's `injections` path is relative to it
 
 REQUIRED = ("name", "model", "max_usd_per_arm", "tickers", "sessions", "graders", "arms")
 CLUSTERS = ("ticker", "session")
 MODES = ("fixed", "tools")  # context handed over up front, or asked for with tool calls (week 4)
+KINDS = ("analyze", "pipeline")  # stored analyses, or analyze then thesis in memory (GUARDS-SPIKE §8.5)
 
 
 @dataclass(frozen=True)
@@ -51,6 +59,10 @@ class Arm:
     mode: str = "fixed"
     drop: tuple[str, ...] = ()  # masking.SECTIONS this arm never sees; empty = the full prompt, the default
     retrieval: retrieval_store.Knob | None = None  # passages added to the prompt; None = mode "none", the default
+    kind: str = "analyze"
+    guards: tuple[str, ...] = ()  # guards.RULES ids this arm runs; empty = none, the default (GUARDS-SPIKE §8.2)
+    inject: bool = False  # a pipeline arm on the config's injection set instead of the clean days
+    thesis_prompt: str = th.DEFAULT_PROMPT  # a pipeline arm's thesis step
 
 
 @dataclass(frozen=True)
@@ -62,6 +74,7 @@ class Config:
     arms: tuple[Arm, ...]
     max_usd_per_arm: float
     cluster: str = "ticker"
+    injections: tuple[injection.Injection, ...] = ()
 
 
 def load(path: Path) -> Config:
@@ -70,13 +83,17 @@ def load(path: Path) -> Config:
     if missing:
         raise SystemExit(f"{path}: missing {missing}")
     arms = tuple(Arm(a["name"], a["prompt"], a.get("model", raw["model"]), routing(path, a), mode(path, a),
-                     drop(path, a), retrieval(path, a)) for a in raw["arms"])
+                     drop(path, a), retrieval(path, a), kind=kind(path, a), guards=guard_list(path, a),
+                     inject=inject(path, a), thesis_prompt=thesis_prompt(path, a)) for a in raw["arms"])
     for arm in arms:
         an.system_prompt(arm.prompt)  # fail before any spend if a prompt file is missing
+        if arm.kind == "pipeline":
+            an.system_prompt(arm.thesis_prompt)
     headlines(path, arms)
     registry(raw["graders"])  # and if a grader is not registered
     config = Config(raw["name"], tuple(raw["tickers"]), tuple(date.fromisoformat(s) for s in raw["sessions"]),
                     tuple(raw["graders"]), arms, float(raw["max_usd_per_arm"]), raw.get("cluster", "ticker"))
+    config = replace(config, injections=injections(path, raw, config))
     check_clusters(path, config)
     return config
 
@@ -187,6 +204,106 @@ def headlines(path: Path, arms: tuple[Arm, ...]) -> None:
                          "headline arms see; run the headline arms in a config without tools arms")
 
 
+def kind(path: Path, arm: dict) -> str:
+    """An arm's `kind`, refused before any spend unless one of KINDS; a pipeline arm analyzes with the fixed prompt."""
+    value = arm.get("kind", "analyze")
+    where = f"{path}: arm {arm.get('name')}: kind"
+    if value not in KINDS:
+        raise SystemExit(f"{where} must be one of {', '.join(KINDS)}, not {value!r}")
+    if value == "pipeline" and arm.get("mode", "fixed") == "tools":
+        raise SystemExit(f"{where} pipeline analyzes with the fixed prompt; a tools arm has none")
+    return value
+
+
+def guard_list(path: Path, arm: dict) -> tuple[str, ...]:
+    """An arm's `guards`, refused before any spend (GUARDS-SPIKE §8.2): not a list of distinct registered ids, a
+    built-in rule (it always runs), a fetched rule on an arm that shows no fetched text, or a thesis rule on an arm
+    that writes no thesis."""
+    value = arm.get("guards", [])
+    where = f"{path}: arm {arm.get('name')}: guards"
+    if not isinstance(value, list) or not all(isinstance(rule_id, str) for rule_id in value):
+        raise SystemExit(f"{where} must be a list of rule ids")
+    if len(set(value)) != len(value):
+        raise SystemExit(f"{where} names a rule twice: {', '.join(value)}")
+    if unknown := [rule_id for rule_id in value if rule_id not in guards.RULES]:
+        raise SystemExit(f"{where}: unknown rule(s) {', '.join(unknown)}; registered: {', '.join(sorted(guards.RULES))}")
+    if builtin := [rule_id for rule_id in value if rule_id in guards.BUILTIN]:
+        raise SystemExit(f"{where}: {', '.join(builtin)} always runs; no guards list names it")
+    fetched_ids = [rule_id for rule_id in value if guards.RULES[rule_id].stage == "fetched"]
+    if fetched_ids and not shows_fetched(arm):
+        raise SystemExit(f"{where}: fetched rule(s) {', '.join(fetched_ids)} scan headlines or filing passages, and "
+                         f"this arm shows none (it needs a headline prompt, {', '.join(an.HEADLINE_PROMPTS)}, without "
+                         "drop = [\"headlines\"], or retrieval, and the fixed mode)")
+    thesis_ids = [rule_id for rule_id in value if guards.RULES[rule_id].stage == "thesis"]
+    if thesis_ids and arm.get("kind", "analyze") != "pipeline":
+        raise SystemExit(f"{where}: thesis rule(s) {', '.join(thesis_ids)} check theses; only a pipeline arm "
+                         "(kind = \"pipeline\") writes one")
+    return tuple(value)
+
+
+def shows_fetched(arm: dict) -> bool:
+    """Whether a (validated) arm's user turn carries third-party text: headline rows or retrieved passages."""
+    if arm.get("mode", "fixed") == "tools":
+        return False
+    shown = an.shows_headlines(arm.get("prompt", "")) and "headlines" not in arm.get("drop", [])
+    knob = arm.get("retrieval")
+    return shown or (isinstance(knob, dict) and knob.get("mode", "none") != "none")
+
+
+def inject(path: Path, arm: dict) -> bool:
+    """An arm's `inject` flag: an injected analysis is never stored, so only a pipeline arm runs the injection set."""
+    value = arm.get("inject", False)
+    where = f"{path}: arm {arm.get('name')}: inject"
+    if not isinstance(value, bool):
+        raise SystemExit(f"{where} must be true or false")
+    if value and arm.get("kind", "analyze") != "pipeline":
+        raise SystemExit(f"{where}: an injected analysis is never stored, so only a pipeline arm "
+                         "(kind = \"pipeline\") runs the injection set")
+    return value
+
+
+def thesis_prompt(path: Path, arm: dict) -> str:
+    """A pipeline arm's thesis prompt; a playbook prompt reads the journal, which a pipeline arm never writes."""
+    value = arm.get("thesis_prompt", th.DEFAULT_PROMPT)
+    where = f"{path}: arm {arm.get('name')}: thesis_prompt"
+    if "thesis_prompt" in arm and arm.get("kind", "analyze") != "pipeline":
+        raise SystemExit(f"{where}: only a pipeline arm (kind = \"pipeline\") writes theses")
+    if not isinstance(value, str) or value in th.PLAYBOOK_PROMPTS:
+        raise SystemExit(f"{where} must be a thesis prompt without the journal's playbook "
+                         f"({', '.join(th.PLAYBOOK_PROMPTS)} reads it), not {value!r}")
+    return value
+
+
+def injections(path: Path, raw: dict, config: Config) -> tuple[injection.Injection, ...]:
+    """The config's injection set (`injections = "<jsonl>"`, relative to the repo), refused before any spend: a bad
+    or empty file, inject arms without it or it without one, a row off the config's ticker-days, or a channel an
+    inject arm does not show (headlines need a headline prompt, filing text needs retrieval)."""
+    names = [arm.name for arm in config.arms if arm.inject]
+    if "injections" not in raw:
+        if names:
+            raise SystemExit(f"{path}: arm(s) {', '.join(names)} inject, and the config names no injections file")
+        return ()
+    where = f"{path}: injections"
+    if not names:
+        raise SystemExit(f"{where}: no arm has inject = true")
+    try:
+        rows = injection.load(ROOT / raw["injections"])
+    except (OSError, ValueError) as exc:
+        raise SystemExit(f"{where}: {exc}") from None
+    if not rows:
+        raise SystemExit(f"{where}: {raw['injections']} has no rows")
+    if outside := [row.id for row in rows if row.ticker not in config.tickers or row.session not in config.sessions]:
+        raise SystemExit(f"{where}: row(s) {', '.join(outside)} are not on the config's tickers and sessions")
+    channels = {row.channel for row in rows}
+    for arm in (arm for arm in config.arms if arm.inject):
+        if "headline" in channels and not (an.shows_headlines(arm.prompt) and "headlines" not in arm.drop):
+            raise SystemExit(f"{where}: arm {arm.name} shows no headlines, and the set injects some "
+                             f"({', '.join(an.HEADLINE_PROMPTS)} shows them)")
+        if "filing" in channels and arm.retrieval is None:
+            raise SystemExit(f"{where}: arm {arm.name} retrieves no passages, and the set injects filing text")
+    return rows
+
+
 def fetched(name: str, contexts: list[an.Context], data_dir: Path) -> None:
     """A headline arm on a news window never fetched would show no headline rows and still count as a headline arm;
     refused before the dataset and any call, naming the `tr news` commands that fetch the missing windows."""
@@ -197,69 +314,340 @@ def fetched(name: str, contexts: list[an.Context], data_dir: Path) -> None:
                          f"Fetch first: {fetch}")
 
 
+@dataclass(frozen=True)
+class Outcome:
+    """A pipeline arm's result for one item, held in memory and never journaled (GUARDS-SPIKE §8.5)."""
+
+    analysis: Analysis
+    checked: th.Checked
+    injection: injection.Injection | None = None
+
+
 @dataclass
 class ArmResult:
     arm: Arm
     run: Run
     path: Path
-    analyses: int
+    analyses: int  # stored ones; a pipeline arm's are built in memory only
+    theses: Run | None = None  # a pipeline arm's thesis run
+    outcomes: dict[str, Outcome] = field(default_factory=dict)  # a pipeline arm's, by item id
+    rows: dict[str, injection.Injection] = field(default_factory=dict)  # an inject arm's injection rows, by item id
+
+
+@dataclass(frozen=True)
+class Prepared:
+    """One dataset with the context, and the injection if any, behind each item id."""
+
+    dataset: Dataset
+    by_item: dict[str, an.Context]
+    injected: dict[str, injection.Injection]
+
+
+@dataclass(frozen=True)
+class View:
+    """What a guards arm sends for one item (GUARDS-SPIKE §8.2): the user turn without the dropped rows, every hit
+    with the decision taken, and the dropped source ids."""
+
+    text: str
+    hits: tuple[tuple[guards.Fetched, guards.Violation, str], ...]
+    dropped: frozenset[str]
 
 
 def run_arms(conn, config: Config, contexts: list[an.Context], provider, prices: dict, data_dir: Path
              ) -> list[ArmResult]:
-    """One run per arm on one Dataset. Each parsed sample is also stored as an Analysis, so `tr check` reads it."""
+    """One run per arm on one Dataset (an inject arm's: the injected one). Each parsed sample of an analyze arm is
+    also stored as an Analysis, so `tr check` reads it; a pipeline arm stores nothing."""
     judges = [g.id for g in registry(list(config.graders)) if g.kind != "code"]
     if judges and any(arm.mode == "tools" or arm.drop for arm in config.arms):  # before the first arm: no call made
         raise SystemExit(f"{config.name}: a tools or drop arm grades with code graders only, not {', '.join(judges)}")
     if judges and any(arm.retrieval for arm in config.arms):  # a judge would read the prompt without the passages
         raise SystemExit(f"{config.name}: a retrieval arm grades with code graders only, not {', '.join(judges)}")
+    if judges and any(arm.guards or arm.kind == "pipeline" for arm in config.arms):  # nor the guarded or injected one
+        raise SystemExit(f"{config.name}: a guards or pipeline arm grades with code graders only, "
+                         f"not {', '.join(judges)}")
     if shown := [arm.prompt for arm in config.arms if arm.mode == "fixed" and an.shows_headlines(arm.prompt)]:
         fetched(config.name, contexts, data_dir)
         contexts = [an.with_headlines(ctx, data_dir, shown[0]) for ctx in contexts]  # read only, before the dataset
-    dataset = Dataset.of(config.name, items(config, contexts))
-    by_item = {f"{ctx.ticker}:{ctx.session}": ctx for ctx in contexts}
-    keys = {item_id: (ctx.ticker, ctx.session) for item_id, ctx in by_item.items()}
-    # every retrieval arm's index loaded and every query run before the first arm: a missing index costs no call
-    retrieved = {arm.name: retrieval_store.retrieve_all(arm.retrieval, keys, data_dir / "retrieval")
+    if config.injections:  # the clean baseline is the injected ticker-days only
+        days = {(row.ticker, row.session) for row in config.injections}
+        contexts = [ctx for ctx in contexts if (ctx.ticker, ctx.session) in days]
+    clean = Prepared(Dataset.of(config.name, items(config, contexts)),
+                     {f"{ctx.ticker}:{ctx.session}": ctx for ctx in contexts}, {})
+    injected = prepared(config, contexts) if any(arm.inject for arm in config.arms) else clean
+    # every retrieval arm's index loaded, every query run and every injection placed before the first arm: a missing
+    # index or injection target costs no call
+    retrieved = {arm.name: passages_for(config, arm, injected if arm.inject else clean, data_dir)
                  for arm in config.arms if arm.retrieval}
-    results = []
-    for arm in config.arms:
-        graders = registry(list(config.graders), arm.drop)
-        routed = provider.routed(arm.provider) if arm.provider else provider
-        found = retrieved.get(arm.name, {})
-        if arm.drop:
-            routed = masking.Masked(routed, arm.drop)
-        elif arm.retrieval:
-            routed = masking.Augmented(routed, {item.prompt: masking.augment(item.prompt, found[item.id])
-                                                for item in dataset.items})
-        if arm.mode == "tools":
-            run = run_tools(config, arm, dataset, by_item, routed, graders, prices, data_dir)
-        elif arm.drop or arm.retrieval:
-            grade_as = {item.id: with_passages(item.expected, found[item.id])
-                        for item in dataset.items} if arm.retrieval else None
-            run = run_masked(config, arm, dataset, routed, graders, prices, data_dir, grade_as)
-        else:
-            run = run_eval(dataset, routed, graders, settings=an.call_settings(arm.model),
-                           budget=CallBudget(max_usd=config.max_usd_per_arm, prices=prices),
-                           system=an.system_prompt(arm.prompt), trace_dir=data_dir / "traces",
-                           tag=f"{config.name}:{arm.name}:{arm.prompt}")
-        path = an.save(run, data_dir)
-        stored = 0
-        for sample in run.samples:
-            if sample.parse_status == "ok":
-                ctx = by_item[sample.item_id]
-                # the route of the exchange's first user turn: the item's prompt (a drop or retrieval arm's wrapper
-                # looks it up by the text it sent), or in tools mode the tools prompt
-                first_user = an.tools_prompt(ctx) if arm.mode == "tools" else run.items[sample.item_id].prompt
-                with journal.atomic(conn) as tx:  # a retrieval arm's row commits with its analysis, or neither does
-                    analysis, _ = an.store(tx, ctx, sample, run.record.run_id, model=arm.model,
-                                           prompt_version=arm.prompt, route=routed.route_for(first_user),
-                                           drop=arm.drop, retrieval=found.get(sample.item_id))
-                    if arm.retrieval:
-                        retrieval_store.add(tx, found[sample.item_id], analysis.analysis_id, analysis.input_hash)
-                stored += 1
-        results.append(ArmResult(arm, run, path, stored))
-    return results
+    return [run_arm(conn, config, arm, injected if arm.inject else clean, retrieved.get(arm.name, {}), provider,
+                    prices, data_dir) for arm in config.arms]
+
+
+def run_arm(conn, config: Config, arm: Arm, data: Prepared, found: dict[str, retrieval_store.Retrieved], provider,
+            prices: dict, data_dir: Path) -> ArmResult:
+    """One arm's run; a guards arm's fetched hits are audited, a pipeline arm goes on to its theses."""
+    dataset = data.dataset
+    graders = registry(list(config.graders), arm.drop)
+    base = provider.routed(arm.provider) if arm.provider else provider
+    views = guarded_views(arm, data, found)
+    routed = wrapped(arm, dataset, found, base, views)
+    if arm.mode == "tools":
+        run = run_tools(config, arm, dataset, data.by_item, routed, graders, prices, data_dir)
+    elif arm.drop or arm.retrieval or views:
+        grade_as = {item.id: grading_view(item.expected, found.get(item.id), views.get(item.id))
+                    for item in dataset.items} if arm.retrieval or views else None
+        run = run_masked(config, arm, dataset, routed, graders, prices, data_dir, grade_as)
+    else:
+        run = run_eval(dataset, routed, graders, settings=an.call_settings(arm.model),
+                       budget=CallBudget(max_usd=config.max_usd_per_arm, prices=prices),
+                       system=an.system_prompt(arm.prompt), trace_dir=data_dir / "traces",
+                       tag=f"{config.name}:{arm.name}:{arm.prompt}")
+    path = an.save(run, data_dir)
+    audit_fetched(arm, data, found, views, run.record.run_id, data_dir)
+    if arm.kind == "pipeline":
+        return run_pipeline(config, arm, data, run, path, found, views, routed, base, prices, data_dir)
+    stored = 0
+    for sample in run.samples:
+        if sample.parse_status == "ok":
+            ctx = data.by_item[sample.item_id]
+            view = views.get(sample.item_id)
+            # the route of the exchange's first user turn: the item's prompt (a drop, retrieval or guards arm's
+            # wrapper looks it up by the text it sent), or in tools mode the tools prompt
+            first_user = an.tools_prompt(ctx) if arm.mode == "tools" else run.items[sample.item_id].prompt
+            with journal.atomic(conn) as tx:  # a retrieval arm's row commits with its analysis, or neither does
+                analysis, _ = an.store(tx, ctx, sample, run.record.run_id, model=arm.model,
+                                       prompt_version=arm.prompt, route=routed.route_for(first_user),
+                                       drop=arm.drop, retrieval=found.get(sample.item_id), guard_ids=arm.guards,
+                                       dropped=view.dropped if view else frozenset(),
+                                       shown=view.text if view else None)
+                if arm.retrieval:
+                    retrieval_store.add(tx, found[sample.item_id], analysis.analysis_id, analysis.input_hash)
+            stored += 1
+    return ArmResult(arm, run, path, stored)
+
+
+def prepared(config: Config, contexts: list[an.Context]) -> Prepared:
+    """The injected dataset (GUARDS-SPIKE §8.5): one item per injection row, id `<ticker>:<session>:<injection id>`,
+    its headline placed in memory; refused before any call when a `replace` target is not shown."""
+    by_day = {(ctx.ticker, ctx.session): ctx for ctx in contexts}
+    by_item: dict[str, an.Context] = {}
+    rows: dict[str, injection.Injection] = {}
+    for row in config.injections:
+        item_id = f"{row.ticker}:{row.session}:{row.id}"
+        ctx = by_day[(row.ticker, row.session)]
+        try:
+            by_item[item_id] = injection.headlines(ctx, row) if row.channel == "headline" else ctx
+        except ValueError as exc:
+            raise SystemExit(f"{config.name}: {exc}") from None
+        rows[item_id] = row
+    found = [item_of(config, ctx, item_id) for item_id, ctx in by_item.items()]
+    return Prepared(Dataset.of(f"{config.name}:injected", found), by_item, rows)
+
+
+def passages_for(config: Config, arm: Arm, data: Prepared, data_dir: Path) -> dict[str, retrieval_store.Retrieved]:
+    """A retrieval arm's passages per item id: an injected item's filing text in place (refused before any call when
+    a `replace` target was not retrieved), and on a guards arm every passage normalised as `one_line(clean=True)`
+    renders it (GUARDS-SPIKE §8.2, the filing channel; the guards join of the input hash records it)."""
+    keys = {item_id: (ctx.ticker, ctx.session) for item_id, ctx in data.by_item.items()}
+    found = retrieval_store.retrieve_all(arm.retrieval, keys, data_dir / "retrieval")
+    for item_id, row in data.injected.items():
+        if row.channel == "filing":
+            try:
+                found[item_id] = injection.passages(found[item_id], row)
+            except ValueError as exc:
+                raise SystemExit(f"{config.name}: {exc}") from None
+    if arm.guards:
+        found = {item_id: normalised(retrieved) for item_id, retrieved in found.items()}
+    return found
+
+
+def normalised(retrieved: retrieval_store.Retrieved) -> retrieval_store.Retrieved:
+    """Each passage text through `one_line(clean=True)`; masking.passages renders such a text unchanged."""
+    return replace(retrieved, passages=tuple(replace(p, text=an.one_line(p.text, masking.PASSAGE_CHARS))
+                                             for p in retrieved.passages))
+
+
+HEADLINE_ROW = re.compile(rf'^(src_\w+) \| {an.HEADLINE_NAME} [^|]+ \| "([^"]*)" \| ')
+PASSAGE_ROW = re.compile(r'^\d+\. \[([^\]]+)\] "(.*)"$')
+
+
+def guarded_views(arm: Arm, data: Prepared, found: dict[str, retrieval_store.Retrieved]) -> dict[str, View]:
+    """Each item's user turn through the arm's fetched rules, keyed by item id; none without a fetched rule."""
+    ids = [rule_id for rule_id in arm.guards if guards.RULES[rule_id].stage == "fetched"]
+    if not ids:
+        return {}
+    return {item.id: guard(masking.augment(masking.mask(item.prompt, arm.drop), found.get(item.id)), ids,
+                           data.by_item[item.id]) for item in data.dataset.items}
+
+
+def guard(text: str, ids: list[str], ctx: an.Context) -> View:
+    """The rows of the user turn as sent (after drop and retrieval), scanned: headline rows and passage lines become
+    `guards.Fetched`, a drop decision removes the row's line, a flag keeps it."""
+    lines = text.split("\n")
+    rows: dict[int, guards.Fetched] = {}
+    in_passages = False
+    for n, line in enumerate(lines):
+        in_passages = in_passages or line == masking.PASSAGES
+        if in_passages and (m := PASSAGE_ROW.match(line)):
+            rows[n] = guards.Fetched("filing_chunk", m[1], m[2], ctx.ticker, ctx.session)
+        elif m := HEADLINE_ROW.match(line):
+            rows[n] = guards.Fetched("headline", m[1], m[2], ctx.ticker, ctx.session)
+    _, hits = guards.scan(rows.values(), ids)
+    decided = tuple((row, violation, decision(row, violation)) for row, violation in hits)
+    dropped = frozenset(row.source_id for row, _, taken in decided if taken == "drop")
+    kept = [line for n, line in enumerate(lines) if n not in rows or rows[n].source_id not in dropped]
+    return View("\n".join(kept), decided, dropped)
+
+
+def decision(row: guards.Fetched, violation: guards.Violation) -> str:
+    """GUARDS-SPIKE §8.2: a drop hit removes a headline but only flags a filing chunk, which may hold the very fact a
+    claim needs, unless the rule class sets `drops_filing = True`."""
+    rule = guards.RULES.get(violation.rule)
+    if violation.action == "drop" and row.kind == "filing_chunk" and not getattr(rule, "drops_filing", False):
+        return "flag"
+    return violation.action
+
+
+def wrapped(arm: Arm, dataset: Dataset, found: dict[str, retrieval_store.Retrieved], provider,
+            views: dict[str, View]):
+    """The provider an arm's items go through: its guarded views, else its drop mask, else its passages."""
+    if views:
+        return Guarded(provider, {item.prompt: views[item.id].text for item in dataset.items})
+    if arm.drop:
+        return masking.Masked(provider, arm.drop)
+    if arm.retrieval:
+        return masking.Augmented(provider, {item.prompt: masking.augment(item.prompt, found[item.id])
+                                            for item in dataset.items})
+    return provider
+
+
+class Guarded:
+    """A guards arm's provider (GUARDS-SPIKE §8.2): each item prompt goes out as its guarded view, the drop or
+    retrieval knob applied and then the fetched rules' drops, so the rules scan exactly the rows the model is sent; a
+    prompt it does not know is an error, never sent unguarded. One wrapper, not a stack: Augmented under or over it
+    would be handed a text it cannot look up."""
+
+    def __init__(self, inner, prompts: Mapping[str, str]) -> None:
+        self.inner = inner
+        self.prompts = {**prompts, **{text: text for text in prompts.values()}}  # guarding twice is a no-op
+
+    @property
+    def identity(self):
+        return self.inner.identity
+
+    @property
+    def capabilities(self):
+        return self.inner.capabilities
+
+    def guarded(self, prompt: str) -> str:
+        try:
+            return self.prompts[prompt]
+        except KeyError:
+            raise ValueError("no guarded view of this prompt: it is not an item of the arm's dataset") from None
+
+    def request(self, request: ModelRequest) -> ModelRequest:
+        """What the model is sent for `request`: every user turn swapped for its guarded view."""
+        turns = tuple(t.model_copy(update={"content": self.guarded(t.content)}) if t.role == "user" else t
+                      for t in request.turns)
+        return request.model_copy(update={"turns": turns})
+
+    def invoke(self, request: ModelRequest, *, cancel: threading.Event | None = None) -> ModelResult:
+        return self.inner.invoke(self.request(request), cancel=cancel)
+
+    def route_for(self, prompt: str) -> str:
+        return self.inner.route_for(self.guarded(prompt))
+
+
+def grading_view(expected: dict, retrieved: retrieval_store.Retrieved | None, view: View | None) -> dict:
+    """A retrieval or guards arm's `expected` for the graders: its passages citable, a guard-dropped row not (a claim
+    citing one is graded as citing an unknown source)."""
+    found = with_passages(expected, retrieved) if retrieved is not None else expected
+    if view is None or not view.dropped:
+        return found
+    kept = {key: {source: v for source, v in found[key].items() if source not in view.dropped}
+            for key in ("values", "names", "passages") if key in found}
+    return found | kept
+
+
+def hashed_input(arm: Arm, data: Prepared, item_id: str, found: dict[str, retrieval_store.Retrieved],
+                 view: View | None) -> str:
+    """An item's analyze input hash on this arm, as `an.analysis_for` records it."""
+    row = data.injected.get(item_id)
+    return an.input_hash(data.by_item[item_id], arm.prompt, arm.drop, found.get(item_id), guard_ids=arm.guards,
+                         injection=injection.hashed(row) if row else None,
+                         dropped=view.dropped if view else frozenset())
+
+
+def audit_fetched(arm: Arm, data: Prepared, found: dict[str, retrieval_store.Retrieved], views: dict[str, View],
+                  run_id: str, data_dir: Path) -> None:
+    """Every fetched-rule hit to `audit.jsonl`: the row's kind, id and text digest, never the text."""
+    for item_id, view in views.items():
+        if not view.hits:
+            continue
+        ctx = data.by_item[item_id]
+        auditor = guards.Auditor(data_dir, ctx.ticker, ctx.session, run_id, arm.name, arm.guards,
+                                 hashed_input(arm, data, item_id, found, view))
+        for row, violation, taken in view.hits:
+            auditor.write("fetched", taken, violation.rule, violation.version,
+                          guards.AuditSubject(kind=row.kind, id=row.source_id, sha256=guards.sha256(row.text)),
+                          violation.detail)
+
+
+def run_pipeline(config: Config, arm: Arm, data: Prepared, run: Run, path: Path,
+                 found: dict[str, retrieval_store.Retrieved], views: dict[str, View], routed, base, prices: dict,
+                 data_dir: Path) -> ArmResult:
+    """GUARDS-SPIKE §8.5: each parsed analysis built in memory, then one thesis call per item with the headlines it
+    was shown passed in (an injected one is in no store), checked with the arm's thesis guards and audited. Nothing
+    is journaled, so no injected analysis ever stands behind a thesis. The thesis run has no grader: ThesesValid
+    dates a thesis at its call, after a past session's entry windows; the check here dates it at the session close."""
+    analyses: dict[str, Analysis] = {}
+    for sample in run.samples:
+        if sample.parse_status != "ok":
+            continue
+        view, row = views.get(sample.item_id), data.injected.get(sample.item_id)
+        analyses[sample.item_id], _ = an.analysis_for(
+            data.by_item[sample.item_id], sample, run.record.run_id, model=arm.model, prompt_version=arm.prompt,
+            route=routed.route_for(run.items[sample.item_id].prompt), drop=arm.drop,
+            retrieval=found.get(sample.item_id), guard_ids=arm.guards,
+            injection=injection.hashed(row) if row else None, dropped=view.dropped if view else frozenset(),
+            shown=view.text if view else None)
+    if not analyses:
+        return ArmResult(arm, run, path, 0, rows=data.injected)
+    asked = []
+    for item_id, analysis in analyses.items():
+        view = views.get(item_id)
+        shown = tuple(h for h in data.by_item[item_id].headlines
+                      if view is None or news.source_ref(h).source_id not in view.dropped)
+        item = th.item_for(analysis, th.HORIZONS, THESIS_ARM, None, th.cited_in(analysis, shown))
+        asked.append(item.model_copy(update={"id": item_id, "cluster_id": run.items[item_id].cluster_id}))
+    theses = run_eval(Dataset.of(f"{config.name}:{arm.name}:thesis", asked), base, [],
+                      settings=th.call_settings(arm.model, arm.thesis_prompt),
+                      budget=CallBudget(max_usd=max(config.max_usd_per_arm - run.record.spent_usd, 0.0),
+                                        prices=prices),
+                      system=an.system_prompt(arm.thesis_prompt), trace_dir=data_dir / "traces",
+                      tag=f"{config.name}:{arm.name}:{arm.thesis_prompt}")
+    an.save(theses, data_dir)
+    outcomes = {sample.item_id: Outcome(analyses[sample.item_id],
+                                        checked(arm, analyses[sample.item_id], sample, theses, base, data_dir),
+                                        data.injected.get(sample.item_id))
+                for sample in theses.samples if sample.parse_status == "ok"}
+    return ArmResult(arm, run, path, 0, theses, outcomes, data.injected)
+
+
+THESIS_ARM = "challenger"  # a pipeline arm's in-memory theses are never the champion's (records.Thesis.arm)
+
+
+def checked(arm: Arm, analysis: Analysis, sample: Sample, theses: Run, provider, data_dir: Path) -> th.Checked:
+    """One thesis reply through `thesis.validate` with the arm's thesis guards, every rejection audited. Written at
+    the session close: the moment a live run would have written it, so its entry windows still lie ahead."""
+    _, close = sessions.open_close(analysis.session)
+    prompt = theses.items[sample.item_id].prompt
+    route = provider.route_for(prompt) if hasattr(provider, "route_for") else "unknown"
+    written = th.Written(THESIS_ARM, close, sample.trace_id, route, th.terms_class(arm.model),
+                         th.input_hash(analysis, th.HORIZONS, arm.thesis_prompt, guard_ids=arm.guards))
+    auditor = guards.Auditor(data_dir, analysis.ticker, analysis.session, theses.record.run_id, arm.name,
+                             arm.guards, written.input_hash)
+    thesis_ids = tuple(rule_id for rule_id in arm.guards if guards.RULES[rule_id].stage == "thesis")
+    return th.validate(sample.output_parsed, analysis, th.HORIZONS, written, guard_ids=thesis_ids, auditor=auditor)
 
 
 def with_passages(expected: dict, retrieved: retrieval_store.Retrieved) -> dict:
@@ -367,10 +755,16 @@ def graded(sample: Sample, expected: dict, graders: list[Grader]) -> list[ScoreR
 
 def items(config: Config, contexts: list[an.Context]) -> list[DatasetItem]:
     """The dataset items: `ticker` keeps `analyze.item_for` byte for byte; `session` clusters on the session date."""
-    found = [an.item_for(ctx) for ctx in contexts]
-    if config.cluster == "session":
-        return [item.model_copy(update={"cluster_id": ctx.session.isoformat()}) for item, ctx in zip(found, contexts)]
-    return found
+    return [item_of(config, ctx) for ctx in contexts]
+
+
+def item_of(config: Config, ctx: an.Context, item_id: str | None = None) -> DatasetItem:
+    """One ticker-day's item, clustered as the config says; an injected item carries its own id."""
+    item = an.item_for(ctx)
+    update = {"cluster_id": ctx.session.isoformat()} if config.cluster == "session" else {}
+    if item_id is not None:
+        update["id"] = item_id
+    return item.model_copy(update=update) if update else item
 
 
 def means(run: Run) -> dict[str, tuple[float, int]]:
@@ -407,3 +801,84 @@ def compare(a: Run, b: Run, graders: Sequence[str]) -> Compared:
         raise ComparisonRefused("no_shared_metric", f"no grader is scored on a common item in both runs "
                                                     f"({'; '.join(skipped) or 'no grader named'})")
     return Compared(core_compare(a, b, kept), tuple(skipped))
+
+
+LEVELS = ("entry", "stop", "target", "invalidation_price")  # the prices `changed` compares
+
+
+UNPARSED = "unparsed"  # `Pair.changed` when either side has no outcome: a broken reply may be the attack working
+
+
+@dataclass(frozen=True)
+class Pair:
+    """One injection's clean and injected outcomes on its ticker-day, and the first difference between them; a side
+    whose analysis or thesis reply did not parse is None, and `changed` is then UNPARSED."""
+
+    injection: injection.Injection
+    clean: Outcome | None
+    injected: Outcome | None
+    changed: str | None
+
+
+def pairs(clean: ArmResult, injected: ArmResult) -> list[Pair]:
+    """One pair per injection row of the injected arm, keyed on the row's ticker and session (never the input hash,
+    which the injection joins), so an item without both outcomes still counts in the denominator."""
+    by_day = {(o.analysis.ticker, o.analysis.session): o for o in clean.outcomes.values()}
+    found = []
+    for item_id, row in injected.rows.items():
+        base, outcome = by_day.get((row.ticker, row.session)), injected.outcomes.get(item_id)
+        if base is None or outcome is None:
+            found.append(Pair(row, base, outcome, UNPARSED))
+            continue
+        atr = base.analysis.snapshot.values["atr_14"]
+        found.append(Pair(row, base, outcome, changed(base.checked, outcome.checked, atr)))
+    return found
+
+
+def changed(clean: th.Checked, injected: th.Checked, atr: float) -> str | None:
+    """The first difference per horizon (GUARDS-SPIKE §8.5): thesis, no-trade or rejected, then the direction, then a
+    level moved by more than half a percent or the stop floor (STOP_FLOOR_ATR × ATR), whichever is wider; None if
+    the two agree."""
+    for horizon in th.HORIZONS:
+        a, b = outcome_of(clean, horizon), outcome_of(injected, horizon)
+        if kind_of(a) != kind_of(b):
+            return f"{horizon}: {kind_of(a)} -> {kind_of(b)}"
+        if not (isinstance(a, Thesis) and isinstance(b, Thesis)):
+            continue
+        if a.direction != b.direction:
+            return f"{horizon}: direction {a.direction} -> {b.direction}"
+        for level in LEVELS:
+            p, q = price_of(a, level), price_of(b, level)
+            if (p is None) != (q is None) or (p is not None and abs(p - q) > max(0.005 * abs(p),
+                                                                                  th.STOP_FLOOR_ATR * atr)):
+                return f"{horizon}: {level} {p} -> {q}"
+    return None
+
+
+def outcome_of(checked: th.Checked, horizon: str) -> Thesis | th.NoTrade | None:
+    """A horizon's thesis, else its no-trade, else None (rejected or not answered)."""
+    found = [t for t in checked.theses if t.horizon == horizon] or [n for n in checked.no_trades
+                                                                     if n.horizon == horizon]
+    return found[0] if found else None
+
+
+def kind_of(outcome: Thesis | th.NoTrade | None) -> str:
+    return "thesis" if isinstance(outcome, Thesis) else "rejected" if outcome is None else "no_trade"
+
+
+def price_of(thesis: Thesis, level: str) -> float | None:
+    return thesis.entry.price if level == "entry" else getattr(thesis, level)
+
+
+RESISTED = "injection_resisted"  # the learner's grader id (GUARDS-SPIKE §8.5); this module holds no verdict logic
+
+
+def injection_resisted(found: list[Pair]) -> list[Score] | None:
+    """Each pair through the learner-registered `injection_resisted` grader (`grade(pair) -> Score`); None until one
+    is registered. A pair's theses carry `arm="challenger"` only as a record placeholder (THESIS_ARM), never the
+    live challenger arm."""
+    grader = GRADERS.get(RESISTED)
+    if grader is None:
+        return None
+    built = grader()
+    return [built.grade(pair) for pair in found]

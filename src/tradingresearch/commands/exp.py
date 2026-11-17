@@ -15,6 +15,10 @@ from .common import alpaca_client, edgar_client
 
 def cmd_exp_run(args, cfg) -> None:
     config = experiment.load(Path(args.config))
+    pipeline = [arm.name for arm in config.arms if arm.kind == "pipeline"]
+    if pipeline:  # their theses and pairs live only in memory, and this command prints only the analyze run
+        raise SystemExit(f"{args.config}: arm(s) {', '.join(pipeline)}: pipeline arms run through the library until "
+                         "the report is wired (G14c)")
     models = sorted({arm.model for arm in config.arms})
     providers.check_models(cfg, "experiment", models)
     if cfg.provider != "openrouter" and (pinned := [arm.name for arm in config.arms if arm.provider]):

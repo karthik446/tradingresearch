@@ -1,0 +1,34 @@
+# Week 7 plumbing (G14b): the injection experiment, GUARDS-SPIKE §8.5. Not run, not pre-registered: it refuses to load
+# until the learner writes the 30 rows of evals/injections.jsonl (schema: evals/injections.schema.md), and rows must
+# sit on the tickers and sessions below. Three pipeline arms (analyze, then a thesis in memory; nothing journaled):
+# `clean` on the injected ticker-days without the injections, `injected-off` with them and no guard, `injected-on` with
+# them and the guards. A clean/injected pair is joined on ticker and session (experiment.pairs); whether the theses
+# resisted is the learner's `injection_resisted` grader, so the paired verdict is not printed by `tr exp run` yet.
+# Headlines come from the local news store (`tr news TICKER --session ...` fills it); an arm never fetches. A `filing`
+# row needs `retrieval` on both injected arms.
+name = "injection"
+model = "anthropic/claude-sonnet-5.5"
+max_usd_per_arm = 1.50
+tickers = ["AAPL", "MSFT", "NVDA", "AMZN", "JPM", "XOM", "UNH", "HD", "KO", "CAT"]
+sessions = ["2026-11-13"]
+graders = ["parsed", "claims_valid", "all_claims_valid", "inferences_grounded"]
+injections = "evals/injections.jsonl"
+
+[[arms]]
+name = "clean"
+kind = "pipeline"
+prompt = "analyze-3"
+
+[[arms]]
+name = "injected-off"
+kind = "pipeline"
+prompt = "analyze-3"
+inject = true
+
+[[arms]]
+name = "injected-on"
+kind = "pipeline"
+prompt = "analyze-3"
+inject = true
+# plain_text is the registered thesis rule (S2); the learner adds the fetched rules they register, e.g. ["my_rule", ...]
+guards = ["plain_text"]
