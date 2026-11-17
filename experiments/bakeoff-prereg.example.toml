@@ -1,0 +1,25 @@
+# The teacher bake-off's pre-registration (SPIKE §9.4, TRAINING-SPIKE §7.1): a gigai-core Prereg, written and
+# committed before bake-off session 1, then never edited. Copy it to experiments/bakeoff-prereg.toml, set
+# registered_at to the moment you commit it, and keep the rest as is. `tr bakeoff report` prints the inputs; you pick.
+#
+# Design: deepseek/deepseek-v4-pro, qwen/qwen3.5-397b-a17b and openai/gpt-oss-120b (pinned to DeepInfra, teacher.py)
+# all run on the same 4 names per session for sessions 1-10: 40 paired ticker:session items per teacher in 10 session
+# clusters. The names are `tr bakeoff draw --session D` (seeded by sha256 of the session date, not by screen rank).
+#
+# Pick rule:
+# 1. Eligible: on its 40 items, parse_ok >= 38/40 (an item parses when its analysis and a thesis-step decision are
+#    stored) and >= 90% of the fact claims it wrote pass the claim validators (incl. P2's rtol 0.5% value check).
+#    A teacher thesis that reconcile cannot settle (an error, not a terminal state) counts as a P3 failure.
+# 2. Leader: the eligible teacher with the highest p2_p4_pass point estimate (P2, P3 and P4 all true).
+# 3. Winner: the leader, unless a cheaper eligible teacher is within margin (0.10, i.e. <= 4 of 40 items) of it; then
+#    the cheapest such teacher wins. Ties go to the higher fact-claim validation share, then to the lower price.
+# 4. Reported, not used: paired cluster-bootstrap intervals and teacher_outcome R. With n = 40 the SE of a paired
+#    difference is about 0.12-0.17, so this is a decision procedure, not a significance test.
+
+primary_metric = "p2_p4_pass"
+guard_metric = "parse_ok"
+margin = 0.10
+n_planned = 40
+pass_rule = "eligible (parse_ok >= 38/40, fact claims valid >= 90%); leader on p2_p4_pass wins unless a cheaper eligible teacher is within margin, then the cheapest such; ties: higher claim-validation share, then lower price"
+hypothesis = "On the same 40 drawn items, at least one pinned open-weights teacher is eligible, and the cheapest eligible teacher's p2_p4_pass is within 0.10 of the leader's."
+registered_at = 2026-11-16T00:00:00Z  # placeholder: set to when you commit the copy, before session 1

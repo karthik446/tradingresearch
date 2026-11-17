@@ -12,8 +12,8 @@ from tradingresearch.evals import GRADERS, Parsed, grader, graders
 HELP = Path(__file__).parent / "fixtures" / "help"
 CASES = [("tr", [])] + [(name, [name]) for name in ("sessions", "bars", "facts", "snapshot", "news", "screen",
                                                     "analyze", "thesis", "open", "reconcile", "daily", "check", "exp",
-                                                    "usage")]
-CASES.append(("exp_run", ["exp", "run"]))
+                                                    "usage", "bakeoff")]
+CASES += [("exp_run", ["exp", "run"]), ("bakeoff_draw", ["bakeoff", "draw"]), ("bakeoff_report", ["bakeoff", "report"])]
 
 
 @pytest.mark.parametrize(("golden", "argv"), CASES, ids=[golden for golden, _ in CASES])

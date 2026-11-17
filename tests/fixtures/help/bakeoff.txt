@@ -1,0 +1,10 @@
+usage: tr bakeoff [-h] {draw,report} ...
+
+positional arguments:
+  {draw,report}
+    draw         the session's 4 bake-off names from its stored shortlist
+    report       per-teacher pick-rule inputs and eligibility; no automatic
+                 pick
+
+options:
+  -h, --help     show this help message and exit

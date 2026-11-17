@@ -1,11 +1,11 @@
 usage: tr [-h]
-          {sessions,bars,facts,snapshot,news,screen,analyze,thesis,open,reconcile,daily,check,exp,usage}
+          {sessions,bars,facts,snapshot,news,screen,analyze,thesis,open,reconcile,daily,check,exp,usage,bakeoff}
           ...
 
 tradingresearch: educational, not investment advice
 
 positional arguments:
-  {sessions,bars,facts,snapshot,news,screen,analyze,thesis,open,reconcile,daily,check,exp,usage}
+  {sessions,bars,facts,snapshot,news,screen,analyze,thesis,open,reconcile,daily,check,exp,usage,bakeoff}
     sessions            NYSE sessions ending at a date
     bars                fetch and store daily bars
     facts               framed EDGAR facts for one concept
@@ -28,6 +28,8 @@ positional arguments:
     exp                 experiments as config
     usage               the OpenRouter key's total spend so far (log it before
                         and after paid runs)
+    bakeoff             the teacher bake-off: date-seeded draw and report (no
+                        model call)
 
 options:
   -h, --help            show this help message and exit

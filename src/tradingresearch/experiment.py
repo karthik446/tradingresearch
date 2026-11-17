@@ -2,7 +2,8 @@
 
 A config is a TOML file (see experiments/). Every arm asks the same gigai-core Dataset, so `compare` pairs the
 answers item by item; an arm differs from the baseline only in what the config names (prompt version, model, and an
-OpenRouter `provider` routing table such as a teacher's DeepInfra pin, SPIKE §9.4).
+OpenRouter `provider` routing table such as a teacher's DeepInfra pin, SPIKE §9.4). `cluster` names the unit the
+intervals resample: `ticker` (week 1, the default) or `session` (the live stream), REPO-PLAN D5.
 """
 
 from __future__ import annotations
@@ -12,14 +13,16 @@ from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 
-from gigai_core import CallBudget, Dataset, Run, compare
+from gigai_core import CallBudget, Dataset, DatasetItem, Run, compare
 from gigai_core import run as run_eval
+from gigai_core.stats.intervals import MIN_CLUSTERS
 
 from . import analyze as an
 from .evals import graders as registry
 from .openrouter import Routing
 
 REQUIRED = ("name", "model", "max_usd_per_arm", "tickers", "sessions", "graders", "arms")
+CLUSTERS = ("ticker", "session")
 
 
 @dataclass(frozen=True)
@@ -38,6 +41,7 @@ class Config:
     graders: tuple[str, ...]
     arms: tuple[Arm, ...]
     max_usd_per_arm: float
+    cluster: str = "ticker"
 
 
 def load(path: Path) -> Config:
@@ -49,8 +53,22 @@ def load(path: Path) -> Config:
     for arm in arms:
         an.system_prompt(arm.prompt)  # fail before any spend if a prompt file is missing
     registry(raw["graders"])  # and if a grader is not registered
-    return Config(raw["name"], tuple(raw["tickers"]), tuple(date.fromisoformat(s) for s in raw["sessions"]),
-                  tuple(raw["graders"]), arms, float(raw["max_usd_per_arm"]))
+    config = Config(raw["name"], tuple(raw["tickers"]), tuple(date.fromisoformat(s) for s in raw["sessions"]),
+                    tuple(raw["graders"]), arms, float(raw["max_usd_per_arm"]), raw.get("cluster", "ticker"))
+    check_clusters(path, config)
+    return config
+
+
+def check_clusters(path: Path, config: Config) -> None:
+    """Refuse, before any spend, a cluster key `compare` cannot use: unknown, or (with an arm to compare) fewer than
+    MIN_CLUSTERS units. A one-arm config compares nothing, so its count is not checked."""
+    if config.cluster not in CLUSTERS:
+        raise SystemExit(f"{path}: cluster must be one of {', '.join(CLUSTERS)}, not {config.cluster!r}")
+    units = config.tickers if config.cluster == "ticker" else config.sessions
+    count = len(set(units))
+    if len(config.arms) > 1 and count < MIN_CLUSTERS:
+        raise SystemExit(f"{path}: cluster = {config.cluster!r} gives {count} clusters; compare needs at least "
+                         f"{MIN_CLUSTERS}")
 
 
 def routing(path: Path, arm: dict) -> Routing | None:
@@ -74,7 +92,7 @@ class ArmResult:
 def run_arms(conn, config: Config, contexts: list[an.Context], provider, prices: dict, data_dir: Path
              ) -> list[ArmResult]:
     """One run per arm on one Dataset. Each parsed sample is also stored as an Analysis, so `tr check` reads it."""
-    dataset = Dataset.of(config.name, [an.item_for(ctx) for ctx in contexts])
+    dataset = Dataset.of(config.name, items(config, contexts))
     by_item = {f"{ctx.ticker}:{ctx.session}": ctx for ctx in contexts}
     results = []
     for arm in config.arms:
@@ -93,6 +111,14 @@ def run_arms(conn, config: Config, contexts: list[an.Context], provider, prices:
                 stored += 1
         results.append(ArmResult(arm, run, path, stored))
     return results
+
+
+def items(config: Config, contexts: list[an.Context]) -> list[DatasetItem]:
+    """The dataset items: `ticker` keeps `analyze.item_for` byte for byte; `session` clusters on the session date."""
+    found = [an.item_for(ctx) for ctx in contexts]
+    if config.cluster == "session":
+        return [item.model_copy(update={"cluster_id": ctx.session.isoformat()}) for item, ctx in zip(found, contexts)]
+    return found
 
 
 def means(run: Run) -> dict[str, tuple[float, int]]:

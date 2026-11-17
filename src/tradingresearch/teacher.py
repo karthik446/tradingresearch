@@ -6,11 +6,14 @@ customer, so a teacher record is `terms_class="trainable"` (TRAINING-SPIKE §8).
 
 from __future__ import annotations
 
+import hashlib
 from dataclasses import dataclass
+from datetime import date
 
 from .openrouter import Routing
 
 QUANTIZATIONS = ("fp8", "bf16")
+BAKEOFF_NAMES = 4  # names per bake-off session, drawn from that session's shortlist of 10 (SPIKE §9.4)
 
 
 @dataclass(frozen=True)
@@ -55,3 +58,13 @@ def from_args(arm: str, teacher: str | None, model: str, default_model: str) -> 
     if model != default_model:
         raise SystemExit("--model is for the other arms; the teacher arm takes its model from --teacher")
     return get(teacher)
+
+
+def draw(session: date, shortlist: list[str], k: int = BAKEOFF_NAMES) -> list[str]:
+    """The bake-off names for one session: the same session and shortlist always give the same names, so the screen
+    rank does not pick them. Each name is ranked by sha256 of (sha256 of the ISO date) + name; `random.sample` is not
+    used because CPython keeps only `random()` stable across versions."""
+    seed = hashlib.sha256(session.isoformat().encode()).hexdigest()
+    names = sorted(set(shortlist))
+    ranked = sorted(names, key=lambda name: hashlib.sha256(f"{seed}{name}".encode()).hexdigest())
+    return sorted(ranked[:k])

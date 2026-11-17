@@ -1,0 +1,5 @@
+usage: tr bakeoff draw [-h] [--session SESSION]
+
+options:
+  -h, --help         show this help message and exit
+  --session SESSION  a completed session (default: the last one)
