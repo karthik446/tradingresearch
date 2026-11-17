@@ -9,7 +9,7 @@ How the daily loop runs, how to check it, and what to do when it fails. Live str
 | Setting | Value |
 |---|---|
 | When | Monday–Friday 14:30 and 19:00, Mac time zone America/Denver (16:30 and 21:00 New York). 19:00 is a catch-up |
-| Program | `/Users/kar/.local/bin/uv run tr daily` (uv by absolute path) |
+| Program | `/Users/kar/.local/bin/uv run tr daily` (uv by absolute path). With the bake-off: `... tr daily --teachers` |
 | WorkingDirectory | `/Users/kar/Developer/projects/tradingresearch` |
 | PATH | `/Users/kar/.local/bin:/usr/bin:/bin:/usr/sbin:/sbin` |
 | Log | `data/logs/daily.log` (stdout and stderr) |
@@ -25,7 +25,8 @@ The LaunchAgent owns live runs. To look at what a live run would do, use `--dry-
 
 `tr daily` settles the latest completed session (after 16:15 ET) in four steps: screen the universe, analyze the
 shortlist (`--top`, default 10), write one thesis-step decision per analysis, then reconcile. Options: `--session`,
-`--top`, `--max-usd` (default 1.00), `--dry-run` (free steps only, writes nothing), `--no-model`.
+`--top`, `--max-usd` (default 1.00), `--dry-run` (free steps only, writes nothing), `--no-model`, `--teachers`,
+`--teacher-max-usd` (default 0.40).
 
 - **Reruns are free.** Finished work prints `already done` and makes no model call, so the 19:00 catch-up only does
   what 14:30 missed. A holiday works the same way: the default session is the last completed one, already done.
@@ -37,11 +38,17 @@ shortlist (`--top`, default 10), write one thesis-step decision per analysis, th
   hindsight.
 - **Missed sessions** (no `daily_run` row in the last 10 trading days) get a `missed` row and are never backfilled.
 - The `events`, `thesis` and `daily_run` tables are append-only (triggers); nothing is corrected in place.
+- **Teachers** (`--teachers`, off by default). After the evening's summary line, each of the 3 pinned teachers
+  analyzes the session's 4 drawn names (`tr bakeoff draw`) and writes a thesis-step decision from its own analysis.
+  Rows read `analyze <T> ... teacher <model>: ...` and the step ends with `teachers <session>: ...`. A teacher's first
+  analysis of a name is never redone; reruns retry only failed or missing calls. Before each call, its worst case
+  must fit what is left of `--teacher-max-usd` for the session (earlier runs count), or the step stops. A teacher
+  failure is a row and never changes the exit code. There is no `late` skip: the teacher arm is never traded.
 
 ## Check that it ran
 
 ```
-tail -20 data/logs/daily.log        # last line: "daily <session>: N ok, ..." or "already done, no model call"
+tail -20 data/logs/daily.log        # "daily <session>: N ok, ..." or "already done, no model call"; then "teachers ..."
 launchctl list | grep tradingresearch   # second column is the last exit status
 uv run tr usage --by day            # spend per New York day, then the key's lifetime spend
 ```
@@ -54,13 +61,17 @@ uv run tr usage --by day            # spend per New York day, then the key's lif
 | `journal failed: ...` | The database refused a write; everything stops | Do not edit `data/journal.db` by hand; read the error, fix the code or the disk, rerun |
 | `analyze <T> failed` / `thesis <T> failed` | One model call failed; the rest of the run continues | Nothing; the cost is still recorded. Repeated failures: check `tr usage --by call` |
 | `stopped budget: ...` | `--max-usd` reached | Expected on a long shortlist; raise `--max-usd` only on purpose |
+| `failed teacher <model>: ...` | One teacher call failed (e.g. `model call failed: http_400`); exit code unchanged | Nothing; the next `--teachers` run retries it. Repeated: check the slug against OpenRouter |
+| `stopped teacher <model>: budget: ...` | The next teacher call's worst case would pass `--teacher-max-usd` for the session | Nothing; raise `--teacher-max-usd` only on purpose, then rerun |
+| `teachers <session>: stopped: ...` | The teacher step itself broke (e.g. the journal); the evening's rows are already stored | Read the error; rerun with `--teachers` |
 | `late: the entry window ...` | The run came after 09:30 ET next session | Nothing; that session has no theses |
 | `missed: <session>` | No run for a completed session | Nothing; it is not backfilled |
 
-## Teacher bake-off (by hand)
+## Teacher bake-off
 
-`tr daily` has no teacher step yet. For each bake-off session D (session 1 is the first on or after 2026-11-17 with a
-stored teacher analysis; `experiments/bakeoff-prereg.toml`):
+`tr daily --teachers` runs it. Session 1 is the first session on or after 2026-11-17 with a stored teacher analysis
+(`bakeoff.FIRST_SESSION`, `experiments/bakeoff-prereg.toml`); earlier teacher analyses are tests and the report
+ignores them. By hand, for one session D:
 
 ```
 uv run tr bakeoff draw --session D       # the 4 names, seeded by the date
@@ -69,7 +80,8 @@ uv run tr thesis TICKER --session D --arm teacher --teacher MODEL
 uv run tr bakeoff report                 # inputs to the pick rule; the operator picks
 ```
 
-Measured teacher cost so far: one `deepseek/deepseek-v4-pro` analyze call, $0.004119 (run_7d0a596b94a44095).
+Measured teacher cost so far: `deepseek/deepseek-v4-pro`, one analyze call $0.004119 (run_7d0a596b94a44095) and one
+thesis call $0.003016 (G6c's fixture capture, 2026-11-17).
 
 ## CI
 

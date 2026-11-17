@@ -21,6 +21,8 @@ ROOT = Path(__file__).parent.parent
 TEN = ["AAPL", "MSFT", "NVDA", "AMZN", "JPM", "XOM", "UNH", "HD", "KO", "CAT"]  # prompt-v2's tickers
 DAY = date(2026, 11, 16)
 DRAWN = ["HD", "KO", "MSFT", "UNH"]  # draw(DAY, TEN); cross-checked with `shasum -a 256` in the shell
+BAKEOFF_DAY = bakeoff.FIRST_SESSION  # 2026-11-17, bake-off session 1; DAY is before it, so the report ignores DAY
+BAKEOFF_DRAWN = ["KO", "NVDA", "UNH", "XOM"]  # draw(BAKEOFF_DAY, TEN)
 # Dataset.of("prompt-v2", ...) over the relabelled fixture contexts, captured at bc8859b before `cluster` existed.
 PROMPT_V2_SHA = "35ed95885c94ad30d6d5af5acd5a34167b424fa139bcc21eacac62b6ff6bb4c4"
 
@@ -90,6 +92,23 @@ def test_the_prereg_example_loads_into_a_gigai_core_prereg():
     assert found.registered_at.tzinfo is not None and found.hypothesis and found.pass_rule
 
 
+def test_the_committed_prereg_loads_and_names_the_first_session_plan_uses():
+    path = ROOT / "experiments" / "bakeoff-prereg.toml"
+    assert isinstance(bakeoff.prereg(path), Prereg)
+    assert f"on or after {bakeoff.FIRST_SESSION.isoformat()}" in path.read_text()
+
+
+def test_plan_ignores_teacher_analyses_before_the_first_bakeoff_session():
+    conn = journal.connect(":memory:")
+    screened(conn, DAY, TEN)
+    stored(conn, TEACHER.model, "KO", DAY)
+    assert bakeoff.plan(conn) == bakeoff.Plan((), (), ())  # 2026-11-16 was a test run, not session 1
+    screened(conn, BAKEOFF_DAY, TEN)
+    stored(conn, TEACHER.model, "KO", BAKEOFF_DAY)
+    found = bakeoff.plan(conn)
+    assert found.sessions == (BAKEOFF_DAY,) and found.items == tuple((BAKEOFF_DAY, t) for t in BAKEOFF_DRAWN)
+
+
 # ---------- report ----------
 
 def screened(conn, day: date, tickers: list[str]) -> None:
@@ -97,7 +116,7 @@ def screened(conn, day: date, tickers: list[str]) -> None:
                                            rank=n, code_version=screen.CODE_VERSION) for n, t in enumerate(tickers, 1)])
 
 
-def stored(conn, model: str, ticker: str, day: date = DAY):
+def stored(conn, model: str, ticker: str, day: date = BAKEOFF_DAY):
     found = analysis(ticker=ticker, session=day, arm="teacher", model=model, terms_class="trainable")
     journal.add_analysis(conn, found, [])
     return found
@@ -110,16 +129,16 @@ def settled(conn, thesis_id: str, checks: dict[str, bool]) -> None:
 
 
 def seeded() -> tuple:
-    """One bake-off session: DeepSeek parses MSFT (a thesis, cancelled) and HD (a no-trade), stops after KO's analysis
-    and has no UNH; an off-draw AAPL analysis is ignored. Qwen and gpt-oss have nothing yet."""
+    """Bake-off session 1: DeepSeek parses NVDA (a thesis, cancelled) and UNH (a no-trade), stops after KO's analysis
+    and has no XOM; an off-draw AAPL analysis is ignored. Qwen and gpt-oss have nothing yet."""
     conn = journal.connect(":memory:")
-    screened(conn, DAY, TEN)
+    screened(conn, BAKEOFF_DAY, TEN)
     ds = TEACHER.model
-    msft = stored(conn, ds, "MSFT")
-    written = thesis(msft.analysis_id, ticker="MSFT", arm="teacher", terms_class="trainable")
+    nvda = stored(conn, ds, "NVDA")
+    written = thesis(nvda.analysis_id, ticker="NVDA", arm="teacher", terms_class="trainable")
     journal.add(conn, written)
-    hd = stored(conn, ds, "HD")
-    journal.add(conn, NoTrade(analysis_id=hd.analysis_id, horizon="short", reason="no setup", created_at=T0))
+    unh = stored(conn, ds, "UNH")
+    journal.add(conn, NoTrade(analysis_id=unh.analysis_id, horizon="short", reason="no setup", created_at=T0))
     stored(conn, ds, "KO")
     stored(conn, ds, "AAPL")
     return conn, written
@@ -129,7 +148,7 @@ def test_the_report_counts_parse_ok_over_the_drawn_items_and_shows_states_and_ve
     conn, written = seeded()
     settled(conn, written.thesis_id, {})
     plan, rows = bakeoff.report(conn, tmp_path)
-    assert plan.sessions == (DAY,) and [t for _, t in plan.items] == DRAWN
+    assert plan.sessions == (BAKEOFF_DAY,) and [t for _, t in plan.items] == BAKEOFF_DRAWN
     ds, qwen, oss = rows
     assert (ds.items, ds.parse_ok, ds.states, ds.cost) == (4, 2, {"CANCELLED": 1}, None)
     assert ds.facts_total is None  # the seeded analyses have no run file
@@ -137,25 +156,28 @@ def test_the_report_counts_parse_ok_over_the_drawn_items_and_shows_states_and_ve
     assert (oss.parse_ok, oss.verdict) == (0, "not eligible: parse_ok 0/4")
     text = bakeoff.render(plan, rows)
     assert "n/a: P2-P4 graders not written yet (week 2)" in text and "no automatic pick" in text
+    assert text.endswith("margin (experiments/bakeoff-prereg.toml)")  # the committed prereg, not the example
+    assert (ROOT / "experiments" / "bakeoff-prereg.toml").exists()
     assert "deepseek/deepseek-v4-pro" in text and "2/4" in text and "CANCELLED=1" in text
 
 
 def test_p2_p4_pass_is_reported_only_once_every_thesis_has_the_code_checks(tmp_path):
     conn, written = seeded()
-    other = thesis(written.analysis_id, ticker="MSFT", horizon="swing", arm="teacher", terms_class="trainable")
+    other = thesis(written.analysis_id, ticker="NVDA", horizon="swing", arm="teacher", terms_class="trainable")
     journal.add(conn, other)
     all_true = dict.fromkeys(bakeoff.P2_P4, True)
     settled(conn, written.thesis_id, all_true)
     assert bakeoff.report(conn, tmp_path)[1][0].p2_p4 == "n/a: 1 of 2 theses have no P2-P4 checks yet"
     settled(conn, other.thesis_id, all_true)
-    assert bakeoff.report(conn, tmp_path)[1][0].p2_p4 == 1 / 4  # MSFT passes; HD wrote no thesis; KO, UNH failed
+    assert bakeoff.report(conn, tmp_path)[1][0].p2_p4 == 1 / 4  # NVDA passes; UNH wrote no thesis; KO, XOM failed
 
 
 def test_the_fact_share_and_cost_come_from_the_recorded_teacher_run(tmp_path, monkeypatch):
     monkeypatch.setattr(an, "context_tokens", lambda system, prompt: 1894)
     conn = journal.connect(":memory:")
-    screened(conn, DAY, ["AAPL", "MSFT", "NVDA"])  # a short shortlist: all three are drawn
-    result = an.analyze(conn, context(), replaying(REPLY, []), model=TEACHER.model, max_usd=0.10,
+    screened(conn, BAKEOFF_DAY, ["AAPL", "MSFT", "NVDA"])  # a short shortlist: all three are drawn
+    session_1 = dataclasses.replace(context(), session=BAKEOFF_DAY)  # the 2026-11-16 reply, relabelled into session 1
+    result = an.analyze(conn, session_1, replaying(REPLY, []), model=TEACHER.model, max_usd=0.10,
                         prices={TEACHER.model: PRICE}, data_dir=tmp_path, arm="teacher",
                         terms_class=TEACHER.terms_class)
     assert sum(c.tag == "fact" for c in result.analysis.claims) == 4  # G6's live run: 4 kept, the rest number_in_text

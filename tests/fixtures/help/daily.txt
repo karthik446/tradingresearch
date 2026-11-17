@@ -1,12 +1,21 @@
 usage: tr daily [-h] [--session SESSION] [--top TOP] [--max-usd MAX_USD]
-                [--dry-run] [--no-model]
+                [--dry-run] [--no-model] [--teachers]
+                [--teacher-max-usd TEACHER_MAX_USD]
 
 options:
-  -h, --help         show this help message and exit
-  --session SESSION  a completed session (default: the latest, after 16:15 ET)
-  --top TOP          analyze the screen's top N (default 10, SPIKE §4.2)
-  --max-usd MAX_USD  stop before the next model call that would take the run
-                     past this (default 1.00)
-  --dry-run          free steps only (reconcile writes nothing): print what
-                     would be analyzed and its cost
-  --no-model         run the free steps for real; skip analyze and thesis
+  -h, --help            show this help message and exit
+  --session SESSION     a completed session (default: the latest, after 16:15
+                        ET)
+  --top TOP             analyze the screen's top N (default 10, SPIKE §4.2)
+  --max-usd MAX_USD     stop before the next model call that would take the
+                        run past this (default 1.00)
+  --dry-run             free steps only (reconcile writes nothing): print what
+                        would be analyzed and its cost
+  --no-model            run the free steps for real; skip analyze and thesis
+  --teachers            then run the 3 pinned teachers on the session's 4
+                        drawn bake-off names (paid, SPIKE §9.4); a teacher
+                        failure never changes the exit code
+  --teacher-max-usd TEACHER_MAX_USD
+                        stop the teacher step before a call whose worst case
+                        would take this session's teacher spend past this
+                        (default 0.40)

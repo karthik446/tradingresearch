@@ -1,0 +1,46 @@
+{
+ "id": "gen-1794891536-wh7rhaWydG3wUPgBZAkI",
+ "object": "chat.completion",
+ "created": 1794891536,
+ "model": "deepseek/deepseek-v4-pro",
+ "provider": "DeepInfra",
+ "system_fingerprint": null,
+ "service_tier": "flex",
+ "choices": [
+  {
+   "index": 0,
+   "logprobs": null,
+   "finish_reason": "stop",
+   "native_finish_reason": "stop",
+   "message": {
+    "role": "assistant",
+    "content": "{\n  \"theses\": [\n    {\n      \"horizon\": \"day\",\n      \"direction\": \"long\",\n      \"setup_type\": \"pullback_to_level\",\n      \"prediction\": \"AAPL will bounce from the 343.41 support and trade back toward the 352.78 close during the morning session.\",\n      \"reason\": \"Price is pulling back to level_hvn_2 at 343.41 within an uptrending above sma_20, and the mild intraday selling pressure inferred from the close-vs-VWAP creates a limit-entry pullback opportunity.\",\n      \"entry_kind\": \"limit\",\n      \"entry_price\": 343.41,\n      \"stop\": 338.69,\n      \"target\": 352.78,\n      \"hold_sessions\": 0,\n      \"invalidation_price\": 339.25,\n      \"invalidation_text\": \"A close below 339.25 would break below level_pivot_low_2 and the stop, invalidating the support bounce thesis.\",\n      \"evidence\": [\n        \"cl_59e83211dd7e41d1\",\n        \"cl_5d0421ad82c84222\"\n      ]\n    }\n  ],\n  \"no_trade\": [\n    {\n      \"horizon\": \"short\",\n      \"reason\": \"No clear near-term level to lean on within the 2-5 session window; the pullback to level_hvn_2 is too close to the stop floor for a short hold, and a breakout entry at high_20 lacks volume confirmation in the claims.\"\n    },\n    {\n      \"horizon\": \"swing\",\n      \"reason\": \"Insufficient fact or inference claims to support a swing-direction view; the high_20 breakout and low_20 pullback both exceed the 5-20 session risk/reward with the given ATR, and the event_drift setup is absent.\"\n    }\n  ]\n}",
+    "refusal": null,
+    "reasoning": null
+   }
+  }
+ ],
+ "usage": {
+  "prompt_tokens": 2092,
+  "completion_tokens": 404,
+  "total_tokens": 2496,
+  "cost": 0.003016,
+  "is_byok": false,
+  "prompt_tokens_details": {
+   "cached_tokens": 0,
+   "cache_write_tokens": 0,
+   "audio_tokens": 0,
+   "video_tokens": 0
+  },
+  "cost_details": {
+   "upstream_inference_cost": 0.003016,
+   "upstream_inference_prompt_cost": 0.00217568,
+   "upstream_inference_completions_cost": 0.00084032
+  },
+  "completion_tokens_details": {
+   "reasoning_tokens": 0,
+   "image_tokens": 0,
+   "audio_tokens": 0
+  }
+ }
+}

@@ -1,9 +1,10 @@
 """The teacher bake-off report (SPIKE §9.4, P12; TRAINING-SPIKE §7.1): the pre-registered pick rule's inputs per
 teacher, read offline from the journal and the saved runs. It prints each teacher's eligibility and never picks.
 
-The bake-off is the first ten sessions with a stored teacher analysis; its items are each session's four drawn names
-(`teacher.draw` over the screen's shortlist of ten). A teacher's item counts as `parse_ok` when its analysis and a
-thesis-step decision (a teacher thesis or a no-trade) from it are stored, so a failed or missing call fails the item.
+The bake-off is the first ten sessions on or after FIRST_SESSION with a stored teacher analysis; its items are each
+session's four drawn names (`teacher.draw` over the screen's shortlist of ten). A teacher's item counts as `parse_ok`
+when its analysis and a thesis-step decision (a teacher thesis or a no-trade) from it are stored, so a failed or
+missing call fails the item.
 """
 
 from __future__ import annotations
@@ -21,6 +22,7 @@ from . import daily, screen, teacher, trace, usage
 from .records import Analysis, TeacherOutcome
 
 SHORTLIST = 10  # the screen's top N the draw picks from (SPIKE §4.2)
+FIRST_SESSION = date(2026, 11, 17)  # the prereg's "first NYSE session on or after 2026-11-17"; earlier runs are tests
 N_PLANNED = 40  # items per teacher: 4 names x 10 sessions (SPIKE §9.4)
 SESSIONS = N_PLANNED // teacher.BAKEOFF_NAMES
 PARSE_OK_MIN = 38  # eligible at parse_ok >= 38/40 ...
@@ -78,8 +80,9 @@ class TeacherRow:
 
 
 def plan(conn) -> Plan:
-    """The first SESSIONS sessions with a stored teacher analysis and each one's drawn names."""
-    found = conn.execute("SELECT DISTINCT session FROM analysis WHERE arm = 'teacher' ORDER BY session").fetchall()
+    """The first SESSIONS sessions from FIRST_SESSION with a stored teacher analysis and each one's drawn names."""
+    found = conn.execute("SELECT DISTINCT session FROM analysis WHERE arm = 'teacher' AND session >= ? "
+                         "ORDER BY session", (FIRST_SESSION.isoformat(),)).fetchall()
     sessions = tuple(date.fromisoformat(day) for (day,) in found[:SESSIONS])
     items, unscreened = [], []
     for day in sessions:
@@ -111,10 +114,9 @@ def row(conn, data_dir: Path, model: str, items: tuple[tuple[date, str], ...], c
             continue
         theses = [tid for (tid,) in conn.execute(
             "SELECT thesis_id FROM thesis WHERE analysis_id = ? AND arm = 'teacher'", (analysis.analysis_id,))]
-        no_trade = conn.execute("SELECT 1 FROM no_trade WHERE analysis_id = ?", (analysis.analysis_id,)).fetchone()
-        decided = bool(theses or no_trade)
-        parse_ok += decided
-        theses_by_item.append(theses if decided else None)
+        ok = decided(conn, analysis.analysis_id)
+        parse_ok += ok
+        theses_by_item.append(theses if ok else None)
         states.update(state(conn, tid) for tid in theses)
         facts_valid += sum(claim.tag == "fact" for claim in analysis.claims)
         replied = reply_facts(data_dir, analysis)
@@ -122,6 +124,13 @@ def row(conn, data_dir: Path, model: str, items: tuple[tuple[date, str], ...], c
     cost = usage.summarize(model, calls) if calls else None
     return TeacherRow(model, len(items), parse_ok, facts_valid, facts_total, cost, dict(states),
                       p2_p4(conn, theses_by_item))
+
+
+def decided(conn, analysis_id: str) -> bool:
+    """A thesis-step decision from this teacher analysis is stored: a teacher thesis or a no-trade."""
+    query = ("SELECT 1 FROM thesis WHERE analysis_id = ? AND arm = 'teacher' "
+             "UNION ALL SELECT 1 FROM no_trade WHERE analysis_id = ? LIMIT 1")
+    return conn.execute(query, (analysis_id, analysis_id)).fetchone() is not None
 
 
 def first_analyses(conn, model: str) -> dict[tuple[date, str], Analysis]:
@@ -208,5 +217,5 @@ def render(bakeoff: Plan, rows: list[TeacherRow]) -> str:
         p2 = f"{r.p2_p4:.1%}" if isinstance(r.p2_p4, float) else r.p2_p4
         lines.append(f"{r.model:<28}{r.verdict:<36}{p2}")
     lines += ["", "no automatic pick: the leader on p2_p4_pass wins unless a cheaper eligible teacher is within the "
-                  "margin (experiments/bakeoff-prereg.example.toml)"]
+                  "margin (experiments/bakeoff-prereg.toml)"]
     return "\n".join(lines)

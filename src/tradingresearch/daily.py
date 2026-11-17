@@ -1,7 +1,9 @@
 """`tr daily`: one session's evening, screen → analyze → thesis → reconcile (REPO-PLAN §7 G4a; SPIKE L22, L581).
 
 Each step is an existing function passed in `Steps`. Work already in the journal is skipped, so a rerun for the same
-session makes no model call. Every step leaves a `daily_run` row; a failed ticker is a row, not a crash.
+session makes no model call. Every step leaves a `daily_run` row; a failed ticker is a row, not a crash. With
+`TeacherSteps` (`tr daily --teachers`), the bake-off's teachers then answer the session's drawn names (SPIKE §9.4)
+under their own cap; nothing in that step can fail the evening.
 """
 
 from __future__ import annotations
@@ -12,7 +14,9 @@ from dataclasses import dataclass, field
 from datetime import date, datetime
 from pathlib import Path
 
-from . import analyze as an, journal, reconcile_run, sessions, thesis as th, usage
+from gigai_core.budget import BudgetExceeded
+
+from . import analyze as an, journal, reconcile_run, sessions, teacher as tc, thesis as th, usage
 from .hashing import new_id
 from .records import Analysis
 from .screen import ScreenResult
@@ -21,6 +25,8 @@ ANALYZE_USD = 0.02  # estimate per call: measured `tr analyze` runs cost $0.016-
 THESIS_USD = 0.03  # measured `tr thesis` run: $0.0195
 MISSED_WINDOW = 10  # trading days looked back for sessions with no daily_run row
 DONE = "already done"
+TEACHER = "teacher"  # a teacher row's reason starts "teacher <model>: " (daily_run.step allows only the five steps)
+TEACHER_MAX_USD = 0.40  # --teacher-max-usd default: the teacher step's cap per session, every run of it counted
 
 
 @dataclass(frozen=True)
@@ -32,6 +38,15 @@ class Steps:
     horizons: Callable[[Analysis, datetime], tuple[str, ...]]
     thesis: Callable[[Analysis, tuple[str, ...]], th.Result]
     reconcile: Callable[[date, bool], reconcile_run.Report]
+
+
+@dataclass(frozen=True)
+class TeacherSteps:
+    """The opt-in teacher calls. `max_usd` is what is left of --teacher-max-usd: gigai-core refuses a call whose
+    worst case does not fit it before anything is sent."""
+
+    analyze: Callable[[str, date, tc.Teacher, float], an.Result]
+    thesis: Callable[[Analysis, tc.Teacher, float], th.Result]
 
 
 @dataclass(frozen=True)
@@ -84,6 +99,12 @@ class Daily:
 
     def call[T](self, step: Callable[[], T]) -> tuple[T | None, str | None, float]:
         """Run one paid step: (result or None, error or None, cost of the run files it saved, failed calls too)."""
+        result, error, cost = self.measure(step)
+        self.spent_usd += cost
+        return result, None if error is None else reason(error), cost
+
+    def measure[T](self, step: Callable[[], T]) -> tuple[T | None, Exception | SystemExit | None, float]:
+        """Run one paid step without charging `max_usd`: (result or None, the exception or None, run-file cost)."""
         before = set(self.runs_dir.glob("run_*.jsonl"))
         result, error = None, None
         try:
@@ -91,10 +112,32 @@ class Daily:
         except sqlite3.Error:
             raise  # the journal failed: the whole run stops
         except (Exception, SystemExit) as exc:  # a model error or a parse failure fails this ticker only
-            error = str(exc) or type(exc).__name__
+            error = exc
         cost = round(sum(usage.run_cost(path).cost_usd for path in set(self.runs_dir.glob("run_*.jsonl")) - before), 6)
-        self.spent_usd += cost
         return result, error, cost
+
+
+@dataclass
+class TeacherSpend:
+    """Teacher spend against --teacher-max-usd over every run for this session, so the catch-up counts the first."""
+
+    max_usd: float
+    session_usd: float
+    run_usd: float = 0.0
+    stopped: bool = False
+    planned: list[tuple[str, str, str]] = field(default_factory=list)  # (step, name, model) a dry run would pay for
+
+    @property
+    def left(self) -> float:
+        return round(self.max_usd - self.session_usd, 6)
+
+    def add(self, cost: float) -> None:
+        self.session_usd += cost
+        self.run_usd += cost
+
+
+def reason(error: BaseException) -> str:
+    return str(error) or type(error).__name__
 
 
 def line(row: Row, session: date) -> str:
@@ -122,8 +165,10 @@ def shortlist(results: list[ScreenResult], top: int) -> list[str]:
 
 
 def run(conn: sqlite3.Connection, steps: Steps, session: date, *, top: int, max_usd: float, runs_dir: Path,
-        now: datetime, dry_run: bool = False, no_model: bool = False) -> Daily:
-    """The whole evening for `session`. Only a failed screen ends it early (`screen_failed`)."""
+        now: datetime, dry_run: bool = False, no_model: bool = False, teachers: TeacherSteps | None = None,
+        teacher_max_usd: float = TEACHER_MAX_USD) -> Daily:
+    """The whole evening for `session`, then the teacher step when `teachers` is given. Only a failed screen ends it
+    early (`screen_failed`)."""
     daily = Daily(conn, session, max_usd, runs_dir, dry_run)
     for day in missed_sessions(conn, session, now):
         daily.record(Row("session", None, "missed", "no tr daily row for this completed session"), day)
@@ -132,7 +177,7 @@ def run(conn: sqlite3.Connection, steps: Steps, session: date, *, top: int, max_
     except sqlite3.Error:
         raise
     except (Exception, SystemExit) as error:
-        daily.record(Row("screen", None, "failed", str(error) or type(error).__name__))
+        daily.record(Row("screen", None, "failed", reason(error)))
         daily.screen_failed = True
         return daily
     tickers = shortlist(results, top)
@@ -145,6 +190,8 @@ def run(conn: sqlite3.Connection, steps: Steps, session: date, *, top: int, max_
     thesis_all(daily, steps, now, gate)
     reconcile(daily, steps)
     print(summary(daily))
+    if teachers is not None:
+        teach(daily, teachers, results, teacher_max_usd, no_model)
     return daily
 
 
@@ -167,8 +214,8 @@ def analyze_all(daily: Daily, steps: Steps, tickers: list[str], gate: str | None
                 continue
             a = result.analysis
             status = "ok" if a.claims else "failed"
-            reason = f"{len(a.claims)} claims, {len(result.rejected)} rejected"
-            daily.record(Row("analyze", ticker, status, reason, (a.analysis_id,), cost))
+            text = f"{len(a.claims)} claims, {len(result.rejected)} rejected"
+            daily.record(Row("analyze", ticker, status, text, (a.analysis_id,), cost))
 
 
 def thesis_all(daily: Daily, steps: Steps, now: datetime, gate: str | None) -> None:
@@ -203,11 +250,15 @@ def thesis_one(daily: Daily, steps: Steps, a: Analysis, now: datetime) -> None:
         if result is None:
             daily.record(Row("thesis", a.ticker, "failed", error or "?", cost_usd=cost))
             return
-        c = result.checked
-        reason = f"accepted {len(c.theses)}, no_trade {len(c.no_trades)}, rejected {len(c.rejected)}"
-        reason += "".join(f"; {r.horizon} {r.reason}" for r in c.rejected)
-        status = "ok" if c.theses or c.no_trades else "failed"
-        daily.record(Row("thesis", a.ticker, status, reason, tuple(t.thesis_id for t in c.theses), cost))
+        status, text = decision(result.checked)
+        daily.record(Row("thesis", a.ticker, status, text, tuple(t.thesis_id for t in result.checked.theses), cost))
+
+
+def decision(c: th.Checked) -> tuple[str, str]:
+    """A thesis call's status and reason: ok once a thesis or a no-trade is stored."""
+    text = f"accepted {len(c.theses)}, no_trade {len(c.no_trades)}, rejected {len(c.rejected)}"
+    text += "".join(f"; {r.horizon} {r.reason}" for r in c.rejected)
+    return ("ok" if c.theses or c.no_trades else "failed"), text
 
 
 def reconcile(daily: Daily, steps: Steps) -> None:
@@ -217,7 +268,7 @@ def reconcile(daily: Daily, steps: Steps) -> None:
     except sqlite3.Error:
         raise
     except (Exception, SystemExit) as error:
-        daily.record(Row("reconcile", None, "failed", str(error) or type(error).__name__))
+        daily.record(Row("reconcile", None, "failed", reason(error)))
         return
     lines = reconcile_run.render(report)
     for text in lines[:-1]:
@@ -240,3 +291,120 @@ def summary(daily: Daily) -> str:
         return f"daily {daily.session}: {DONE}, no model call"
     return (f"daily {daily.session}: {count['ok']} ok, {count['failed']} failed, {count['skipped']} skipped, "
             f"{count['stopped']} stopped; {calls} model steps, spent ${daily.spent_usd:.4f} of ${daily.max_usd:.2f}")
+
+
+# ---------- teachers (`--teachers`, SPIKE §9.4) ----------
+
+def teach(daily: Daily, steps: TeacherSteps, results: list[ScreenResult], max_usd: float, no_model: bool) -> None:
+    """Each pinned teacher on each drawn name of the session, after the evening's steps. Never raises: the evening is
+    done and the exit code is its own."""
+    try:
+        spend = TeacherSpend(max_usd, teacher_spent(daily.conn, daily.session))
+        start = len(daily.rows)
+        names = teach_all(daily, steps, results, spend, "--no-model" if no_model else None)
+        print(teacher_summary(daily, spend, names, daily.rows[start:]))
+    except (Exception, SystemExit) as error:  # a journal failure too: nothing here may fail the evening
+        print(f"teachers {daily.session}: stopped: {reason(error)}")
+
+
+def teach_all(daily: Daily, steps: TeacherSteps, results: list[ScreenResult], spend: TeacherSpend,
+              gate: str | None) -> list[str]:
+    """A teacher's first stored analysis of a name is never redone (the bake-off scores the first answer)."""
+    from . import bakeoff  # local import: bakeoff imports this module
+    names = tc.draw(daily.session, shortlist(results, bakeoff.SHORTLIST))
+    first = {model: bakeoff.first_analyses(daily.conn, model) for model in tc.TEACHERS}
+    for name in names:
+        for t in tc.TEACHERS.values():
+            a = first[t.model].get((daily.session, name))
+            if a is None:
+                a = teacher_analyze(daily, steps, spend, name, t, gate)
+            else:
+                daily.record(Row("analyze", name, "skipped", f"{label(t)}{DONE} ({a.analysis_id})"))
+            if a is not None:
+                teacher_thesis(daily, steps, spend, a, t, gate)
+    return names
+
+
+def teacher_analyze(daily: Daily, steps: TeacherSteps, spend: TeacherSpend, name: str, t: tc.Teacher,
+                    gate: str | None) -> Analysis | None:
+    """One teacher's analysis of one drawn name, or None when gated, planned, stopped or failed."""
+    if gate:
+        daily.record(Row("analyze", name, "skipped", label(t) + gate))
+    elif daily.dry_run:
+        spend.planned += [("analyze", name, t.model), ("thesis", name, t.model)]
+        print(f"would analyze {name} with {TEACHER} {t.model}, then thesis")
+    else:
+        result, cost = teacher_call(daily, spend, "analyze", name, t,
+                                    lambda left: steps.analyze(name, daily.session, t, left))
+        if result is not None:
+            a = result.analysis
+            text = f"{label(t)}{len(a.claims)} claims, {len(result.rejected)} rejected"
+            daily.record(Row("analyze", name, "ok" if a.claims else "failed", text, (a.analysis_id,), cost))
+            return a
+    return None
+
+
+def teacher_thesis(daily: Daily, steps: TeacherSteps, spend: TeacherSpend, a: Analysis, t: tc.Teacher,
+                   gate: str | None) -> None:
+    """The thesis-step decision from the teacher's own first analysis, unless one is stored already."""
+    from . import bakeoff  # local import: bakeoff imports this module
+    if bakeoff.decided(daily.conn, a.analysis_id):
+        daily.record(Row("thesis", a.ticker, "skipped", f"{label(t)}{DONE} ({a.analysis_id})"))
+    elif not a.claims:
+        daily.record(Row("thesis", a.ticker, "skipped", f"{label(t)}no valid claims in {a.analysis_id}"))
+    elif gate:
+        daily.record(Row("thesis", a.ticker, "skipped", label(t) + gate))
+    elif daily.dry_run:
+        spend.planned.append(("thesis", a.ticker, t.model))
+        print(f"would thesis {a.ticker} with {TEACHER} {t.model} from {a.analysis_id}")
+    else:
+        result, cost = teacher_call(daily, spend, "thesis", a.ticker, t, lambda left: steps.thesis(a, t, left))
+        if result is not None:
+            status, text = decision(result.checked)
+            ids = tuple(x.thesis_id for x in result.checked.theses)
+            daily.record(Row("thesis", a.ticker, status, label(t) + text, ids, cost))
+
+
+def teacher_call[T](daily: Daily, spend: TeacherSpend, step: str, name: str, t: tc.Teacher,
+                    call: Callable[[float], T]) -> tuple[T | None, float]:
+    """One paid teacher step under what is left of the cap. A refusal stops the step; any other error fails only
+    this (name, teacher). Returns None once a row says why."""
+    spent = f"${spend.session_usd:.4f} of --teacher-max-usd ${spend.max_usd:.2f} spent this session"
+    if spend.stopped or spend.left <= 0:
+        spend.stopped = True
+        daily.record(Row(step, name, "stopped", f"{label(t)}budget: {spent}"))
+        return None, 0.0
+    left = spend.left
+    result, error, cost = daily.measure(lambda: call(left))
+    spend.add(cost)
+    if isinstance(error, BudgetExceeded):
+        spend.stopped = True
+        daily.record(Row(step, name, "stopped", f"{label(t)}budget: {error}; {spent}", cost_usd=cost))
+    elif error is not None:
+        daily.record(Row(step, name, "failed", label(t) + reason(error), cost_usd=cost))
+    return (None if error else result), cost
+
+
+def label(t: tc.Teacher) -> str:
+    return f"{TEACHER} {t.model}: "
+
+
+def teacher_spent(conn: sqlite3.Connection, session: date) -> float:
+    """Teacher spend already recorded for `session` by earlier runs (their `daily_run` rows)."""
+    return sum(r["cost_usd"] for r in journal.daily_runs(conn, session) if r["reason"].startswith(f"{TEACHER} "))
+
+
+def teacher_summary(daily: Daily, spend: TeacherSpend, names: list[str], rows: list[Row]) -> str:
+    head = f"teachers {daily.session}"
+    drawn = f"{len(names)} names ({' '.join(names) or 'none'}) x {len(tc.TEACHERS)} teachers"
+    if daily.dry_run:
+        n_analyze = sum(step == "analyze" for step, _, _ in spend.planned)
+        return (f"{head} (dry run): {drawn}; would analyze {n_analyze}, thesis {len(spend.planned) - n_analyze}; "
+                f"each call's worst case must fit what is left of --teacher-max-usd ${spend.max_usd:.2f} "
+                f"(${spend.session_usd:.4f} spent this session); nothing written")
+    count = {status: sum(r.status == status for r in rows) for status in ("ok", "failed", "skipped", "stopped")}
+    if rows and all(r.status == "skipped" and DONE in r.reason for r in rows):
+        return f"{head}: {drawn}; {DONE}, no model call"
+    return (f"{head}: {drawn}; {count['ok']} ok, {count['failed']} failed, {count['skipped']} skipped, "
+            f"{count['stopped']} stopped; {count['ok'] + count['failed']} model steps, spent ${spend.run_usd:.4f} "
+            f"this run, ${spend.session_usd:.4f} of ${spend.max_usd:.2f} this session")

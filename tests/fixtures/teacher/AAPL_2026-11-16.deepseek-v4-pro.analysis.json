@@ -1,0 +1,151 @@
+{
+ "analysis_id": "an_52eb75ab6eda4d8b",
+ "ticker": "AAPL",
+ "session": "2026-11-16",
+ "created_at": "2026-11-17T04:58:55.549025Z",
+ "run_id": "run_eb51f212e41c4dbb",
+ "snapshot": {
+  "ticker": "AAPL",
+  "session": "2026-11-16",
+  "values": {
+   "close": 352.78,
+   "sma_20": 346.64225,
+   "sma_50": 339.6925,
+   "sma_200": 301.719375,
+   "ema_9": 350.86285928931477,
+   "ema_21": 346.86202900190267,
+   "rsi_14": 56.999820696972385,
+   "atr_14": 8.045664467165874,
+   "atr_pct": 2.280646427565586,
+   "rel_volume": 1.2174205672853229,
+   "high_20": 360.83,
+   "low_20": 325.33,
+   "gap_pct": 0.23998652707216947,
+   "nr7": 0.0,
+   "vwap_session": 353.44043558319976,
+   "dist_sma_20_atr": 0.7628642761636363,
+   "dist_sma_50_atr": 1.6266524726962812,
+   "dist_sma_200_atr": 6.346352772773076,
+   "dist_high_20_atr": -1.0005388657272287,
+   "dist_low_20_atr": 3.41177538685868
+  },
+  "levels": [
+   {
+    "price": 333.35270145989335,
+    "kind": "hvn",
+    "strength": 2.7153174780447804,
+    "distance_atr": 2.414629471486024
+   },
+   {
+    "price": 343.40978204385067,
+    "kind": "hvn",
+    "strength": 3.084510341347315,
+    "distance_atr": 1.1646294714860277
+   },
+   {
+    "price": 338.7,
+    "kind": "pivot_low",
+    "strength": 1.0,
+    "distance_atr": 1.750010835955198
+   },
+   {
+    "price": 325.81,
+    "kind": "pivot_low",
+    "strength": 1.0,
+    "distance_atr": 3.3521159265420235
+   },
+   {
+    "price": 360.83,
+    "kind": "high_20",
+    "strength": 1.0,
+    "distance_atr": -1.0005388657272287
+   },
+   {
+    "price": 325.33,
+    "kind": "low_20",
+    "strength": 1.0,
+    "distance_atr": 3.41177538685868
+   }
+  ],
+  "congestion": null,
+  "regime": "bull-high",
+  "bars_source_id": "src_7db69ef4288c40b3",
+  "code_version": "indicators-1"
+ },
+ "claims": [
+  {
+   "claim_id": "cl_59e83211dd7e41d1",
+   "analysis_id": "an_52eb75ab6eda4d8b",
+   "text": "AAPL closed the session at {value} USD on 2026-11-16.",
+   "tag": "fact",
+   "value": 352.78,
+   "unit": "USD",
+   "source_ids": [
+    "src_3737a7c770eb2194"
+   ],
+   "derived_from": [],
+   "steps": null
+  },
+  {
+   "claim_id": "cl_bedac391680d4187",
+   "analysis_id": "an_52eb75ab6eda4d8b",
+   "text": "The distance from the close to the sma_200 was {value} ATR.",
+   "tag": "fact",
+   "value": 6.34635,
+   "unit": "ATR",
+   "source_ids": [
+    "src_9ea38056ede57021"
+   ],
+   "derived_from": [],
+   "steps": null
+  },
+  {
+   "claim_id": "cl_b0c6e6610a2c424a",
+   "analysis_id": "an_52eb75ab6eda4d8b",
+   "text": "The session's relative volume was {value}x, indicating turnover above the usual level.",
+   "tag": "fact",
+   "value": 1.21742,
+   "unit": "x",
+   "source_ids": [
+    "src_975106b2d3d70129"
+   ],
+   "derived_from": [],
+   "steps": null
+  },
+  {
+   "claim_id": "cl_a9bbe3a543944163",
+   "analysis_id": "an_52eb75ab6eda4d8b",
+   "text": "The Volume-Weighted Average Price (vwap_session) was {value} USD.",
+   "tag": "fact",
+   "value": 353.44,
+   "unit": "USD",
+   "source_ids": [
+    "src_9a865eda1165db9a"
+   ],
+   "derived_from": [],
+   "steps": null
+  },
+  {
+   "claim_id": "cl_5d0421ad82c84222",
+   "analysis_id": "an_52eb75ab6eda4d8b",
+   "text": "The close settled slightly below the session's VWAP, suggesting mild intraday selling pressure.",
+   "tag": "inference",
+   "value": null,
+   "unit": null,
+   "source_ids": [],
+   "derived_from": [
+    "cl_59e83211dd7e41d1",
+    "cl_a9bbe3a543944163"
+   ],
+   "steps": "Compared close to vwap_session: 352.78 < 353.44."
+  }
+ ],
+ "input_hash": "sha256:342567c15d797b2023e480e544d661771e4ba76708328f765f9b1e536b2a80e4",
+ "prompt_version": "analyze-1",
+ "model": "deepseek/deepseek-v4-pro",
+ "arm": "teacher",
+ "sample_trace_id": "trace_c82cb21e4135462e",
+ "provider_route": "openrouter:deepinfra/fp8/flex",
+ "terms_class": "trainable",
+ "context_tokens": 1894
+}

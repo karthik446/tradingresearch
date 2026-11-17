@@ -1,0 +1,10 @@
+{
+ "model": "g6c/no-such-teacher",
+ "status": 400,
+ "body": {
+  "error": {
+   "message": "g6c/no-such-teacher is not a valid model ID",
+   "code": 400
+  }
+ }
+}
