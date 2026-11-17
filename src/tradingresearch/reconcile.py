@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 import exchange_calendars as xcals
 import pandas as pd
@@ -22,7 +22,7 @@ from gigai_core import CoreModel
 
 from .costs import Costs, cost_r
 from .hashing import digest
-from .records import Event, EventReason, OutcomeGrade, State, Thesis
+from .records import RULES_VERSION, Event, EventReason, OutcomeGrade, State, Thesis
 from .sessions import NY
 
 MinuteBars = Callable[[date], pd.DataFrame | None]
@@ -70,7 +70,14 @@ def settle(
     rules_version: str,
     costs: Costs = Costs(),
 ) -> Settlement:
-    """New events for `subject` (its recorded events are a prefix of the replay) and the grade once CLOSED."""
+    """New events for `subject` (its recorded events are a prefix of the replay) and the grade once CLOSED.
+
+    Only the rules this module implements are stamped: a `rules_version` other than `records.RULES_VERSION` is refused.
+    Accepted reading (SPIKE silent): a stop entry whose open gaps beyond the target fills at that open, and the target
+    then exits on the next bar at its open, a small win from a stop/entry/target order the thesis rules forbid.
+    """
+    if rules_version != RULES_VERSION:
+        raise ValueError(f"reconcile implements {RULES_VERSION}, not {rules_version}")
     path = _Path(subject, daily_bars, minute_bars_for, calendar)
     path.run()
     replay = [_event(subject.thesis_id, step, rules_version) for step in path.steps]
@@ -141,6 +148,9 @@ class _Path:
             opens, closes = (_utc(x) for x in (self.cal.session_open(ts), self.cal.session_close(ts)))
             if closes <= self.s.entry.window_start:
                 continue
+            if self.state == "PROPOSED" and opens >= self.s.entry.window_end:
+                self._step("EXPIRED", "window_missed", self.s.entry.window_end, None)  # §6.5: nothing after the window
+                return
             row = self.daily.get(session)
             if row is None:
                 self.notes.append(f"no daily bar for {session}; settling waits there")
@@ -155,13 +165,13 @@ class _Path:
                 if self.state == "PROPOSED" and self.s.entry.window_end <= closes:
                     self._step("EXPIRED", "window_missed", self.s.entry.window_end, None)
             elif self.state == "OPEN":
-                self._daily_open(session, bar)
+                self._daily_open(session, bar, closes)
             if self.state not in ("PROPOSED", "OPEN"):
                 return
 
     def _step(self, state: State, reason: EventReason, at: datetime, price: float | None) -> None:
         self.state = state
-        self.steps.append(Transition(state, reason, at, None if price is None else self.d * price))
+        self.steps.append(Transition(state, reason, at.astimezone(UTC), None if price is None else self.d * price))
 
     # -- before entry (§6.3 entries, §6.5) ------------------------------------------------------------------------
 
@@ -224,6 +234,9 @@ class _Path:
                 return
 
     def _minute_before_entry(self, session: date, bar: Bar, day: bool) -> None:
+        if bar.o <= self.stop:  # the open is the first price: the stop was reached before any entry could fill
+            self._step("CANCELLED", "pre_entry_stop", bar.t, None)
+            return
         fill = self._entry_fill(bar)
         if fill is None:
             if bar.l <= self.stop:
@@ -234,10 +247,11 @@ class _Path:
         price, reason = fill
         self._open(session, bar.t, price, reason)
         kind = self.s.entry.kind
+        high = price if kind == "limit" else min(bar.h, self.target)  # rule 4: the target came before the entry
         if bar.l <= self.stop:  # rule 3: entry, then stop, worst case; rule 4: no target on the entry bar
-            self._close("stop", min(self.stop, bar.o), bar.t, hi=bar.h if kind != "limit" else price)
+            self._close("stop", min(self.stop, bar.o), bar.t, hi=high)
             return
-        self._extend(price if kind == "stop" else bar.l, price if kind == "limit" else bar.h)
+        self._extend(price if kind == "stop" else bar.l, high)
         if day and bar.c < self.invalid:
             self.pending_invalidation = True
 
@@ -260,7 +274,7 @@ class _Path:
 
     # -- daily path while OPEN (short and swing; §6.2, §6.4 rules 1 and 5) ----------------------------------------
 
-    def _daily_open(self, session: date, bar: Bar) -> None:
+    def _daily_open(self, session: date, bar: Bar, closes: datetime) -> None:
         if self.pending_invalidation:
             self._close("invalidated", bar.o, bar.t, lo=bar.o, hi=bar.o)
             return
@@ -274,7 +288,7 @@ class _Path:
         else:
             self._extend(bar.l, bar.h)
             if session == self.exit_session:
-                self._close("time_exit", bar.c, bar.t)
+                self._close("time_exit", bar.c, closes)  # the price is that session's close, so is the time
             elif bar.c < self.invalid:
                 self.pending_invalidation = True
 

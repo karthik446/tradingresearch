@@ -10,11 +10,11 @@ import pytest
 from factories import event, thesis
 from tradingresearch import reconcile
 from tradingresearch.costs import Costs
-from tradingresearch.records import EntryRule, Event, Thesis
+from tradingresearch.records import RULES_VERSION, EntryRule, Event, Thesis
 from tradingresearch.sessions import NY, xnys
 
 FIXTURES = json.loads((Path(__file__).parent / "fixtures" / "reconcile" / "bars.json").read_text())
-RULES = "rules-test"
+RULES = RULES_VERSION
 MIRROR = 200.0  # a short case is its long case with every price p written as 200 - p
 D1, D2, D3, D4 = date(2026, 11, 16), date(2026, 11, 17), date(2026, 11, 18), date(2026, 11, 19)
 BOTH = pytest.mark.parametrize("d", [1, -1], ids=["long", "short"])
@@ -171,13 +171,27 @@ def test_exit_target_gap(d):
     assert steps(result)[1] == ("CLOSED", "target", ny(D2, "09:30"), px(107.0, d))
 
 
+@BOTH
+def test_entry_stop_touch_fills(d):
+    """§6.3 row 'Entry stop': high >= trigger is inclusive, so a touch (high == 101) fills at the trigger."""
+    result, _ = settle("entry_stop_touch", subject(d), d)
+    assert steps(result) == [("OPEN", "entry_fill", ny(D1, "11:00"), px(101.0, d))]
+
+
+@BOTH
+def test_exit_stop_touch_exits(d):
+    """§6.3 row 'Stop': low <= stop is inclusive, so a touch (low == 98) exits at the stop."""
+    result, _ = settle("exit_stop_touch", subject(d), d)
+    assert steps(result)[1] == ("CLOSED", "stop", ny(D2, "09:30"), px(98.0, d))
+
+
 # -- §6.2 time exits and invalidation -----------------------------------------------------------------------------
 
 
 def test_time_exit_short():
     """§6.2 'Time exit' short: the close of the session hold_sessions (3) after the OPEN session."""
     result, _ = settle("time_exit_short", subject(hold=3))
-    assert steps(result)[1] == ("CLOSED", "time_exit", ny(D4, "09:30"), 102.6)
+    assert steps(result)[1] == ("CLOSED", "time_exit", ny(D4, "16:00"), 102.6)  # stamped at the close it is priced at
     assert result.outcome.sessions_held == 3
 
 
@@ -185,7 +199,7 @@ def test_time_exit_swing_over_holiday():
     """§6.2 'Time exit' swing: 5 sessions counted with XNYS skip Thanksgiving (11-26); exit on the 11-27 early close."""
     day = date(2026, 11, 19)
     result, _ = settle("time_exit_swing_holiday", subject(horizon="swing", hold=5, day=day))
-    assert steps(result)[1] == ("CLOSED", "time_exit", ny(date(2026, 11, 27), "09:30"), 102.4)
+    assert steps(result)[1] == ("CLOSED", "time_exit", ny(date(2026, 11, 27), "13:00"), 102.4)
     assert result.outcome.sessions_held == 5
     assert result.notes == ()  # the holiday has no bar and is not reported missing
 
@@ -227,8 +241,27 @@ def test_invalidation_stop_takes_precedence():
 def test_invalidation_time_exit_takes_precedence():
     """§6.3 'Invalidation exit': when the signal bar is the time-exit bar, the time exit applies."""
     result, _ = settle("invalidation_time_exit_first", subject(hold=2))
-    assert steps(result)[1] == ("CLOSED", "time_exit", ny(D3, "09:30"), 98.7)
+    assert steps(result)[1] == ("CLOSED", "time_exit", ny(D3, "16:00"), 98.7)
     assert result.outcome.cost_bps == 6.0
+
+
+def test_invalidation_minute_stop_takes_precedence():
+    """§6.3 'Invalidation exit' on the 1-minute path (day): the stop hit inside the signal bar wins."""
+    result, _ = settle("minute_invalidation_stop_first", subject(horizon="day"))
+    assert steps(result)[1] == ("CLOSED", "stop", ny(D1, "10:00"), 98.0)
+
+
+def test_invalidation_minute_time_exit_takes_precedence():
+    """§6.3 'Invalidation exit' on the 1-minute path (day): a signal on the 15:54 bar is the time exit."""
+    result, _ = settle("minute_invalidation_time_exit_first", subject(horizon="day"))
+    assert steps(result)[1] == ("CLOSED", "time_exit", ny(D1, "15:54"), 98.8)
+    assert result.outcome.cost_bps == 6.0
+
+
+def test_invalidation_signalled_by_entry_day_close():
+    """§6.2 'Invalidation' short/swing: the entry day's own daily close can be the signal bar."""
+    result, _ = settle("entry_day_invalidation", subject())
+    assert steps(result)[1] == ("CLOSED", "invalidated", ny(D2, "09:30"), 98.6)
 
 
 # -- §6.4 same-bar rules ------------------------------------------------------------------------------------------
@@ -239,6 +272,12 @@ def test_same_bar_rule1_daily_walks_minutes():
     result, minutes = settle("same_bar_daily", subject())
     assert steps(result)[1] == ("CLOSED", "target", ny(D2, "11:00"), 106.0)
     assert minutes.asked == [D1, D2]  # the entry day and the ambiguous day only
+
+
+def test_same_bar_rule1_minutes_say_stop_first():
+    """§6.4 rule 1: stop and target in one daily bar, and the 1-minute bars reach the stop first → stop."""
+    result, _ = settle("same_bar_daily_stop_first", subject())
+    assert steps(result)[1] == ("CLOSED", "stop", ny(D2, "10:00"), 98.0)
 
 
 def test_same_bar_rule2_minute_is_stop():
@@ -262,6 +301,8 @@ def test_same_bar_rule4_entry_then_target_needs_later_bar():
     assert steps(result) == [
         ("OPEN", "entry_fill", ny(D1, "09:45"), 101.0), ("CLOSED", "target", ny(D1, "09:46"), 106.0),
     ]
+    # MFE: the entry bar's high is capped at the target (rule 4 puts the target before the entry); exit at 106
+    assert result.outcome.mfe_r == pytest.approx((106.0 - 101.0) / abs(101.0 - 98.0))
 
 
 def test_same_bar_rule5_missing_minutes_is_stop():
@@ -282,6 +323,31 @@ def test_before_entry_stop_cancels():
     assert minutes.asked == []
 
 
+@BOTH
+@pytest.mark.parametrize(("case", "kind", "entry"), [
+    ("pre_entry_gap_limit_at_stop", "limit", 100.0),
+    ("pre_entry_gap_limit_below_stop", "limit", 100.0),
+    ("pre_entry_gap_stop_entry", "stop", 101.0),
+])
+def test_before_entry_open_through_stop_cancels(d, case, kind, entry):
+    """§6.5: a window bar that opens at or through the stop reached it before any fill → CANCELLED pre_entry_stop."""
+    result, _ = settle(case, subject(d, kind=kind, entry=entry), d)
+    assert steps(result) == [("CANCELLED", "pre_entry_stop", ny(D1, "09:30"), None)]
+    assert result.outcome is None
+
+
+def test_before_entry_minute_stop_cancels():
+    """§6.5 on the 1-minute path (day): a 1-minute low at the stop before the entry → CANCELLED pre_entry_stop."""
+    result, _ = settle("day_pre_entry_stop", subject(horizon="day"))
+    assert steps(result) == [("CANCELLED", "pre_entry_stop", ny(D1, "09:45"), None)]
+
+
+def test_before_entry_minute_invalidation_cancels():
+    """§6.5 on the 1-minute path (day): a 1-minute close beyond invalidation before the entry → CANCELLED."""
+    result, _ = settle("day_pre_entry_invalidated", subject(horizon="day"))
+    assert steps(result) == [("CANCELLED", "invalidated", ny(D1, "09:45"), None)]
+
+
 def test_before_entry_invalidation_cancels():
     """§6.5: invalidation (a daily close beyond it, short horizon) before the entry → CANCELLED invalidated."""
     result, _ = settle("pre_entry_invalidated", subject())
@@ -295,6 +361,14 @@ def test_before_entry_window_missed_expires():
     assert early.events == ()
     result, _ = settle("window_missed", th)
     assert steps(result) == [("EXPIRED", "window_missed", ny(D2, "16:00"), None)]
+
+
+def test_before_entry_nothing_after_window_end():
+    """§6.5: a session opening at or after window_end expires the subject before any pre-entry check reads it."""
+    end = ny(D2, "09:00")  # the window ends before the next open; that session would otherwise be pre_entry_stop
+    result, minutes = settle("window_end_after_close", subject(end=end))
+    assert steps(result) == [("EXPIRED", "window_missed", end, None)]
+    assert minutes.asked == []
 
 
 def test_before_entry_data_missing_cancels():
@@ -342,6 +416,24 @@ def test_deterministic():
     second, _ = settle("exit_target", th)
     assert first == second
     assert all(e.rules_version == RULES for e in first.events)
+
+
+def test_refuses_other_rules_version():
+    """§6 intro: events carry the rules that made them, so a caller cannot stamp other rules on rules-1 logic."""
+    daily, minutes = bars("exit_target")
+    with pytest.raises(ValueError, match="rules-2"):
+        reconcile.settle(subject(), (), daily, minutes, xnys(), "rules-2")
+
+
+def test_ids_do_not_depend_on_the_timezone_offset():
+    """§6 intro determinism: the same window written with a New York offset gives the same event ids."""
+    th = subject(kind="limit", entry=100.0)
+    entry = th.entry.model_copy(update={"window_start": th.entry.window_start.astimezone(NY),
+                                        "window_end": th.entry.window_end.astimezone(NY)})
+    utc, _ = settle("entry_limit_touch", th)
+    offset, _ = settle("entry_limit_touch", th.model_copy(update={"entry": entry}))
+    assert [e.event_id for e in offset.events] == [e.event_id for e in utc.events]
+    assert offset.events[0].at.utcoffset().total_seconds() == 0
 
 
 def test_idempotent_feedback():
