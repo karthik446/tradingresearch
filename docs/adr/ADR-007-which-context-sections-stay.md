@@ -36,9 +36,11 @@ What the sample holds before any call (`tr news` for all 20 ticker-days, then th
   a section no claim cites gets no score, so their n differs by arm and they are not paired); input tokens, cost and
   latency per item.
 
-Note added after the run (the registration above is unchanged): `tr exp compare` does not exist; `tr exp run` is the
-only `exp` command and it prints the paired comparison itself. In this run it refused both comparisons, so the
-intervals below were computed outside `tr exp run` with the same gigai-core `compare` (see Result).
+Note added after the run (the registration above is unchanged): `tr exp compare` did not exist when this was
+registered, and `tr exp run` refused both comparisons (a drop arm cannot score its dropped section's grader), so the
+intervals below were computed outside `tr exp run` with the same gigai-core `compare`. Both gaps were then fixed
+(`tr exp compare RUN_A RUN_B` exists; graders one arm cannot score are skipped with a printed reason), and the
+numbers below match that command's output on the same stored runs.
 
 **Result.** One run, `TR_DATA_DIR=$PWD/data-dev uv run tr exp run experiments/context-ablation.toml` on 2026-11-17,
 `anthropic/claude-sonnet-5.5`, prompt analyze-3, cap $1.00 per arm: full `run_c32ea07781a54982`, no-headlines
