@@ -1,0 +1,55 @@
+{
+  "id": "gen-1794910539-rcdMSvrGI752JOeg5Iy8",
+  "object": "chat.completion",
+  "created": 1794910539,
+  "model": "anthropic/claude-sonnet-5.5",
+  "provider": "Google",
+  "system_fingerprint": null,
+  "service_tier": null,
+  "choices": [
+    {
+      "index": 0,
+      "logprobs": null,
+      "finish_reason": "stop",
+      "native_finish_reason": "end_turn",
+      "message": {
+        "role": "assistant",
+        "content": "{\"claims\":[{\"id\":\"c1\",\"tag\":\"fact\",\"text\":\"FAKEA closed the session at {value}.\",\"value\":101.4,\"unit\":\"USD\",\"source_ids\":[\"src_98651de31e6271aa\"],\"derived_from\":[],\"steps\":null},{\"id\":\"c2\",\"tag\":\"fact\",\"text\":\"The sma_20 stands at {value}.\",\"value\":98.75,\"unit\":\"USD\",\"source_ids\":[\"src_4cb0b4e2917174f1\"],\"derived_from\":[],\"steps\":null},{\"id\":\"c3\",\"tag\":\"fact\",\"text\":\"The sma_200 stands at {value}.\",\"value\":88.9,\"unit\":\"USD\",\"source_ids\":[\"src_b2c76d99962d70fc\"],\"derived_from\":[],\"steps\":null},{\"id\":\"c4\",\"tag\":\"inference\",\"text\":\"The close is above both sma_20 and sma_200, which is consistent with an established uptrend across short and long horizons.\",\"value\":null,\"unit\":null,\"source_ids\":[],\"derived_from\":[\"c1\",\"c2\",\"c3\"],\"steps\":\"Comparing the close in c1 with sma_20 in c2 and sma_200 in c3 shows it is higher than both averages.\"},{\"id\":\"c5\",\"tag\":\"fact\",\"text\":\"The high_20 is {value}.\",\"value\":102.1,\"unit\":\"USD\",\"source_ids\":[\"src_7f4d62f55353a80f\"],\"derived_from\":[],\"steps\":null},{\"id\":\"c6\",\"tag\":\"fact\",\"text\":\"The close is {value} ATR from high_20, where a negative value means below it.\",\"value\":-0.32,\"unit\":\"ATR\",\"source_ids\":[\"src_30999799f47d31d5\"],\"derived_from\":[],\"steps\":null},{\"id\":\"c7\",\"tag\":\"inference\",\"text\":\"The close sits just below high_20, within a fraction of one ATR, so price is testing the top of its recent range without having broken above it.\",\"value\":null,\"unit\":null,\"source_ids\":[],\"derived_from\":[\"c1\",\"c5\",\"c6\"],\"steps\":\"The close in c1 is under high_20 in c5, and the distance in c6 is less than one ATR.\"},{\"id\":\"c8\",\"tag\":\"fact\",\"text\":\"The rsi_14 reads {value}.\",\"value\":61.3,\"unit\":\"index\",\"source_ids\":[\"src_e80e4812c8cf9f6d\"],\"derived_from\":[],\"steps\":null},{\"id\":\"c9\",\"tag\":\"fact\",\"text\":\"Relative volume (rel_volume) was {value} times its norm in this session.\",\"value\":1.45,\"unit\":\"x\",\"source_ids\":[\"src_576c0033eee0f1b2\"],\"derived_from\":[],\"steps\":null},{\"id\":\"c10\",\"tag\":\"fact\",\"text\":\"A fakewire headline reports that Example Securities raised its FakeA price target, citing robot demand.\",\"value\":null,\"unit\":null,\"source_ids\":[\"src_7775b3df69308b50\"],\"derived_from\":[],\"steps\":null},{\"id\":\"c11\",\"tag\":\"fact\",\"text\":\"The SPY market regime is labelled bull-normal.\",\"value\":null,\"unit\":null,\"source_ids\":[\"src_efa3f8d4561c4f63\"],\"derived_from\":[],\"steps\":null},{\"id\":\"c12\",\"tag\":\"opinion\",\"text\":\"The technical picture looks constructive, but a decisive close above the recent high would be needed to confirm strength; this is educational research and not investment advice.\",\"value\":null,\"unit\":null,\"source_ids\":[],\"derived_from\":[],\"steps\":null}]}",
+        "refusal": null,
+        "reasoning": "I need to put together 6 to 12 claims as a single-line JSON. The sources table shows Q3 revenue of 1.95B, but the passage gives total net revenue as $4,255 million, so those conflict. I'm leaning toward relying on the table and leaving out the conflicting passage. The first passage also contains some odd \"FUTURELEAK\" text, and I'm unsure whether it's a properly cited chunk, so I'm inclined to skip it.\n\nI'm drafting the claims one at a time: the close, the 20-day and 200-day moving averages, and an uptrend inference built from them. Next come the 20-day high with its distance in ATR and a breakout inference from that, followed by RSI and relative volume. I'm dropping any headline claim that would need digits in its text, since those digits would break the format.\n\nI'm settling on a set of about twelve claims, where the last one is a non-digit opinion. Some candidates for the inference claims, using RSI and relative volume, are still open, and I'm checking how the list might be counted.\n\nI'm checking the twelve claims' text for digits, since the headline claim can't include any and the opinion claim has to stay clean. For the close, distance-to-high, and the rest, I'm keeping the numbers as placeholders filled from the value fields. The text for the distance claim will read the close as a number of ATRs from high_20, with negative meaning below. Digits inside indicator names like high_20 are fine.\n\n",
+        "reasoning_details": [
+          {
+            "type": "reasoning.text",
+            "text": "I need to put together 6 to 12 claims as a single-line JSON. The sources table shows Q3 revenue of 1.95B, but the passage gives total net revenue as $4,255 million, so those conflict. I'm leaning toward relying on the table and leaving out the conflicting passage. The first passage also contains some odd \"FUTURELEAK\" text, and I'm unsure whether it's a properly cited chunk, so I'm inclined to skip it.\n\nI'm drafting the claims one at a time: the close, the 20-day and 200-day moving averages, and an uptrend inference built from them. Next come the 20-day high with its distance in ATR and a breakout inference from that, followed by RSI and relative volume. I'm dropping any headline claim that would need digits in its text, since those digits would break the format.\n\nI'm settling on a set of about twelve claims, where the last one is a non-digit opinion. Some candidates for the inference claims, using RSI and relative volume, are still open, and I'm checking how the list might be counted.\n\nI'm checking the twelve claims' text for digits, since the headline claim can't include any and the opinion claim has to stay clean. For the close, distance-to-high, and the rest, I'm keeping the numbers as placeholders filled from the value fields. The text for the distance claim will read the close as a number of ATRs from high_20, with negative meaning below. Digits inside indicator names like high_20 are fine.\n\n",
+            "format": "anthropic-claude-v1",
+            "index": 0,
+            "signature": "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.eyJlbmRwb2ludF9zbHVnIjoiYW50aHJvcGljL2NsYXVkZS1zb25uZXQtNS41LTIwMjYwOTI4fGdvb2dsZS12ZXJ0ZXgvZ2xvYmFsIn0"
+          }
+        ]
+      }
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 3373,
+    "completion_tokens": 2136,
+    "total_tokens": 5509,
+    "cost": 0.028106,
+    "is_byok": false,
+    "prompt_tokens_details": {
+      "cached_tokens": 0,
+      "cache_write_tokens": 0,
+      "audio_tokens": 0,
+      "video_tokens": 0
+    },
+    "cost_details": {
+      "upstream_inference_cost": 0.028106,
+      "upstream_inference_prompt_cost": 0.006746,
+      "upstream_inference_completions_cost": 0.02136
+    },
+    "completion_tokens_details": {
+      "reasoning_tokens": 997,
+      "image_tokens": 0,
+      "audio_tokens": 0
+    }
+  }
+}

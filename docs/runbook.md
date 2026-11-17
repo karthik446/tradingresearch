@@ -555,3 +555,20 @@ uv sync                                         # back to the base install; BM25
   ticker, session, mode, k, index digest, the filled query and its template, the chunks as ordered
   `[chunk_id, sha256, score]` and the number of documents hidden as future. Opening an older journal adds the table
   and changes nothing else.
+
+### Week 6 contract
+
+`uv run pytest tests/test_week6.py -q` is the week-6 contract. It passes when `docs/retrieval-scoping.md`, 30
+labelled queries in `evals/retrieval_query.jsonl`, the `citation_accuracy` grader, `evals/specs/citation_accuracy.md`,
+`experiments/retrieval.toml` (no passages vs `hybrid` k 5) and `docs/adr/ADR-009-retrieval-design.md` exist and match
+it. The gold-quote test reads the newest index under `$TR_DATA_DIR/retrieval/` (else `data/retrieval/`) and, with
+none there, names the `uv run tr retrieval build --ticker ...` command to run.
+
+- **Citation accuracy** asks whether the source a claim cites supports it
+  (https://arxiv.org/abs/2305.14627). Here the citation is the chunk id in `source_ids` and the quote is that chunk's
+  text: analyze-3 claims have no quote field, and digits in a claim's text fail `number_in_text`. A claim is supported
+  when every chunk it cites was retrieved for it and its `value` appears in a cited chunk within 0.5%. A judge for
+  what filing-prose claims say is a later variant, not in this contract.
+- **Recorded exchange.** The fixed checks replay one real analyze-3 call with three BM25 passages from the invented
+  FAKEA filings (`tests/fixtures/week6/`, run run_e41138c0dd4a45e0, $0.028106; no key, no spend). Its 12 claims all
+  pass `claims_valid` and none cites a passage.

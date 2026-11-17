@@ -1,0 +1,31 @@
+{
+  "now": "2026-11-17T15:00:00+00:00",
+  "ticker": "FAKEA",
+  "as_of": "2026-11-13",
+  "mode": "bm25",
+  "k": 3,
+  "index_digest": "sha256:9b2284aecfb27c07d30260f9b0007afc97b7c395defde7fd7a43b8fdae7bb20f",
+  "query": "FAKEA quarterly results: revenue, earnings, guidance, outlook and risks",
+  "query_template": "{ticker} quarterly results: revenue, earnings, guidance, outlook and risks",
+  "masked_docs": 0,
+  "passages": [
+    {
+      "chunk_id": "0009999999-26-000103/fakea-8k_20261106.htm#0",
+      "sha256": "c84a4c279cf3063f8607f0108705f45751bfccdea5af70e41a556f06169f33bc",
+      "score": 3.651502,
+      "text": "Item 2.02 Results of Operations and Financial Condition.\nOn November 6, 2026, FakeA Inc. announced a voluntary recall of the Gizmo line and lowered its fourth quarter Gizmo revenue outlook. FUTURELEAK Gizmo recall Gizmo recall Gizmo recall."
+    },
+    {
+      "chunk_id": "0009999999-26-000101/fakea-ex991.htm#1",
+      "sha256": "4505b9941b06ff608a3e7959c9054c80dd4134f00c185efbe4a75665cdb7232b",
+      "score": 2.582526,
+      "text": "Condensed consolidated statements of operations (unaudited)\n(in millions, except per-share amounts) | Three Months Ended\nSeptember 30, 2026 | September 30, 2025\n2026 | 2025\nWidget revenue | $3,210 | $2,816\nService revenue | 1,045 | 990\nTotal net revenue | $4,255 | $3,806\nOperating income | 912 | 804\nRestructuring charges | (45) | (12)\nNet income | $701 | $633\nDiluted earnings per share | $1.23 | $1.10\nGross margin | 41.2% | 39.8%\nAbout FakeA. FakeA Inc. makes widgets and gizmos. This release is invented for software tests."
+    },
+    {
+      "chunk_id": "0009999999-26-000102/fakea-20260930.htm#0",
+      "sha256": "24047452e8eb608467fac1fefbdd39543d345446832e3b4e6a4784c126692ee6",
+      "score": 1.402459,
+      "text": "FORM 10-Q\nItem 2. Management's Discussion and Analysis of Financial Condition and Results of Operations\nFakeA Inc. operates in the U.S. and Canada. Revenue rose in Sep. as Gizmo demand held up. Service revenue grew 6% to $1,045 million, helped by No. 2 plant upgrades. Cash and cash equivalents were $2,980 million at September 30, 2026. Is the backlog growing? Yes. Backlog reached $5.1 billion.\nCondensed consolidated balance sheets"
+    }
+  ]
+}
