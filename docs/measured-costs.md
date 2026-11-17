@@ -1,0 +1,149 @@
+# Measured costs (week 3)
+
+SPIKE §9.2 budgeted every model step from token *estimates* (labelled INFERENCE there). This page replaces them with
+measured usage: each call's tokens and cost as OpenRouter returned them in `usage` (its usage accounting:
+https://openrouter.ai/docs/use-cases/usage-accounting), stored in the run file `data/runs/<run_id>.jsonl` and summed
+by `tr usage` (ADR-004 says what else a run file holds). Models: analyze and thesis run on
+`anthropic/claude-sonnet-5.5` (`DEFAULT_MODEL` in `analyze.py` and `thesis.py`), the judge on `openai/gpt-6-sol`
+(`JUDGE_MODEL` in `evals.py`, ADR-003). Both cost $2 per million input tokens and $10 per million output tokens, the
+prices SPIKE §9.2 used: HD's analyze call is 2,617 × $2/1e6 + 1,269 × $10/1e6 = $0.017924, its recorded cost, and
+`tests/fixtures/week3/models.json` lists the judge's prices.
+
+All measured rows come from the pre-launch dev run of 2026-11-16 and the calls around it. No live session has run
+yet (the live stream starts 2026-11-17), so there is no live cost per day; `tr report` prints `cost per tr daily
+run: no run recorded`.
+
+## Per step
+
+| Step | SPIKE §9.2 estimate | Measured | Measured ÷ estimate | Run ids |
+|---|---|---|---|---|
+| analyze, per ticker | 12,000 in / 2,000 out, $0.044 | mean of 5: 2,558.2 in / 1,193.6 out, $0.017052 (range $0.016208–$0.017924), mean latency 8,968 ms | cost 0.388; in 0.213, out 0.597 | run_3dbc0fb8a2dd433e (HD), run_e175b4239cc842e6 (JPM), run_b1d62689388040ee (KO), run_e1127b53ceef42c8 (AMZN), run_ad8e86350f1e43ae (XOM) |
+| thesis, per ticker | 8,000 in / 1,500 out, $0.031 | mean of 5: 4,025.2 in / 1,276.4 out, $0.020814 (range $0.014856–$0.024198), mean latency 11,345 ms | cost 0.671; in 0.503, out 0.851 | run_ead2a5c981504849 (HD), run_bf90bfa5be2d4a28 (JPM), run_ce0a471158284c2a (KO), run_0225d8fcd3d94d29 (AMZN), run_cb7c0a237cd349b0 (XOM) |
+| judge, per closed trade | 4,000 in / 500 out, $0.013 | 1 call: 1,558 in / 127 out, $0.005163, latency 4,350 ms; **a synthetic trade (FAKEA), not a live closed trade** | cost 0.397; in 0.390, out 0.254 | run_54953ec7ce484649 |
+| daily, one `tr daily` run (analyze + thesis per shortlisted name) | shortlist 5: 5 × $0.075 = $0.375 (decided shortlist 10: $0.75) | **pre-launch dev run**, shortlist 5: $0.189334 = $0.085262 analyze + $0.104072 thesis; screen and reconcile $0 | 0.505 against shortlist 5 | dy_4c43ee70dec141a7 |
+| learn, per week | 20,000 in / 3,000 out, $0.070 | not measured: no learn run exists in `data/runs` | — | — |
+
+How each row was chosen:
+- **analyze, thesis**: the 10 paid calls of `dy_4c43ee70dec141a7`, the only `tr daily` run that called a model,
+  all on `anthropic/claude-sonnet-5.5`. Its sixth name, AAPL, was skipped as `already done
+  (an_17f4a186735341a7)`: that analysis (`run_e72cabf720f94350`, $0.016488) and its thesis (`run_a85bcf2b033f48d7`,
+  $0.019518) were made by hand before the run, and are left out so that the means are one run's calls.
+- **judge**: no live trade has closed, so `tr grade --judge` has not judged one. The one measured judge call is the
+  recording behind `tests/fixtures/week3/judge_request.json` and `judge_reply.json`: the P1 judge prompt on a
+  synthetic FAKEA trade, run once on `openai/gpt-6-sol` with its run file under `data/scratch/g9c/` (git-ignored).
+  Its prompt cost is $0.0038935, not 1,558 × $2/1e6 = $0.003116: 1,555 of the 1,558 input tokens were billed as
+  cache writes at $2.50 per million (`judge_reply.json`, `usage.cost_details` and `prompt_tokens_details`). The 127
+  output tokens include 49 reasoning tokens.
+- **daily**: the estimate counts analyze + thesis per name, as SPIKE §9.2 does, so the measured run compares like
+  for like. Per name: $0.189334 ÷ 5 = $0.037867, against $0.075. At the decided shortlist of 10, the same per-name
+  cost gives 10 × $0.037867 = $0.378668 per day; that figure is arithmetic on one dev run, **an estimate**, not a
+  measurement.
+
+## Not in the per-step rows
+
+| Run | Kind | Calls | Cost | Why not a step row |
+|---|---|---|---|---|
+| run_c40caab0968e44a3 | experiment, observe:baseline | 20 | $0.346798 | a `tr experiment` arm (10 tickers × 2 sessions), not the daily loop |
+| run_c5fb0100989a4e0d | experiment, prompt-v2:baseline | 20 | $0.359398 | same |
+| run_537a07e6ec264989 | experiment, prompt-v2:variant | 20 | $0.328348 | same |
+| run_7d0a596b94a44095 | teacher-adapter analyze, KO | 1 | $0.004119 | `deepseek/deepseek-v4-pro` pinned to DeepInfra; the teacher arm is off by default in `tr daily` |
+| run_d0ce65a31baa4ae5 | teacher-adapter analyze, AAPL | 1 | $0.003797 | same |
+| run_33e3b0d8276941f9, run_2cdfc998ac874c5b, run_bb1d8e9cdd464cff, run_10fc0a886ddb42a2 | analyze, AAPL and MSFT 2026-11-13 | 1 each | $0.016008–$0.017304 | hand runs before `tr daily` existed |
+
+The SPIKE §9.2 sanity line (the build-guide pilot, $0.0160–0.0173 per analyze call at about 2,500 in / 1,100 out)
+matches the measured analyze calls. The 12,000-token analyze estimate counted 3,000 tokens of headlines and an
+8-K list; the measured analyze prompt's source rows are indicators, levels and EDGAR facts, with no headline rows
+(read from the trace of `run_3dbc0fb8a2dd433e`).
+
+## The commands and their output
+
+```
+$ uv run tr usage
+run                   kind     arm                 calls  tokens in  tokens out       cost
+run_33e3b0d8276941f9  analyze  -                       1       2496        1123  $0.016222
+run_2cdfc998ac874c5b  analyze  -                       1       2496        1107  $0.016062
+run_bb1d8e9cdd464cff  analyze  -                       1       2534        1094  $0.016008
+run_10fc0a886ddb42a2  analyze  -                       1       2672        1196  $0.017304
+run_c40caab0968e44a3  exp      observe:baseline       20      50754       24529  $0.346798
+run_c5fb0100989a4e0d  exp      prompt-v2:baseline     20      50754       25789  $0.359398
+run_537a07e6ec264989  exp      prompt-v2:variant      20      52854       22264  $0.328348
+run_e72cabf720f94350  analyze  -                       1       2469        1155  $0.016488
+run_a85bcf2b033f48d7  thesis   -                       1       4034        1145  $0.019518
+run_d0ce65a31baa4ae5  analyze  -                       1       1499        1076  $0.003797
+run_3dbc0fb8a2dd433e  analyze  -                       1       2617        1269  $0.017924
+run_e175b4239cc842e6  analyze  -                       1       2680        1156  $0.016920
+run_b1d62689388040ee  analyze  -                       1       2483        1221  $0.017176
+run_e1127b53ceef42c8  analyze  -                       1       2534        1114  $0.016208
+run_ad8e86350f1e43ae  analyze  -                       1       2477        1208  $0.017034
+run_ead2a5c981504849  thesis   -                       1       3948        1387  $0.021766
+run_bf90bfa5be2d4a28  thesis   -                       1       4050        1510  $0.023200
+run_ce0a471158284c2a  thesis   -                       1       4013         683  $0.014856
+run_0225d8fcd3d94d29  thesis   -                       1       3941        1217  $0.020052
+run_cb7c0a237cd349b0  thesis   -                       1       4174        1585  $0.024198
+run_7d0a596b94a44095  analyze  -                       1       1509        1226  $0.004119
+total                                                 78     206988       94054  $1.333396
+openrouter key usage $62.005975
+trace total $1.333396 vs key lifetime $62.005975 (the key also paid for runs outside data/runs, so the key is ≥ the trace total)
+exit 0
+```
+
+Excerpt, the 2026-11-16 call lines (the full output also lists the 60 experiment calls on 2026-11-12 and -13):
+
+```
+$ uv run tr usage --by call --since 2026-11-16
+call                                           calls  tokens in  tokens out       cost  mean latency
+...
+run_e72cabf720f94350 AAPL:2026-11-16               1       2469        1155  $0.016488       7868 ms
+run_a85bcf2b033f48d7 AAPL:2026-11-16:champion      1       4034        1145  $0.019518      11171 ms
+run_d0ce65a31baa4ae5 AAPL:2026-11-16               1       1499        1076  $0.003797      14029 ms
+run_3dbc0fb8a2dd433e HD:2026-11-16                 1       2617        1269  $0.017924       9660 ms
+run_e175b4239cc842e6 JPM:2026-11-16                1       2680        1156  $0.016920       8803 ms
+run_b1d62689388040ee KO:2026-11-16                 1       2483        1221  $0.017176       9661 ms
+run_e1127b53ceef42c8 AMZN:2026-11-16               1       2534        1114  $0.016208       7837 ms
+run_ad8e86350f1e43ae XOM:2026-11-16                1       2477        1208  $0.017034       8881 ms
+run_ead2a5c981504849 HD:2026-11-16:champion        1       3948        1387  $0.021766      14387 ms
+run_bf90bfa5be2d4a28 JPM:2026-11-16:champion       1       4050        1510  $0.023200      11838 ms
+run_ce0a471158284c2a KO:2026-11-16:champion        1       4013         683  $0.014856       6414 ms
+run_0225d8fcd3d94d29 AMZN:2026-11-16:champion      1       3941        1217  $0.020052      11559 ms
+run_cb7c0a237cd349b0 XOM:2026-11-16:champion       1       4174        1585  $0.024198      12525 ms
+run_7d0a596b94a44095 KO:2026-11-16                 1       1509        1226  $0.004119      10842 ms
+total                                             78     206988       94054  $1.333396       9084 ms
+exit 0
+```
+
+```
+$ TR_DATA_DIR=data/scratch/g9c uv run tr usage --by call
+call                                 calls  tokens in  tokens out       cost  mean latency
+run_54953ec7ce484649 FAKEA:p1_judge      1       1558         127  $0.005163       4350 ms
+total                                    1       1558         127  $0.005163       4350 ms
+exit 0
+```
+
+The daily run's cost and steps, from the journal and the scorecard (`--include-pre-live` counts the dev runs; the
+second run, `dy_c5823f6f31ea47b6`, cost $0 because every step was already done, which halves the mean):
+
+```
+$ sqlite3 -readonly data/journal.db "SELECT step, ticker, status, substr(reason,1,110), cost_usd FROM daily_run WHERE daily_id='dy_4c43ee70dec141a7' ORDER BY seq;"
+screen||ok|10 rows, shortlist 5|0.0
+analyze|HD|ok|7 claims, 5 rejected|0.017924
+analyze|JPM|ok|7 claims, 4 rejected|0.01692
+analyze|KO|ok|10 claims, 2 rejected|0.017176
+analyze|AMZN|ok|8 claims, 3 rejected|0.016208
+analyze|XOM|ok|11 claims, 1 rejected|0.017034
+thesis|AAPL|skipped|already done (an_17f4a186735341a7)|0.0
+thesis|HD|ok|accepted 1, no_trade 2, rejected 0|0.021766
+thesis|JPM|ok|accepted 2, no_trade 1, rejected 0|0.0232
+thesis|KO|ok|accepted 0, no_trade 3, rejected 0|0.014856
+thesis|AMZN|ok|accepted 0, no_trade 3, rejected 0|0.020052
+thesis|XOM|ok|accepted 2, no_trade 1, rejected 0|0.024198
+reconcile||ok|reconcile 2026-11-16: 6 subjects, 0 changed, 0 events, 0 teacher outcomes (appended)|0.0
+
+$ uv run tr report --include-pre-live      (last line)
+cost per tr daily run: 2 runs, total $0.189334, mean $0.094667, max $0.189334; teacher steps $0.000000 of the total
+
+$ uv run tr report                          (last line)
+cost per tr daily run: no run recorded
+```
+
+Both `tr report` commands exit 0. `tr usage` reads only the run files on disk (plus one free `GET /key` for the
+key's lifetime spend); none of these commands makes a model call.
