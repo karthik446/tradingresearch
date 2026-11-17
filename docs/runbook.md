@@ -171,6 +171,10 @@ trainable licence (Apache-2.0): `qwen/qwen3.5-397b-a17b` became `qwen/qwen3-235b
 `openai/gpt-oss-120b` became `qwen/qwen3-next-80b-a3b-instruct`, each on its `deepinfra/fp8` endpoint. The swap, the
 runs and the candidates tried are the `[swap.<model>]` tables in that file.
 
+Limitation for the bake-off report (Main, 2026-11-17; a limitation, not a rule change): after the swap two of the three
+arms are Qwen3 models from the same lab, so the comparison mostly measures DeepSeek against Qwen, not three independent
+teachers. The registered rule allowed the swap.
+
 By hand, for one session D:
 
 ```
