@@ -35,6 +35,9 @@ HEADLINE_PROMPTS = ("analyze-3",)  # the prompt versions whose SOURCES table sho
 MAX_HEADLINES = 5  # the latest of one session's news window: ~100 student tokens, and little untrusted text
 HEADLINE_CHARS = 200  # stored Alpaca headlines run 33-77 characters; a longer one is cut
 HEADLINE_NAME = "headline"  # a headline row's name starts with it (masking's `headlines` section)
+# invisible code points outside Cc/Cf: variation selectors 1-16 and 17-256 (each can carry one byte of a hidden
+# payload); the tag block is Cf already, listed so the guard does not rest on the Unicode table version
+INVISIBLE = ((0xFE00, 0xFE0F), (0xE0000, 0xE007F), (0xE0100, 0xE01EF))
 
 
 def system_prompt(version: str) -> str:
@@ -221,10 +224,15 @@ def with_headlines(ctx: Context, data_dir: Path, prompt_version: str, now: datet
     return replace(ctx, headlines=tuple(found[-MAX_HEADLINES:]))
 
 
+def invisible(c: str) -> bool:
+    return unicodedata.category(c) in ("Cc", "Cf") or any(low <= ord(c) <= high for low, high in INVISIBLE)
+
+
 def one_line(text: str, limit: int) -> str:
-    """Third-party text as one plain table cell: control and format characters (newlines, bidi, zero-width) become
-    spaces, `|` and `"` cannot end the cell or its quotes, and the length is capped."""
-    text = "".join(" " if unicodedata.category(c) in ("Cc", "Cf") else c for c in text)
+    """Third-party text as one plain table cell: control, format and invisible characters (newlines, bidi,
+    zero-width, variation selectors, tags) become spaces, `|` and `"` cannot end the cell or its quotes, and the
+    length is capped."""
+    text = "".join(" " if invisible(c) else c for c in text)
     text = " ".join(text.replace("|", "/").replace('"', "'").split())
     return text if len(text) <= limit else text[:limit - 1].rstrip() + "…"
 

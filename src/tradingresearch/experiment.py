@@ -27,7 +27,7 @@ from gigai_core.score import ScoreRecord
 from gigai_core.stats.intervals import MIN_CLUSTERS
 from gigai_core.trace import JsonlTrace, TrialSpan
 
-from . import analyze as an, masking
+from . import analyze as an, masking, news
 from .evals import graders as registry
 from .hashing import new_id
 from .openrouter import Routing
@@ -128,12 +128,29 @@ def drop(path: Path, arm: dict) -> tuple[str, ...]:
 
 
 def headlines(path: Path, arms: tuple[Arm, ...]) -> None:
-    """Fixed arms share one dataset, so they all show headlines (analyze-3) or none; refused before any spend."""
+    """Fixed arms share one dataset, so they all show headlines (analyze-3) or none, and no tool serves headlines, so a
+    tools arm never sits next to a headline prompt (it would differ in more than the config names); refused before
+    any spend."""
     fixed = {arm.name: an.shows_headlines(arm.prompt) for arm in arms if arm.mode == "fixed"}
     if len(set(fixed.values())) > 1:
         shown = [name for name, shows in fixed.items() if shows]
         raise SystemExit(f"{path}: fixed arms {', '.join(shown)} show headlines and the others do not; they share one "
                          f"dataset, so use one kind of prompt ({', '.join(an.HEADLINE_PROMPTS)} or not)")
+    tools = [arm.name for arm in arms if arm.mode == "tools"]
+    if tools and any(an.shows_headlines(arm.prompt) for arm in arms):
+        raise SystemExit(f"{path}: tools arm {', '.join(tools)} in a config with a headline prompt "
+                         f"({', '.join(an.HEADLINE_PROMPTS)}): no tool serves headlines, so it would not see what the "
+                         "headline arms see; run the headline arms in a config without tools arms")
+
+
+def fetched(name: str, contexts: list[an.Context], data_dir: Path) -> None:
+    """A headline arm on a news window never fetched would show no headline rows and still count as a headline arm;
+    refused before the dataset and any call, naming the `tr news` commands that fetch the missing windows."""
+    if missing := [ctx for ctx in contexts if news.missing_days(data_dir, ctx.ticker, ctx.session)]:
+        pairs = ", ".join(f"{ctx.ticker} {ctx.session}" for ctx in missing)
+        fetch = "; ".join(f"tr news {ctx.ticker} --session {ctx.session}" for ctx in missing)
+        raise SystemExit(f"{name}: news not fetched for {pairs}: a headline arm would show no headline rows there. "
+                         f"Fetch first: {fetch}")
 
 
 @dataclass
@@ -151,6 +168,7 @@ def run_arms(conn, config: Config, contexts: list[an.Context], provider, prices:
     if judges and any(arm.mode == "tools" or arm.drop for arm in config.arms):  # before the first arm: no call made
         raise SystemExit(f"{config.name}: a tools or drop arm grades with code graders only, not {', '.join(judges)}")
     if shown := [arm.prompt for arm in config.arms if arm.mode == "fixed" and an.shows_headlines(arm.prompt)]:
+        fetched(config.name, contexts, data_dir)
         contexts = [an.with_headlines(ctx, data_dir, shown[0]) for ctx in contexts]  # read only, before the dataset
     dataset = Dataset.of(config.name, items(config, contexts))
     by_item = {f"{ctx.ticker}:{ctx.session}": ctx for ctx in contexts}

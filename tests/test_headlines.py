@@ -11,11 +11,12 @@ from datetime import UTC, date, datetime
 from pathlib import Path
 
 import pytest
+from gigai_core.trace import ModelSpan
 
 from test_analyze import RECORDED
-from test_masking import TICKERS, pinned_tokens, ten, user_turn  # noqa: F401  (pinned_tokens is a fixture)
+from test_masking import TICKERS, keyed, pinned_tokens, served, ten, user_turn  # noqa: F401  (pinned_tokens: fixture)
 from test_teacher import context as live_context
-from test_week4 import MODEL, context, load, prices, replaying
+from test_week4 import MODEL, context, load, prices
 from tradingresearch import analyze as an, experiment, journal, masking, news
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -84,6 +85,29 @@ def test_headline_text_becomes_one_quoted_cell_without_separators(tmp_path):
     assert not any(c in row.label for c in "\u202e\u200b")
     line = f"{row.source_id} | {row.name} | {row.label} | -"
     assert masking.ROW.match(line).group(1) == row.name and masking.section_of(row.name) == "headlines"
+
+
+@pytest.mark.parametrize("hidden", [
+    "\ufe00\ufe0f",  # variation selectors 1-16
+    "\U000e0100\U000e01ef",  # variation selectors supplement: 240 more, enough to smuggle bytes
+    "\U000e0001\U000e0041\U000e007f",  # tag characters (language tag, tag A, cancel tag)
+    "\ufe0f" * 50 + "\U000e0101" * 50,  # a payload run collapses to one space
+])
+def test_invisible_selectors_and_tags_do_not_reach_the_cell(hidden):
+    shown = an.one_line(f"Apple beats{hidden} estimates{hidden}", an.HEADLINE_CHARS)
+    assert shown == "Apple beats estimates"
+    assert not any(0xFE00 <= ord(c) <= 0xFE0F or 0xE0000 <= ord(c) <= 0xE01EF for c in shown)
+
+
+@pytest.mark.parametrize(("created", "shown"), [
+    ("2026-11-12T21:00:00Z", False),  # the previous session's close: the window start is exclusive
+    ("2026-11-12T21:00:01Z", True),
+    ("2026-11-13T21:00:00Z", True),  # the session's close: inclusive, an end-of-day run trades the next open
+    ("2026-11-13T21:00:01Z", False),  # one second after the close is look-ahead
+])
+def test_the_news_window_boundaries_are_exact(tmp_path, created, shown):
+    news.store(tmp_path, "FAKEA", [headline(5, created)])
+    assert len(an.with_headlines(context(), tmp_path, "analyze-3").headlines) == shown
 
 
 def test_headlines_join_the_input_hash_and_the_stored_sources(tmp_path):
@@ -161,6 +185,25 @@ def test_the_recording_config_and_a_headlines_only_arm_load(tmp_path):
     assert keep.arms[1].drop == ("indicators", "levels", "edgar")
 
 
+@pytest.mark.parametrize(("first", "second"), [("analyze-3", "analyze-2"), ("analyze-2", "analyze-3")])
+def test_a_tools_arm_in_a_headline_config_is_refused_at_load(tmp_path, first, second):
+    path = arms(tmp_path, first, second, "[]")
+    path.write_text(path.read_text().replace('name = "no-headlines"', 'name = "no-headlines"\nmode = "tools"'))
+    with pytest.raises(SystemExit, match="tools arm no-headlines.*no tool serves headlines"):
+        experiment.load(path)
+
+
+def test_a_headline_arm_with_news_not_fetched_is_refused_before_any_call(tmp_path):
+    for ticker in TICKERS[:-1]:
+        stored(tmp_path, ticker)
+    sent: list[dict] = []
+    conn = journal.connect(tmp_path / "journal.db")
+    with pytest.raises(SystemExit, match=r"news not fetched for KO 2026-11-13.*tr news KO --session 2026-11-13"):
+        experiment.run_arms(conn, experiment.load(arms(tmp_path)), ten(), keyed({}, sent), prices(), tmp_path)
+    assert sent == []
+    assert not (tmp_path / "runs").exists()
+
+
 def reply(cite: str) -> dict:
     """The recorded reply cut to its valid claims (c1-c6) plus one headline fact (hand-edited, not a model output)."""
     raw = load("turn2.reply")
@@ -177,13 +220,26 @@ def test_two_analyze3_arms_differ_only_in_the_headline_rows(tmp_path, pinned_tok
     cite = news.source_ref(week()[7]).source_id  # the latest headline in the window
     contexts = ten()  # FAKEA's 2026-11-13 context under ten tickers
     assert {ctx.session for ctx in contexts} == {SESSION}
+    full_text = [an.render(an.with_headlines(ctx, tmp_path, "analyze-3")) for ctx in contexts]
+    masked_text = [masking.mask(prompt, ("headlines",)) for prompt in full_text]
+    replies = ({p: served(reply(cite), "Google") for p in full_text}
+               | {p: served(reply(cite), "DeepInfra") for p in masked_text})
     sent: list[dict] = []
     config = experiment.load(arms(tmp_path))
     conn = journal.connect(tmp_path / "journal.db")
-    full, dropped = experiment.run_arms(conn, config, contexts, replaying([reply(cite)], sent), prices(), tmp_path)
+    full, dropped = experiment.run_arms(conn, config, contexts, keyed(replies, sent), prices(), tmp_path)
     assert full.run.record.dataset == dropped.run.record.dataset
+    assert [user_turn(body) for body in sent] == full_text + masked_text
     assert [user_turn(body).count("| headline 2026-11-13 ") for body in sent] == [5] * 10 + [0] * 10
     assert [cite in user_turn(body) for body in sent] == [True] * 10 + [False] * 10
+    for result, texts in ((full, full_text), (dropped, masked_text)):
+        lines = [json.loads(line) for line in Path(result.run.record.trace_path).read_text().splitlines()]
+        spans = [line for line in lines if line["kind"] == ModelSpan.model_fields["kind"].default]
+        assert [span["last_turn"]["content"] for span in spans] == texts
+    routes = conn.execute("SELECT json_extract(body, '$.run_id'), json_extract(body, '$.provider_route') "
+                          "FROM analysis").fetchall()
+    assert set(routes) == {(full.run.record.run_id, "openrouter:Google"),
+                           (dropped.run.record.run_id, "openrouter:DeepInfra")}
     assert [body["messages"][0]["content"] for body in sent[:1]] == [an.system_prompt("analyze-3")]
 
     assert experiment.means(full.run)["all_claims_valid"] == (1.0, 10)

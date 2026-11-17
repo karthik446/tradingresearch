@@ -16,7 +16,7 @@ from gigai_core.graders.protocol import CannotGrade
 from gigai_core.score import Score
 from pydantic import ValidationError
 
-from . import analyze as an, journal, sessions
+from . import analyze as an, journal, news, sessions
 from .hashing import digest, new_id
 from .records import (HOLD_RANGE, RULES_VERSION, Analysis, EntryRule, Event, NoTrade, SetupType, SourceRef, Thesis,
                       clean_route)
@@ -261,17 +261,37 @@ class ThesesValid:
 
 # ---------- prompt ----------
 
-def source_block(analysis: Analysis) -> str:
-    """The analysis's SOURCES table as `analyze.render` writes it, rebuilt from the stored snapshot (same ids)."""
+def source_block(analysis: Analysis, headlines: tuple[news.Headline, ...] = ()) -> str:
+    """The analysis's SOURCES table as `analyze.render` writes it, rebuilt from the stored snapshot (same ids), plus
+    the headline rows its claims cite, rendered by analyze (same cleaning, same ids)."""
     sources, rows = an.snapshot_rows(analysis.snapshot)
-    ctx = an.Context(analysis.ticker, analysis.session, analysis.snapshot, sources, rows)
+    ctx = an.Context(analysis.ticker, analysis.session, analysis.snapshot, sources, rows, headlines)
     return an.render(ctx).rsplit("\n\n", 1)[0]  # drop analyze's closing instruction
 
 
-def render(analysis: Analysis, asked: tuple[str, ...], playbook_block: str | None = None) -> str:
+def cited_headlines(conn: sqlite3.Connection, analysis: Analysis, data_dir) -> tuple[news.Headline, ...]:
+    """The stored headlines the analysis's claims cite, oldest first, so a thesis sees every row a claim stands on.
+    An analysis whose prompt shows none reads nothing (its thesis prompt is unchanged); a cited headline missing from
+    the news store is refused before the call."""
+    if not an.shows_headlines(analysis.prompt_version):
+        return ()
+    cited = sorted({sid for claim in analysis.claims for sid in claim.source_ids})
+    marks = ", ".join("?" * len(cited))
+    wanted = {row[0] for row in conn.execute(
+        f"SELECT source_id FROM source_ref WHERE kind = 'news' AND source_id IN ({marks})", cited)}
+    stored = news.headlines_for(data_dir, analysis.ticker, analysis.session)
+    found = tuple(h for h in stored if news.source_ref(h).source_id in wanted)
+    if missing := sorted(wanted - {news.source_ref(h).source_id for h in found}):
+        raise SystemExit(f"{analysis.analysis_id} cites headline(s) {', '.join(missing)} that are not in the news "
+                         f"store ({data_dir}/news/{analysis.ticker}/); the thesis would not see them")
+    return found
+
+
+def render(analysis: Analysis, asked: tuple[str, ...], playbook_block: str | None = None,
+           headlines: tuple[news.Headline, ...] = ()) -> str:
     """The thesis user turn; a thesis-2 call gets the PLAYBOOK block after the horizons, before the closing line."""
     close, atr = analysis.snapshot.values["close"], analysis.snapshot.values["atr_14"]
-    lines = [source_block(analysis), "", "CLAIMS (claim_id | tag | text | cites)"]
+    lines = [source_block(analysis, headlines), "", "CLAIMS (claim_id | tag | text | cites)"]
     for c in analysis.claims:
         text = c.text.replace("{value}", an.plain(c.value)) if c.value is not None else c.text
         lines.append(f"{c.claim_id} | {c.tag} | {text} | {','.join(c.source_ids or c.derived_from) or '-'}")
@@ -327,14 +347,15 @@ def call_settings(model: str, prompt_version: str = DEFAULT_PROMPT) -> CallSetti
 
 
 def item_for(analysis: Analysis, asked: tuple[str, ...], arm: str,
-             playbook: tuple[str, list[SourceRef]] | None = None) -> DatasetItem:
+             playbook: tuple[str, list[SourceRef]] | None = None,
+             headlines: tuple[news.Headline, ...] = ()) -> DatasetItem:
     """One analysis as a gigai-core dataset item; `expected` holds what ThesesValid needs to re-run the checks
     (the playbook ids only when the block is shown, so a thesis-1 item is unchanged)."""
     expected = {"analysis": analysis.model_dump_json(), "horizons": list(asked), "arm": arm}
     if playbook is not None:
         expected["playbook"] = [s.source_id for s in playbook[1]]
     return DatasetItem(id=f"{analysis.ticker}:{analysis.session}:{arm}", cluster_id=analysis.ticker,
-                       prompt=render(analysis, asked, None if playbook is None else playbook[0]),
+                       prompt=render(analysis, asked, None if playbook is None else playbook[0], headlines),
                        tags=(analysis.ticker, arm), expected=expected)
 
 
@@ -366,7 +387,7 @@ def thesis(conn: sqlite3.Connection, analysis: Analysis, provider, *, asked: tup
     `post` is a challenger rule's filter (rules.py), applied before the store because stored theses never go away.
     `playbook` is for thesis-2 only (default: computed from the journal, see `playbook_for`)."""
     shown = playbook_for(conn, analysis, prompt_version, playbook)
-    item = item_for(analysis, asked, arm, shown)
+    item = item_for(analysis, asked, arm, shown, cited_headlines(conn, analysis, data_dir))  # refusal: before the call
     run = run_eval(Dataset.of("thesis", [item]), provider, [ThesesValid()],
                    settings=call_settings(model, prompt_version),
                    budget=CallBudget(max_usd=max_usd, prices=prices), system=an.system_prompt(prompt_version),

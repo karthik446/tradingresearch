@@ -6,6 +6,7 @@ import json
 from dataclasses import replace
 from pathlib import Path
 
+import httpx
 import pytest
 from gigai_core import compare
 from gigai_core.providers import ModelRequest, Turn, request_sha256
@@ -14,6 +15,7 @@ from gigai_core.trace import ModelSpan
 from test_teacher import context as live_context
 from test_week4 import LIVE_CONTEXT_TOKENS, MODEL, PROMPT, context, load, prices, replaying
 from tradingresearch import analyze as an, experiment, journal, masking, tools
+from tradingresearch.openrouter import API, OpenRouter
 
 TICKERS = ("FAKEA", "AAPL", "MSFT", "NVDA", "AMZN", "JPM", "XOM", "UNH", "HD", "KO")  # compare needs 10 clusters
 EDGAR_NAMES = ("revenue_", "net_income_", "eps_diluted_")
@@ -64,6 +66,44 @@ def reply() -> dict:
     return raw
 
 
+def served(raw: dict, provider: str) -> dict:
+    """`raw` as if `provider` had served it: the route OpenRouter logs for the exchange."""
+    return {**raw, "provider": provider}
+
+
+def keyed(replies: dict[str, dict], sent: list[dict]) -> OpenRouter:
+    """The real adapter answering only the exact user turns in `replies`; any other text gets a non-retryable 400,
+    so an arm that sends the wrong text fails, and each arm's reply carries its own provider (its route)."""
+    def handler(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        sent.append(body)
+        answer = replies.get(user_turn(body))
+        if answer is None:
+            return httpx.Response(400, json={"error": {"code": 400, "message": "not a request this test expects"}})
+        return httpx.Response(200, json=answer)
+
+    provider = OpenRouter("not-a-real-key")
+    provider._http = httpx.Client(base_url=API, transport=httpx.MockTransport(handler))
+    return provider
+
+
+def pair_prompts() -> tuple[list[str], list[str]]:
+    """The ten full user turns and the same ten with the EDGAR rows masked: what each arm must send, in order."""
+    full = [an.render(ctx) for ctx in ten()]
+    return full, [masking.mask(prompt, ("edgar",)) for prompt in full]
+
+
+def run_pair(tmp_path: Path, sent: list[dict]):
+    """Run the drop pair at $0: the full arm's text is served by Google, the masked text by DeepInfra."""
+    path = tmp_path / "pair.toml"
+    path.write_text(PAIR)
+    config = experiment.load(path)
+    full, masked = pair_prompts()
+    replies = {p: served(reply(), "Google") for p in full} | {p: served(reply(), "DeepInfra") for p in masked}
+    conn = journal.connect(tmp_path / "journal.db")
+    return config, conn, experiment.run_arms(conn, config, ten(), keyed(replies, sent), prices(), tmp_path)
+
+
 @pytest.mark.parametrize("ctx", [context(), live_context()], ids=["fakea", "aapl-live"])
 def test_the_sections_are_the_rows_each_week4_tool_serves(ctx):
     served = {"indicators": tools.indicators(ctx, {}), "levels": tools.levels(ctx, {}),
@@ -107,13 +147,10 @@ def test_the_masking_provider_masks_only_user_turns_and_maps_the_route():
 
 def test_two_arms_share_the_dataset_but_not_the_request_the_hash_or_the_verdict(tmp_path, pinned_tokens):
     sent: list[dict] = []
-    path = tmp_path / "pair.toml"
-    path.write_text(PAIR)
-    config = experiment.load(path)
+    config, conn, (full, no_edgar) = run_pair(tmp_path, sent)
     assert [arm.drop for arm in config.arms] == [(), ("edgar",)]
-    conn = journal.connect(tmp_path / "journal.db")
-    full, no_edgar = experiment.run_arms(conn, config, ten(), replaying([reply()], sent), prices(), tmp_path)
     assert full.run.record.dataset == no_edgar.run.record.dataset
+    assert [user_turn(body) for body in sent] == [*pair_prompts()[0], *pair_prompts()[1]]
     assert [any(n in user_turn(body) for n in EDGAR_NAMES) for body in sent] == [True] * 10 + [False] * 10
 
     traced = {}
@@ -121,17 +158,20 @@ def test_two_arms_share_the_dataset_but_not_the_request_the_hash_or_the_verdict(
         lines = [json.loads(line) for line in Path(result.run.record.trace_path).read_text().splitlines()]
         traced[result.arm.name] = [line for line in lines if line["kind"] == ModelSpan.model_fields["kind"].default]
     assert len(traced["full"]) == len(traced["no-edgar"]) == 10
-    for a, b, sample in zip(traced["full"], traced["no-edgar"], no_edgar.run.samples, strict=True):
+    for i, (a, b, sample) in enumerate(zip(traced["full"], traced["no-edgar"], no_edgar.run.samples, strict=True)):
         assert a["request_sha256"] != b["request_sha256"]
         masked = ModelRequest(settings=an.call_settings(MODEL), turns=sample.input)
         assert b["request_sha256"] == request_sha256(masked), "the trace digests the masked request"
-        assert not any(n in b["last_turn"]["content"] for n in EDGAR_NAMES)
+        assert a["last_turn"]["content"] == user_turn(sent[i]), "the full arm's trace holds the text it sent"
+        assert b["last_turn"]["content"] == user_turn(sent[10 + i]), "the drop arm's trace holds the masked text"
 
     rows = conn.execute("SELECT json_extract(body, '$.run_id'), json_extract(body, '$.input_hash'), "
                         "json_extract(body, '$.provider_route') FROM analysis").fetchall()
     hashes = {run: {h for r, h, _ in rows if r == run} for run in (full.run.record.run_id, no_edgar.run.record.run_id)}
     assert all(len(found) == 10 for found in hashes.values()) and not set.intersection(*hashes.values())
-    assert {route for _, _, route in rows} == {"openrouter:Google"}
+    routes = {run: {route for r, _, route in rows if r == run} for run in hashes}
+    assert routes == {full.run.record.run_id: {"openrouter:Google"},
+                      no_edgar.run.record.run_id: {"openrouter:DeepInfra"}}, "each arm's route is its own exchange's"
     assert (full.analyses, no_edgar.analyses) == (10, 10)
 
     assert experiment.means(full.run)["all_claims_valid"] == (1.0, 10)
