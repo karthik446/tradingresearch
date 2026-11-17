@@ -1,0 +1,11 @@
+# Week 1, step 2: observe. One arm, 10 tickers x 2 sessions = 20 real ticker-days. No comparison yet.
+name = "observe"
+model = "anthropic/claude-sonnet-5.5"
+max_usd_per_arm = 1.00  # gigai-core plans the worst case (4000 output tokens per call) before the first call
+tickers = ["AAPL", "MSFT", "NVDA", "AMZN", "JPM", "XOM", "UNH", "HD", "KO", "CAT"]
+sessions = ["2026-11-12", "2026-11-13"]
+graders = ["parsed", "claims_valid", "all_claims_valid"]
+
+[[arms]]
+name = "baseline"
+prompt = "analyze-1"
