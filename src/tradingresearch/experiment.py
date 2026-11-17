@@ -67,6 +67,7 @@ def load(path: Path) -> Config:
                      drop(path, a)) for a in raw["arms"])
     for arm in arms:
         an.system_prompt(arm.prompt)  # fail before any spend if a prompt file is missing
+    headlines(path, arms)
     registry(raw["graders"])  # and if a grader is not registered
     config = Config(raw["name"], tuple(raw["tickers"]), tuple(date.fromisoformat(s) for s in raw["sessions"]),
                     tuple(raw["graders"]), arms, float(raw["max_usd_per_arm"]), raw.get("cluster", "ticker"))
@@ -105,21 +106,34 @@ def mode(path: Path, arm: dict) -> str:
 
 
 def drop(path: Path, arm: dict) -> tuple[str, ...]:
-    """An arm's `drop` list, refused before any spend: not a list of known, distinct section names, every section,
-    or with `mode = "tools"` (the tools prompt has no SOURCES table to mask)."""
+    """An arm's `drop` list, refused before any spend: not a list of known, distinct section names, `headlines` on a
+    prompt that shows none, every section the prompt shows, or with `mode = "tools"` (no SOURCES table to mask)."""
     value = arm.get("drop", [])
     where = f"{path}: arm {arm.get('name')}: drop"
+    shown = masking.sections_shown(arm.get("prompt", ""))
     if not isinstance(value, list) or not all(isinstance(name, str) for name in value):
         raise SystemExit(f"{where} must be a list of section names ({', '.join(masking.SECTIONS)})")
     if unknown := [name for name in value if name not in masking.SECTIONS]:
         raise SystemExit(f"{where}: unknown section(s) {', '.join(unknown)}; sections: {', '.join(masking.SECTIONS)}")
+    if "headlines" in value and "headlines" not in shown:
+        raise SystemExit(f"{where}: prompt {arm.get('prompt')} renders no headlines; dropping them needs a prompt "
+                         f"that shows them ({', '.join(an.HEADLINE_PROMPTS)})")
     if len(set(value)) != len(value):
         raise SystemExit(f"{where} names a section twice: {', '.join(value)}")
-    if set(value) == set(masking.SECTIONS):
+    if set(value) == set(shown):
         raise SystemExit(f"{where} names every section, which leaves no SOURCES row to cite")
     if value and arm.get("mode", "fixed") == "tools":
         raise SystemExit(f"{where} masks the fixed prompt's SOURCES table; a tools arm has none")
     return tuple(value)
+
+
+def headlines(path: Path, arms: tuple[Arm, ...]) -> None:
+    """Fixed arms share one dataset, so they all show headlines (analyze-3) or none; refused before any spend."""
+    fixed = {arm.name: an.shows_headlines(arm.prompt) for arm in arms if arm.mode == "fixed"}
+    if len(set(fixed.values())) > 1:
+        shown = [name for name, shows in fixed.items() if shows]
+        raise SystemExit(f"{path}: fixed arms {', '.join(shown)} show headlines and the others do not; they share one "
+                         f"dataset, so use one kind of prompt ({', '.join(an.HEADLINE_PROMPTS)} or not)")
 
 
 @dataclass
@@ -136,6 +150,8 @@ def run_arms(conn, config: Config, contexts: list[an.Context], provider, prices:
     judges = [g.id for g in registry(list(config.graders)) if g.kind != "code"]
     if judges and any(arm.mode == "tools" or arm.drop for arm in config.arms):  # before the first arm: no call made
         raise SystemExit(f"{config.name}: a tools or drop arm grades with code graders only, not {', '.join(judges)}")
+    if shown := [arm.prompt for arm in config.arms if arm.mode == "fixed" and an.shows_headlines(arm.prompt)]:
+        contexts = [an.with_headlines(ctx, data_dir, shown[0]) for ctx in contexts]  # read only, before the dataset
     dataset = Dataset.of(config.name, items(config, contexts))
     by_item = {f"{ctx.ticker}:{ctx.session}": ctx for ctx in contexts}
     results = []

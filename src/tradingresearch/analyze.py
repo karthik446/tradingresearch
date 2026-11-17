@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import json
 import re
-from dataclasses import dataclass
+import unicodedata
+from dataclasses import dataclass, replace
 from datetime import UTC, date, datetime
 from functools import cache
 from pathlib import Path
@@ -20,7 +21,7 @@ from gigai_core.trace import CallError, ListTrace, ModelCall, ModelSpan, ToolSpa
 from pydantic import ValidationError
 from tokenizers import Tokenizer
 
-from . import alpaca, indicators, sessions
+from . import alpaca, indicators, news, sessions
 from .edgar import Edgar, fact_source, latest_frames
 from .hashing import digest, new_id
 from .records import Analysis, Claim, IndicatorSnapshot, SourceRef
@@ -30,6 +31,10 @@ PROMPTS_DIR = Path(__file__).resolve().parents[2] / "prompts"  # prompts/<versio
 DEFAULT_MODEL = "anthropic/claude-sonnet-5.5"
 STUDENT_TOKENIZER = ("Qwen/Qwen3.5-4B", "851bf6e806efd8d0a36b00ddf55e13ccb7b8cd0a")  # TRAINING-SPIKE §3 pin
 REL_TOL = 0.005  # a cited number may differ from its source by 0.5% (rounding in prose)
+HEADLINE_PROMPTS = ("analyze-3",)  # the prompt versions whose SOURCES table shows headlines; the others never read news
+MAX_HEADLINES = 5  # the latest of one session's news window: ~100 student tokens, and little untrusted text
+HEADLINE_CHARS = 200  # stored Alpaca headlines run 33-77 characters; a longer one is cut
+HEADLINE_NAME = "headline"  # a headline row's name starts with it (masking's `headlines` section)
 
 
 def system_prompt(version: str) -> str:
@@ -84,9 +89,21 @@ class Context:
     snapshot: IndicatorSnapshot
     sources: list[SourceRef]
     rows: list[Row]
+    headlines: tuple[news.Headline, ...] = ()  # analyze-3 only (with_headlines); empty keeps older renders and hashes
+
+    def table(self) -> list[Row]:
+        """Every SOURCES row: the computed and EDGAR rows, then one per headline."""
+        return self.rows + [headline_row(h) for h in self.headlines]
+
+    def cited_sources(self) -> list[SourceRef]:
+        """The SourceRefs a claim may cite: the context's sources plus one news SourceRef per headline."""
+        return self.sources + [news.source_ref(h) for h in self.headlines]
 
     def values(self) -> dict[str, float | None]:
-        return {row.source_id: row.value for row in self.rows}
+        return {row.source_id: row.value for row in self.table()}
+
+    def names(self) -> dict[str, str]:
+        return {row.source_id: row.name for row in self.table()}
 
 
 @dataclass(frozen=True)
@@ -191,10 +208,40 @@ def plain(value: float) -> str:
     return f"{value:.0f}" if abs(value) >= 1e6 else f"{value:.6g}"
 
 
+def shows_headlines(prompt_version: str) -> bool:
+    return prompt_version in HEADLINE_PROMPTS
+
+
+def with_headlines(ctx: Context, data_dir: Path, prompt_version: str, now: datetime | None = None) -> Context:
+    """`ctx` with the latest stored headlines of its session's news window when the prompt shows them; any other
+    prompt gets `ctx` as is (no read), so its render, dataset and hash never change. Reads the store, never fetches."""
+    if not shows_headlines(prompt_version):
+        return ctx
+    found = news.headlines_for(data_dir, ctx.ticker, ctx.session, now=now)  # nothing after the cutoff (look-ahead)
+    return replace(ctx, headlines=tuple(found[-MAX_HEADLINES:]))
+
+
+def one_line(text: str, limit: int) -> str:
+    """Third-party text as one plain table cell: control and format characters (newlines, bidi, zero-width) become
+    spaces, `|` and `"` cannot end the cell or its quotes, and the length is capped."""
+    text = "".join(" " if unicodedata.category(c) in ("Cc", "Cf") else c for c in text)
+    text = " ".join(text.replace("|", "/").replace('"', "'").split())
+    return text if len(text) <= limit else text[:limit - 1].rstrip() + "…"
+
+
+def headline_row(headline: news.Headline) -> Row:
+    """A headline as a SOURCES row: its news SourceRef id, time and source in the name, the quoted text as the value.
+    The text is untrusted (SPIKE §3.2): one line, no `|`, capped; analyze-3 tells the model it is data, not orders."""
+    source = re.sub(r"[^A-Za-z0-9.-]+", "-", headline.source).strip("-") or "unknown"
+    name = f"{HEADLINE_NAME} {headline.created_at.astimezone(UTC):%Y-%m-%d %H:%MZ} {source}"
+    shown = one_line(headline.headline, HEADLINE_CHARS)
+    return Row(news.source_ref(headline).source_id, name, None, None, f'"{shown}"')
+
+
 def render(ctx: Context) -> str:
     lines = [f"TICKER: {ctx.ticker}", f"SESSION: {ctx.session.isoformat()} (the last completed NYSE session)", "",
              "SOURCES (source_id | name | value | unit)"]
-    for row in ctx.rows:
+    for row in ctx.table():
         shown = row.label if row.label is not None else plain(row.value)
         lines.append(f"{row.source_id} | {row.name} | {shown} | {row.unit or '-'}")
     lines += ["", "Write the claims as JSON with the key \"claims\"."]
@@ -212,9 +259,10 @@ def context_tokens(system: str, prompt: str) -> int:
 
 
 def input_hash(ctx: Context, prompt_version: str, drop: tuple[str, ...] = ()) -> str:
-    """What the model was given; a `drop` arm's list joins the digest only when non-empty, so old hashes stand."""
+    """What the model was given; a `drop` arm's list joins the digest only when non-empty, so old hashes stand.
+    Headline SourceRefs (analyze-3) join the sorted source digests; without headlines the list is as before."""
     given = {"snapshot": ctx.snapshot.model_dump(mode="json"),
-             "sources": sorted(s.content_sha256 for s in ctx.sources), "prompt_version": prompt_version}
+             "sources": sorted(s.content_sha256 for s in ctx.cited_sources()), "prompt_version": prompt_version}
     return digest(given | {"drop": sorted(drop)} if drop else given)
 
 
@@ -349,7 +397,7 @@ def gather(conn, http, edgar: Edgar, ticker: str, session: date, cache_dir, feed
 def item_for(ctx: Context) -> DatasetItem:
     """One ticker-day as a gigai-core dataset item. Cluster = ticker: days of one stock are not independent."""
     return DatasetItem(id=f"{ctx.ticker}:{ctx.session}", cluster_id=ctx.ticker, prompt=render(ctx),
-                       expected={"values": ctx.values(), "names": {row.source_id: row.name for row in ctx.rows}},
+                       expected={"values": ctx.values(), "names": ctx.names()},
                        tags=(ctx.ticker,))
 
 
@@ -368,7 +416,7 @@ def store(conn, ctx: Context, sample, run_id: str, *, model: str, prompt_version
     from .masking import hidden, mask  # masking imports tools, which imports this module
     analysis_id = new_id("an")
     claims, rejected = validate_claims(sample.output_parsed, ctx.values(), analysis_id,
-                                       hidden({row.source_id: row.name for row in ctx.rows}, drop))
+                                       hidden(ctx.names(), drop))
     analysis = Analysis(
         analysis_id=analysis_id, ticker=ctx.ticker, session=ctx.session, created_at=datetime.now(UTC),
         run_id=run_id, snapshot=ctx.snapshot, claims=tuple(claims), input_hash=input_hash(ctx, prompt_version, drop),
@@ -377,7 +425,7 @@ def store(conn, ctx: Context, sample, run_id: str, *, model: str, prompt_version
         context_tokens=context_tokens(system_prompt(prompt_version), mask(render(ctx), drop)),
     )
     from . import journal  # local import keeps this module importable without a database
-    journal.add_analysis(conn, analysis, ctx.sources)
+    journal.add_analysis(conn, analysis, ctx.cited_sources())
     return analysis, rejected
 
 
@@ -495,6 +543,7 @@ def _tool_span(ctx: Context, call: ToolCall, parent_id: str) -> tuple[ToolSpan, 
 
 def analyze(conn, ctx: Context, provider, *, model: str, max_usd: float, prices: dict, data_dir,
             prompt_version: str = DEFAULT_PROMPT, arm: str = "main", terms_class: str | None = None) -> Result:
+    ctx = with_headlines(ctx, data_dir, prompt_version)
     item = item_for(ctx)
     run = run_eval(Dataset.of("analyze", [item]), provider, [ClaimsValid()], settings=call_settings(model),
                    budget=CallBudget(max_usd=max_usd, prices=prices), system=system_prompt(prompt_version),

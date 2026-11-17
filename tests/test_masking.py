@@ -70,7 +70,7 @@ def test_the_sections_are_the_rows_each_week4_tool_serves(ctx):
               "edgar": tools.fundamentals(ctx, {})}
     assert {row.name: masking.section_of(row.name) for row in ctx.rows} == {
         row.name: section for section, rows in served.items() for row in rows}
-    assert set(masking.SECTIONS) == set(served)
+    assert set(masking.sections_shown(PROMPT)) == set(served)  # `headlines` only under analyze-3 (test_headlines)
 
 
 def test_an_empty_drop_leaves_the_prompt_byte_for_byte():

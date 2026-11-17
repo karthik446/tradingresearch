@@ -7,7 +7,7 @@ import sys
 
 import gate
 
-PROMPT_V3 = """name = "prompt-v3"
+PROMPT_V9 = """name = "prompt-v9"
 model = "anthropic/claude-sonnet-5.5"
 max_usd_per_arm = 1.00
 tickers = ["AAPL"]
@@ -16,7 +16,7 @@ graders = ["parsed"]
 
 [[arms]]
 name = "variant"
-prompt = "analyze-3"
+prompt = "analyze-9"
 """
 
 
@@ -50,20 +50,20 @@ def test_deleted_prompt_fails(tmp_path):
 
 def test_unregistered_new_prompt_fails(tmp_path):
     root = layout(tmp_path)
-    (root / "prompts" / "analyze-3.txt").write_text("A new system prompt.\n")
+    (root / "prompts" / "analyze-9.txt").write_text("A new system prompt.\n")
     problems = gate.check_prompts(root)
     assert len(problems) == 1 and "no experiments/*.toml arm names it" in problems[0]
-    assert "analyze-3.txt" in gate.record_prompts(root)[0]
-    assert "analyze-3" not in json.loads((root / gate.HASHES).read_text())
+    assert "analyze-9.txt" in gate.record_prompts(root)[0]
+    assert "analyze-9" not in json.loads((root / gate.HASHES).read_text())
 
 
 def test_new_prompt_with_an_arm_fails_until_recorded(tmp_path, capsys):
     root = layout(tmp_path)
-    (root / "prompts" / "analyze-3.txt").write_text("A new system prompt.\n")
-    (root / "experiments" / "prompt-v3.toml").write_text(PROMPT_V3)
+    (root / "prompts" / "analyze-9.txt").write_text("A new system prompt.\n")
+    (root / "experiments" / "prompt-v9.toml").write_text(PROMPT_V9)
     assert "--record-prompts" in gate.check_prompts(root)[0]
     assert gate.record_prompts(root) == []
-    assert "recorded prompts/analyze-3.txt -> experiment 'prompt-v3'" in capsys.readouterr().out
+    assert "recorded prompts/analyze-9.txt -> experiment 'prompt-v9'" in capsys.readouterr().out
     assert gate.check_prompts(root) == []
 
 

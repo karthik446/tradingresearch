@@ -1,0 +1,21 @@
+# Week 5 plumbing (G12b): the recording config for prompts/analyze-3 (headlines in the SOURCES table). ci/gate.py
+# records a prompt only when an experiment arm names it; this file is that record. Not run, not pre-registered: the
+# learner's context ablation (full vs drop=headlines vs drop=edgar) is its own file, e.g.
+# experiments/context-ablation.toml.
+# Headlines come from the local news store (`tr news TICKER --session ...` fills it); an arm never fetches.
+name = "headlines"
+model = "anthropic/claude-sonnet-5.5"
+max_usd_per_arm = 1.00
+tickers = ["AAPL", "MSFT", "NVDA", "AMZN", "JPM", "XOM", "UNH", "HD", "KO", "CAT"]
+sessions = ["2026-11-13"]
+graders = ["parsed", "claims_valid", "all_claims_valid", "inferences_grounded"]
+
+[[arms]]
+name = "full"
+prompt = "analyze-3"
+drop = []
+
+[[arms]]
+name = "no-headlines"
+prompt = "analyze-3"
+drop = ["headlines"]

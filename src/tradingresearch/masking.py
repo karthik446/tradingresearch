@@ -1,8 +1,9 @@
 """The `drop` arm knob (REPO-PLAN §2.5, week 5): an arm sees the analyze prompt with named SOURCES sections removed.
 
-The sections are the three groups the week-4 tools already serve (get_indicators, get_levels, get_fundamentals).
-The dataset item keeps the full prompt, so every arm shares one dataset digest; `Masked` removes the dropped rows
-from the request on its way to the model, and experiment.run_masked traces that masked request.
+The sections are the three groups the week-4 tools already serve (get_indicators, get_levels, get_fundamentals), plus
+`headlines`, the news rows only an analyze-3 prompt shows (G12b). The dataset item keeps the full prompt, so every
+arm shares one dataset digest; `Masked` removes the dropped rows from the request on its way to the model, and
+experiment.run_masked traces that masked request.
 """
 
 from __future__ import annotations
@@ -13,17 +14,26 @@ from collections.abc import Iterable, Mapping
 
 from gigai_core.providers import ModelRequest, ModelResult
 
+from .analyze import HEADLINE_NAME, shows_headlines
 from .tools import LEVEL_PREFIXES, METRICS
 
-SECTIONS = ("indicators", "levels", "edgar")
+SECTIONS = ("indicators", "levels", "edgar", "headlines")
 ROW = re.compile(r"src_\w+ \| ([^|]+) \| ")  # one SOURCES line of analyze.render: source_id | name | value | unit
 
 
 def section_of(name: str) -> str:
-    """The section of a SOURCES row: EDGAR facts are `<metric>_<frame>`, levels carry the tools' level prefixes."""
+    """The section of a SOURCES row: headlines and EDGAR facts (`<metric>_<frame>`) by name, levels by the tools'
+    level prefixes."""
+    if name.startswith(HEADLINE_NAME + " "):
+        return "headlines"
     if name.rsplit("_", 1)[0] in METRICS:
         return "edgar"
     return "levels" if name.startswith(LEVEL_PREFIXES) else "indicators"
+
+
+def sections_shown(prompt_version: str) -> tuple[str, ...]:
+    """The sections a prompt version's table can show: `headlines` only under analyze.HEADLINE_PROMPTS."""
+    return SECTIONS if shows_headlines(prompt_version) else tuple(s for s in SECTIONS if s != "headlines")
 
 
 def mask(prompt: str, drop: Iterable[str]) -> str:

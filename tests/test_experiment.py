@@ -51,7 +51,8 @@ def test_drop_defaults_to_empty_and_takes_section_names(tmp_path):
 
 
 @pytest.mark.parametrize(("line", "why"), [
-    ('drop = ["headlines"]', "unknown section(s) headlines; sections: indicators, levels, edgar"),
+    ('drop = ["news"]', "unknown section(s) news; sections: indicators, levels, edgar, headlines"),
+    ('drop = ["headlines"]', "prompt analyze-1 renders no headlines; dropping them needs a prompt that shows them"),
     ('drop = "edgar"', "must be a list of section names"),
     ("drop = [1]", "must be a list of section names"),
     ('drop = ["edgar", "edgar"]', "names a section twice"),
