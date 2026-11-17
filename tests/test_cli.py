@@ -10,8 +10,8 @@ from tradingresearch.commands import COMMANDS
 from tradingresearch.evals import GRADERS, Parsed, grader, graders
 
 HELP = Path(__file__).parent / "fixtures" / "help"
-CASES = [("tr", [])] + [(name, [name]) for name in
-                        ("sessions", "bars", "facts", "snapshot", "news", "screen", "analyze", "check", "exp", "usage")]
+CASES = [("tr", [])] + [(name, [name]) for name in ("sessions", "bars", "facts", "snapshot", "news", "screen",
+                                                    "analyze", "thesis", "open", "check", "exp", "usage")]
 CASES.append(("exp_run", ["exp", "run"]))
 
 

@@ -1,0 +1,17 @@
+usage: tr thesis [-h] [--session SESSION] [--analysis ANALYSIS]
+                 [--arm {champion,challenger,teacher}] [--prompt PROMPT]
+                 [--model MODEL] [--max-usd MAX_USD]
+                 ticker
+
+positional arguments:
+  ticker
+
+options:
+  -h, --help            show this help message and exit
+  --session SESSION
+  --analysis ANALYSIS   analysis id (default: the newest for the ticker-day
+                        and arm)
+  --arm {champion,challenger,teacher}
+  --prompt PROMPT       prompt version: prompts/<version>.txt
+  --model MODEL
+  --max-usd MAX_USD

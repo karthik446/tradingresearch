@@ -194,12 +194,35 @@ def last_screened(conn: sqlite3.Connection, before: date) -> date | None:
     return date.fromisoformat(found) if found else None
 
 
-def live_horizons(conn: sqlite3.Connection, ticker: str) -> set[str]:
-    """Horizons where `ticker` has a PROPOSED or OPEN champion/challenger thesis (latest event by seq, as one_live)."""
+LAST_STATE = "(SELECT e.state FROM event e WHERE e.subject_id = t.thesis_id ORDER BY e.seq DESC LIMIT 1)"
+
+
+def live_horizons(conn: sqlite3.Connection, ticker: str, arm: str | None = None) -> set[str]:
+    """Horizons where `ticker` has a PROPOSED or OPEN thesis (latest event by seq, as one_live): for `arm` alone (the
+    one_live key) or, by default, for champion or challenger."""
+    arms = (arm,) if arm else ("champion", "challenger")
     rows = conn.execute(
-        "SELECT DISTINCT t.horizon FROM thesis t WHERE t.ticker = ? AND t.arm IN ('champion', 'challenger') "
-        "AND (SELECT e.state FROM event e WHERE e.subject_id = t.thesis_id ORDER BY e.seq DESC LIMIT 1) "
-        "IN ('PROPOSED', 'OPEN')",
-        (ticker,),
+        f"SELECT DISTINCT t.horizon FROM thesis t WHERE t.ticker = ? AND t.arm IN ({', '.join('?' for _ in arms)}) "
+        f"AND {LAST_STATE} IN ('PROPOSED', 'OPEN')",
+        (ticker, *arms),
     )
     return {horizon for (horizon,) in rows}
+
+
+def latest_analysis(conn: sqlite3.Connection, ticker: str, session: date, arm: str) -> Analysis | None:
+    """The newest stored analysis of one ticker-day for one analysis arm (`main` or `teacher`)."""
+    row = conn.execute(
+        "SELECT body FROM analysis WHERE ticker = ? AND session = ? AND arm = ? ORDER BY created_at DESC LIMIT 1",
+        (ticker, session.isoformat(), arm),
+    ).fetchone()
+    return Analysis.model_validate_json(row[0]) if row else None
+
+
+def open_theses(conn: sqlite3.Connection, arm: str | None = None) -> list[tuple[Thesis, str]]:
+    """Theses whose last event is PROPOSED or OPEN (SPIKE §6.8), oldest first, each with that state."""
+    rows = conn.execute(
+        f"SELECT t.body, {LAST_STATE} AS state FROM thesis t WHERE state IN ('PROPOSED', 'OPEN') "
+        "AND (? IS NULL OR t.arm = ?) ORDER BY t.created_at, t.thesis_id",
+        (arm, arm),
+    )
+    return [(Thesis.model_validate_json(body), state) for body, state in rows]

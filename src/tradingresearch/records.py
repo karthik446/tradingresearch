@@ -25,6 +25,7 @@ EventReason = Literal[
 # Thesis rule 3: hold_sessions per horizon (sessions after the entry session).
 HOLD_RANGE: dict[str, tuple[int, int]] = {"day": (0, 0), "short": (2, 5), "swing": (5, 20)}
 MAX_CONTEXT_TOKENS = 14_000
+RULES_VERSION = "rules-1"  # the reconcile rules (SPIKE §6) a thesis or event is settled by; reconcile picks rules by it
 
 
 class SourceRef(CoreModel):
@@ -139,7 +140,7 @@ class Thesis(CoreModel):
     """Rules 1 (when the entry has a price), 3 and 5 (main arms) are checked here.
 
     Rules that need the Analysis (market_open reference price, evidence tags, ATR stop floor, teacher fill bound,
-    arm match) are checked by `tr thesis` in week 2.
+    arm match) are checked by `thesis.check_thesis` before a record is built.
     """
 
     thesis_id: str

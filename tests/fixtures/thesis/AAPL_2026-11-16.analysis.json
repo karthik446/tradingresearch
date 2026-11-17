@@ -1,0 +1,220 @@
+{
+ "analysis_id": "an_17f4a186735341a7",
+ "ticker": "AAPL",
+ "session": "2026-11-16",
+ "created_at": "2026-11-17T01:20:08.547908Z",
+ "run_id": "run_e72cabf720f94350",
+ "snapshot": {
+  "ticker": "AAPL",
+  "session": "2026-11-16",
+  "values": {
+   "close": 352.78,
+   "sma_20": 346.64225,
+   "sma_50": 339.6925,
+   "sma_200": 301.719375,
+   "ema_9": 350.86285928931477,
+   "ema_21": 346.86202900190267,
+   "rsi_14": 56.999820696972385,
+   "atr_14": 8.045664467165874,
+   "atr_pct": 2.280646427565586,
+   "rel_volume": 1.2174205672853229,
+   "high_20": 360.83,
+   "low_20": 325.33,
+   "gap_pct": 0.23998652707216947,
+   "nr7": 0.0,
+   "vwap_session": 353.44043558319976,
+   "dist_sma_20_atr": 0.7628642761636363,
+   "dist_sma_50_atr": 1.6266524726962812,
+   "dist_sma_200_atr": 6.346352772773076,
+   "dist_high_20_atr": -1.0005388657272287,
+   "dist_low_20_atr": 3.41177538685868
+  },
+  "levels": [
+   {
+    "price": 333.35270145989335,
+    "kind": "hvn",
+    "strength": 2.7153174780447804,
+    "distance_atr": 2.414629471486024
+   },
+   {
+    "price": 343.40978204385067,
+    "kind": "hvn",
+    "strength": 3.084510341347315,
+    "distance_atr": 1.1646294714860277
+   },
+   {
+    "price": 338.7,
+    "kind": "pivot_low",
+    "strength": 1.0,
+    "distance_atr": 1.750010835955198
+   },
+   {
+    "price": 325.81,
+    "kind": "pivot_low",
+    "strength": 1.0,
+    "distance_atr": 3.3521159265420235
+   },
+   {
+    "price": 360.83,
+    "kind": "high_20",
+    "strength": 1.0,
+    "distance_atr": -1.0005388657272287
+   },
+   {
+    "price": 325.33,
+    "kind": "low_20",
+    "strength": 1.0,
+    "distance_atr": 3.41177538685868
+   }
+  ],
+  "congestion": null,
+  "regime": "bull-high",
+  "bars_source_id": "src_7db69ef4288c40b3",
+  "code_version": "indicators-1"
+ },
+ "claims": [
+  {
+   "claim_id": "cl_b085c75c4af84c32",
+   "analysis_id": "an_17f4a186735341a7",
+   "text": "AAPL closed the session at {value}.",
+   "tag": "fact",
+   "value": 352.78,
+   "unit": "USD",
+   "source_ids": [
+    "src_3737a7c770eb2194"
+   ],
+   "derived_from": [],
+   "steps": null
+  },
+  {
+   "claim_id": "cl_b82a63e0c1b44bf6",
+   "analysis_id": "an_17f4a186735341a7",
+   "text": "The sma_200 sits at {value}, well below the close.",
+   "tag": "fact",
+   "value": 301.719,
+   "unit": "USD",
+   "source_ids": [
+    "src_b035a2c24290baec"
+   ],
+   "derived_from": [],
+   "steps": null
+  },
+  {
+   "claim_id": "cl_70b435e5322b46b8",
+   "analysis_id": "an_17f4a186735341a7",
+   "text": "The close is {value} ATR above sma_200, a large extension from the long-term average.",
+   "tag": "fact",
+   "value": 6.34635,
+   "unit": "ATR",
+   "source_ids": [
+    "src_9ea38056ede57021"
+   ],
+   "derived_from": [],
+   "steps": null
+  },
+  {
+   "claim_id": "cl_5c2d6f62aa7f439a",
+   "analysis_id": "an_17f4a186735341a7",
+   "text": "The sma_20 is {value}, below the close.",
+   "tag": "fact",
+   "value": 346.642,
+   "unit": "USD",
+   "source_ids": [
+    "src_d952374e921009a6"
+   ],
+   "derived_from": [],
+   "steps": null
+  },
+  {
+   "claim_id": "cl_42b8b830dbcb46e5",
+   "analysis_id": "an_17f4a186735341a7",
+   "text": "The sma_50 is {value}, also below the close.",
+   "tag": "fact",
+   "value": 339.692,
+   "unit": "USD",
+   "source_ids": [
+    "src_8d375151f7825551"
+   ],
+   "derived_from": [],
+   "steps": null
+  },
+  {
+   "claim_id": "cl_f8c267ead3c04d34",
+   "analysis_id": "an_17f4a186735341a7",
+   "text": "The close is above sma_20, sma_50 and sma_200, with the shorter averages sitting above the longer ones, which is consistent with an established uptrend.",
+   "tag": "inference",
+   "value": null,
+   "unit": null,
+   "source_ids": [],
+   "derived_from": [
+    "cl_b085c75c4af84c32",
+    "cl_b82a63e0c1b44bf6",
+    "cl_5c2d6f62aa7f439a",
+    "cl_42b8b830dbcb46e5"
+   ],
+   "steps": "Compare the close with each moving average: it is above all three, and sma_20 is above sma_50, which is above sma_200."
+  },
+  {
+   "claim_id": "cl_82f4b210886045d0",
+   "analysis_id": "an_17f4a186735341a7",
+   "text": "The rsi_14 reads {value}, a mid-range reading.",
+   "tag": "fact",
+   "value": 56.9998,
+   "unit": "index",
+   "source_ids": [
+    "src_858e0bf6cad204cc"
+   ],
+   "derived_from": [],
+   "steps": null
+  },
+  {
+   "claim_id": "cl_9357533ae3784540",
+   "analysis_id": "an_17f4a186735341a7",
+   "text": "The level_hvn_2 support area is at {value}, below the close.",
+   "tag": "fact",
+   "value": 343.41,
+   "unit": "USD",
+   "source_ids": [
+    "src_1cad32e483f64af9"
+   ],
+   "derived_from": [],
+   "steps": null
+  },
+  {
+   "claim_id": "cl_dfd3b95f6afc4f93",
+   "analysis_id": "an_17f4a186735341a7",
+   "text": "The regime_spy is bull-high, describing the broad market backdrop.",
+   "tag": "fact",
+   "value": null,
+   "unit": null,
+   "source_ids": [
+    "src_d7e151e78a501360"
+   ],
+   "derived_from": [],
+   "steps": null
+  },
+  {
+   "claim_id": "cl_ba1ecc8934034a7d",
+   "analysis_id": "an_17f4a186735341a7",
+   "text": "The setup looks constructive but somewhat extended relative to the long-term average, so a pullback toward nearby support would not be surprising.",
+   "tag": "opinion",
+   "value": null,
+   "unit": null,
+   "source_ids": [],
+   "derived_from": [
+    "cl_70b435e5322b46b8",
+    "cl_f8c267ead3c04d34",
+    "cl_9357533ae3784540"
+   ],
+   "steps": null
+  }
+ ],
+ "input_hash": "sha256:342567c15d797b2023e480e544d661771e4ba76708328f765f9b1e536b2a80e4",
+ "prompt_version": "analyze-1",
+ "model": "anthropic/claude-sonnet-5.5",
+ "arm": "main",
+ "sample_trace_id": "trace_b2c722c8292a4fb8",
+ "provider_route": "openrouter:Google",
+ "terms_class": "restricted",
+ "context_tokens": 1894
+}

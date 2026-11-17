@@ -1,0 +1,6 @@
+usage: tr open [-h] [--arm {champion,challenger,teacher}]
+
+options:
+  -h, --help            show this help message and exit
+  --arm {champion,challenger,teacher}
+                        one arm only (default: every arm)
