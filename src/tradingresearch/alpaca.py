@@ -136,14 +136,17 @@ def bars_source(frame: pd.DataFrame, *, ticker: str, feed: str, adjustment: str)
     )
 
 
-def minute_bars(http: httpx.Client, cache_dir: Path, ticker: str, session: date, *, feed: str = "sip") -> pd.DataFrame:
-    """Regular-session 1-minute bars for one ticker-day, cached as CSV on first use."""
-    path = cache_dir / feed / ticker / f"{session.isoformat()}.csv"
+def minute_bars(
+    http: httpx.Client, cache_dir: Path, ticker: str, session: date, *, feed: str = "sip", adjustment: str = "split"
+) -> pd.DataFrame:
+    """Regular-session 1-minute bars for one ticker-day, cached as CSV on first use (raw prices in `<feed>-raw/`)."""
+    folder = feed if adjustment == "split" else f"{feed}-{adjustment}"
+    path = cache_dir / folder / ticker / f"{session.isoformat()}.csv"
     if path.exists():
         return pd.read_csv(path, parse_dates=["t"])
     open_utc, close_utc = sessions.open_close(session)
     frame = fetch_bars(
-        http, [ticker], open_utc.isoformat(), close_utc.isoformat(), timeframe="1Min", feed=feed, adjustment="split"
+        http, [ticker], open_utc.isoformat(), close_utc.isoformat(), timeframe="1Min", feed=feed, adjustment=adjustment
     )
     # The window is [open, close]; a bar stamped at the close itself belongs to the after-hours session.
     frame = frame[(frame["t"] >= open_utc) & (frame["t"] < close_utc)].drop(columns="ticker")

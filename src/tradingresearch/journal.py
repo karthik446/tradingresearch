@@ -226,3 +226,33 @@ def open_theses(conn: sqlite3.Connection, arm: str | None = None) -> list[tuple[
         (arm, arm),
     )
     return [(Thesis.model_validate_json(body), state) for body, state in rows]
+
+
+def open_shadow_ids(conn: sqlite3.Connection) -> list[str]:
+    """Shadows whose last event is PROPOSED or OPEN (SPIKE §6.8), oldest first."""
+    rows = conn.execute(
+        "SELECT s.shadow_id FROM shadow s WHERE (SELECT e.state FROM event e WHERE e.subject_id = s.shadow_id "
+        "ORDER BY e.seq DESC LIMIT 1) IN ('PROPOSED', 'OPEN') ORDER BY s.created_at, s.shadow_id"
+    )
+    return [shadow_id for (shadow_id,) in rows]
+
+
+def events_for(conn: sqlite3.Connection, subject_id: str) -> tuple[Event, ...]:
+    """A subject's events in insertion order (seq): the last one is its state."""
+    rows = conn.execute("SELECT body FROM event WHERE subject_id = ? ORDER BY seq", (subject_id,))
+    return tuple(Event.model_validate_json(body) for (body,) in rows)
+
+
+def add_settlement(
+    conn: sqlite3.Connection, events: list[Event], sources: list[SourceRef], outcome: TeacherOutcome | None = None
+) -> None:
+    """One reconcile step of one subject in a single transaction: the bars sources it cites, its events, and the
+    TeacherOutcome when a teacher thesis ends. Sources are content-addressed, so one already stored is skipped."""
+    with conn:
+        for source in sources:
+            if conn.execute("SELECT 1 FROM source_ref WHERE source_id = ?", (source.source_id,)).fetchone() is None:
+                _insert(conn, source)
+        for event in events:
+            _insert(conn, event)
+        if outcome is not None:
+            _insert(conn, outcome)

@@ -11,7 +11,7 @@ from tradingresearch.evals import GRADERS, Parsed, grader, graders
 
 HELP = Path(__file__).parent / "fixtures" / "help"
 CASES = [("tr", [])] + [(name, [name]) for name in ("sessions", "bars", "facts", "snapshot", "news", "screen",
-                                                    "analyze", "thesis", "open", "check", "exp", "usage")]
+                                                    "analyze", "thesis", "open", "reconcile", "check", "exp", "usage")]
 CASES.append(("exp_run", ["exp", "run"]))
 
 

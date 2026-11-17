@@ -1,0 +1,6 @@
+usage: tr reconcile [-h] [--session SESSION] [--dry-run]
+
+options:
+  -h, --help         show this help message and exit
+  --session SESSION  a completed session (default: the latest, after 16:15 ET)
+  --dry-run          print what would be appended; write nothing

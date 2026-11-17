@@ -1,0 +1,19 @@
+{
+  "_about": "Synthetic bars built by hand for the reconcile runner; never real prices, made-up tickers. Every thesis: long, short horizon, stop entry 101, stop 98, target 106, invalidation 99, window 2026-11-17 09:30-16:00 New York. daily: [session, o, h, l, c]; minutes: {session: [[HH:MM New York, o, h, l, c]]}; corporate_actions: ex-dates.",
+  "SYNA": {
+    "_case": "fills on day 1 (minutes), target on day 2 (daily)",
+    "daily": [["2026-11-17", 100.2, 101.6, 100.0, 101.3], ["2026-11-18", 101.5, 106.5, 101.0, 106.2]],
+    "minutes": {"2026-11-17": [["09:30", 100.2, 100.6, 100.0, 100.5], ["10:00", 100.5, 101.4, 100.4, 101.2]]}
+  },
+  "SYNB": {
+    "_case": "never reaches the entry, no stop, closes above invalidation: the window ends unfilled",
+    "daily": [["2026-11-17", 100.2, 100.8, 99.6, 100.4]],
+    "minutes": {}
+  },
+  "SYND": {
+    "_case": "split ex-date on day 1 while PROPOSED",
+    "daily": [["2026-11-17", 100.2, 101.6, 100.0, 101.3]],
+    "minutes": {"2026-11-17": [["09:30", 100.2, 100.6, 100.0, 100.5], ["10:00", 100.5, 101.4, 100.4, 101.2]]},
+    "corporate_actions": ["2026-11-17"]
+  }
+}
