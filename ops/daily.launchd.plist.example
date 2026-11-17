@@ -5,16 +5,18 @@
 
   Install:
     1. Pin the code that writes evidence: `git worktree add --detach ../tradingresearch-live <verified-sha>`, then
-       `uv sync` inside it (docs/runbook.md, "Pinned code, live data"). Dev never runs from it.
+       `uv sync -q` inside it (docs/runbook.md, "Pinned code, live data"). Dev never runs from it.
     2. Copy this file to ~/Library/LaunchAgents/com.tradingresearch.daily.plist.
-    3. Replace /path/to/tradingresearch-live (once) with the worktree path, /path/to/tradingresearch (three times:
-       TR_DATA_DIR and the two log paths) with the repo path that holds data/, /path/to/uv with `which uv` and
-       /path/to/uv-folder with the folder that holds it. Create the folder data/logs/ (launchd does not).
+    3. Replace each placeholder everywhere it appears: /path/to/live-worktree (once) with the worktree path,
+       /path/to/tradingresearch (three times: TR_DATA_DIR and the two log paths) with the repo path that holds
+       data/, /path/to/uv (once) with `which uv`, /path/to/folder-of-uv (once) with the folder that holds it.
+       Create the folder data/logs/ (launchd does not).
+    4. Check it before the next run: `TR_DATA_DIR=<repo>/data uv run tr daily --teachers --dry-run` from the worktree.
     `--teachers` runs the teacher bake-off after the champion run; drop it to run the champion only.
 
   Time zone: launchd reads Hour/Minute in the Mac's own time zone. 16:30 is for a Mac set to New York time
-  (after the 16:15 ET cutoff `tr daily` waits for). Elsewhere, convert 16:30 ET to local time, and mind the
-  daylight-saving weeks when New York and your zone change on different dates.
+  (after the 16:15 ET cutoff `tr daily` waits for) and 21:00 is the catch-up. Elsewhere, convert 16:30 and 21:00 ET
+  to local time, and convert again if the Mac changes zone.
   On a holiday the default session is the last completed one, already run, so it makes no model call.
 
   Keys: tr reads them from ~/.config/tradingresearch/verify.env itself (TR_SEC_USER_AGENT may go there too).
@@ -25,7 +27,7 @@
   <key>Label</key>
   <string>com.tradingresearch.daily</string>
   <key>WorkingDirectory</key>
-  <string>/path/to/tradingresearch-live</string>
+  <string>/path/to/live-worktree</string>
   <key>ProgramArguments</key>
   <array>
     <string>/path/to/uv</string>
@@ -37,7 +39,7 @@
   <key>EnvironmentVariables</key>
   <dict>
     <key>PATH</key>
-    <string>/path/to/uv-folder:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    <string>/path/to/folder-of-uv:/usr/bin:/bin:/usr/sbin:/sbin</string>
     <key>TR_DATA_DIR</key>
     <string>/path/to/tradingresearch/data</string>
   </dict>

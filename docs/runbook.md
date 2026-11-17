@@ -13,11 +13,11 @@ How the daily loop runs, how to check it, and what to do when it fails. Live str
 | WorkingDirectory | `/Users/kar/Developer/projects/tradingresearch-live` (the pinned worktree, below) |
 | TR_DATA_DIR | `/Users/kar/Developer/projects/tradingresearch/data` (the live journal) |
 | PATH | `/Users/kar/.local/bin:/usr/bin:/bin:/usr/sbin:/sbin` |
-| Log | `data/logs/daily.log` (stdout and stderr) |
+| Log | `/Users/kar/Developer/projects/tradingresearch/data/logs/daily.log` (stdout and stderr) |
 | Keys | `tr` reads `~/.config/tradingresearch/verify.env` itself, including `TR_SEC_USER_AGENT`. No key goes in the plist |
 
-launchd reads Hour/Minute in the Mac's time zone. If the Mac changes zone, or New York and Denver switch daylight
-saving on different dates, the times must be converted again. `ops/daily.launchd.plist.example` is the template
+launchd reads Hour/Minute in the Mac's time zone. If the Mac changes zone, the times must be converted again.
+`ops/daily.launchd.plist.example` is the template
 (written for a Mac on New York time: 16:30 and a 21:00 catch-up); the installed agent has the same shape in Denver time.
 
 The LaunchAgent owns live runs. To look at what a live run would do, use `--dry-run`.
@@ -30,7 +30,7 @@ change under the stream. Two rules follow, and they are separate on purpose.
 1. **The agent runs pinned code.** Its WorkingDirectory is the git worktree `~/Developer/projects/tradingresearch-live`,
    detached at a verified commit, with `TR_DATA_DIR=/Users/kar/Developer/projects/tradingresearch/data`. Editing
    or committing on master does not change what runs at 14:30.
-2. **Dev never writes the live journal.** `<repo>/data/journal.db` is live evidence. Nothing writes to it except the
+2. **Dev never writes the live journal.** `<repo>/data/journal.db` is live evidence. Nothing writes rows to it except the
    agent: no `daily`, `analyze`, `thesis`, `reconcile`, `label`, `grade` (without `--dry-run`), `exp run` or
    `learn --decide`. Tests, experiments and packet runs use `TR_DATA_DIR=<repo>/data-dev` (git-ignored). Read-only
    commands (`report`, `usage`, `slo`, `--dry-run`) may read the live data.
@@ -39,14 +39,13 @@ Moving the pin, only to a commit whose tests and `ci/gate.py` pass, and never be
 18:45 and 19:15 America/Denver (the two run windows):
 
 ```sh
-git -C ~/Developer/projects/tradingresearch-live checkout --detach <sha>
-(cd ~/Developer/projects/tradingresearch-live && uv sync -q)
+git -C ~/Developer/projects/tradingresearch-live checkout --detach <sha> && (cd ~/Developer/projects/tradingresearch-live && uv sync -q)
 (cd ~/Developer/projects/tradingresearch-live && TR_DATA_DIR=/Users/kar/Developer/projects/tradingresearch/data uv run tr daily --teachers --dry-run)
 ```
 
-Schema changes must be backward-safe for the pinned code (`CREATE TABLE IF NOT EXISTS`, new columns with defaults), or
-land together with a pin move. A dev command that opens the live journal with newer code adds empty tables; the pinned
-code ignores them. Code a change needs in a live run (for example the challenger arm, `rules.py`) does not run until
+Schema changes must be new tables (`CREATE TABLE IF NOT EXISTS`), which the pinned code ignores. A change that adds,
+alters or drops a column lands together with a pin move. A dev command that opens the live journal with newer code adds
+its empty tables. Code a change needs in a live run (for example the challenger arm, `rules.py`) does not run until
 the pin moves past it: re-pin before registering a real rule change.
 
 ## What one run does
