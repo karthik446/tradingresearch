@@ -23,9 +23,9 @@ The LaunchAgent owns live runs. To look at what a live run would do, use `--dry-
 
 ## What one run does
 
-`tr daily` settles the latest completed session (after 16:15 ET) in four steps: screen the universe, analyze the
-shortlist (`--top`, default 10), write one thesis-step decision per analysis, then reconcile. Options: `--session`,
-`--top`, `--max-usd` (default 1.00), `--dry-run` (free steps only, writes nothing), `--no-model`, `--teachers`,
+`tr daily` settles the latest completed session (after 16:15 ET) in five steps: screen the universe, analyze the
+shortlist (`--top`, default 10), write one thesis-step decision per analysis, then reconcile and grade. Options:
+`--session`, `--top`, `--max-usd` (default 1.00), `--dry-run` (free steps only, writes nothing), `--no-model`, `--teachers`,
 `--teacher-max-usd` (default 0.40).
 
 - **Reruns are free.** Finished work prints `already done` and makes no model call, so the 19:00 catch-up only does
@@ -37,6 +37,8 @@ shortlist (`--top`, default 10), write one thesis-step decision per analysis, th
   `late: the entry window after <session> opened at ... UTC`. A thesis written after its window opens would be
   hindsight.
 - **Missed sessions** (no `daily_run` row in the last 10 trading days) get a `missed` row and are never backfilled.
+- **Grade** (`tr grade`, no model call) builds each filled champion/challenger thesis's shadow and, once thesis and
+  shadow are CLOSED, one Grade (r_net score, P2-P4). Its `daily_run` row is a `reconcile` row whose reason starts `grade: `.
 - The `events`, `thesis` and `daily_run` tables are append-only (triggers); nothing is corrected in place.
 - **Teachers** (`--teachers`, off by default). After the evening's summary line, each of the 3 pinned teachers
   analyzes the session's 4 drawn names (`tr bakeoff draw`) and writes a thesis-step decision from its own analysis.

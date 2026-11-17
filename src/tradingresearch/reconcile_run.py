@@ -15,7 +15,7 @@ import pandas as pd
 from . import alpaca, journal, reconcile, sessions
 from .analyze import plain
 from .hashing import digest
-from .records import RULES_VERSION, Event, OutcomeGrade, SourceRef, TeacherOutcome, Thesis
+from .records import RULES_VERSION, Analysis, Event, OutcomeGrade, SourceRef, TeacherOutcome, Thesis
 
 ADJUSTMENT = "raw"  # §6.1: prices as traded, so stop and target compare with the levels the thesis wrote
 PRICES = ["session", "o", "h", "l", "c"]  # what settle reads from a daily bar, and what its SourceRef hashes
@@ -114,20 +114,23 @@ def settle_one(conn, bars: BarSource, t: Thesis, state: str, session: date, now:
                    for e in result.events)
     outcome = None
     if t.arm == "teacher" and events and events[-1].state in TERMINAL:
-        outcome = teacher_outcome(t, events[-1], result.outcome)
+        from .grade import code_checks  # local import: grade imports this module
+
+        checks = code_checks(t, journal.get(conn, Analysis, t.analysis_id))
+        outcome = teacher_outcome(t, events[-1], result.outcome, checks)
     if events and not dry_run:
         journal.add_settlement(conn, list(events), [source], outcome)
     notes = (*revision_notes(conn, recorded, prices, t.ticker, bars.feed), *result.notes)
     return Settled(t, state, events, outcome, notes)
 
 
-def teacher_outcome(t: Thesis, last: Event, outcome: OutcomeGrade | None) -> TeacherOutcome:
-    """The one row a teacher thesis gets when it ends (SPIKE §1.1): no grade, no judge; P2-P4 are not built yet, so
-    `code_checks` is empty. The id comes from the thesis, so a second write is a duplicate-id error."""
+def teacher_outcome(t: Thesis, last: Event, outcome: OutcomeGrade | None, checks: dict[str, bool]) -> TeacherOutcome:
+    """The one row a teacher thesis gets when it ends (SPIKE §1.1): no grade, no judge, no shadow; `checks` are its
+    P2-P4 (`grade.code_checks`). The id comes from the thesis, so a second write is a duplicate-id error."""
     return TeacherOutcome(
         teacher_outcome_id="to_" + digest({"thesis": t.thesis_id}).removeprefix("sha256:")[:16],
         thesis_id=t.thesis_id, final_state=last.state, outcome=outcome if last.state == "CLOSED" else None,
-        code_checks={}, outcome_score_id=None, rules_version=RULES_VERSION, settled_at=last.at,
+        code_checks=checks, outcome_score_id=None, rules_version=RULES_VERSION, settled_at=last.at,
     )
 
 

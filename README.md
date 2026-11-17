@@ -24,6 +24,7 @@ The desk's daily loop, one command each (`uv run tr <command> --help` has the fl
 | `tr screen` | ranks the universe by §5 triggers and stores the shortlist |
 | `tr analyze` / `tr thesis` / `tr open` | claims for a ticker, then 0-3 theses (or a no-trade); `--arm teacher --teacher <model>` pins a DeepInfra route |
 | `tr reconcile` | settles PROPOSED and OPEN theses from bars after 16:15 ET (rules in `reconcile.py`, goldens in `tests/gate/`) |
+| `tr grade` | shadow baseline for each filled champion/challenger thesis, then one Grade (r_net score, P2-P4) once thesis and shadow are CLOSED; no model call |
 | `tr daily` | screen, analyze the shortlist, thesis each, reconcile; reruns skip what is done; `--max-usd` caps spend; `--teachers` adds the bake-off teachers on the drawn names (`--teacher-max-usd` caps them) |
 | `tr usage` | cost per call, run, arm or day from the trace |
 | `tr bakeoff draw` / `report` | the date-seeded 4-name draw and the per-teacher report for the teacher bake-off |

@@ -127,11 +127,13 @@ def test_dry_run_writes_nothing(conn):
 
 
 def test_teacher_thesis_closed_writes_one_teacher_outcome_with_the_grade(conn):
-    """SPIKE §1.1 TeacherOutcome: CLOSED → outcome set, empty code_checks (P2-P4 not built), no score id."""
+    """SPIKE §1.1 TeacherOutcome: CLOSED → outcome set, P2-P4 from `grade.code_checks`, no score id."""
     t = seed(conn, "SYNA", arm="teacher")
     report = reconcile_run.run(conn, FixtureBars(), D2, now=NOW)
     [o] = outcomes(conn)
-    assert (o.thesis_id, o.final_state, o.code_checks, o.outcome_score_id) == (t.thesis_id, "CLOSED", {}, None)
+    assert (o.thesis_id, o.final_state, o.outcome_score_id) == (t.thesis_id, "CLOSED", None)
+    assert o.code_checks == {"p2_evidence_valid": False,  # the factory thesis cites cl_0, not one of its claims
+                             "p3_invalidation_testable": True, "p4_levels_coherent": True}
     assert o.outcome.r_gross == pytest.approx((106.0 - 101.0) / 3.0)
     assert o.settled_at == journal.events_for(conn, t.thesis_id)[-1].at
     assert report.settled[0].teacher_outcome == o

@@ -1,4 +1,5 @@
-"""`tr daily`: the whole evening for one completed session, screen → analyze → thesis → reconcile (REPO-PLAN §7 G4a).
+"""`tr daily`: the whole evening for one completed session, screen → analyze → thesis → reconcile → grade (REPO-PLAN
+§7 G4a, G8).
 Paid unless --dry-run or --no-model; --max-usd stops it before the next model call. --teachers then runs the
 bake-off's pinned teachers on the session's drawn names under --teacher-max-usd (SPIKE §9.4)."""
 
@@ -9,7 +10,7 @@ from datetime import UTC, datetime
 from functools import cache
 from types import SimpleNamespace
 
-from .. import analyze as an, daily, journal, openrouter, reconcile_run, screen, teacher as tc, thesis as th
+from .. import analyze as an, daily, grade, journal, openrouter, reconcile_run, screen, teacher as tc, thesis as th
 from ..config import require
 from .common import alpaca_client, edgar_client
 from .reconcile import completed_session
@@ -44,8 +45,12 @@ def real_steps(conn, cfg, http, provider, top: int) -> daily.Steps:
         bars = reconcile_run.AlpacaBars(http, cfg.data_dir / "bars_1m", cfg.feed)
         return reconcile_run.run(conn, bars, day, dry_run=dry_run)
 
+    def grade_step(day, dry_run):
+        bars = reconcile_run.AlpacaBars(http, cfg.data_dir / "bars_1m", cfg.feed)
+        return grade.run(conn, bars, day, dry_run=dry_run)
+
     return daily.Steps(screen_step, analyze_step, lambda a, now: horizons_to_ask(conn, a, "champion", now),
-                       thesis_step, reconcile_step)
+                       thesis_step, reconcile_step, grade_step)
 
 
 def teacher_steps(conn, cfg, http, provider) -> daily.TeacherSteps:
@@ -96,13 +101,15 @@ def cmd_daily(args, cfg) -> None:
 
 
 def register(sub) -> None:
-    p = sub.add_parser("daily", help="the evening run for one session: screen, analyze, thesis, reconcile (paid)")
+    p = sub.add_parser("daily", help="the evening run for one session: screen, analyze, thesis, reconcile, grade "
+                                     "(paid)")
     p.add_argument("--session", help="a completed session (default: the latest, after 16:15 ET)")
     p.add_argument("--top", type=int, default=10, help="analyze the screen's top N (default 10, SPIKE §4.2)")
     p.add_argument("--max-usd", type=float, default=1.00,
                    help="stop before the next model call that would take the run past this (default 1.00)")
     p.add_argument("--dry-run", action="store_true",
-                   help="free steps only (reconcile writes nothing): print what would be analyzed and its cost")
+                   help="free steps only (reconcile and grade write nothing): print what would be analyzed and its "
+                        "cost")
     p.add_argument("--no-model", action="store_true", help="run the free steps for real; skip analyze and thesis")
     p.add_argument("--teachers", action="store_true",
                    help="then run the 3 pinned teachers on the session's 4 drawn bake-off names (paid, SPIKE §9.4); "

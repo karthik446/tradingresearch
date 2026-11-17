@@ -20,7 +20,7 @@ from gigai_core.budget import Price
 
 from factories import T0, analysis
 from test_teacher import API, PRICE, REPLY as TEACHER_ANALYZE_REPLY, TEACHER, context, pinned_tokens  # noqa: F401
-from tradingresearch import analyze as an, daily, journal, reconcile_run, sessions, teacher as tc, thesis as th
+from tradingresearch import analyze as an, daily, grade, journal, reconcile_run, sessions, teacher as tc, thesis as th
 from tradingresearch.cli import build_parser, main
 from tradingresearch.commands.thesis import horizons_to_ask
 from tradingresearch.config import require, settings
@@ -59,6 +59,7 @@ class Recorded:
         self.analyzed: list[str] = []
         self.thesised: list[str] = []
         self.reconciled: list[bool] = []
+        self.graded: list[bool] = []
 
     def screen(self, day: date) -> list[ScreenResult]:
         return self.screen_rows
@@ -83,8 +84,12 @@ class Recorded:
         self.reconciled.append(dry_run)
         return reconcile_run.run(self.conn, None, day, dry_run=dry_run, now=NOW)
 
+    def grade(self, day: date, dry_run: bool) -> grade.Report:
+        self.graded.append(dry_run)
+        return grade.run(self.conn, None, day, dry_run=dry_run, now=NOW)
+
     def steps(self) -> daily.Steps:
-        return daily.Steps(self.screen, self.analyze, self.horizons, self.thesis, self.reconcile)
+        return daily.Steps(self.screen, self.analyze, self.horizons, self.thesis, self.reconcile, self.grade)
 
 
 @pytest.fixture
@@ -115,7 +120,9 @@ def test_a_full_run_screens_analyzes_writes_theses_and_reconciles(conn, runs_dir
     report = run(conn, steps, runs_dir)
     assert (steps.analyzed, steps.thesised, steps.reconciled, report.screen_failed) == (["AAPL"], ["AAPL"], [False], False)
     assert statuses(conn) == [("screen", None, "ok"), ("analyze", "AAPL", "ok"), ("thesis", "AAPL", "ok"),
-                              ("reconcile", None, "ok")]
+                              ("reconcile", None, "ok"), ("reconcile", None, "ok")]
+    grade_row = journal.daily_runs(conn, SESSION)[4]["reason"]
+    assert grade_row == "grade: grade 2026-11-16: 0 graded, 0 shadow(s) created, 1 waiting"
     rows = journal.daily_runs(conn, SESSION)
     assert rows[1]["ids"] == [ANALYSIS.analysis_id] and rows[1]["cost_usd"] == 0.017304
     [t] = [t for t, _ in journal.open_theses(conn)]
@@ -123,7 +130,7 @@ def test_a_full_run_screens_analyzes_writes_theses_and_reconciles(conn, runs_dir
     assert report.spent_usd == 0.017304
     out = capsys.readouterr().out
     assert "waiting: the entry window opens on 2026-11-17" in out
-    assert "daily 2026-11-16: 2 ok, 0 failed, 0 skipped, 0 stopped; 2 model steps, spent $0.0173 of $1.00" in out
+    assert "waiting: PROPOSED: not filled yet" in out
 
 
 def test_a_rerun_for_the_same_session_makes_no_model_call(conn, runs_dir, capsys):
@@ -135,8 +142,22 @@ def test_a_rerun_for_the_same_session_makes_no_model_call(conn, runs_dir, capsys
     out = capsys.readouterr().out
     assert f"analyze   AAPL   skipped already done ({ANALYSIS.analysis_id})" in out
     assert "daily 2026-11-16: already done, no model call" in out
-    assert statuses(conn)[-4:] == [("screen", None, "ok"), ("analyze", "AAPL", "skipped"),
-                                   ("thesis", "AAPL", "skipped"), ("reconcile", None, "ok")]
+    assert statuses(conn)[-5:] == [("screen", None, "ok"), ("analyze", "AAPL", "skipped"),
+                                   ("thesis", "AAPL", "skipped"), ("reconcile", None, "ok"), ("reconcile", None, "ok")]
+
+
+def test_a_failed_grade_is_a_row_and_the_evening_still_ends(conn, runs_dir, capsys):
+    steps = Recorded(conn, runs_dir, ranked("AAPL"))
+
+    def broken(day, dry_run):
+        raise RuntimeError("no bars for SYNG")
+
+    steps.grade = broken
+    report = run(conn, steps, runs_dir)
+    assert not report.screen_failed and steps.reconciled == [False]
+    assert journal.daily_runs(conn, SESSION)[-1]["reason"] == "grade: no bars for SYNG"
+    assert statuses(conn)[-2:] == [("reconcile", None, "ok"), ("reconcile", None, "failed")]
+    assert "daily 2026-11-16: 2 ok, 0 failed" in capsys.readouterr().out
 
 
 def test_a_failed_ticker_is_recorded_and_the_loop_continues(conn, runs_dir):
@@ -176,6 +197,7 @@ def test_a_dry_run_calls_no_model_writes_no_rows_and_estimates_the_cost(conn, ru
     steps = Recorded(conn, runs_dir, ranked("AAPL", "MSFT"))
     report = run(conn, steps, runs_dir, dry_run=True)
     assert (steps.analyzed, steps.thesised, steps.reconciled, journal.daily_runs(conn)) == ([], [], [True], [])
+    assert steps.graded == [True]
     out = capsys.readouterr().out
     assert "would analyze AAPL (≈$0.02), then thesis (≈$0.03)" in out
     assert ("daily 2026-11-16 (dry run): would analyze 2, thesis 2, estimated $0.10 (≈$0.02 per analyze, $0.03 per "
@@ -281,7 +303,8 @@ def teacher_rows(conn) -> list[dict]:
     return [r for r in journal.daily_runs(conn, SESSION) if r["reason"].startswith("teacher ")]
 
 
-MAIN_ROWS = [("screen", None, "ok"), ("analyze", "AAPL", "ok"), ("thesis", "AAPL", "ok"), ("reconcile", None, "ok")]
+MAIN_ROWS = [("screen", None, "ok"), ("analyze", "AAPL", "ok"), ("thesis", "AAPL", "ok"), ("reconcile", None, "ok"),
+             ("reconcile", None, "ok")]  # the second reconcile row is the grade step
 MAIN_SUMMARY = "daily 2026-11-16: 2 ok, 0 failed, 0 skipped, 0 stopped; 2 model steps, spent $0.0173 of $1.00"
 
 
@@ -334,7 +357,7 @@ def test_a_failed_teacher_call_is_a_row_and_the_evening_still_succeeds(conn, run
     done_by(conn, "openai/gpt-oss-120b")
     teachers = Teachers(conn, runs_dir.parent, fail=(TEACHER.model, "qwen/qwen3.5-397b-a17b"))
     report = run(conn, Recorded(conn, runs_dir, ranked("AAPL")), runs_dir, teachers=teachers.steps())
-    assert not report.screen_failed and statuses(conn)[:4] == MAIN_ROWS
+    assert not report.screen_failed and statuses(conn)[:5] == MAIN_ROWS
     failed = [r for r in teacher_rows(conn) if r["status"] == "failed"]
     assert [r["step"] for r in failed] == ["analyze", "analyze"] and len(teachers.sent) == 2  # both reached the wire
     assert failed[0]["reason"].startswith(f"teacher {TEACHER.model}: model call failed: http_400 (run ")
@@ -391,7 +414,7 @@ def test_live_openrouter_refuses_a_nonexistent_teacher_slug_and_the_evening_stil
                      teachers=daily.TeacherSteps(analyze, lambda *args: pytest.fail("no analysis, so no thesis")))
     finally:
         provider.close()
-    assert not report.screen_failed and statuses(conn)[:4] == MAIN_ROWS
+    assert not report.screen_failed and statuses(conn)[:5] == MAIN_ROWS
     [row] = teacher_rows(conn)
     assert (row["step"], row["status"]) == ("analyze", "failed") and "model call failed: http_4" in row["reason"]
     assert "0 ok, 1 failed, 0 skipped, 0 stopped; 1 model steps, spent $0.0000" in capsys.readouterr().out

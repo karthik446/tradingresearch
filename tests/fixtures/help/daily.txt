@@ -9,8 +9,8 @@ options:
   --top TOP             analyze the screen's top N (default 10, SPIKE §4.2)
   --max-usd MAX_USD     stop before the next model call that would take the
                         run past this (default 1.00)
-  --dry-run             free steps only (reconcile writes nothing): print what
-                        would be analyzed and its cost
+  --dry-run             free steps only (reconcile and grade write nothing):
+                        print what would be analyzed and its cost
   --no-model            run the free steps for real; skip analyze and thesis
   --teachers            then run the 3 pinned teachers on the session's 4
                         drawn bake-off names (paid, SPIKE §9.4); a teacher

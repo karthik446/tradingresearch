@@ -7,6 +7,7 @@ import sqlite3
 from datetime import UTC, date, datetime
 from pathlib import Path
 
+from gigai_core.score import ScoreRecord
 from pydantic import BaseModel
 
 from .hashing import digest
@@ -45,6 +46,10 @@ CREATE TABLE IF NOT EXISTS shadow (
 CREATE TABLE IF NOT EXISTS shadow_outcome (
   subject_id TEXT PRIMARY KEY REFERENCES shadow(shadow_id),
   body TEXT NOT NULL, record_sha256 TEXT NOT NULL, created_at TEXT NOT NULL);
+-- G8: gigai-core ScoreRecords about one subject (a thesis): the outcome score a Grade points at, later P1.
+CREATE TABLE IF NOT EXISTS score (
+  score_id TEXT PRIMARY KEY, subject_id TEXT NOT NULL, kind TEXT NOT NULL, name TEXT NOT NULL, value REAL NOT NULL,
+  body TEXT NOT NULL, record_sha256 TEXT NOT NULL, created_at TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS teacher_outcome (
   teacher_outcome_id TEXT PRIMARY KEY, thesis_id TEXT NOT NULL REFERENCES thesis(thesis_id),
   body TEXT NOT NULL, record_sha256 TEXT NOT NULL, created_at TEXT NOT NULL);
@@ -82,7 +87,7 @@ BEGIN SELECT RAISE(ABORT, 'one live thesis per (ticker, horizon, arm)'); END;
 """
 
 IMMUTABLE = (
-    "source_ref", "analysis", "claim", "thesis", "no_trade", "event", "grade", "shadow", "shadow_outcome",
+    "source_ref", "analysis", "claim", "thesis", "no_trade", "event", "grade", "shadow", "shadow_outcome", "score",
     "teacher_outcome", "training_split", "claim_label", "screen_result", "daily_run",
 )
 
@@ -251,10 +256,12 @@ def events_for(conn: sqlite3.Connection, subject_id: str) -> tuple[Event, ...]:
 
 
 def add_settlement(
-    conn: sqlite3.Connection, events: list[Event], sources: list[SourceRef], outcome: TeacherOutcome | None = None
+    conn: sqlite3.Connection, events: list[Event], sources: list[SourceRef],
+    outcome: TeacherOutcome | OutcomeGrade | None = None,
 ) -> None:
     """One reconcile step of one subject in a single transaction: the bars sources it cites, its events, and the
-    TeacherOutcome when a teacher thesis ends. Sources are content-addressed, so one already stored is skipped."""
+    TeacherOutcome when a teacher thesis ends (or a shadow's OutcomeGrade when it closes). Sources are
+    content-addressed, so one already stored is skipped."""
     with conn:
         for source in sources:
             if conn.execute("SELECT 1 FROM source_ref WHERE source_id = ?", (source.source_id,)).fetchone() is None:
@@ -263,6 +270,51 @@ def add_settlement(
             _insert(conn, event)
         if outcome is not None:
             _insert(conn, outcome)
+
+
+def ungraded_theses(conn: sqlite3.Connection) -> list[tuple[Thesis, str]]:
+    """Champion and challenger theses with no grade whose last event is PROPOSED, OPEN or CLOSED, oldest first."""
+    rows = conn.execute(
+        f"SELECT t.body, {LAST_STATE} AS state FROM thesis t WHERE t.arm IN ('champion', 'challenger') "
+        "AND state IN ('PROPOSED', 'OPEN', 'CLOSED') "
+        "AND NOT EXISTS (SELECT 1 FROM grade g WHERE g.thesis_id = t.thesis_id) ORDER BY t.created_at, t.thesis_id"
+    )
+    return [(Thesis.model_validate_json(body), state) for body, state in rows]
+
+
+def shadow_of(conn: sqlite3.Connection, thesis_id: str) -> Shadow | None:
+    """The thesis's shadow baseline (SPIKE §7.4), if one was created."""
+    row = conn.execute("SELECT body FROM shadow WHERE thesis_id = ?", (thesis_id,)).fetchone()
+    return Shadow.model_validate_json(row[0]) if row else None
+
+
+def shadow_outcome(conn: sqlite3.Connection, shadow_id: str) -> OutcomeGrade | None:
+    """A closed shadow's OutcomeGrade, if it has one."""
+    row = conn.execute("SELECT body FROM shadow_outcome WHERE subject_id = ?", (shadow_id,)).fetchone()
+    return OutcomeGrade.model_validate_json(row[0]) if row else None
+
+
+def _insert_score(conn: sqlite3.Connection, subject_id: str, score: ScoreRecord) -> None:
+    conn.execute(
+        "INSERT INTO score (score_id, subject_id, kind, name, value, body, record_sha256, created_at) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        (score.score_id, subject_id, score.kind, score.grader_id, score.value, score.model_dump_json(), digest(score),
+         datetime.now(UTC).isoformat()),
+    )
+
+
+def add_grade(conn: sqlite3.Connection, grade: Grade, score: ScoreRecord, graded: Event) -> None:
+    """A grade, the outcome ScoreRecord it points at, and the thesis's GRADED event in one transaction (§6.8)."""
+    with conn:
+        _insert_score(conn, grade.thesis_id, score)
+        _insert(conn, grade)
+        _insert(conn, graded)
+
+
+def scores_for(conn: sqlite3.Connection, subject_id: str) -> list[ScoreRecord]:
+    """Every ScoreRecord stored about one subject, in insertion order."""
+    rows = conn.execute("SELECT body FROM score WHERE subject_id = ? ORDER BY rowid", (subject_id,))
+    return [ScoreRecord.model_validate_json(body) for (body,) in rows]
 
 
 def analyses(conn: sqlite3.Connection, session: date, arm: str) -> list[Analysis]:

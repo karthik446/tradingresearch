@@ -10,9 +10,9 @@ import pytest
 from gigai_core import Dataset
 from gigai_core.records import Prereg
 
-from factories import T0, analysis, thesis
+from factories import T0, analysis, claim, snapshot, thesis
 from test_teacher import PRICE, REPLY, TEACHER, context, replaying
-from tradingresearch import analyze as an, bakeoff, experiment, journal, screen, teacher
+from tradingresearch import analyze as an, bakeoff, experiment, grade, journal, screen, teacher
 from tradingresearch.cli import main
 from tradingresearch.hashing import new_id
 from tradingresearch.records import NoTrade, TeacherOutcome
@@ -152,24 +152,37 @@ def test_the_report_counts_parse_ok_over_the_drawn_items_and_shows_states_and_ve
     ds, qwen, oss = rows
     assert (ds.items, ds.parse_ok, ds.states, ds.cost) == (4, 2, {"CANCELLED": 1}, None)
     assert ds.facts_total is None  # the seeded analyses have no run file
-    assert ds.verdict == "incomplete: 4/40 items" and ds.p2_p4 == bakeoff.NOT_WRITTEN
+    assert ds.verdict == "incomplete: 4/40 items" and ds.p2_p4 == 0.0  # NVDA's thesis cites cl_0, not a claim
     assert (oss.parse_ok, oss.verdict) == (0, "not eligible: parse_ok 0/4")
     text = bakeoff.render(plan, rows)
-    assert "n/a: P2-P4 graders not written yet (week 2)" in text and "no automatic pick" in text
+    assert f"{'incomplete: 4/40 items':<36}0.0%" in text and "no automatic pick" in text
     assert text.endswith("margin (experiments/bakeoff-prereg.toml)")  # the committed prereg, not the example
     assert (ROOT / "experiments" / "bakeoff-prereg.toml").exists()
     assert "deepseek/deepseek-v4-pro" in text and "2/4" in text and "CANCELLED=1" in text
 
 
-def test_p2_p4_pass_is_reported_only_once_every_thesis_has_the_code_checks(tmp_path):
-    conn, written = seeded()
-    other = thesis(written.analysis_id, ticker="NVDA", horizon="swing", arm="teacher", terms_class="trainable")
-    journal.add(conn, other)
-    all_true = dict.fromkeys(bakeoff.P2_P4, True)
-    settled(conn, written.thesis_id, all_true)
-    assert bakeoff.report(conn, tmp_path)[1][0].p2_p4 == "n/a: 1 of 2 theses have no P2-P4 checks yet"
-    settled(conn, other.thesis_id, all_true)
-    assert bakeoff.report(conn, tmp_path)[1][0].p2_p4 == 1 / 4  # NVDA passes; UNH wrote no thesis; KO, XOM failed
+def cited(ticker: str):
+    """A teacher analysis whose one fact quotes its snapshot's close, so a thesis citing that fact passes P2."""
+    snap = snapshot(ticker=ticker, session=BAKEOFF_DAY)
+    close = next(row for row in an.snapshot_rows(snap)[1] if row.name == "close")
+    analysis_id = new_id("an")
+    fact = claim(analysis_id, source_ids=(close.source_id,), value=close.value)
+    return analysis(analysis_id=analysis_id, ticker=ticker, session=BAKEOFF_DAY, arm="teacher", model=TEACHER.model,
+                    terms_class="trainable", snapshot=snap, claims=(fact,))
+
+
+def test_p2_p4_counts_an_item_only_when_every_thesis_it_wrote_passes_on_its_stored_analysis(tmp_path):
+    conn = journal.connect(":memory:")
+    screened(conn, BAKEOFF_DAY, TEN)
+    nvda = cited("NVDA")
+    journal.add_analysis(conn, nvda, [])
+    good = thesis(nvda.analysis_id, ticker="NVDA", arm="teacher", terms_class="trainable",
+                  evidence=(nvda.claims[0].claim_id,))
+    journal.add(conn, good)
+    assert grade.code_checks(good, nvda) == dict.fromkeys(grade.P2_P4, True)
+    assert bakeoff.report(conn, tmp_path)[1][0].p2_p4 == 1 / 4  # unsettled NVDA passes; KO, UNH, XOM have nothing
+    journal.add(conn, thesis(nvda.analysis_id, ticker="NVDA", horizon="swing", arm="teacher", terms_class="trainable"))
+    assert bakeoff.report(conn, tmp_path)[1][0].p2_p4 == 0.0  # the swing thesis cites cl_0, not a claim: P2 fails
 
 
 def test_the_fact_share_and_cost_come_from_the_recorded_teacher_run(tmp_path, monkeypatch):

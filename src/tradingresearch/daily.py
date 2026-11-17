@@ -1,4 +1,5 @@
-"""`tr daily`: one session's evening, screen → analyze → thesis → reconcile (REPO-PLAN §7 G4a; SPIKE L22, L581).
+"""`tr daily`: one session's evening, screen → analyze → thesis → reconcile → grade (REPO-PLAN §7 G4a, G8; SPIKE L22,
+L581).
 
 Each step is an existing function passed in `Steps`. Work already in the journal is skipped, so a rerun for the same
 session makes no model call. Every step leaves a `daily_run` row; a failed ticker is a row, not a crash. With
@@ -16,7 +17,7 @@ from pathlib import Path
 
 from gigai_core.budget import BudgetExceeded
 
-from . import analyze as an, journal, reconcile_run, sessions, teacher as tc, thesis as th, usage
+from . import analyze as an, grade as gr, journal, reconcile_run, sessions, teacher as tc, thesis as th, usage
 from .hashing import new_id
 from .records import Analysis
 from .screen import ScreenResult
@@ -26,6 +27,7 @@ THESIS_USD = 0.03  # measured `tr thesis` run: $0.0195
 MISSED_WINDOW = 10  # trading days looked back for sessions with no daily_run row
 DONE = "already done"
 TEACHER = "teacher"  # a teacher row's reason starts "teacher <model>: " (daily_run.step allows only the five steps)
+GRADE = "grade"  # the grade row is step "reconcile" with a reason starting "grade: ", for the same CHECK
 TEACHER_MAX_USD = 0.40  # --teacher-max-usd default: the teacher step's cap per session, every run of it counted
 
 
@@ -38,6 +40,7 @@ class Steps:
     horizons: Callable[[Analysis, datetime], tuple[str, ...]]
     thesis: Callable[[Analysis, tuple[str, ...]], th.Result]
     reconcile: Callable[[date, bool], reconcile_run.Report]
+    grade: Callable[[date, bool], gr.Report]
 
 
 @dataclass(frozen=True)
@@ -189,6 +192,7 @@ def run(conn: sqlite3.Connection, steps: Steps, session: date, *, top: int, max_
     analyze_all(daily, steps, tickers, gate)
     thesis_all(daily, steps, now, gate)
     reconcile(daily, steps)
+    grade(daily, steps)
     print(summary(daily))
     if teachers is not None:
         teach(daily, teachers, results, teacher_max_usd, no_model)
@@ -275,6 +279,21 @@ def reconcile(daily: Daily, steps: Steps) -> None:
         print(f"  {text}")
     events = tuple(e.event_id for s in report.settled for e in s.events) if not report.dry_run else ()
     daily.record(Row("reconcile", None, "ok", lines[-1], events))
+
+
+def grade(daily: Daily, steps: Steps) -> None:
+    """Shadows and grades after the settle (SPIKE §7); a failure is a row, as for reconcile."""
+    try:
+        report = steps.grade(daily.session, daily.dry_run)
+    except sqlite3.Error:
+        raise
+    except (Exception, SystemExit) as error:
+        daily.record(Row("reconcile", None, "failed", f"{GRADE}: {reason(error)}"))
+        return
+    lines = gr.render(report)
+    for text in lines[:-1]:
+        print(f"  {text}")
+    daily.record(Row("reconcile", None, "ok", f"{GRADE}: {lines[-1]}", gr.written_ids(report)))
 
 
 def summary(daily: Daily) -> str:

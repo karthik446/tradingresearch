@@ -4,7 +4,8 @@ teacher, read offline from the journal and the saved runs. It prints each teache
 The bake-off is the first ten sessions on or after FIRST_SESSION with a stored teacher analysis; its items are each
 session's four drawn names (`teacher.draw` over the screen's shortlist of ten). A teacher's item counts as `parse_ok`
 when its analysis and a thesis-step decision (a teacher thesis or a no-trade) from it are stored, so a failed or
-missing call fails the item.
+missing call fails the item. P2-P4 run on each stored teacher thesis with its analysis (`grade.code_checks`), so
+they count before any thesis settles.
 """
 
 from __future__ import annotations
@@ -18,8 +19,8 @@ from pathlib import Path
 from gigai_core import open_run
 from gigai_core.records import Prereg
 
-from . import daily, screen, teacher, trace, usage
-from .records import Analysis, TeacherOutcome
+from . import daily, grade, journal, screen, teacher, trace, usage
+from .records import Analysis, TeacherOutcome, Thesis
 
 SHORTLIST = 10  # the screen's top N the draw picks from (SPIKE §4.2)
 FIRST_SESSION = date(2026, 11, 17)  # the prereg's "first NYSE session on or after 2026-11-17"; earlier runs are tests
@@ -27,8 +28,6 @@ N_PLANNED = 40  # items per teacher: 4 names x 10 sessions (SPIKE §9.4)
 SESSIONS = N_PLANNED // teacher.BAKEOFF_NAMES
 PARSE_OK_MIN = 38  # eligible at parse_ok >= 38/40 ...
 FACT_VALID_MIN = 0.90  # ... and >= 90% of fact claims valid (TRAINING-SPIKE §7.1)
-P2_P4 = ("p2_evidence_valid", "p3_invalidation_testable", "p4_levels_coherent")
-NOT_WRITTEN = "n/a: P2-P4 graders not written yet (week 2)"
 STATES = ("CLOSED", "CANCELLED", "EXPIRED", "OPEN", "PROPOSED")
 
 
@@ -57,7 +56,7 @@ class TeacherRow:
     facts_total: int | None
     cost: usage.Usage | None
     states: dict[str, int]
-    p2_p4: float | str  # the share of items passing P2-P4, or why it is n/a
+    p2_p4: float | None  # the share of items passing P2-P4; None before any item is drawn
 
     @property
     def fact_share(self) -> float | None:
@@ -165,23 +164,19 @@ def reply_facts(data_dir: Path, analysis: Analysis) -> int | None:
     return None
 
 
-def p2_p4(conn, theses_by_item: list[list[str] | None]) -> float | str:
-    """The share of items that parsed, wrote at least one thesis, and whose every thesis passes P2, P3 and P4 in its
-    TeacherOutcome `code_checks`; n/a (with why) while any thesis lacks those checks."""
-    checks = {tid: code_checks(conn, tid) for theses in theses_by_item if theses for tid in theses}
-    missing = sum(not set(P2_P4) <= found.keys() for found in checks.values())
-    if not checks or missing == len(checks):
-        return NOT_WRITTEN
-    if missing:
-        return f"n/a: {missing} of {len(checks)} theses have no P2-P4 checks yet"
-    passed = sum(bool(theses) and all(all(checks[tid][key] for key in P2_P4) for tid in theses)
+def p2_p4(conn, theses_by_item: list[list[str] | None]) -> float | None:
+    """The share of drawn items that parsed, wrote at least one thesis, and whose every thesis passes P2, P3 and P4;
+    None with no items."""
+    if not theses_by_item:
+        return None
+    passed = sum(bool(theses) and all(passes(conn, tid) for tid in theses)
                  for theses in theses_by_item if theses is not None)
-    return passed / len(theses_by_item) if theses_by_item else NOT_WRITTEN
+    return passed / len(theses_by_item)
 
 
-def code_checks(conn, thesis_id: str) -> dict[str, bool]:
-    outcome = conn.execute("SELECT body FROM teacher_outcome WHERE thesis_id = ?", (thesis_id,)).fetchone()
-    return TeacherOutcome.model_validate_json(outcome[0]).code_checks if outcome else {}
+def passes(conn, thesis_id: str) -> bool:
+    t = journal.get(conn, Thesis, thesis_id)
+    return all(grade.code_checks(t, journal.get(conn, Analysis, t.analysis_id)).values())
 
 
 def calls_by_teacher(data_dir: Path, items: set[tuple[date, str]]) -> dict[str, list[trace.Call]]:
@@ -214,7 +209,7 @@ def render(bakeoff: Plan, rows: list[TeacherRow]) -> str:
     lines += ["", f"eligibility: parse_ok >= {PARSE_OK_MIN}/{N_PLANNED} and fact claims valid >= {FACT_VALID_MIN:.0%}",
               f"{'teacher':<28}{'verdict':<36}p2_p4_pass"]
     for r in rows:
-        p2 = f"{r.p2_p4:.1%}" if isinstance(r.p2_p4, float) else r.p2_p4
+        p2 = "n/a" if r.p2_p4 is None else f"{r.p2_p4:.1%}"
         lines.append(f"{r.model:<28}{r.verdict:<36}{p2}")
     lines += ["", "no automatic pick: the leader on p2_p4_pass wins unless a cheaper eligible teacher is within the "
                   "margin (experiments/bakeoff-prereg.toml)"]

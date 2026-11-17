@@ -1,10 +1,16 @@
 import sqlite3
 
 import pytest
+from gigai_core.score import ScoreRecord
 
-from factories import analysis, event, thesis
+from factories import T0, analysis, event, thesis
 from tradingresearch import journal
-from tradingresearch.records import Analysis
+from tradingresearch.records import Analysis, Grade, OutcomeGrade
+
+
+def outcome(subject_id: str) -> OutcomeGrade:
+    return OutcomeGrade(subject_id=subject_id, entry_price=101.0, exit_price=106.0, r_gross=5 / 3, cost_bps=10.0,
+                        cost_r=0.0337, r_net=1.633, mfe_r=1.7, mae_r=-0.2, exit_reason="target", sessions_held=0)
 
 
 @pytest.fixture
@@ -24,6 +30,22 @@ def test_analysis_round_trips_through_the_journal(conn):
 def test_update_and_delete_abort(conn, sql):
     journal.add_analysis(conn, analysis(), sources=[])
     with pytest.raises(sqlite3.IntegrityError, match="analysis is append-only"):
+        conn.execute(sql)
+
+
+@pytest.mark.parametrize("sql", ["UPDATE score SET value = 9", "DELETE FROM score"])
+def test_score_rows_are_append_only(conn, sql):
+    a = analysis()
+    journal.add_analysis(conn, a, sources=[])
+    t = thesis(a.analysis_id)
+    journal.add(conn, t)
+    score = ScoreRecord(score_id="sc_0", trace_id="trace_0", grader_id="outcome_r_net", grader_version="1",
+                        kind="code", value=1.5, recorded_at=T0)
+    journal.add_grade(conn, Grade(grade_id="gr_0", thesis_id=t.thesis_id, outcome=outcome(t.thesis_id),
+                                  outcome_score_id="sc_0", process_score_id=None, code_checks={}, shadow_id="sh_0"),
+                      score, event(t.thesis_id, "GRADED", reason="graded"))
+    assert journal.scores_for(conn, t.thesis_id) == [score]
+    with pytest.raises(sqlite3.IntegrityError, match="score is append-only"):
         conn.execute(sql)
 
 
