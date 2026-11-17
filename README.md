@@ -35,3 +35,5 @@ The desk's daily loop, one command each (`uv run tr <command> --help` has the fl
 | `tr bakeoff draw` / `report` | the date-seeded 4-name draw and the per-teacher report for the teacher bake-off |
 
 `uv run python ci/gate.py` is the free CI gate (reconcile goldens and prompt hashes). `tests/test_week2.py` fails by design at `week-2-start`: it is your week-2 acceptance test. Likewise `tests/test_week4.py` is the week-4 acceptance test (tools, the tool loop, ADR-005, the first rule change; runbook "Week 4 acceptance").
+
+Week 4 as measured (ADR-005, `experiments/tools-vs-fixed.toml`, 20 ticker-days): tools mode left `all_claims_valid` unchanged (0.100 → 0.100, 95% interval −0.200 to +0.200) at $0.026932 per analysis against $0.016968 fixed, so analyze keeps the fixed context; 12 of 20 tool loops were served by more than one provider (`openrouter:mixed(...)`).

@@ -242,7 +242,7 @@ class OpenRouter:
             if (data.get("usage") or {}).get("cost"):
                 billed.append(float(data["usage"]["cost"]))
             raise OpenRouterError(int(data["error"].get("code", 502)), str(data["error"].get("message"))[:300])
-        route = f"openrouter:{data.get('provider', 'unknown')}" if self.routing is None else self.routing.served(data)
+        route = f"openrouter:{data.get('provider') or 'unknown'}" if self.routing is None else self.routing.served(data)
         key = exchange_key(request)
         self.routes.setdefault(key, []).append(route)
         self.served.append((key, route))

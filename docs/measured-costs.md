@@ -147,3 +147,31 @@ cost per tr daily run: no run recorded
 
 Both `tr report` commands exit 0. `tr usage` reads only the run files on disk (plus one free `GET /key` for the
 key's lifetime spend); none of these commands makes a model call.
+
+## Week 4: tools vs fixed context
+
+One run of `experiments/tools-vs-fixed.toml` on 2026-11-17 under `TR_DATA_DIR=data-dev` (ADR-005 has the
+decision): the same 20 ticker-days, analyze-1 on `anthropic/claude-sonnet-5.5`, one arm with the SOURCES table up
+front and one asking for rows with tools. All measured, from `tr usage` on that data directory; per-item latency is
+the sum of the item's model-call `latency_ms` in the trace.
+
+| Arm | Run id | Items | Model calls | Tokens in | Tokens out | Cost | Per item: tokens in / out, cost, latency |
+|---|---|---|---|---|---|---|---|
+| fixed | run_a24247c2a8b54462 | 20 | 20 | 50,754 | 23,785 | $0.339358 | 2,537.7 / 1,189.25, $0.016968, 8,344.5 ms |
+| tools | run_e80dcfcca6294408 | 20 | 41 | 141,082 | 25,647 | $0.538634 | 7,054.1 / 1,282.35, $0.026932, 10,929.15 ms |
+
+The fixed arm matches the week-3 analyze row (mean of 5: 2,558.2 in / 1,193.6 out, $0.017052). The tools arm costs
+1.59 times as much per item: each of its 2.05 calls per item re-sends the conversation, so input tokens are 2.78
+times the fixed arm's while output grows by 7.8% (1,282.35 ÷ 1,189.25 = 1.078). The key's lifetime spend moved from
+$62.028863 to $62.906855 across the run, $0.877992, equal to the trace total.
+
+```
+$ TR_DATA_DIR=data-dev uv run tr usage --by arm
+arm                   calls  tokens in  tokens out       cost  mean latency
+tools-vs-fixed:fixed     20      50754       23785  $0.339358       8344 ms
+tools-vs-fixed:tools     41     141082       25647  $0.538634       5331 ms
+total                    61     191836       49432  $0.877992       6319 ms
+```
+
+`--by arm` prints latency per call; the tools arm's 5,331 ms per call × 41 calls ÷ 20 items is the 10,929 ms per item
+above.

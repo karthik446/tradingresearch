@@ -98,6 +98,13 @@ def test_one_reply_without_a_provider_makes_the_exchange_unknown(missing):
     assert provider.route_for(PROMPT) == "openrouter:unknown"
 
 
+def test_a_null_provider_field_is_unknown_too():
+    provider = OpenRouter("not-a-real-key")
+    exchange(provider, [r | {"provider": None} for r in REPLIES])
+    assert provider.route_for(PROMPT) == "openrouter:unknown"
+    assert clean_route("openrouter:Unknown") is False
+
+
 def test_no_record_is_unknown():
     assert OpenRouter("not-a-real-key").route_for(PROMPT) == "openrouter:unknown"
 
