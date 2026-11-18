@@ -10,7 +10,9 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
-DEFAULT_ENV_FILE = Path(__file__).resolve().parents[2] / ".env"  # <repo>/.env: src/tradingresearch/config.py
+REPO = Path(__file__).resolve().parents[2]  # src/tradingresearch/config.py -> the clone
+DEFAULT_ENV_FILE = REPO / ".env"
+DEFAULT_LEDGER = REPO / "data" / "cost-ledger.jsonl"  # TR_LEDGER: outside TR_DATA_DIR, a deleted scratch dir keeps it
 PROVIDERS = ("openrouter", "anthropic")  # TR_PROVIDER, ADR-014
 
 
@@ -59,6 +61,8 @@ class Settings:
     feed: str  # "sip" (default) or "iex", the one-flag fallback
     provider: str = "openrouter"  # TR_PROVIDER: who serves every model call but the teachers'
     anthropic_key: Secret = Secret("")
+    ledger: Path = DEFAULT_LEDGER  # the append-only cost ledger `analyze.save` adds one row per run to (COST-SPIKE 2.2)
+    cost_tag: str = ""  # TR_COST_TAG `<step>:<owner>`, e.g. `worker:G13c`: ledger row only, never sent to a provider
 
     @property
     def db_path(self) -> Path:
@@ -85,6 +89,8 @@ def settings() -> Settings:
         feed=plain("TR_FEED", "sip"),
         provider=provider,
         anthropic_key=Secret(file.get("ANTHROPIC_API_KEY", "")),
+        ledger=Path(plain("TR_LEDGER", str(DEFAULT_LEDGER))),
+        cost_tag=plain("TR_COST_TAG"),
     )
 
 

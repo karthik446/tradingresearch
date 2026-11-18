@@ -14,10 +14,10 @@ from .trace import Call, calls
 
 
 class Usage(CoreModel):
-    """Totals for one group of calls. `prices_missing`: a call has no cost, so `cost_usd` is a lower bound. `items`
-    counts distinct item ids (an arm's analyze and thesis calls of one ticker-day are one item). `cache_write` and
-    `cache_read` are None when no call reported them. `p50_ms` / `p95_ms` are nearest-rank percentiles over items of
-    the summed latency of each item's calls in the group."""
+    """Totals for one group of calls. `prices_missing`: a call has no cost (`calls_without_cost` counts them), so
+    `cost_usd` is a lower bound. `items` counts distinct item ids (an arm's analyze and thesis calls of one ticker-day
+    are one item). `cache_write`, `cache_read` and `reasoning` are None when no call reported them. `p50_ms` /
+    `p95_ms` are nearest-rank percentiles over items of the summed latency of each item's calls in the group."""
 
     key: str
     calls: int
@@ -26,12 +26,14 @@ class Usage(CoreModel):
     cache_write: int | None
     cache_read: int | None
     tokens_out: int
+    reasoning: int | None
     cost_usd: float
     usd_per_item: float
     mean_latency_ms: float
     p50_ms: int
     p95_ms: int
     prices_missing: bool
+    calls_without_cost: int
 
 
 def day(call: Call) -> date:
@@ -52,7 +54,8 @@ def nearest_rank(values: list[int], percent: int) -> int:
 
 
 def summarize(key: str, group: list[Call]) -> Usage:
-    """One row for `group`; a missing token count adds 0, a missing cost adds 0 and sets `prices_missing`."""
+    """One row for `group`; a missing token count adds 0, a missing cost adds 0, sets `prices_missing` and counts in
+    `calls_without_cost`."""
     per_item: dict[str, int] = {}
     for call in group:
         per_item[call.item_id] = per_item.get(call.item_id, 0) + call.latency_ms
@@ -64,10 +67,12 @@ def summarize(key: str, group: list[Call]) -> Usage:
         cache_write=reported(call.cache_write_tokens for call in group),
         cache_read=reported(call.cache_read_tokens for call in group),
         tokens_out=sum(call.completion_tokens or 0 for call in group),
+        reasoning=reported(call.reasoning_tokens for call in group),
         cost_usd=round(cost, 6), usd_per_item=round(cost / len(per_item), 6) if per_item else 0.0,
         mean_latency_ms=sum(call.latency_ms for call in group) / len(group) if group else 0.0,
         p50_ms=nearest_rank(latencies, 50), p95_ms=nearest_rank(latencies, 95),
         prices_missing=any(call.cost_usd is None for call in group),
+        calls_without_cost=sum(call.cost_usd is None for call in group),
     )
 
 

@@ -30,6 +30,7 @@ class Call(CoreModel):
     cache_write_tokens: int | None
     cache_read_tokens: int | None
     completion_tokens: int | None
+    reasoning_tokens: int | None  # the part of the completion spent on reasoning, where the provider says
     cost_usd: float | None
     latency_ms: int
     status: Outcome
@@ -75,6 +76,13 @@ def cache_tokens(raw: Mapping[str, JsonValue]) -> tuple[int | None, int | None]:
     return count(raw.get("cache_creation_input_tokens")), count(raw.get("cache_read_input_tokens"))
 
 
+def reasoning_tokens(raw: Mapping[str, JsonValue]) -> int | None:
+    """OpenRouter's `completion_tokens_details.reasoning_tokens`; None where the reply did not say (Anthropic's usage
+    has no such count)."""
+    details = raw.get("completion_tokens_details")
+    return count(details.get("reasoning_tokens")) if isinstance(details, dict) else None
+
+
 def header(run_path: Path) -> RunRecord:
     """The run record from the first line only, so listing runs does not parse every sample."""
     with run_path.open("rb") as file:
@@ -99,7 +107,8 @@ def calls(run_path: Path) -> Iterator[Call]:
                 run_id=run.record.run_id, item_id=sample.item_id, started_at=span.started_at,
                 model=call.settings.model, provider_route=call.resolved_model, arm=run_arm,
                 prompt_tokens=call.usage.input_tokens, cache_write_tokens=cache_write, cache_read_tokens=cache_read,
-                completion_tokens=call.usage.output_tokens, cost_usd=call.cost_usd, latency_ms=call.latency_ms,
+                completion_tokens=call.usage.output_tokens, reasoning_tokens=reasoning_tokens(call.usage.raw),
+                cost_usd=call.cost_usd, latency_ms=call.latency_ms,
                 status="failed" if span.error else "succeeded", error=span.error.code if span.error else None,
                 step=run_step,
             )

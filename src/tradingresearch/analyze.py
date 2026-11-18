@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import re
+import sys
 import unicodedata
 from dataclasses import dataclass, replace
 from datetime import UTC, date, datetime
@@ -22,7 +23,7 @@ from gigai_core.trace import CallError, ListTrace, ModelCall, ModelSpan, ToolSpa
 from pydantic import ValidationError
 from tokenizers import Tokenizer
 
-from . import alpaca, guards, indicators, news, sessions
+from . import alpaca, config, guards, indicators, news, sessions, trace, usage
 from .edgar import Edgar, fact_source, latest_frames
 from .hashing import digest, new_id
 from .records import Analysis, Claim, IndicatorSnapshot, SourceRef
@@ -488,10 +489,49 @@ def analysis_for(ctx: Context, sample, run_id: str, *, model: str, prompt_versio
 
 
 def save(run, data_dir) -> Path:
+    """The run file under `<data_dir>/runs`, then one row for the run in the cost ledger (`TR_LEDGER`, outside the
+    data dir, so a deleted scratch dir keeps its spend; COST-SPIKE §2.2). A ledger that cannot be written is one
+    warning line, not a failed run: the run file is the record, the ledger its index."""
     run_path = data_dir / "runs" / f"{run.record.run_id}.jsonl"
     run_path.parent.mkdir(parents=True, exist_ok=True)
     save_run(run, run_path, inputs_by_reference=False)  # the prompt lives in the run file, not in a dataset file
+    cfg = config.settings()
+    append_ledger(cfg.ledger, ledger_row(run, data_dir, run_path, cfg.cost_tag))
     return run_path
+
+
+def ledger_row(run, data_dir: Path, run_path: Path, cost_tag: str) -> dict:
+    """One ledger row (COST-SPIKE §2.2) from what the run file holds: the numbers are `usage.run_cost`'s, the step
+    is `trace.step`'s unless `TR_COST_TAG` (`<step>:<purpose>`) names one, the arm is the experiment arm and the
+    session is the one `TICKER:session` day of the items (None when they differ or the items are not ticker-days).
+    The daily id is unknown here: `tr daily` assigns it after the run is saved."""
+    record, cost = run.record, usage.run_cost(run_path)
+    tagged_step, _, purpose = cost_tag.partition(":")
+    experiment, _, arm = (trace.arm(record) or "").partition(":")
+    served = {span.call.resolved_model for sample in run.samples for span in sample.model_spans}
+    sessions_seen = {sample.item_id.partition(":")[2] for sample in run.samples}
+    session = next(iter(sessions_seen)) if len(sessions_seen) == 1 else ""
+    return {
+        "run_id": record.run_id, "data_dir": str(Path(data_dir).resolve()),
+        "created_at": record.created_at.isoformat(),
+        "step": tagged_step or trace.step(record), "purpose": purpose or None, "cost_tag": cost_tag or None,
+        "experiment": experiment or None, "arm": arm or None, "session": session or None,
+        "models": sorted(model for model in served if model),
+        "calls": cost.calls, "tokens_in": cost.tokens_in, "tokens_out": cost.tokens_out,
+        "reasoning_tokens": cost.reasoning, "cached_tokens": cost.cache_read,
+        "spent_usd": cost.cost_usd, "calls_without_cost": cost.calls_without_cost,
+    }
+
+
+def append_ledger(ledger: Path, row: dict) -> None:
+    """One write of one line in append mode, so a crash cannot damage the rows before it."""
+    try:
+        ledger.parent.mkdir(parents=True, exist_ok=True)
+        with ledger.open("a", encoding="utf-8") as file:
+            file.write(json.dumps(row) + "\n")
+    except OSError as exc:
+        print(f"warning: cost ledger {ledger} not written ({exc}); run {row['run_id']} is saved, its cost is in the "
+              "run file only", file=sys.stderr)
 
 
 # ---------- tools mode (REPO-PLAN week 4 and §2.4 `mode = "tools"`) ----------

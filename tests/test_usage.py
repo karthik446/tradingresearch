@@ -1,5 +1,5 @@
-"""Trace and usage layer: per-call rows, sums per run, arm, day, step and model, run_cost, and `tr usage` (G7,
-G15-SPIKE §3).
+"""Trace and usage layer: per-call rows, sums per run, arm, day, step and model, run_cost, `tr usage` and the cost
+ledger row `save` appends per run (G7, G15-SPIKE §3, COST-SPIKE §2.2).
 
 The fixtures are real week-1 runs from `data/`: run_10fc0a886ddb42a2 (`tr analyze`, 1 call) whole, and
 run_c40caab0968e44a3 (`exp run` arm observe:baseline) cut to its first 2 samples, with `calls_made` and `spent_usd`
@@ -8,19 +8,24 @@ a two-step pipeline arm at test time with gigai-core `run` and a fake provider (
 """
 
 import json
+import os
+import shutil
 from datetime import UTC, date, datetime
 from pathlib import Path
 
+import httpx
 import pytest
 from gigai_core import CallBudget, CallSettings, Dataset, DatasetItem, read_spans, run as run_eval
 from gigai_core.providers import ModelResult, ProviderIdentity, TokenUsage
 from gigai_core.trace import ModelSpan
 
 from tradingresearch import usage
-from tradingresearch.analyze import save
+from tradingresearch.analyze import input_hash, save
 from tradingresearch.cli import main
 from tradingresearch.providers import openrouter
 from tradingresearch.trace import cache_tokens, calls, iter_runs, kind
+from test_openrouter import recorded, replaying, tool_request
+from test_teacher import context
 
 DATA = Path(__file__).parent / "fixtures" / "usage"
 ANALYZE = DATA / "runs" / "run_10fc0a886ddb42a2.jsonl"
@@ -257,6 +262,7 @@ def test_a_run_s_step_comes_from_its_tag_or_dataset_and_an_unknown_one_is_other_
                   settings=CallSettings(model=ANALYZE_MODEL, max_output_tokens=500), budget=CallBudget(), tag=tag),
          tmp_path)
     assert [(r.key, r.calls) for r in usage.by_step(arm_calls(tmp_path))] == [(step, 1)]
+    assert [(row["step"], row["calls"]) for row in ledger()] == [(step, 1)]
 
 
 def test_tr_usage_by_step_prints_the_cost_table_with_dashes_for_unreported_cache(arm_dir, monkeypatch, capsys):
@@ -292,3 +298,77 @@ def test_by_step_and_by_run_totals_agree_on_the_data_dev_runs(monkeypatch, tmp_p
             usage.total(rows), field)
     for view in (steps, runs):  # each row's cost is rounded to the micro-dollar, so row sums may differ by that much
         assert sum(r.cost_usd for r in view) == pytest.approx(usage.total(rows).cost_usd, abs=1e-6 * len(view))
+
+
+# ---------- the cost ledger: one row per saved run, outside the data dir (COST-SPIKE §2.2, COST-1) ----------
+
+
+def ledger(path: Path | None = None) -> list[dict]:
+    """The rows of this test's ledger (`TR_LEDGER`, set per test by conftest)."""
+    path = path or Path(os.environ["TR_LEDGER"])
+    return [json.loads(line) for line in path.read_text().splitlines()] if path.exists() else []
+
+
+def save_one(data_dir: Path, provider=None, dataset_id: str = "analyze", tag: str | None = "analyze-3") -> Path:
+    item = DatasetItem(id=ITEMS[0], cluster_id="AAPL", prompt=ITEMS[0], expected=None)
+    return save(run_eval(Dataset.of(dataset_id, [item]), provider or Fake(ANALYZE_COST, {}), [],
+                         settings=CallSettings(model=ANALYZE_MODEL, max_output_tokens=500), budget=CallBudget(),
+                         tag=tag), data_dir)
+
+
+def test_a_pipeline_arm_writes_one_row_per_run_with_the_run_cost_numbers_and_the_experiment_arm(arm_dir):
+    rows = ledger()
+    assert [(r["step"], r["experiment"], r["arm"], r["session"], r["cost_tag"], r["purpose"]) for r in rows] == [
+        ("analyze", "routing", "sonnet", "2026-11-12", None, None),
+        ("thesis", "routing", "sonnet", "2026-11-12", None, None)]
+    for row, (_, path) in zip(rows, iter_runs(arm_dir)):
+        cost = usage.run_cost(path)
+        assert row["run_id"] == cost.key and row["data_dir"] == str(arm_dir.resolve())
+        assert (row["calls"], row["tokens_in"], row["tokens_out"], row["spent_usd"], row["calls_without_cost"]) == (
+            cost.calls, cost.tokens_in, cost.tokens_out, cost.cost_usd, 0)
+        assert (row["cached_tokens"], row["reasoning_tokens"]) == (cost.cache_read, None)
+    assert [r["models"] for r in rows] == [[f"{ANALYZE_MODEL}-20261101"], [f"{THESIS_MODEL}-20261101"]]
+    assert rows[0]["created_at"].endswith("+00:00")
+
+
+def test_tr_cost_tag_overrides_the_step_and_is_kept_whole_as_the_cost_tag(tmp_path, monkeypatch):
+    monkeypatch.setenv("TR_COST_TAG", "worker:G99")
+    save_one(tmp_path / "scratch")
+    [row] = ledger()
+    assert (row["step"], row["purpose"], row["cost_tag"]) == ("worker", "G99", "worker:G99")
+
+
+def test_the_row_outlives_its_scratch_dir_with_the_spend_it_recorded(tmp_path):
+    scratch = tmp_path / "data-dev" / "g99-capture"
+    run_path = save_one(scratch)
+    spent = usage.run_cost(run_path).cost_usd
+    shutil.rmtree(scratch)
+    [row] = ledger()
+    assert not scratch.exists() and row["spent_usd"] == spent == ANALYZE_COST[ITEMS[0]]
+    assert row["data_dir"] == str(scratch.resolve())
+
+
+def test_the_tag_changes_neither_the_wire_body_nor_the_input_hash(monkeypatch):
+    untagged = input_hash(context(), "analyze-3")
+    monkeypatch.setenv("TR_COST_TAG", "worker:G99")
+    provider = openrouter.OpenRouter("sk-test")
+    sent = replaying(provider, httpx.Response(200, json=recorded("reply")))
+    provider.invoke(tool_request())
+    assert sent == [recorded("request")]
+    assert input_hash(context(), "analyze-3") == untagged
+
+
+def test_a_call_without_cost_is_counted_and_an_unwritable_ledger_is_a_warning_not_a_failed_run(
+        tmp_path, monkeypatch, capsys):
+    written = Path(os.environ["TR_LEDGER"])
+    run_path = save_one(tmp_path, Fake(dict.fromkeys(ITEMS), {}))
+    [row] = ledger(written)
+    assert (row["spent_usd"], row["calls_without_cost"]) == (0.0, 1)
+    blocker = tmp_path / "not-a-dir"
+    blocker.write_text("")
+    monkeypatch.setenv("TR_LEDGER", str(blocker / "cost-ledger.jsonl"))
+    saved = save_one(tmp_path)
+    assert saved.exists() and saved != run_path and usage.run_cost(saved).cost_usd == ANALYZE_COST[ITEMS[0]]
+    err = capsys.readouterr().err
+    assert err.startswith(f"warning: cost ledger {blocker / 'cost-ledger.jsonl'} not written (") and "is saved" in err
+    assert len(ledger(written)) == 1
