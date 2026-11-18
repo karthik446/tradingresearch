@@ -1,0 +1,25 @@
+# Week 8 replication (ADR-011 Amendment 1, pre-registered): does the first run's `routed` result hold on fresh items? Two
+# pipeline arms (analyze, then a thesis in memory; nothing journaled), the same prompts as routing.toml, 120 fresh items
+# (the same 10 tickers x the 12 NYSE sessions before the first run's earliest session; no item shared with routing.toml):
+# - `sonnet`: Sonnet 5.5 on both steps, no route, no cache. The baseline (the first arm);
+# - `routed`: Haiku 5.5 on analyze, Sonnet 5.5 on the thesis, Sonnet 5.5 as the fallback if Haiku's retries run out.
+# No `cached` arm: the cache effect is measured (ADR-011 Result) and a third arm would spend most of the 12 USD ceiling.
+# `tr exp run` reads `compare sonnet -> routed` for all_claims_valid; the amendment's four-part rule is applied to its
+# printed lines by hand. The cap is the plan pre-flight's floor rounded up (ADR-011 Amendment 1, item 7).
+name = "routing-replication"
+model = "anthropic/claude-sonnet-5.5"
+max_usd_per_arm = 10.50
+tickers = ["AAPL", "MSFT", "NVDA", "AMZN", "JPM", "XOM", "UNH", "HD", "KO", "CAT"]
+sessions = ["2026-10-23", "2026-10-26", "2026-10-27", "2026-10-28", "2026-10-29", "2026-10-30", "2026-11-02", "2026-11-03", "2026-11-04", "2026-11-05", "2026-11-06", "2026-11-09"]
+graders = ["parsed", "claims_valid", "all_claims_valid", "inferences_grounded"]
+
+[[arms]]
+name = "sonnet"
+kind = "pipeline"
+prompt = "analyze-3"
+
+[[arms]]
+name = "routed"
+kind = "pipeline"
+prompt = "analyze-3"
+route = { analyze = "anthropic/claude-haiku-5.5", fallback = "anthropic/claude-sonnet-5.5" }

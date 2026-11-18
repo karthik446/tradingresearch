@@ -164,3 +164,140 @@ run_98681aba3fe24a79, run_80c8bf85db874007; `cached` run_0311bd3c03344a3a, run_0
 - OpenRouter, batch API (the judge's batch mode): https://openrouter.ai/docs/guides/features/batch-api
 - `docs/runbook.md`, "Week 8: routing, caching and the batch judge" and "Week 8 contract"; ADR-010 Amendment 1 (why
   the cap is fixed before the run); ADR-003 (why the judge is a different vendor).
+
+## Amendment 1 (2026-11-18, pre-registered; the first run's rule, Result and numbers above do not change)
+
+A second run of the `sonnet` vs `routed` comparison on fresh items, `experiments/routing-replication.toml`, with the
+adoption rule fixed here before the run. Nothing above is edited: the first run's Result stands as written, and this
+amendment is committed before the replication's first paid call. Every number below is either quoted from a file or
+a printed line (named), or computed here and marked as such.
+
+**1. Why.** Three facts from the Result above, all quoted:
+- the registered rule passed on the first run's 60 items: `all_claims_valid` routed minus sonnet +0.033, 95% CI
+  [-0.100, +0.167], lower bound above the -0.15 margin;
+- the discordant share was 0.333 (20 of 60 items, 9 valid only on `sonnet`, 11 only on `routed`), against the 0.22
+  those 60 items were sized for, so the pass came with a wide interval and the registered power caveat;
+- the same-model pair `cached` vs `sonnet` gave -0.067, CI [-0.167, +0.050], discordant share 0.267 (10 and 6): two
+  runs of one model on one set of prompts differ by about the size of the effect being tested.
+The Result's recommendation was a second run before Haiku routing is adopted. This is that run: fresh items, a rule
+fixed in advance, sized on the observed 0.333, and the result recomputed by an independent reader.
+
+**2. Fresh items and how they are drawn.** The same 10 tickers (AAPL MSFT NVDA AMZN JPM XOM UNH HD KO CAT) on the 12
+NYSE sessions immediately before the first run's earliest session, 2026-11-10: `sessions.recent(12, date(2026, 11,
+9))` returns 2026-10-23, 10-26, 10-27, 10-28, 10-29, 10-30, 11-02, 11-03, 11-04, 11-05, 11-06 and 11-09 (the call
+was run on 2026-11-18 and printed exactly that list; the calendar makes the choice, not the writer). 10 x 12 = 120
+items, each `<ticker>:<session>`; none is among the first run's 60, whose sessions are 2026-11-10 to 2026-11-17.
+Headlines for all 120 are already in the news store: `tr news TICKER --session 2026-11-04 --days 9` (run 2026-11-17)
+covers the nine sessions 2026-10-23 to 11-04 (`--days` counts sessions back from `--session`), and the files for
+11-05, 11-06 and 11-09 were already present from earlier fetches (the files carry the session date, not the fetch
+date, so their provenance is not checkable from the store). Every one of the 120 `news/<ticker>/<session>.jsonl`
+files exists, and 15 of the 120 are empty (no headline that day), as in the first run, where 7 of 60 were empty.
+The empties cluster by name: HD 4, UNH 4, CAT 3, KO 2, XOM 2, the same tickers that held the first run's 7 empties
+(HD 2, UNH 3, CAT 1, XOM 1), so the "no headline" condition is itself ticker-clustered and rides inside those
+clusters. Said plainly: the tickers repeat, so the 10 clusters of the bootstrap are the same 10 names, not new ones,
+and a ticker-specific effect is not separated from the model effect. This replication tests the sessions, not new
+names.
+
+**3. Arms.** `sonnet` and `routed`, defined exactly as in `routing.toml` (Sonnet 5.5 on both steps; Haiku 5.5 on
+analyze with Sonnet 5.5 on the thesis and as the fallback), prompt `analyze-3`, `kind = "pipeline"`, the same four
+graders. There is NO `cached` arm. That is a choice, and the reasons are: the cache effect is already measured above
+(1,216 tokens written, 12.7% and 17.7% saved) and does not need a second sample; a third arm at 120 items would bring
+the expected spend to about 11.2 USD (2 x (2.3086 + 1.3517 + 1.9515) = 11.22, computed from the first run's arm
+totals, linear in items) of the 12 USD ceiling the orchestrator set for this run; and the reading the same-model pair
+gave, the run-to-run noise, is carried into the rule by item 6 instead of a new arm.
+
+**4. Size.** The paired non-inferiority sample size is n = (z(1-a) + z(1-b))^2 x psi / margin^2. The first
+pre-registration used 6.19 = (1.645 + 0.842)^2, one-sided a = 0.05, power 0.80. The rule reads a two-sided 95%
+interval, whose lower bound is a one-sided test at a = 0.025, so the honest constant is (1.960 + 0.842)^2 = 7.85
+(computed). With the first run's psi = 0.333 and margin 0.15:
+n = 7.85 x 0.333 / 0.15^2 = 7.85 x 0.333 / 0.0225 = 116.2 (computed), so 120 items. What 120 items cover: the psi
+they cover is 120 x 0.15^2 / 7.85 = 0.344 `[INFERENCE: the same formula inverted]`. The formula treats the items as
+independent, while the interval is a cluster bootstrap on 10 tickers, so the real coverage is lower than 0.344. If
+the replication's discordant share is above 0.344, the check is underpowered and rule 5(d) says what happens.
+
+**5. The adoption rule, fixed before the run.** Routing the analyze step to Haiku 5.5 is recommended for adoption
+only if ALL of (0) to (e) hold on the 120 fresh items, each read from a printed number with no judgement call. The
+rules are evaluated in the order (0), (d), (a), (b), (c), (e); the result reads the first rule that fails, or the
+adoption reading if none fails, so every outcome maps to exactly one reading:
+- (0) completeness: both `arm` lines print `failed=0`, every grader on both score lines (the indented line under
+  each `arm` line) prints `(n=120)`, and `compare sonnet -> routed` prints `120 items, 10 clusters` with a numeric CI
+  on the `all_claims_valid` line. If the run exits before the compare block, or any of these is not met, the result
+  reads `incomplete run: <the arm line or exit line, quoted>`, (a) to (e) are not applied, nothing is adopted, and
+  any re-run is a new amendment with its own registration (the spend of the incomplete run is reported);
+- (a) non-inferiority: on the `all_claims_valid` line of `compare sonnet -> routed`, the lower bound of the printed
+  95% CI is not below -0.150 (the same `NoWorseThan("all_claims_valid", margin=0.15, bound="ci_lower")`, the same
+  seeded paired cluster bootstrap `tr exp run` prints, applied by hand; three decimals as printed);
+- (b) parsing: the score line under `arm routed` prints `parsed=1.000 (n=120)` (no unparsable analysis; a failed call
+  is caught by (0), not here; an unparsed reply also records no `all_claims_valid` score, so it drops that grader's
+  `n` below 120 and (0) catches it first; (b) is kept as the printed cross-check);
+- (c) direction: on the same `all_claims_valid` compare line, the printed `diff` is not below -0.050. This is a guard
+  against a lucky interval: the first run's point estimate was +0.033, and a replication whose point estimate is
+  below -0.05 does not agree with it in direction even if its interval clears the margin. It errs toward not
+  adopting: a model truly equal to Sonnet prints a `diff` below -0.050 about 15% of the time `[INFERENCE: normal
+  approximation, SE about 0.048 at 120 items from the first run's interval width]`, so its reading is "direction
+  disagrees", never "worse";
+- (d) power: the discordant share, counted from the per-item `all_claims_valid` scores of the two analysis runs paired
+  by item id (each run file's `sample` records map a `trace_id` to an `item_id`, its `score` records carry the
+  grader's value for that trace; an item is discordant when the two values differ; under (0) every item has both
+  values), is at most 41 of 120 = 0.342 (computed: 41/120 = 0.342 is at most 0.344, 42/120 = 0.350 is not). If it is
+  above, the result is `underpowered` and nothing is adopted, whatever the interval says;
+- (e) served model: at most 6 of the 120 `routed` analysis spans (5%, a threshold fixed here before the run) in
+  `traces/<routed analysis run>.jsonl` have a `resolved_model` other than `claude-haiku-5-5`. If more, the result
+  reads "not adopted: the fallback served N of 120 analyses" (the arm then measured Sonnet 5.5 in part), whatever
+  (a) to (d) show; the count is reported in every case. The first run had 0 of 60.
+What is read in each case:
+- all of (0) to (e) hold: the result reads "non-inferior on fresh items; Haiku 5.5 on the analyze step recommended";
+- (0) fails: the result reads `incomplete run`, and nothing else is read;
+- (0) holds and (d) fails: the result reads `underpowered`, and (a) to (c) and (e) are reported but decide nothing;
+- (0) and (d) hold and (a) fails: the result reads "cannot show non-inferior" (not "worse"), whatever (b), (c) and
+  (e) show;
+- (0), (d) and (a) hold and (b) fails: the result reads "not adopted: unparsable analysis on routed", with the count;
+- (0), (d), (a) and (b) hold and (c) fails: the result reads "not adopted: the direction disagrees with the first
+  run" (not "worse": a truly equal model fails this guard about one time in seven);
+- (0), (d), (a), (b) and (c) hold and (e) fails: the result reads "not adopted: the fallback served N of 120
+  analyses".
+"Recommended for adoption" means a separate, operator-approved change to `tr daily`; this amendment adopts nothing
+and the live loop is untouched, as the Decision above says. The replication's `compare sonnet -> routed` line is the
+primary evidence. The first run is reported beside it, never pooled into the interval: it is a different item set,
+read after the fact, and the first run's 60 items are not fresh.
+
+**6. Noise reading (in place of a third arm).** The first run's `cached` arm was the baseline with a prompt cache. A
+cache cannot change what the model says, so the -0.067 gap between `cached` and `sonnet` (CI [-0.167, +0.050],
+discordant share 0.267) is run-to-run sampling noise between two runs of the same model on the same prompts, with
+temperature left to the provider default: the stored first-run analysis run `run_1eba503380b7444c` carries
+`"temperature": null`, `"top_p": null` and `"seed": null` in its `settings` (read 2026-11-18). That noise is of the
+size of the effect under test (a margin of 0.15 against a same-model gap of 0.067 whose own lower bound is -0.167),
+which is why one 60-item run could not settle routing. For rule 5(a) this means: the lower bound already carries the
+run-to-run noise, because the interval is computed from the paired item differences of this run, which include it.
+The rule does not subtract a noise floor a second time, and a `cached` arm would only re-measure the same figure.
+
+**7. Cost.** Expected spend: the first run's arm totals doubled, 2 x 2.3086 = 4.62 USD for `sonnet` and 2 x 1.3517 =
+2.70 USD for `routed` `[INFERENCE: linear in items]`, about 7.3 USD in all against the 12 USD ceiling. The per-arm
+cap is set from the plan pre-flight, as in the first run: a probe of `routing-replication.toml` with
+`max_usd_per_arm = 0.01`, run on 2026-11-18 with no model call (it exits 2 before the first call), printed the floors
+$9.014726 (`sonnet`) and $4.170791 (`routed`), the smallest whole-cent caps that clear the check being $9.02 and
+$4.18. The floors are 2.00 x the first run's ($4.508856 and $2.085773; computed ratios 1.999 and 2.000). A refused
+probe prints floors only; the same pre-flight (`experiment.plan`, run 2026-11-18 at the committed cap 10.50 through
+the `tr exp run` code path and stopped before the first call) computed the bounds $10.108368 (`sonnet`, 1.121 x its
+floor, the week-7 ratio) and $5.264433 (`routed`), with `experiment.warnings` empty: `max_usd_per_arm = 10.50`
+clears both floors and both bounds, and `tr exp run` prints no `WARNING` line. The cap is a ceiling and not the
+expected spend: the tool guarantees only the two caps, 21 USD at both, or 15.37 USD at the plan's bounds
+`[INFERENCE: 10.108368 + 5.264433]`; no pair of caps summing to 12 USD clears the floors (9.01 + 4.17 = 13.19). The
+12 USD ceiling is a budget expectation, not a guarantee: the expected 7.3 USD sits under it with room for the first
+run's 4% overshoot (5.6118 against 5.4). The prompt cache is not used, so the baseline pays the full input price,
+as the first run's `sonnet` arm did. Paid on the Anthropic credit only (`TR_PROVIDER=anthropic`); nothing on
+OpenRouter.
+
+**8. How it will be run and read.** This amendment and `experiments/routing-replication.toml` are committed before
+the run. Then, in this order:
+1. `TR_PROVIDER=anthropic TR_DATA_DIR=$PWD/data-dev uv run tr exp run experiments/routing-replication.toml`, output
+   kept whole (`data-dev/scratch/w8rep1-run.txt` or a file named in the Result);
+2. rule 5(0) is read from both `arm` lines, their score lines and the `compare sonnet -> routed` header; rules 5(a)
+   to 5(c) from the score line under `arm routed` and the `all_claims_valid` line of `compare sonnet -> routed`;
+   rule 5(d) from the two analysis run files as item 5 describes; rule 5(e) from the `routed` analysis run's trace
+   file (`traces/<run id>.jsonl`, the `resolved_model` of each analysis span), as in the first run;
+3. cost from `tr usage --by run` on the four run ids;
+4. an independent reader recomputes rules (0) to (e), the discordant count and the served-model count from the run
+   and trace files, without the writer's numbers in hand, before the Result is written;
+5. the result goes in a **Result (replication)** section under this amendment, read under rule 5 and nothing else;
+   the first run's Result above is not edited.

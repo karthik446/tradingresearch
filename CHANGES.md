@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **Week 8 replication pre-registered (ADR-011 Amendment 1, `experiments/routing-replication.toml`).** A second
+  `sonnet` vs `routed` run on 120 fresh items (the same 10 tickers x the 12 NYSE sessions before the first run's
+  earliest, 2026-10-23 to 2026-11-09; no `cached` arm), sized on the first run's discordant share 0.333 with the
+  two-sided constant 7.85 (n = 116.2, so 120; 120 items cover psi 0.344). The adoption rule is fixed before the run:
+  a complete run (`failed=0`, every grader `n=120`, a numeric CI), `all_claims_valid` lower 95% bound at least -0.15,
+  `parsed` 1.000 on `routed`, point estimate not below -0.05, at most 41 of 120 discordant items (else
+  `underpowered`), and at most 6 of 120 `routed` analyses served by the fallback. Expected about 7.3 USD on
+  Anthropic credit; cap 10.50 per arm from the pre-flight floors $9.014726 and $4.170791 and bounds $10.108368 and
+  $5.264433 (`experiment.plan`, no call). No run yet; nothing adopted.
+
 - **README release sections (REPO-PLAN Week 9, SPIKE §11).** `## Reference architecture` (a text diagram of
   screen -> analyze -> thesis -> reconcile -> grade -> report with each box's module, and the cross-cutting traces,
   evals, experiments, guards, retrieval, routing and caching, and cost trail); `## Reader setup` (accounts and keys,
