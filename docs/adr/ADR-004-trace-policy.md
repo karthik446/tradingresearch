@@ -96,3 +96,13 @@ levels) and EDGAR XBRL facts (revenue, net income, EPS); the thesis prompt adds 
 **Readings.** OWASP Top 10 for LLM applications, LLM02 Sensitive Information Disclosure
 (https://genai.owasp.org/llm-top-10/); OpenTelemetry semantic conventions for GenAI spans
 (https://github.com/open-telemetry/semantic-conventions-genai).
+
+**Addendum, 2026-11-18 (COST-6): cost joins the SLIs.** The run files and the `daily_run` rows already carry what
+each call cost (Context and Consequences above), so a day's spend needed no new logging to become a reading: `tr slo`
+now holds the session's first paid `tr daily` run to `COST_BUDGET_USD` ($0.60; `--budget-usd` to change it) from
+`daily_run.cost_usd`, champion and challenger rows counted, teacher rows shown apart because they are paid under
+`--teacher-max-usd`. A session with no paid row is `no data`, not `met`. The trace policy itself is unchanged: `tr slo`
+still reads the journal only. Account burn (the balance at the provider, `GET /credits`) is deliberately not an SLI:
+it is a network read that answers for every project on the key, not for this loop, and the pre-flight that would use
+it is COST-3b's. `docs/slo-review.md` has the SLO; `docs/measured-costs.md`, "Cost attribution", has the snapshot of
+where the money went and the commands that answer it today.

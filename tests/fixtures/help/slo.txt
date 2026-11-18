@@ -1,5 +1,6 @@
 usage: tr slo [-h] [--session SESSION]
               [--inject-delay-minutes INJECT_DELAY_MINUTES] [--window WINDOW]
+              [--budget-usd BUDGET_USD]
 
 options:
   -h, --help            show this help message and exit
@@ -9,3 +10,6 @@ options:
                         add this many minutes to the measured finish, to
                         exercise the breach path
   --window WINDOW       sessions looked back for misses (default 10)
+  --budget-usd BUDGET_USD
+                        the cost target for the session's first paid run
+                        (default 0.60)

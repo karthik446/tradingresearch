@@ -1,10 +1,12 @@
-"""SLOs of the after-close loop (PLAN-60 week 3): `tr daily` finished by 17:30 ET, zero missed sessions, data fresh.
+"""SLOs of the after-close loop (PLAN-60 week 3): `tr daily` finished by 17:30 ET, zero missed sessions, data fresh,
+and (COST-6) the session's first paid run within the cost budget.
 
 Reads the journal only (no model, no network). Finish time comes from the `daily_run` rows, which are written as each
-step ends, so traces are not needed. `--inject-delay-minutes` adds to the measured finish to exercise the breach path
-without waiting. Only live sessions (from `sessions.FIRST_SESSION`) are checked and counted; an earlier session is
-checked only when named with `--session`, labelled pre-live. Exit 0 = every SLO met, 1 = a breach. Run as `tr slo`
-or `python -m tradingresearch.slo_check`.
+step ends, so traces are not needed; cost comes from the same rows' `cost_usd`, the run files' measured cost.
+`--inject-delay-minutes` adds to the measured finish to exercise the breach path without waiting. Only live sessions
+(from `sessions.FIRST_SESSION`) are checked and counted; an earlier session is checked only when named with
+`--session`, labelled pre-live. Exit 0 = every SLO met (a `cost` with no data is neither met nor breached), 1 = a
+breach. Run as `tr slo` or `python -m tradingresearch.slo_check`.
 """
 
 from __future__ import annotations
@@ -19,14 +21,17 @@ from .config import Settings, settings
 from .daily import MISSED_WINDOW, TEACHER
 
 DEADLINE = time(17, 30)  # New York: the run's results are in before the evening review
+COST_BUDGET_USD = 0.60  # the cost SLO's target for a session's first paid run, teacher steps apart: COST-SPIKE §2.3
+# (analyze $0.27 + thesis $0.36 per session at shortlist 10, measured means with headroom). A target, not a stop:
+# `tr daily` stops at `--max-usd`, whose default 1.00 is a literal in commands/daily.py and has no named setting.
 
 
 @dataclass(frozen=True)
 class Slo:
-    """One SLO's verdict: what was measured against what was promised."""
+    """One SLO's verdict: what was measured against what was promised. `ok` None: nothing to measure (no data)."""
 
     name: str
-    ok: bool
+    ok: bool | None
     measured: str
     target: str
 
@@ -97,10 +102,30 @@ def fresh(conn: sqlite3.Connection, session: date, feed: str) -> Slo:
                f"{session} bars{tail}", target)
 
 
+def cost(conn: sqlite3.Connection, session: date, budget: float = COST_BUDGET_USD) -> Slo:
+    """The session's first `tr daily` run that paid for a step: its recorded cost (the `daily_run` rows' `cost_usd`,
+    failed calls too) against the budget. A later rerun or catch-up does not change the reading. Teacher steps are paid
+    under --teacher-max-usd, not --max-usd, so they are shown but not counted. No paid row at all is no data."""
+    target = f"at most ${budget:.2f} for the session's first paid run, teacher steps apart"
+    rows = conn.execute("SELECT daily_id, reason, cost_usd FROM daily_run WHERE session = ? AND status != 'missed' "
+                        "ORDER BY seq", (session.isoformat(),)).fetchall()
+    paid = next((daily_id for daily_id, _, usd in rows if usd > 0), None)
+    if paid is None:
+        ran = len({daily_id for daily_id, _, _ in rows})
+        what = f"{ran} tr daily run(s) for {session}, none with a paid step" if ran else f"no tr daily run for {session}"
+        return Slo("cost", None, f"no data: {what}", target)
+    teacher = sum(usd for daily_id, reason, usd in rows if daily_id == paid and reason.startswith(f"{TEACHER} "))
+    spent = sum(usd for daily_id, _, usd in rows if daily_id == paid) - teacher
+    return Slo("cost", spent <= budget, f"{paid} spent ${spent:.6f} of ${budget:.2f} (teacher steps ${teacher:.6f} "
+               "more)", target)
+
+
 def check(conn: sqlite3.Connection, session: date, feed: str, delay: timedelta = timedelta(),
-          window: int = MISSED_WINDOW, since: date | None = sessions.FIRST_SESSION) -> list[Slo]:
+          window: int = MISSED_WINDOW, since: date | None = sessions.FIRST_SESSION,
+          budget: float = COST_BUDGET_USD) -> list[Slo]:
     """Every SLO for one session."""
-    return [finished(conn, session, delay), missed(conn, session, window, since), fresh(conn, session, feed)]
+    return [finished(conn, session, delay), missed(conn, session, window, since), fresh(conn, session, feed),
+            cost(conn, session, budget)]
 
 
 def overdue(now: datetime) -> list[date]:
@@ -127,9 +152,13 @@ def no_live_run(conn: sqlite3.Connection, now: datetime, window: int = MISSED_WI
 
 
 def render(session: date, slos: list[Slo]) -> list[str]:
-    """One line per SLO (verdict, measured, target), then the total."""
-    lines = [f"{'ok' if s.ok else 'BREACH':<6} {s.name:<8} {s.measured}  (target: {s.target})" for s in slos]
-    return [*lines, f"slo {session}: {sum(s.ok for s in slos)}/{len(slos)} met"]
+    """One line per SLO (verdict, measured, target), then the total over the SLOs that had data."""
+    verdict = {True: "ok", False: "BREACH", None: "n/a"}
+    lines = [f"{verdict[s.ok]:<6} {s.name:<8} {s.measured}  (target: {s.target})" for s in slos]
+    decided = [s for s in slos if s.ok is not None]
+    none = [s.name for s in slos if s.ok is None]
+    tail = f"; no data: {', '.join(none)}" if none else ""
+    return [*lines, f"slo {session}: {sum(s.ok for s in decided)}/{len(decided)} met{tail}"]
 
 
 def add_arguments(p: argparse.ArgumentParser) -> None:
@@ -139,6 +168,8 @@ def add_arguments(p: argparse.ArgumentParser) -> None:
                    help="add this many minutes to the measured finish, to exercise the breach path")
     p.add_argument("--window", type=int, default=MISSED_WINDOW,
                    help=f"sessions looked back for misses (default {MISSED_WINDOW})")
+    p.add_argument("--budget-usd", type=float, default=COST_BUDGET_USD,
+                   help=f"the cost target for the session's first paid run (default {COST_BUDGET_USD:.2f})")
 
 
 def run(args: argparse.Namespace, cfg: Settings, now: datetime | None = None) -> int:
@@ -156,9 +187,9 @@ def run(args: argparse.Namespace, cfg: Settings, now: datetime | None = None) ->
         print(f"pre-live: {session} predates the live stream (from {sessions.FIRST_SESSION}); a dev run, checked "
               "because --session named it")
     slos = check(conn, session, cfg.feed, timedelta(minutes=args.inject_delay_minutes), args.window,
-                 sessions.FIRST_SESSION if live else None)
+                 sessions.FIRST_SESSION if live else None, args.budget_usd)
     print("\n".join(render(session, slos)))
-    return 0 if all(s.ok for s in slos) else 1
+    return 1 if any(s.ok is False for s in slos) else 0
 
 
 def main(argv: list[str] | None = None) -> int:

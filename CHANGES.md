@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **Cost SLO (COST-6).** `tr slo` prints a fourth checked line, `cost`: the session's first paid `tr daily` run
+  (champion plus challenger, teacher steps shown apart) against `COST_BUDGET_USD` = $0.60, `--budget-usd` to change
+  it; no paid row reads `no data`, not `met`. `docs/slo-review.md` (addendum), `docs/measured-costs.md` ("Cost
+  attribution": the cost spike's snapshot and the `tr usage` commands that reproduce it) and an ADR-004 addendum
+  (account burn is deliberately not an SLI) explain it. The $0.60 target is the spike's figure, not a measured one.
+
 - **Cost ledger (COST-1, COST-2b).** `analyze.save` appends one row per saved run (step, purpose, arm, models, tokens,
   `spent_usd`, `calls_without_cost`) to `TR_LEDGER` (default `data/cost-ledger.jsonl`, outside `TR_DATA_DIR`, so a
   deleted scratch dir keeps its spend); `TR_COST_TAG=<step>:<purpose>` names a run's step. A ledger that cannot be

@@ -280,3 +280,59 @@ case $5.270661 per arm. Haiku 5.5 on the analyze step cost 92% less than Sonnet 
 66,809, input tokens equal at 181,139), and the thesis step did not move. The cached arm wrote 1,216 cache tokens once
 and read 71,744 on the analyze step (2,112 written and 124,608 read on the thesis step), so the analyze block is long
 enough to cache. The fallback model answered none of the 60 routed analysis calls.
+
+## Cost attribution
+
+Where the money went, once, as a snapshot; then how to get today's answer from the repo. The snapshot is the cost
+spike's reconciliation of the OpenRouter key against every run file and worker report (COST-SPIKE, read of
+`GET /api/v1/key` at 2026-11-17 17:07Z; `cost-spike/attribution.txt` in the learning-curriculum research folder). No
+command below was run for this page: the numbers are copied from that file, and the reproduce commands are described,
+not re-executed, because `tr usage` reads the key when a key is configured and `--all-dirs` reads the experiment
+directories.
+
+**Snapshot, key usage $60.661639 at the 2026-11-16 17:53Z pilot to $64.427641 at the read.** tradingresearch spent
+$3.766002 of it. By bucket (USD; each row is traced to the key's own interval readings, so the rows sum to the account
+usage exactly, diff +0.000000000):
+
+| Bucket | USD | Source |
+|---|---|---|
+| live daily: pre-launch dev run `dy_4c43ee70dec141a7`, session 2026-11-16 (5 analyze $0.085262 + 5 thesis $0.104072) | 0.189334 | journal `daily_run` + ledger; "Per step" above |
+| teacher bake-off rehearsal | 0.023558 | journal + ledger |
+| experiment arms W1 (observe baseline $0.346798; prompt-v2 baseline $0.359398, variant $0.328348) | 1.034544 | ledger, key-matched |
+| experiment arms W2, W3 | 0.000000 | no `tr exp run` in those weeks |
+| experiment arms W4 tools-vs-fixed (fixed $0.339358, tools $0.538634) | 0.877992 | ledger, key-matched |
+| experiment arms W5 context-ablation (full $0.343838, no-headlines $0.337578, no-edgar $0.307870) | 0.989286 | ledger, key-matched |
+| experiment arms W6 retrieval, void run (none $0.330618; hybrid $0.101210, 16 of 20 calls refused with 402) | 0.431828 | ledger |
+| eval judges and graders (G9c capture; runtime judges $0) | 0.005163 | G9c report + key |
+| worker dev and scratch: fixture captures g6, g6c, G10, G11c, G12d, G13c | 0.072818 | ledger + reports + key |
+| pre-live champion (pilot runs e72cabf7, a85bcf2b) | 0.101602 | ledger, key-matched |
+| pre-live teacher and candidates, traced | 0.019137 | ledger |
+| teacher candidates: 2 qwen `not_json` replies billed but untraced | 0.020739 | key residual = price x tokens |
+| rounding residual | 0.000001 | key minus traced |
+| **tradingresearch** | **3.766002** | = the key's delta over the period |
+| other projects (learning center $0.032601, gigai-2 base runs $0.312900) | 0.345501 | their own reports |
+| unattributed ($60.031326 before 2026-10-19, no ledger; $0.273991 on 2026-11-16 before the pilot; $0.010821 residual Nov 9 to 16) | 60.316138 | key windows; owner unknown |
+| **account** | **64.427641** | `/key` usage at the read |
+
+Experiments are $3.333650 of the $3.766002, 88.5%. The run files behind it: 275 ledger calls, $3.689095 traced, 38
+of them billed at $0 (refusals and rate limits); by folder `data` 93 calls $1.356953, `data-dev` 179 calls $2.310328
+(`cost-spike/ledger-summary.txt`). The spend that was not in any run file ($0.056168 of worker reports plus the
+$0.020739 qwen residual) is what the cost ledger (COST-1) now records at save time, so the next reconciliation needs no
+report-reading.
+
+**Reproduce today's answer** (free of model calls; `tr usage` makes one `GET /key` when `OPENROUTER_API_KEY` is set,
+a free read, and prints a note and skips it otherwise):
+
+- `uv run tr usage --by step --all-dirs`: every run file under `data/` and `data-dev/`, joined with the ledger,
+  grouped by step (`analyze`, `thesis`, `teacher:thesis`, `experiment:<name>:<arm>`, `worker`, ...), plus ledger
+  rows whose run file is gone. This is the per-step half of the table above.
+- `uv run tr usage --by tag --all-dirs`: the same calls grouped by `TR_COST_TAG` (for example `worker:G99`), which
+  is how worker and scratch spend is told apart from live and experiment runs.
+- `uv run tr usage --tag worker:G99` or `--step analyze --since 2026-11-17`: one tag or step, one date range.
+- `uv run tr report --session <date>`: the live loop's cost per `tr daily` run, teacher steps shown separately.
+- `uv run tr slo`: the `cost` line holds the session's first paid run to `COST_BUDGET_USD` ($0.60) and prints
+  `no data` for a session with no paid run (`docs/slo-review.md`, COST-6 addendum).
+
+What no command gives: the $60.316138 unattributed part predates the ledger and has no run files anywhere, so it
+stays unattributed; and the account balance itself (`GET /credits`) is a network read, kept out of `tr slo` on
+purpose (ADR-004 addendum).

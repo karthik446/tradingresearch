@@ -1,4 +1,5 @@
-"""`tr slo`: the after-close loop's SLOs (PLAN-60 week 3, `slo_check.py`). Exit 1 on a breach. No model call."""
+"""`tr slo`: the after-close loop's SLOs (PLAN-60 week 3, `slo_check.py`): finished, missed, fresh and, since COST-6,
+cost. Exit 1 on a breach (a `cost` with no paid run is no data, not a breach). No model call."""
 
 from __future__ import annotations
 
