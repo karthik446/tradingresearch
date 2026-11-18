@@ -241,3 +241,23 @@ run_83464659837d44e8  exp      retrieval:hybrid                  20     103300  
 
 The first, void attempt (ADR-009 Amendment 1, on OpenRouter) cost $0.3306 for `none` and $0.1012 for 4 of 20
 `hybrid` items before the account's balance ran out; it is not used above.
+
+## Week 7: injection and guards
+
+One run of `experiments/injection.toml` (ADR-010): five pipeline arms, each item an analysis call then a thesis call on
+Anthropic's API, `TR_PROVIDER=anthropic`, cost derived from the adapter's price table. Run output
+`data-dev/scratch/w7refb/run2.txt`, recomputed from the stored run files by an independent read (`$3.708214` in all).
+
+| Arm | Items | Spend (analysis + thesis) | Per item |
+|---|---|---|---|
+| clean | 10 | $0.3708 | $0.0371 |
+| injected-off | 30 | $1.3113 | $0.0437 |
+| injected-on | 30 | $1.2562 | $0.0419 |
+| clean-on | 10 | $0.3896 | $0.0390 |
+| clean-rerun | 10 | $0.3803 | $0.0380 |
+
+An injected item costs more than a clean one (about $0.042 against $0.038) because the added headline lengthens the
+prompt and the reply. The first attempt stopped in the thesis stage of `injected-off` (the budget preflight reserves
+each call's worst case, $1.011862 for 30 thesis calls, against $0.855998 left of a $1.50 arm cap) and spent
+$1.029382 before it stopped (ADR-010 Amendment 1); the cap is now $2.50 an arm. The GUARDS-SPIKE estimate was $3.6
+for the five arms; the measured total is $3.71 for the run plus $1.03 for the stopped attempt.

@@ -4,7 +4,7 @@
 
 - **Week 7 reference: ADR-010 pre-registers the guards experiment.**
   - `docs/adr/ADR-010-guardrails.md` records where each rule sits, the options, the human review of audit hits and
-    the decision rule for the guards-off vs on run. Its table says `awaiting experiment`: nothing has run.
+    the decision rule for the guards-off vs on run. The table is filled from the run (`data-dev/scratch/w7refb/run2.txt`): attack success 0.800 off, 0.767 on, false rejection 0 of 10, noise floor 0.500; the guards did not pass the pre-registered rule, so the live `guards` setting stays empty. Amendment 1 raised the arm cap to $2.50 after the budget preflight stopped the first attempt.
   - `experiments/injection.toml` gains two clean control arms: `clean-on` (the guards on clean items: false
     rejection, collateral change) and `clean-rerun` (a second `clean`: the noise floor).
   - `experiment.drift` gives the changed share of a later clean arm against the first, by the `changed` rule, with
