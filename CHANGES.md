@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **Week 9 release code (REPO-PLAN Week 9, SPIKE §11).** `tr report --export PATH` also writes the graded
+  scorecards as one JSON file (`{"schema": 1, "stream_from", "arms": [...]}`: per arm and horizon the counts, fill
+  rate, abstention, Wilson win rate, mean r_net and real − shadow with their cluster-bootstrap CIs, median MFE/MAE,
+  MDE, P1 and the 2x2); aggregates only, no ticker, id or text; sorted keys, so a rerun is byte-identical; an
+  existing PATH needs `--force` (else exit 2); no graded trade writes `"arms": []`. The printed report is unchanged.
+  `ci/release_check.py` is the release checklist as code (one `ok|FAIL` line per check, exit 1 on a FAIL;
+  `--fresh-clone` clones HEAD and runs `uv sync --frozen`, the gate and the tests in a temp dir). `LICENSE` (MIT);
+  `.gitignore` adds `.idea/`. The three README checks fail until the README names the licences, the disclaimer and
+  the reader setup.
+
 - **Week 8 measured (ADR-011, `docs/measured-costs.md`).** One paid run of `experiments/routing.toml` on Anthropic's API
   ($5.6118 in all): the registered rule passes (`all_claims_valid` difference +0.033, CI [-0.100, +0.167], margin 0.15)
   with ψ = 0.333 above the planned 0.22; Haiku 5.5 on the analyze step costs 92% less, 41% less per ticker-day; the

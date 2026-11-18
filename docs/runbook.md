@@ -521,6 +521,31 @@ spend).
 
 `uv run python ci/gate.py` is the free gate (no model call).
 
+## Release
+
+Release checklist (REPO-PLAN Week 9, SPIKE §11). None of these makes a model call or reads a key.
+
+```
+uv run tr report --export scorecards.json   # the printed scorecards, plus their aggregates as JSON
+uv run python ci/release_check.py           # offline checks, one `ok|FAIL <check>: <detail>` line each
+uv run python ci/release_check.py --fresh-clone   # also: clone HEAD, uv sync --frozen (network), gate, tests
+```
+
+- **Export.** `--export PATH` writes `{"schema": 1, "stream_from", "arms"}`: one entry per arm and horizon with a
+  graded trade (counts, fill rate, abstention, win rate, mean r_net, real − shadow, MFE/MAE, MDE, P1 and the 2x2,
+  each CI as in the printed card; `ci95` is null under 10 entry sessions). No ticker, thesis id or text. A rerun on
+  the same data is byte-identical. An existing PATH is refused (exit 2) unless `--force`; with no graded trade the
+  file has `"arms": []`. `--include-pre-live` sets `stream_from` to null.
+- **Checks.** `license` (LICENSE starts `MIT License`); `readme_licences` (MIT code, CC BY-NC 4.0 guide text,
+  CDLA-Permissive-2.0 dataset); `disclaimer` (a README paragraph with `not financial advice`); `gitignore`
+  (`git check-ignore` on `data/x.db`, `data-dev/x`, `.env`, `.idea/x`, `data/traces/x`); `tracked_data` (no tracked
+  `.env` or `data/`, `data-dev/` file); `secrets` (secret-shaped `sk-ant-`, `sk-or-v1-`, `APCA...=` and `AKIA` strings
+  in tracked text files, named by file and line, never the value); `readme_setup` (README sections `Reference
+  architecture` and `Reader setup`, the latter naming `ANTHROPIC_API_KEY`, `APCA_API_KEY_ID` and `US-only`).
+- **Fresh clone.** Clones HEAD (committed work only) into a temp dir, runs `uv sync --frozen`, `ci/gate.py` and
+  `pytest -q -x` there with `TR_DATA_DIR` inside the temp dir and no `TR_PROVIDER` or `TR_ENV_FILE`, then removes
+  the temp dir. It needs network for `uv sync`.
+
 ## Demo: free commands, 2026-11-17 04:46 UTC
 
 Session 2026-11-16 was already run. None of these makes a model call or writes to the journal.

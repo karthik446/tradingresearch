@@ -6,6 +6,7 @@ model call, no network."""
 
 from __future__ import annotations
 
+import json
 import sqlite3
 import statistics
 from collections import Counter
@@ -311,3 +312,77 @@ def render(card_list: list[Card], costs: dict[str, tuple[float, float]], since: 
         lines.extend(render_card(c))
     lines.append(cost_line(costs))
     return lines
+
+
+# -- export: the aggregate scorecards as one JSON file a reader can publish (SPIKE §11, "Public") -------------------
+
+EXPORT_SCHEMA = 1
+STATES = ("CLOSED", "EXPIRED", "CANCELLED", "OPEN", "PROPOSED")  # the counts a card prints, GRADED inside CLOSED
+
+
+def _rate(k: int, n: int) -> dict:
+    """`k` of `n` and the proportion; null when nothing is counted, as the report's `n/a (0 of 0)`."""
+    return {"k": k, "n": n, "p": k / n if n else None}
+
+
+def _wilson(k: int, n: int) -> dict:
+    """`k` of `n` (n >= 1) with its 95% Wilson interval."""
+    w = wilson_interval(k, n)
+    return {"k": k, "n": n, "p": w.proportion, "ci95": [w.ci.lower, w.ci.upper]}
+
+
+def _boot(value: float, boot: ClusterBootstrap | None, trades: list[Trade] | tuple[Trade, ...]) -> dict:
+    """A mean and its cluster-bootstrap interval; ci95 is null under MIN_CLUSTERS entry sessions (`insufficient`)."""
+    return {"value": value, "clusters": cluster_count(trades),
+            "ci95": None if boot is None else [boot.ci.lower, boot.ci.upper]}
+
+
+def _p1(trades: tuple[Trade, ...]) -> dict | None:
+    """P1 met over the met-or-not-met trades, the unknowns left out, and the 2x2; null with no judged trade."""
+    judged = [t for t in trades if t.p1 is not None]
+    if not judged:
+        return None
+    decided = [t for t in judged if t.p1 != "unknown"]
+    met = _wilson(sum(t.p1 == "met" for t in decided), len(decided)) if decided else {**_rate(0, 0), "ci95": None}
+    return {**met, "unknown": len(judged) - len(decided), "two_by_two": two_by_two(trades)}
+
+
+def _stats(trades: tuple[Trade, ...]) -> dict:
+    """The numbers `stats_lines` prints over a card's graded trades (at least one)."""
+    n, pairs = len(trades), paired(trades)
+    shadow = None
+    if pairs:
+        diff = statistics.fmean(t.r_net - t.shadow_r_net for t in pairs)
+        shadow = {**_boot(diff, real_vs_shadow(trades), pairs), "pairs": len(pairs)}
+    mde = None
+    if n >= 2:
+        sd = statistics.stdev(t.r_net for t in trades)
+        m = mde_continuous(n, sd)
+        mde = {"mde_r": m.mde, "sigma_r": sd, "alpha": m.alpha, "power": m.power}
+    return {"win_rate": _wilson(sum(t.r_net > 0 for t in trades), n),
+            "mean_r_net": _boot(statistics.fmean(t.r_net for t in trades), mean_r(trades), trades),
+            "real_minus_shadow": shadow,
+            "median_mfe_r": statistics.median(t.mfe_r for t in trades),
+            "median_mae_r": statistics.median(t.mae_r for t in trades),
+            "mde": mde, "p1": _p1(trades)}
+
+
+def card_export(c: Card) -> dict:
+    """One graded card as numbers: its counts, rates and statistics, never a thesis id, ticker or text."""
+    s = Counter(c.states)
+    return {"arm": c.arm, "horizon": c.horizon, "n": len(c.trades), "theses": sum(s.values()),
+            "states": {state.lower(): s[state] for state in STATES},
+            "fill_rate": _rate(c.filled, c.filled + s["EXPIRED"]), "abstention": _rate(c.no_trades, c.answered),
+            **_stats(c.trades)}
+
+
+def export(card_list: list[Card], since: date | None) -> dict:
+    """The aggregate scorecards: one entry per (arm, horizon) card with a graded trade, in report order; `stream_from`
+    is null when pre-live sessions are included."""
+    return {"schema": EXPORT_SCHEMA, "stream_from": since and since.isoformat(),
+            "arms": [card_export(c) for c in card_list if c.trades]}
+
+
+def export_text(card_list: list[Card], since: date | None) -> str:
+    """Sorted keys, 2-space indent, trailing newline: a rerun on the same data is byte-identical."""
+    return json.dumps(export(card_list, since), indent=2, sort_keys=True, allow_nan=False) + "\n"

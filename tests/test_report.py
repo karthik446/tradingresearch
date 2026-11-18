@@ -1,7 +1,8 @@
 """`tr report` (SPIKE §7.5, §7.6, §7.2 2x2): hand-computed Wilson, cluster bootstrap and MDE numbers, the empty state,
-teacher exclusion, the live-stream filter, and one synthetic thesis graded end to end through the real reconcile and
-grade. No model call."""
+teacher exclusion, the live-stream filter, one synthetic thesis graded end to end through the real reconcile and
+grade, and the `--export` aggregates (SPIKE §11). No model call."""
 
+import json
 import math
 from datetime import UTC, date, datetime, timedelta
 
@@ -236,3 +237,100 @@ def test_the_report_starts_at_the_first_live_session_and_names_what_it_leaves_ou
     assert out[1] == "champion short: 2 theses: 0 closed (0 graded), 0 expired, 0 cancelled, 0 open, 2 proposed"
     assert "challenger short: 1 theses: 0 closed (0 graded), 0 expired, 0 cancelled, 0 open, 1 proposed" in out
     assert out[-1].startswith("cost per tr daily run: 3 runs, total $0.400000")
+
+
+ARM_KEYS = {"arm", "horizon", "n", "theses", "states", "fill_rate", "abstention", "win_rate", "mean_r_net",
+            "real_minus_shadow", "median_mfe_r", "median_mae_r", "mde", "p1"}
+
+
+def keys_and_strings(value, keys: set, strings: set) -> None:
+    """Every dict key and every string value anywhere in an exported document."""
+    if isinstance(value, dict):
+        keys.update(value)
+        for item in value.values():
+            keys_and_strings(item, keys, strings)
+    elif isinstance(value, list):
+        for item in value:
+            keys_and_strings(item, keys, strings)
+    elif isinstance(value, str):
+        strings.add(value)
+
+
+def test_the_export_holds_the_printed_card_numbers_and_skips_ungraded_cards():
+    means = [-1.0, -0.5, 0.0, 0.5, 1.0, 1.5, 2.0, -2.0, 0.25, 0.75, 3.0]
+    p1s = ["met", "not_met", "unknown", None]
+    rows = tuple(report.Trade(f"th_{i}", date(2026, 12, 1) + timedelta(days=i), m, 0.0, 1.0, -0.5, p1s[i % 4])
+                 for i, m in enumerate(means))
+    graded_card = report.Card("champion", "swing", {"CLOSED": 11, "EXPIRED": 1}, 11, 2, 14, rows)
+    empty_card = report.Card("champion", "day", {"PROPOSED": 1}, 0, 0, 1, ())
+    doc = report.export([empty_card, graded_card], None)
+    assert doc["schema"] == 1 and doc["stream_from"] is None
+    [e] = doc["arms"]
+    assert set(e) == ARM_KEYS and (e["arm"], e["horizon"], e["n"], e["theses"]) == ("champion", "swing", 11, 12)
+    assert e["states"] == {"closed": 11, "expired": 1, "cancelled": 0, "open": 0, "proposed": 0}
+    assert e["fill_rate"] == {"k": 11, "n": 12, "p": 11 / 12} and e["abstention"] == {"k": 2, "n": 14, "p": 2 / 14}
+    w = report.wilson_interval(7, 11)  # r_net > 0: 0.5, 1.0, 1.5, 2.0, 0.25, 0.75, 3.0
+    assert e["win_rate"] == {"k": 7, "n": 11, "p": w.proportion, "ci95": [w.ci.lower, w.ci.upper]}
+    boot = report.mean_r(rows)
+    assert e["mean_r_net"] == {"value": pytest.approx(sum(means) / 11), "clusters": 11,
+                               "ci95": [boot.ci.lower, boot.ci.upper]}
+    shadow = report.real_vs_shadow(rows)
+    assert e["real_minus_shadow"] == {"value": pytest.approx(sum(means) / 11), "clusters": 11, "pairs": 11,
+                                      "ci95": [shadow.ci.lower, shadow.ci.upper]}
+    assert (e["median_mfe_r"], e["median_mae_r"]) == (1.0, -0.5)
+    assert f"only effects >= {e['mde']['mde_r']:.2f} R" in report.detectable(rows)
+    assert (e["mde"]["alpha"], e["mde"]["power"]) == (0.05, 0.8)
+    met = report.wilson_interval(3, 6)  # i % 4: 0, 4, 8 met; 1, 5, 9 not met; 2, 6, 10 unknown; 3, 7 no result
+    assert e["p1"] == {"k": 3, "n": 6, "p": met.proportion, "ci95": [met.ci.lower, met.ci.upper], "unknown": 3,
+                       "two_by_two": report.two_by_two(rows)}
+    few = report.card_export(report.Card("challenger", "day", {"CLOSED": 1}, 1, 0, 1, rows[:1]))
+    assert few["mean_r_net"] == {"value": -1.0, "clusters": 1, "ci95": None}  # the report's `insufficient`
+    assert (few["mde"], few["p1"]["k"], few["p1"]["n"], few["p1"]["unknown"]) == (None, 1, 1, 0)  # n = 1: no sigma
+
+
+def test_export_writes_aggregates_only_refuses_an_overwrite_and_reruns_byte_identical(tmp_path, monkeypatch, capsys):
+    monkeypatch.setenv("TR_DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("TR_ENV_FILE", str(tmp_path / "none.env"))
+    conn = journal.connect(tmp_path / "journal.db")
+    winner = seed(conn, "FAKEA")  # fills D1, target on D2 (test_grade); analysed on D0, before the live stream
+    bars = Bars()
+    for day in (D1, D2, D3):
+        settle(conn, bars, day)
+    grade.run(conn, bars, D3, now=NOW)
+    conn.close()
+    main(["report", "--include-pre-live", "--horizon", "short"])
+    printed = capsys.readouterr().out
+    out = tmp_path / "scorecards.json"
+    main(["report", "--include-pre-live", "--horizon", "short", "--export", str(out)])
+    lines = capsys.readouterr().out.splitlines()
+    assert "\n".join(lines[:-1]) + "\n" == printed  # the printed report is unchanged; the export is an addition
+    assert lines[-1] == f"exported 1 graded scorecards (aggregates only) to {out}"
+    text = out.read_text()
+    doc = json.loads(text)
+    assert text == json.dumps(doc, indent=2, sort_keys=True) + "\n"
+    assert set(doc) == {"schema", "stream_from", "arms"} and doc["stream_from"] is None
+    [e] = doc["arms"]
+    assert set(e) == ARM_KEYS and (e["arm"], e["horizon"], e["n"]) == ("champion", "short", 1)
+    keys, strings = set(), set()
+    keys_and_strings(doc, keys, strings)
+    assert strings == {"champion", "short"}  # no ticker, id, thesis or claim text, prompt, trace path or key
+    assert keys == {"schema", "stream_from", "arms", *ARM_KEYS, "closed", "expired", "cancelled", "open", "proposed",
+                    "k", "n", "p", "ci95", "value", "clusters", "pairs"}
+    assert "FAKEA" not in text and winner.thesis_id not in text
+    with pytest.raises(SystemExit) as refused:
+        main(["report", "--export", str(out)])
+    captured = capsys.readouterr()
+    assert refused.value.code == 2 and captured.out == ""
+    assert captured.err == f"refused: {out} exists; --force overwrites it\n"
+    assert out.read_text() == text
+    main(["report", "--include-pre-live", "--horizon", "short", "--export", str(out), "--force"])
+    assert out.read_bytes() == text.encode()  # same data, same bytes
+
+
+def test_export_with_no_graded_data_writes_empty_arms_and_says_so(tmp_path, monkeypatch, capsys):
+    monkeypatch.setenv("TR_DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("TR_ENV_FILE", str(tmp_path / "none.env"))
+    out = tmp_path / "scorecards.json"
+    main(["report", "--export", str(out)])
+    assert capsys.readouterr().out.splitlines()[-1] == f'exported to {out}: no graded trades yet, "arms": []'
+    assert out.read_text() == '{\n  "arms": [],\n  "schema": 1,\n  "stream_from": "2026-11-17"\n}\n'
