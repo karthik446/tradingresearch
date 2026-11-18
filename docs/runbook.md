@@ -61,6 +61,12 @@ gui/$(id -u) ~/Library/LaunchAgents/com.tradingresearch.daily.plist`), and run t
 `OPENROUTER_API_KEY is not set`. With `TR_PROVIDER` unset in `verify.env` the agent stays on OpenRouter; it moves to
 Anthropic only when `TR_PROVIDER=anthropic` and `ANTHROPIC_API_KEY` are added there.
 
+**When the pin moves past the provider change.** Not before the bake-off's 10 sessions are done (orchestrator decision,
+2026-11-17): the change makes OpenRouter calls wait the server's `Retry-After` time on 429 and 5xx replies, which alters
+teacher outcomes the bake-off measures, so moving the pin mid-bake-off would change the teacher arms' conditions. The
+plist step above therefore comes with the first pin move after the bake-off. A move before then is only for a verified
+product fix the live run needs, with a pre-registration note.
+
 Schema changes must be new tables (`CREATE TABLE IF NOT EXISTS`), which the pinned code ignores. A change that adds,
 alters or drops a column lands together with a pin move. A dev command that opens the live journal with newer code adds
 its empty tables. Code a change needs in a live run (for example the challenger arm, `rules.py`) does not run until
