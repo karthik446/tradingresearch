@@ -301,3 +301,106 @@ the run. Then, in this order:
    and trace files, without the writer's numbers in hand, before the Result is written;
 5. the result goes in a **Result (replication)** section under this amendment, read under rule 5 and nothing else;
    the first run's Result above is not edited.
+
+### Result (replication)
+
+Read under rule 5 and nothing else; written 2026-11-18 after the run and after the independent reader's recompute
+(`workers/W8Rep1ResRead.md` in the orchestrator workspace). The run was made as item 8 says, on 2026-11-18 (UTC),
+the first analysis span starting 12:20:58 and the last thesis span starting 13:40:25 (about 80 minutes of calls,
+computed from `traces/run_c4fe9f7fac0749f1.jsonl` and `traces/run_e45d8b17614b4854.jsonl`), on the Anthropic credit,
+no prompt cache. Every number below is quoted from `data-dev/scratch/w8rep1-run.txt` (the whole stdout, next), from
+`data-dev/cost-ledger.jsonl`, or counted from the run and trace files by the reader; computed figures say so.
+
+```
+experiment routing-replication: 120 ticker-days x 2 arm(s), graders parsed, claims_valid, all_claims_valid, inferences_grounded, cap $10.50/arm, provider anthropic
+    arm sonnet: analyze anthropic/claude-sonnet-5.5  thesis anthropic/claude-sonnet-5.5  fallback none
+    arm routed: analyze anthropic/claude-haiku-5.5  thesis anthropic/claude-sonnet-5.5  fallback anthropic/claude-sonnet-5.5
+plan worst case $10.108368 per arm (arm sonnet, floor $9.014726), cap $10.50
+arm sonnet     prompt=analyze-3 run=run_c4fe9f7fac0749f1 theses=run_692ab35965454414 spent=$4.7026 failed=0 analyses=0
+    all_claims_valid=0.750 (n=120)  claims_valid=0.963 (n=120)  inferences_grounded=0.992 (n=120)  parsed=1.000 (n=120)
+    audit drop=0 flag=0 reject=0
+arm routed     prompt=analyze-3 run=run_d451432ffcc84b13 theses=run_e45d8b17614b4854 spent=$2.7137 failed=0 analyses=0
+    all_claims_valid=0.817 (n=120)  claims_valid=0.981 (n=120)  inferences_grounded=1.000 (n=120)  parsed=1.000 (n=120)
+    audit drop=0 flag=0 reject=0
+compare sonnet -> routed: 120 items, 10 clusters
+    parsed             1.000 -> 1.000  diff +0.000  CI [+0.000, +0.000] (95%)  mcnemar p=1  mde=-  n=120
+    claims_valid       0.963 -> 0.981  diff +0.018  CI [+0.005, +0.031] (95%)  wilcoxon p=0.00464  mde=0.018  n=120
+    all_claims_valid   0.750 -> 0.817  diff +0.067  CI [-0.017, +0.150] (95%)  mcnemar p=0.2  mde=0.127  n=120
+    inferences_grounded 0.992 -> 1.000  diff +0.008  CI [+0.000, +0.025] (95%)  mcnemar p=1  mde=-  n=120
+drift sonnet -> routed: changed 0.617  CI [0.492, 0.750] (95%, cluster bootstrap)  n=120
+```
+
+**The rules, in the registered order of evaluation.** The threshold is item 5's; the number beside it is the printed
+or counted one, with where it comes from.
+
+| rule | threshold (item 5) | this run | source | holds |
+|---|---|---|---|---|
+| (0) completeness | both `arm` lines `failed=0`; every grader `(n=120)` on both score lines; `120 items, 10 clusters`; a numeric CI on `all_claims_valid` | `failed=0` and `failed=0`; eight `(n=120)`; `120 items, 10 clusters`; CI [-0.017, +0.150] | stdout lines 5, 6, 8, 9, 11, 14 | yes |
+| (d) power | discordant `all_claims_valid` items at most 41 of 120 (0.342) | 30 of 120 = 0.250 (11 valid only on `sonnet`, 19 only on `routed`; 79 valid on both, 11 on neither) | counted from the `sample` and `score` records of `runs/run_c4fe9f7fac0749f1.jsonl` and `runs/run_d451432ffcc84b13.jsonl` (reader's recompute) | yes |
+| (a) non-inferiority | lower 95% bound of routed minus sonnet not below -0.150 | -0.017 | stdout line 14 | yes |
+| (b) parsing | `parsed=1.000 (n=120)` under `arm routed` | `parsed=1.000 (n=120)` | stdout line 9 | yes |
+| (c) direction | printed `diff` not below -0.050 | +0.067 | stdout line 14 (the reader's count gives (19 - 11) / 120 = +0.0667) | yes |
+| (e) served model | at most 6 of the 120 `routed` analysis spans with `resolved_model` other than `claude-haiku-5-5` | 0 of 120 (`claude-haiku-5-5` on all 120; `retry_count` 0 on all) | `traces/run_d451432ffcc84b13.jsonl`, `call.resolved_model` of each `model_call` span (reader's recompute) | yes |
+| reading | the first rule that fails, or the first reading of item 5 if none fails | none fails | the six rows above | non-inferior on fresh items; Haiku 5.5 on the analyze step recommended |
+
+**Reading.** All of (0) to (e) hold on the 120 fresh items, so the result reads "non-inferior on fresh items; Haiku
+5.5 on the analyze step recommended", which per item 5 means a separate, operator-approved change to `tr daily`;
+this amendment switches nothing, and `tr daily` runs Sonnet 5.5 on both steps today as the Decision above says.
+
+**Beside the first run, never pooled.** The first run's `all_claims_valid` line (60 items, sessions 2026-11-10 to
+2026-11-17) read 0.767 -> 0.800, diff +0.033, CI [-0.100, +0.167]; this run's (120 items, sessions 2026-10-23 to
+2026-11-09, no item in common) reads 0.750 -> 0.817, diff +0.067, CI [-0.017, +0.150]. Both point estimates are
+positive and both lower bounds clear -0.150; this interval is 0.167 wide against 0.267 (computed from the printed
+bounds). The discordant share fell from 20 of 60 = 0.333 to 30 of 120 = 0.250, under the 0.344 the 120 items were
+sized for, so the power caveat of the first run does not apply here. The two runs are reported side by side and the
+interval above is this run's alone, as item 5 requires.
+
+**Secondary lines, reported, not deciding.** `claims_valid` 0.963 -> 0.981 (CI [+0.005, +0.031]);
+`inferences_grounded` 0.992 -> 1.000 (CI [+0.000, +0.025]); `parsed` 1.000 on both arms; `audit drop=0 flag=0
+reject=0` on both arms (the first run's `routed` had `reject=1`). The thesis changed on 0.617 of the items
+(CI [0.492, 0.750]), the same share as the first run's `routed` (0.617); with no `cached` arm there is no same-model
+drift line in this run to read it against, so it is a report only.
+
+**Spend.** From the four ledger rows of `data-dev/cost-ledger.jsonl` (`spent_usd`, derived by the adapter's price
+table; the arm lines print the same figures at four decimals):
+- `sonnet`: analyze run_c4fe9f7fac0749f1 $2.092712 + thesis run_692ab35965454414 $2.609926 = $4.702638 (printed
+  `spent=$4.7026`), against the expected 4.62 (item 7): +0.083 over (computed);
+- `routed`: analyze run_d451432ffcc84b13 $0.170967 + thesis run_e45d8b17614b4854 $2.542720 = $2.713687 (printed
+  `spent=$2.7137`), against the expected 2.70: +0.014 over (computed);
+- the run: $7.416325, against the expected 7.3: +0.116 over, 1.6% (computed); under the 12 USD expectation and under
+  the 10.50 per-arm cap on both arms. Nothing on OpenRouter (the ledger holds only these four rows, all provider
+  `anthropic`).
+The analysis step cost $0.170967 on Haiku 5.5 against $2.092712 on Sonnet 5.5 (120 items each, input tokens equal at
+359,571; Haiku wrote 270,019 output tokens against 137,357), a ratio of 0.082, that is 91.8% less (computed from the
+ledger rows). The thesis step is the same model in both arms and cost $2.542720 against $2.609926 (output 153,757
+against 160,078 tokens: run-to-run variation, not a routing effect). The whole-pipeline saving is therefore the
+difference of the two arm totals, $4.702638 - $2.713687 = $1.988951 on 120 items, 42.3% less for `routed`
+(computed); per ticker-day $0.0392 against $0.0226 (computed, arm total over 120), beside the first run's $0.0385
+and $0.0225. These are the arms' measured totals; nothing is projected to the live loop.
+
+**What the replication shows and does not show.**
+- It shows: on 120 ticker-days the 10 tickers had not been scored on before, Haiku 5.5 on the analyze step met the
+  registered non-inferiority rule at margin 0.15, with the point estimate on the same side as the first run's, at
+  about one twelfth of the analysis cost. That is the whole claim.
+- Fresh sessions, not fresh names: the items are new sessions of the same 10 tickers, so the 10 bootstrap clusters are
+  the same 10 names as the first run's (item 2). A ticker-specific effect is not separated from the model effect, and
+  nothing follows about other tickers.
+- The interval's upper bound, +0.150, is not a shown improvement: the printed `mcnemar p=0.2` does not reject
+  equality, and the lower bound -0.017 does not exclude a small loss. The reading is non-inferior at the margin, not
+  equal and not better.
+- Where the discordant items sit (reader's count, a post-hoc split that decides nothing): of the 15 items with an
+  empty news file, `sonnet` was valid on 10 and `routed` on 14 (6 discordant); of the other 105, 80 against 84
+  (24 discordant). The routed edge is larger on the items with no headline than on the items with one.
+- One provider (Anthropic), one prompt (`analyze-3`), the same four graders, `temperature`, `top_p` and `seed` left
+  at the provider default (`null` in all four run records, as in the first run). Nothing follows about other prompts,
+  other cheap models or other providers.
+- The comparison is Haiku 5.5 against Sonnet 5.5 on the analysis only; the thesis ran on Sonnet 5.5 in both arms.
+  Nothing is measured about Haiku on the thesis.
+- No claim about live results: `tr daily` has never run routed, and neither run measures trades, P1 verdicts or
+  anything downstream of the analysis.
+- The noise reading of item 6 is not re-measured: this run has no same-model pair (no `cached` arm, by design), so
+  the first run's 0.267 same-model discordant share stands as the only such figure.
+- Cost is derived from the adapter's price table on every span (`cost_status` `derived` on all 480, per the reader),
+  so the Haiku 5.5 price is still not checked against a billed amount; the Console was not read.
+- `tr usage --by run` (item 8, step 3) was not run for this section; the ledger rows and the run records'
+  `spent_usd` were read instead and match the printed arm lines.

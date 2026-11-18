@@ -281,6 +281,44 @@ case $5.270661 per arm. Haiku 5.5 on the analyze step cost 92% less than Sonnet 
 and read 71,744 on the analyze step (2,112 written and 124,608 read on the thesis step), so the analyze block is long
 enough to cache. The fallback model answered none of the 60 routed analysis calls.
 
+### Week 8 replication
+
+One run of `experiments/routing-replication.toml` on 2026-11-18 (ADR-011 Amendment 1, "Result (replication)"): two
+pipeline arms, `sonnet` and `routed`, over the same 10 tickers x 12 earlier sessions (120 items each), each item an
+analysis call then a thesis call on Anthropic's API, `TR_PROVIDER=anthropic`, no prompt cache. Run output
+`data-dev/scratch/w8rep1-run.txt`. The rows below are the four rows of `data-dev/cost-ledger.jsonl` for this run
+(calls, tokens and `spent_usd` as written there; the cost is derived from the adapter's price table, not billed by the
+provider), and the arm lines of the run output print the same spend at four decimals. Measured and computed figures
+are labelled.
+
+| Run id | Arm | Step | Model | Calls | Tokens in | Tokens out | USD (ledger, measured) |
+|---|---|---|---|---|---|---|---|
+| run_c4fe9f7fac0749f1 | sonnet | analyze | claude-sonnet-5-5 | 120 | 359,571 | 137,357 | 2.092712 |
+| run_692ab35965454414 | sonnet | thesis | claude-sonnet-5-5 | 120 | 504,573 | 160,078 | 2.609926 |
+| run_d451432ffcc84b13 | routed | analyze | claude-haiku-5-5 | 120 | 359,571 | 270,019 | 0.170967 |
+| run_e45d8b17614b4854 | routed | thesis | claude-sonnet-5-5 | 120 | 502,575 | 153,757 | 2.542720 |
+
+Sums (computed from the four rows): `sonnet` 4.702638 (printed `spent=$4.7026`), `routed` 2.713687 (printed
+`spent=$2.7137`), the run 7.416325. Amendment 1 expected about 7.3 (2 x the first run's arm totals), so the run came
+in 0.116 over (1.6%); the per-arm cap was 10.50 and the plan's worst case $10.108368 per arm. Per ticker-day
+(computed, arm total over 120 items): `sonnet` $0.0392, `routed` $0.0226. The analysis step on Haiku 5.5 cost 0.082
+of the Sonnet 5.5 analysis step (computed, 0.170967 / 2.092712), on equal input tokens and 1.97 x the output tokens;
+the thesis step is the same model in both arms and differs by run-to-run output length only. The routed arm cost
+1.988951 less than the sonnet arm, 42.3% (computed). The fallback model answered none of the 120 routed analysis
+calls (every `resolved_model` in the routed analysis trace is `claude-haiku-5-5`).
+
+The first run's arms beside it (measured, the table above under "Week 8: routing and caching"; 60 items per arm):
+
+| Run | Arm | Analysis cost | Thesis cost | Spend | Items | Per ticker-day |
+|---|---|---|---|---|---|---|
+| first (2026-11-17) | sonnet | $1.0304 | $1.2783 | $2.3086 | 60 | $0.0385 |
+| first (2026-11-17) | routed | $0.0858 | $1.2659 | $1.3517 | 60 | $0.0225 |
+| replication (2026-11-18) | sonnet | $2.092712 | $2.609926 | $4.702638 | 120 | $0.0392 (computed) |
+| replication (2026-11-18) | routed | $0.170967 | $2.542720 | $2.713687 | 120 | $0.0226 (computed) |
+
+The two runs together spent 5.6118 + 7.416325 = 13.028125 USD on the routing question (computed). The quality
+result is in the ADR, not here: this page carries cost only.
+
 ## Cost attribution
 
 Where the money went, once, as a snapshot; then how to get today's answer from the repo. The snapshot is the cost

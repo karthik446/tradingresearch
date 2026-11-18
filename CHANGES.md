@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **Week 8 replication result (ADR-011 Amendment 1, "Result (replication)").** The pre-registered second `sonnet`
+  vs `routed` run was made on 2026-11-18 (120 fresh ticker-days, Anthropic credit, $7.416325 against about 7.3
+  expected). Every rule of item 5 holds: `failed=0` and `n=120` on both arms, `all_claims_valid` 0.750 -> 0.817,
+  diff +0.067, 95% CI [-0.017, +0.150], `parsed` 1.000, 30 of 120 items discordant (0.250), 0 of 120 routed
+  analyses served by the fallback. The result reads "non-inferior on fresh items; Haiku 5.5 on the analyze step
+  recommended", a recommendation for a separate operator-approved change; `tr daily` is unchanged. The first run's
+  Result is reported beside it, not pooled. `docs/measured-costs.md` ("Week 8 replication") has the four ledger rows;
+  the README's week-8 paragraph carries the numbers.
+
 - **Cost SLO (COST-6).** `tr slo` prints a fourth checked line, `cost`: the session's first paid `tr daily` run
   (champion plus challenger, teacher steps shown apart) against `COST_BUDGET_USD` = $0.60, `--budget-usd` to change
   it; no paid row reads `no data`, not `met`. `docs/slo-review.md` (addendum), `docs/measured-costs.md` ("Cost
