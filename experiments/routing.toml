@@ -1,0 +1,29 @@
+# Week 8 (ADR-011, pre-registered): does a cheaper analyze model hold up? G15-SPIKE §2. Three pipeline arms (analyze, then
+# a thesis in memory; nothing journaled), the same prompts, the same 60 items (10 tickers x 6 sessions):
+# - `sonnet`: Sonnet 5.5 on both steps, no route, no cache. The baseline (the first arm);
+# - `routed`: Haiku 5.5 on analyze, Sonnet 5.5 on the thesis, Sonnet 5.5 as the fallback if Haiku's retries run out;
+# - `cached`: the baseline plus a 5-minute prompt cache. A cost-only knob and a second sample of the baseline.
+# `tr exp run` reads `compare sonnet -> routed` for all_claims_valid; the ADR's rule is applied to its CI by hand.
+name = "routing"
+model = "anthropic/claude-sonnet-5.5"
+max_usd_per_arm = 5.50
+tickers = ["AAPL", "MSFT", "NVDA", "AMZN", "JPM", "XOM", "UNH", "HD", "KO", "CAT"]
+sessions = ["2026-11-10", "2026-11-11", "2026-11-12", "2026-11-13", "2026-11-16", "2026-11-17"]
+graders = ["parsed", "claims_valid", "all_claims_valid", "inferences_grounded"]
+
+[[arms]]
+name = "sonnet"
+kind = "pipeline"
+prompt = "analyze-3"
+
+[[arms]]
+name = "routed"
+kind = "pipeline"
+prompt = "analyze-3"
+route = { analyze = "anthropic/claude-haiku-5.5", fallback = "anthropic/claude-sonnet-5.5" }
+
+[[arms]]
+name = "cached"
+kind = "pipeline"
+prompt = "analyze-3"
+cache = "5m"
