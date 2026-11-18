@@ -24,7 +24,7 @@ from test_week4 import MODEL, load, prices
 from tradingresearch import analyze as an, experiment, injection, journal, news, sessions, thesis as th
 from tradingresearch.commands import exp
 from tradingresearch.evals import GRADERS
-from tradingresearch.openrouter import API, OpenRouter
+from tradingresearch.providers.openrouter import API, OpenRouter
 from tradingresearch.retrieval.store import Passage, Retrieved
 
 FIXTURE = Path(__file__).parent / "fixtures" / "injections" / "fakea.jsonl"
