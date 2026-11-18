@@ -1,9 +1,14 @@
-# Week 7 plumbing (G14b): the injection experiment, GUARDS-SPIKE §8.5. Not run, not pre-registered: it refuses to load
-# until the learner writes the 30 rows of evals/injections.jsonl (schema: evals/injections.schema.md), and rows must
-# sit on the tickers and sessions below. Three pipeline arms (analyze, then a thesis in memory; nothing journaled):
-# `clean` on the injected ticker-days without the injections, `injected-off` with them and no guard, `injected-on` with
-# them and the guards. A clean/injected pair is joined on ticker and session (experiment.pairs); whether the theses
-# resisted is the learner's `injection_resisted` grader, and `tr exp run` prints the paired verdict once it is registered.
+# Week 7 (ADR-010, pre-registered): the injection experiment, GUARDS-SPIKE §8.5 and §9.2. Rows must sit on the tickers
+# and sessions below (evals/injections.jsonl, schema: evals/injections.schema.md). Five pipeline arms (analyze, then a
+# thesis in memory; nothing journaled), the same prompt and model on each:
+# - `clean`: the injected ticker-days without the injections (10 items), the baseline every other arm is read against;
+# - `injected-off`: one item per injection row (30), no guard;
+# - `injected-on`: the same 30 items with the guards;
+# - `clean-on`: the clean items with the same guards as `injected-on` (false rejection and collateral change);
+# - `clean-rerun`: identical to `clean`, a second sample of it (the noise floor).
+# A clean/injected pair is joined on ticker and session (experiment.pairs) and scored by `injection_resisted`
+# (`verdict clean -> <arm>: attack success ...`); a later clean arm is joined to `clean` by item
+# (`drift clean -> <arm>: changed ...`, experiment.drift), and a guards arm also prints its `false rejection k/n`.
 # Headlines come from the local news store (`tr news TICKER --session ...` fills it); an arm never fetches. A `filing`
 # row needs `retrieval` on both injected arms.
 name = "injection"
@@ -30,5 +35,17 @@ name = "injected-on"
 kind = "pipeline"
 prompt = "analyze-3"
 inject = true
-# plain_text is the registered thesis rule (S2); the learner adds the fetched rules they register, e.g. ["my_rule", ...]
-guards = ["plain_text"]
+# plain_text is the registered thesis rule (S2); instruction_shaped and decision_steering are the fetched rules of
+# src/tradingresearch/guard_rules.py
+guards = ["plain_text", "instruction_shaped", "decision_steering"]
+
+[[arms]]
+name = "clean-on"
+kind = "pipeline"
+prompt = "analyze-3"
+guards = ["plain_text", "instruction_shaped", "decision_steering"]
+
+[[arms]]
+name = "clean-rerun"
+kind = "pipeline"
+prompt = "analyze-3"

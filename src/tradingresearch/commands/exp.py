@@ -1,6 +1,7 @@
 """`tr exp run`: every arm of an experiment config on the same ticker-days, then compare (paid calls); a pipeline
-arm's theses stay in memory, and each inject arm gets a paired verdict against the clean arm. `tr exp compare`: the
-same compare block for two stored runs ($0)."""
+arm's theses stay in memory, each later clean pipeline arm gets a drift line against the first clean one (and a
+false-rejection count when it has guards), and each inject arm gets a paired verdict against it. `tr exp compare`:
+the same compare block for two stored runs ($0)."""
 
 from __future__ import annotations
 
@@ -50,19 +51,41 @@ def cmd_exp_run(args, cfg) -> None:
         if not r.arm.inject:  # an injected item has its own id, so it pairs with no analyze item
             show(baseline.arm.name, r.arm.name, baseline.run, r.run, config.graders)
     injected = [r for r in results if r.arm.inject]
-    clean = next((r for r in results if r.arm.kind == "pipeline" and not r.arm.inject), None)
-    if injected and clean is None:
+    cleans = [r for r in results if r.arm.kind == "pipeline" and not r.arm.inject]
+    if injected and not cleans:
         print(f"no clean pipeline arm: arm(s) {', '.join(r.arm.name for r in injected)} have nothing to pair against")
         return
+    clean = cleans[0] if cleans else None
+    for r in cleans[1:]:
+        found = experiment.drift(clean, r)
+        print(f"drift {clean.arm.name} -> {r.arm.name}: changed {found.attack_success:.3f}  CI {interval(found)}  "
+              f"n={found.n}")
+        if r.arm.guards:
+            hit, n = false_rejections(records, r)
+            print(f"    false rejection {hit}/{n} clean items had a row dropped or flagged")
     for r in injected:
         found = experiment.verdict(config, clean, r)
         if found is None:
             print(f"{experiment.RESISTED} not registered (week 7 learner part)")
             return
-        ci = (f"[{found.ci.lower:.3f}, {found.ci.upper:.3f}] ({found.ci.level:.0%}, cluster bootstrap)" if found.ci
-              else f"none ({found.clusters} clusters < {experiment.MIN_CLUSTERS})")
-        print(f"verdict {clean.arm.name} -> {r.arm.name}: attack success {found.attack_success:.3f}  CI {ci}  "
-              f"n={found.n}")
+        print(f"verdict {clean.arm.name} -> {r.arm.name}: attack success {found.attack_success:.3f}  "
+              f"CI {interval(found)}  n={found.n}")
+
+
+def interval(found: experiment.Verdict) -> str:
+    """A verdict's or drift's interval as `tr exp run` prints it, or why there is none."""
+    if found.ci is None:
+        return f"none ({found.clusters} clusters < {experiment.MIN_CLUSTERS})"
+    return f"[{found.ci.lower:.3f}, {found.ci.upper:.3f}] ({found.ci.level:.0%}, cluster bootstrap)"
+
+
+def false_rejections(records: list[guards.AuditRecord], r: experiment.ArmResult) -> tuple[int, int]:
+    """A clean guards arm's ticker-days with at least one fetched row dropped or flagged in `audit.jsonl` (its own
+    run ids, as `decisions` counts them), out of its items; counts only, never a row's text."""
+    runs = {r.run.record.run_id} | ({r.theses.record.run_id} if r.theses else set())
+    days = {(rec.ticker, rec.session) for rec in records if rec.run_id in runs and rec.arm == r.arm.name
+            and rec.stage == "fetched" and rec.decision in ("drop", "flag")}
+    return len(days), len(r.run.items)
 
 
 def decisions(records: list[guards.AuditRecord], r: experiment.ArmResult) -> str:

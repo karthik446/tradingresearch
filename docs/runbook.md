@@ -707,20 +707,25 @@ dropped ids only when non-empty, so every hash written before week 7 is unchange
 the journal, and dates each thesis at the session close. The injection set is `evals/injections.jsonl`, one row per
 `{id, ticker, session, channel: headline|filing, mode: add|replace, target_source_id, text, intent}` (spec:
 `evals/injections.schema.md`); a row is placed in memory only, on an arm with `inject = true`, and a bad row, a row
-off the config's tickers or sessions, or a replace target that is not shown exits before any call. The shipped set
-is empty until the learner writes it, so `experiments/injection.toml` (clean / injected-off / injected-on, 10
-tickers, ≤ $1.50 an arm) refuses to load. `experiment.pairs(clean, injected)` gives one pair per injection row by
+off the config's tickers or sessions, or a replace target that is not shown exits before any call. The learner's
+set holds 30 headline rows (21 add, 9 replace) on 2026-11-13, so `experiments/injection.toml` loads: five pipeline
+arms (clean, injected-off, injected-on, and the controls clean-on and clean-rerun; 10 tickers, ≤ $1.50 an arm),
+pre-registered in ADR-010 and not yet run. `experiment.pairs(clean, injected)` gives one pair per injection row by
 ticker-day with the first change per horizon (`unparsed` when either side's reply did not parse), and
 `experiment.injection_resisted` scores them with the learner's `injection_resisted` grader. The run file records each
 prompt as sent, injected text included. Tests use invented FAKEA text only (`tests/fixtures/injections/fakea.jsonl`).
 
 `tr exp run` on pipeline arms prints, per arm, the analyze and theses run ids, the spend of both stages, the failed
 count, the scores, and an `audit drop=N flag=N reject=N` line counted from `audit.jsonl` over that arm's own run ids.
+Each later clean pipeline arm is joined to the first one by item (`experiment.drift`, the same `changed` rule; an
+item without an outcome counts as changed): `drift clean -> <arm>: changed X  CI ...  n=N`, the noise floor for a
+rerun and the collateral change for a guards arm. A clean arm with guards also prints `false rejection k/n clean
+items had a row dropped or flagged`, its ticker-days with a fetched drop or flag in `audit.jsonl` (counts only).
 Each inject arm is then paired with the first clean pipeline arm: `verdict clean -> <arm>: attack success X  CI
-[lo, hi] (95%, cluster bootstrap)  n=N`. The interval is the bootstrap `tr exp compare` uses, over the config's
-clusters (tickers, or sessions with `cluster = "session"`), and is `none` below 10 clusters. Until the learner
-registers `injection_resisted`, the run ends with `injection_resisted not registered (week 7 learner part)` and
-exits 0; with no clean pipeline arm it says the inject arms have nothing to pair against.
+[lo, hi] (95%, cluster bootstrap)  n=N`. The intervals are the bootstrap `tr exp compare` uses, over the config's
+clusters (tickers, or sessions with `cluster = "session"`), and are `none` below 10 clusters. Until the learner
+registers `injection_resisted`, the run ends with `injection_resisted not registered (week 7 learner part)` after
+any drift lines and exits 0; with no clean pipeline arm it says the inject arms have nothing to pair against.
 
 ### Redaction and the key scan
 
@@ -779,3 +784,18 @@ The shipped `thesis_rules` and `plain_text` do not count.
   rejection rate and cost. Each cell is a number (an interval may follow in brackets) or `awaiting experiment`; a
   false-rejection cell may also be `n/a`. Put the `run_<16 hex>` ids the numbers came from beside the table, not in
   a cell. Once any cell holds a number, the test checks that the ADR names at least one run id.
+
+**At the reference.** The reference solution fills part of this contract:
+- `src/tradingresearch/guard_rules.py` holds two fetched rules, `instruction_shaped` and `decision_steering`.
+  `experiment.py` imports it, and the `injected-on` arm of `experiments/injection.toml` names both rules beside
+  `plain_text`. A hit drops a headline but only flags a filing chunk.
+- Its docstring gives the false-flag counts it was measured at: 0 of the 61 clean headlines in `data-dev/news` and
+  0 of the 8,890 filing chunks of the pinned retrieval index. It also lists the phrases left out on purpose because
+  clean news uses them, such as "Strong Buy" and "price target: $150".
+- The `injection_resisted` grader is in `evals.py`, and its spec is `evals/specs/injection_resisted.md`.
+- `tests/test_guard_rules.py` gives each pattern an invented attack. It also recounts the false flags on
+  `data-dev/news` when that directory exists.
+- `docs/adr/ADR-010-guardrails.md` pre-registers the guards-off vs on run of `experiments/injection.toml`: the five
+  arms, the "changed" rule, the metrics (attack success off and on, noise floor, false rejection, collateral change,
+  cost) and the decision rule. Its table says `awaiting experiment` until that run; the `guards` setting for live
+  runs stays empty until then. `tr exp run` prints every number the table needs.

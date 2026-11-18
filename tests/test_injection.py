@@ -18,6 +18,7 @@ import httpx
 import pytest
 from gigai_core.score import Score
 
+from test_guards import make, registry  # noqa: F401
 from test_headlines import reply as headline_reply, stored, with_news
 from test_masking import TICKERS, pinned_tokens, reply, ten  # noqa: F401
 from test_thesis import ALL, ANALYSIS, REPLY, written
@@ -192,11 +193,15 @@ def test_a_missing_injections_file_is_refused_at_load(tmp_path):
         experiment.load(path)
 
 
-def test_the_shipped_injection_experiment_waits_for_the_learners_rows():
-    shipped = experiment.ROOT / "experiments" / "injection.toml"
-    assert (experiment.ROOT / "evals" / "injections.jsonl").read_text() == ""
-    with pytest.raises(SystemExit, match="evals/injections.jsonl has no rows"):
-        experiment.load(shipped)
+def test_the_shipped_injection_experiment_waits_for_the_learners_rows(tmp_path):
+    shipped = (experiment.ROOT / "experiments" / "injection.toml").read_text()
+    assert 'injections = "evals/injections.jsonl"' in shipped
+    empty = tmp_path / "injections.jsonl"
+    empty.write_text("")
+    path = tmp_path / "injection.toml"  # the shipped config, its injection file swapped for an empty one
+    path.write_text(shipped.replace('injections = "evals/injections.jsonl"', f'injections = "{empty}"'))
+    with pytest.raises(SystemExit, match="injections.jsonl has no rows"):
+        experiment.load(path)
 
 
 def test_a_replace_target_not_shown_is_refused_before_any_call(tmp_path, pinned_tokens):  # noqa: F811
@@ -280,6 +285,7 @@ class Resisted:
 
 def test_a_pipeline_pair_writes_theses_in_memory_and_pairs_them_by_ticker_day(tmp_path, pinned_tokens,  # noqa: F811
                                                                               monkeypatch):
+    monkeypatch.delitem(GRADERS, experiment.RESISTED, raising=False)  # the shipped state: no grader registered
     for ticker in TICKERS:
         stored(tmp_path, ticker)
     shown = an.with_headlines(ten()[0], tmp_path, "analyze-3")
@@ -349,7 +355,7 @@ def test_pairs_keep_an_injection_whose_side_did_not_parse():
 
 # ---------- `tr exp run` on pipeline arms at $0 ----------
 
-def run_exp(tmp_path: Path, monkeypatch) -> tuple[list[dict], SimpleNamespace]:
+def run_exp(tmp_path: Path, monkeypatch, extra: str = "") -> tuple[list[dict], SimpleNamespace]:
     """`tr exp run` on the clean/injected pipeline config: contexts, provider and prices stand in for Alpaca, EDGAR
     and the key, so the command runs end to end with no call."""
     for ticker in TICKERS:
@@ -365,12 +371,13 @@ def run_exp(tmp_path: Path, monkeypatch) -> tuple[list[dict], SimpleNamespace]:
     monkeypatch.setattr(exp.providers, "make_provider", lambda cfg, role: answering(sent, cite))
     monkeypatch.setattr(exp.providers, "prices", lambda cfg, role, models: prices())
     cfg = SimpleNamespace(provider="openrouter", db_path=tmp_path / "journal.db", data_dir=tmp_path, feed="iex")
-    exp.cmd_exp_run(SimpleNamespace(config=str(config(tmp_path, ADD))), cfg)
+    exp.cmd_exp_run(SimpleNamespace(config=str(config(tmp_path, ADD, extra=extra))), cfg)
     return sent, cfg
 
 
 def test_tr_exp_run_reports_pipeline_arms_and_waits_for_the_learners_grader(tmp_path, pinned_tokens,  # noqa: F811
                                                                            monkeypatch, capsys):
+    monkeypatch.delitem(GRADERS, experiment.RESISTED, raising=False)  # the shipped state: no grader registered
     sent, cfg = run_exp(tmp_path, monkeypatch)
     out = capsys.readouterr().out.splitlines()
     assert len(sent) == 4  # analyze then thesis on the injected ticker-day, per arm
@@ -398,6 +405,7 @@ def test_tr_exp_run_prints_the_paired_verdict_once_a_grader_is_registered(tmp_pa
 
 
 def test_the_verdict_interval_is_the_compare_bootstrap_over_the_configs_clusters(tmp_path, monkeypatch):
+    monkeypatch.delitem(GRADERS, experiment.RESISTED, raising=False)  # the shipped state: no grader registered
     loaded = experiment.load(config(tmp_path, ADD))
     found = [SimpleNamespace(injection=row(ticker=t), changed="swing: thesis -> rejected" if i % 2 else None)
              for i, t in enumerate(TICKERS)]
@@ -419,3 +427,75 @@ def test_an_arms_audit_counts_are_its_own_run_ids_only(tmp_path):
     result = SimpleNamespace(arm=SimpleNamespace(name="injected"), run=SimpleNamespace(record=SimpleNamespace(
         run_id="run_a")), theses=SimpleNamespace(record=SimpleNamespace(run_id="run_t")))
     assert exp.decisions(guards.read_audit(tmp_path)[0], result) == "drop=1 flag=0 reject=2"
+
+
+# ---------- the clean control arms: drift and false rejection (ADR-010) ----------
+
+def clean_result(outcomes: dict[str, th.Checked | None], cluster: str = "ticker") -> experiment.ArmResult:
+    """A clean pipeline arm on the ten tickers' 2026-11-13 items, an outcome per checked given (None: no outcome)."""
+    items = {f"{t}:{SESSION}": SimpleNamespace(cluster_id=t if cluster == "ticker" else SESSION.isoformat())
+             for t in TICKERS}
+    found = {item_id: experiment.Outcome(ANALYSIS, checked) for item_id, checked in outcomes.items() if checked}
+    return experiment.ArmResult(None, SimpleNamespace(items=items), None, 0, outcomes=found)
+
+
+def test_drift_is_the_changed_share_of_the_clean_items_with_the_verdict_interval():
+    ids = [f"{t}:{SESSION}" for t in TICKERS]
+    clean, rerun = clean_result({i: base() for i in ids}), clean_result({i: base() for i in ids})
+    same = experiment.drift(clean, rerun)
+    assert (same.n, same.clusters, same.attack_success) == (10, 10, 0.0)
+    swing = base().theses[0]
+    other = {ids[0]: moved(base(), stop=swing.stop - 10 * ATR), ids[1]: replace(base(), theses=[]), ids[2]: None,
+             ids[3]: moved(base(), stop=swing.stop + 0.1 * ATR)}  # moved, rejected, no outcome, within the floor
+    got = experiment.drift(clean, clean_result({i: other.get(i, base()) for i in ids} | {ids[2]: None}))
+    assert (got.n, got.clusters, got.attack_success) == (10, 10, 0.3)
+    assert 0.0 <= got.ci.lower < 0.3 < got.ci.upper <= 1.0 and got.ci.level == 0.95
+    no_base = clean_result({i: base() for i in ids[1:]})  # a base item without an outcome still counts, as changed
+    assert (experiment.drift(no_base, rerun).n, experiment.drift(no_base, rerun).attack_success) == (10, 0.1)
+    one_session = experiment.drift(clean_result({i: base() for i in ids}, cluster="session"), rerun)
+    assert (one_session.clusters, one_session.ci) == (1, None)
+
+
+def test_false_rejection_counts_ticker_days_with_a_fetched_drop_or_flag_on_the_arms_own_runs(tmp_path):
+    subject = guards.AuditSubject(kind="headline", id="src_fakea", sha256="0" * 64)
+    for ticker, run_id, arm, stage, decision in [
+            ("FAKEA", "run_a", "clean-on", "fetched", "drop"), ("FAKEA", "run_a", "clean-on", "fetched", "flag"),
+            ("AAPL", "run_a", "clean-on", "fetched", "flag"), ("MSFT", "run_t", "clean-on", "thesis", "reject"),
+            ("NVDA", "run_other", "clean-on", "fetched", "drop"), ("AMZN", "run_a", "clean", "fetched", "drop")]:
+        guards.Auditor(tmp_path, ticker=ticker, session=SESSION, run_id=run_id, arm=arm).write(
+            stage, decision, "fakea_rule", "1", subject, "x")
+    result = SimpleNamespace(arm=SimpleNamespace(name="clean-on"), theses=SimpleNamespace(record=SimpleNamespace(
+        run_id="run_t")), run=SimpleNamespace(record=SimpleNamespace(run_id="run_a"),
+                                              items={f"{t}:{SESSION}": None for t in TICKERS}))
+    assert exp.false_rejections(guards.read_audit(tmp_path)[0], result) == (2, 10)
+
+
+CONTROLS = """
+[[arms]]
+name = "clean-on"
+kind = "pipeline"
+prompt = "analyze-3"
+guards = ["fakea_drop"]
+
+[[arms]]
+name = "clean-rerun"
+kind = "pipeline"
+prompt = "analyze-3"
+"""
+
+
+def test_tr_exp_run_prints_drift_and_false_rejection_for_the_clean_control_arms(tmp_path, registry,  # noqa: F811
+                                                                              pinned_tokens, monkeypatch, capsys):  # noqa: F811
+    guards.rule(make("fakea_drop", "fetched", "drop", hits=lambda row: row.source_id == NEWEST))
+    monkeypatch.setitem(GRADERS, experiment.RESISTED, Resisted)
+    sent, cfg = run_exp(tmp_path, monkeypatch, extra=CONTROLS)
+    out = capsys.readouterr().out.splitlines()
+    assert len(sent) == 8  # analyze then thesis on the one injected ticker-day, per arm
+    assert [line.split()[1] for line in out if line.startswith("arm ")] == ["clean", "injected", "clean-on",
+                                                                            "clean-rerun"]
+    assert out[-4:] == ["drift clean -> clean-on: changed 0.000  CI none (1 clusters < 10)  n=1",
+                        "    false rejection 1/1 clean items had a row dropped or flagged",
+                        "drift clean -> clean-rerun: changed 0.000  CI none (1 clusters < 10)  n=1",
+                        "verdict clean -> injected: attack success 1.000  CI none (1 clusters < 10)  n=1"]
+    fetched = [(a.decision, a.arm, a.subject.id) for a in guards.read_audit(cfg.data_dir)[0] if a.stage == "fetched"]
+    assert fetched == [("drop", "clean-on", NEWEST)]
