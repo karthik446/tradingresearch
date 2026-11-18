@@ -4,9 +4,13 @@ Configs keep OpenRouter-style ids (`anthropic/claude-sonnet-5.5`); `wire_model` 
 (`claude-sonnet-5-5`: no vendor prefix, dots to hyphens) and refuses another vendor's model before any call. API
 version 2026-10-21 rejects `temperature`, `top_p` and `top_k`, so a request that sets one is refused here, as the
 OpenRouter adapter refuses them. A `schema` call sends the schema as `output_config.format` (structured outputs); a
-`json` call has no schema-less mode on this API, so the reply is checked as JSON. Cost is derived from `PRICES` and the
-reply's usage, cache reads and writes included. Errors map into `errors.py`'s taxonomy; every try runs under the shared
-retry policy (`retry.py`). The route is `anthropic:<served model>` (`/us` when the reply says it ran US-only)."""
+`json` call has no schema-less mode on this API. Cost is derived from `PRICES` and the reply's usage, cache reads and
+writes included. Errors map into `errors.py`'s taxonomy; every try runs under the shared retry policy (`retry.py`). A
+billed reply always comes back with its cost, as on OpenRouter: one that is not JSON or was cut at `max_tokens` is
+returned for the caller's parser to record, and a refusal is returned with `finish_reason="content_filter"`; only an
+empty JSON reply raises `OutputNotJSON`. The route is `anthropic:<served model>` (`/us` when the reply says it ran
+US-only). The Message Batches API (half price, results within 24 h) is a possible later mode for non-urgent runs such
+as experiments; it is not implemented (platform.claude.com/docs/en/build-with-claude/batch-processing)."""
 
 from __future__ import annotations
 
@@ -17,7 +21,6 @@ from datetime import UTC, datetime
 
 import httpx
 from gigai_core.budget import Price
-from gigai_core.graders.builtin import parse_json_text
 from gigai_core.providers import (
     AuthenticationRequired, Capability, ModelRequest, ModelResult, OutputNotJSON, ProviderError, ProviderIdentity,
     TokenUsage, ToolCall, ToolSpec, Turn, UnsupportedRequestField,
@@ -25,18 +28,21 @@ from gigai_core.providers import (
 
 from ..records import clean_route
 from ..retry import DEFAULT, Policy, retry_after
-from .errors import CREDIT_EXHAUSTED, HttpFailure, Refused
+from .errors import CREDIT_EXHAUSTED, HttpFailure
 from .openrouter import exchange_key
 
 API = "https://api.anthropic.com/v1"
 VERSION = "2026-10-21"  # the anthropic-version header (platform.claude.com/docs/en/api/versioning)
 UNKNOWN = "anthropic:unknown"
 PREFIX = "anthropic/"
-FINISH = {"end_turn": "stop", "stop_sequence": "stop", "max_tokens": "length", "tool_use": "tool_calls"}
+FINISH = {"end_turn": "stop", "stop_sequence": "stop", "max_tokens": "length", "tool_use": "tool_calls",
+          "refusal": "content_filter"}
 PRICES_SOURCE = "https://platform.claude.com/docs/en/about-claude/pricing (read 2026-11-17)"
 MTOK = 1_000_000
 # USD per million tokens by API id: base input, output, 5-minute cache write, 1-hour cache write, cache hit. Global
-# routing (no `inference_geo`), standard tier. Add a model only from the pricing page, with the date it was read.
+# routing (no `inference_geo`), standard tier. US-only routing (`inference_geo: "us"`) costs 1.1x every category and
+# is not modelled: such a call (route `.../us`) is underpriced by 10%. Add a model only from the pricing page, with
+# the date it was read.
 PRICES = {
     "claude-sonnet-5-5": {"input": 2.0, "output": 10.0, "cache_write_5m": 2.5, "cache_write_1h": 4.0,
                           "cache_read": 0.10},
@@ -132,15 +138,18 @@ def tool_choice(value: str) -> dict:
 
 
 def failure(response: httpx.Response) -> AnthropicError:
-    """A non-200 reply in the taxonomy: 402 or `billing_error`, or a 400 saying the credit balance is too low, is
-    credit_exhausted; 429 rate_limited (with Retry-After); 5xx and 529 upstream_5xx; anything else rejected."""
+    """A non-200 reply in the taxonomy: 402 or `billing_error`, a 400 saying the credit balance is too low, or a 400
+    for a spend limit you set ("You have reached your specified [workspace] API usage limits", errors and rate-limits
+    docs) is credit_exhausted; 429 rate_limited (with Retry-After); 5xx and 529 upstream_5xx; anything else rejected."""
     try:
         error = response.json().get("error") or {}
     except ValueError:
         error = {}
     message = str(error.get("message") or response.text)[:300]
+    lower = message.lower()
     out_of_credit = (response.status_code == 402 or error.get("type") == "billing_error"
-                     or (response.status_code == 400 and "credit balance" in message.lower()))
+                     or (response.status_code == 400
+                         and ("credit balance" in lower or lower.startswith("you have reached your specified"))))
     return AnthropicError(response.status_code, f"{error.get('type', 'error')}: {message}",
                           kind=CREDIT_EXHAUSTED if out_of_credit else None,
                           retry_after=retry_after(response.headers.get("retry-after")))
@@ -235,11 +244,6 @@ class Anthropic:
         usage = dict(data.get("usage") or {})
         served = data.get("model") or body["model"]
         price = cost(served, usage)
-        if data.get("stop_reason") == "refusal":
-            details = data.get("stop_details") or {}
-            billed = f" (billed ${price:.6f})" if price else ""
-            raise Refused(f"Anthropic refused ({details.get('category') or 'no category'}): "
-                          f"{details.get('explanation') or 'no explanation'}{billed}")
         geo = usage.get("inference_geo")
         route = f"anthropic:{served}" + (f"/{geo}" if geo and geo != "global" else "")
         key = exchange_key(request)
@@ -249,8 +253,9 @@ class Anthropic:
         text = "".join(block.get("text", "") for block in content if block.get("type") == "text")
         calls = tuple(ToolCall(id=b["id"], name=b["name"], arguments=json.dumps(b.get("input") or {}))
                       for b in content if b.get("type") == "tool_use")
-        if s.output_mode != "text" and not calls and parse_json_text(text).status != "ok":
-            raise OutputNotJSON("empty reply in JSON mode" if not text.strip() else "reply is not JSON")
+        refused = data.get("stop_reason") == "refusal"  # billed: returned with its cost, never raised
+        if s.output_mode != "text" and not text.strip() and not calls and not refused:
+            raise OutputNotJSON("empty reply in JSON mode")
         cached = (usage.get("cache_creation_input_tokens") or 0) + (usage.get("cache_read_input_tokens") or 0)
         prompt = (usage["input_tokens"] + cached) if usage.get("input_tokens") is not None else None
         output = usage.get("output_tokens")
@@ -260,7 +265,8 @@ class Anthropic:
             resolved_model=served,
             usage=TokenUsage(input_tokens=prompt, output_tokens=output,
                              total_tokens=prompt + output if prompt is not None and output is not None else None,
-                             raw={**usage, "response_id": data.get("id")}),
+                             raw={**usage, "response_id": data.get("id"),
+                                  **({"stop_details": data.get("stop_details")} if refused else {})}),
             cost_status="derived" if price is not None else "unavailable",
             cost_usd=price,
             latency_ms=latency_ms,

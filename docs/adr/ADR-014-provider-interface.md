@@ -34,16 +34,23 @@ clone had no file naming the variables.
 
    | Kind | When | Retried |
    |---|---|---|
-   | `credit_exhausted` | 402, `billing_error`, or Anthropic's 400 "credit balance" | no |
+   | `credit_exhausted` | 402, `billing_error`, Anthropic's 400 "credit balance", or Anthropic's 400 for a spend limit you set ("You have reached your specified [workspace] API usage limits") | no |
    | `rate_limited` | 429, honouring `Retry-After` | yes |
    | `upstream_5xx` | 5xx, including Anthropic's 529 | yes |
-   | `output_not_json` | core `OutputNotJSON` | no |
-   | `refused` | Anthropic `stop_reason: refusal` (still billed) | no |
+   | `output_not_json` | core `OutputNotJSON`: a JSON or schema call whose reply is empty | no |
+   | `refused` | Anthropic `stop_reason: refusal`, returned (not raised) as a result with `finish_reason="content_filter"` | no |
    | `rejected` | any other HTTP error | no |
 
    The journal's `code` strings are the same on both providers: `insufficient_credits`, `rate_limited`,
-   `http_<status>`, `model_output_not_json`, `model_refused`. So `retry.py`, the daily run and `CallError` rows do not
-   need to know which provider failed.
+   `http_<status>`, `model_output_not_json`. So `retry.py`, the daily run and `CallError` rows do not need to know
+   which provider failed.
+
+   **A billed reply is never raised.** The callers (`analyze._model_span`, core `run`) read cost only from a
+   `ModelResult`; an exception is recorded with `cost_usd=None`. So, as the OpenRouter adapter already did, a reply
+   that is not valid JSON or was cut at `max_tokens` (`finish_reason="length"`) comes back with its text and cost, and
+   the caller's parser records the failure. A refusal comes back with its cost, `finish_reason="content_filter"` and
+   the reply's `stop_details` in `TokenUsage.raw`; `errors.kind(result)` names it `refused`. Only an empty reply in
+   JSON mode raises `OutputNotJSON`.
 5. **Model ids.** Configs and defaults keep the OpenRouter id (`anthropic/claude-sonnet-5.5`), so prompts, records,
    terms classes and experiment configs do not change. The Anthropic adapter derives the API id: it drops `anthropic/`
    and turns dots into hyphens, giving `claude-sonnet-5-5`. Any other vendor, or a non-`claude-` name, raises
@@ -53,13 +60,15 @@ clone had no file naming the variables.
    - System turns are joined into `system`.
    - Tool turns become `tool_result` blocks, and assistant tool calls become `tool_use` blocks.
    - Schema mode sends `output_config.format = {"type": "json_schema", ...}`. This is GA with no beta header.
-   - JSON mode has no wire switch, so the reply is checked with `parse_json_text`.
+   - JSON mode has no wire switch, so the reply's parse is left to the caller, as on OpenRouter.
    - `temperature`, `top_p` and `seed` are refused with `UnsupportedRequestField`, because the API rejects sampling
      knobs on Claude 5.5 with a 400. Our call settings never set them.
 7. **Cost.** Core's `cost_status` vocabulary is `provider_reported`, `derived` and `unavailable`.
    - OpenRouter reports cost, so its calls are `provider_reported`.
    - Anthropic reports none. Cost is derived from the `PRICES` table, covering uncached input, output, 5-minute and
      1-hour cache writes, and cache hits. These calls are `derived`, or `unavailable` for an unpriced model.
+   - US-only routing (`inference_geo: "us"`) costs 1.1x on every token category. That is not modelled: a call whose
+     route ends in `/us` is underpriced by 10%. Our requests never ask for it.
    - `usage.input_tokens` is uncached input plus cache writes plus cache hits. The raw usage and the reply's `id`
      (`response_id`) are kept in `TokenUsage.raw`, because core's `ModelResult` has no field for them.
    - `tr usage` has no Anthropic key-spend line, because no such endpoint exists.
@@ -80,6 +89,9 @@ clone had no file naming the variables.
 - https://platform.claude.com/docs/en/api/errors
 - https://platform.claude.com/docs/en/api/versioning
 - https://platform.claude.com/docs/en/build-with-claude/structured-outputs
+- https://platform.claude.com/docs/en/api/rate-limits (spend limits)
+- https://platform.claude.com/docs/en/build-with-claude/batch-processing
+- https://openrouter.ai/docs/api-reference/chat-completion
 
 **Consequences.**
 - Paid champion runs can use Anthropic credit by setting `TR_PROVIDER=anthropic`.
@@ -87,3 +99,8 @@ clone had no file naming the variables.
 - A price change at Anthropic needs an edit to `PRICES`, because there is no price endpoint.
 - Under `TR_PROVIDER=anthropic` the live stream would record `anthropic:` routes, which are a new route. Switching the
   live agent is the operator's decision. It is not part of this change.
+- **Future option, not code: the Message Batches API.** Anthropic's batch endpoint takes many Messages requests at
+  once, at half the standard price, and returns results within 24 hours. That suits non-urgent work such as
+  experiment arms and re-grading, never the live daily run. It would be a separate submit-and-poll path beside
+  `invoke`, with its own price factor in `PRICES`. Nothing here implements it.
+- **Future option, not code: a direct OpenAI adapter.** `.env.example` holds a commented `OPENAI_API_KEY` slot.

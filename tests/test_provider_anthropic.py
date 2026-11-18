@@ -15,6 +15,7 @@ from gigai_core.providers import (
 )
 
 from tradingresearch import config
+from tradingresearch.analyze import _model_span
 from tradingresearch.config import Secret, Settings, read_env_file
 from tradingresearch.providers import Anthropic, OpenRouter, check_models, errors, make_provider, prices
 from tradingresearch.providers import anthropic
@@ -192,6 +193,7 @@ def test_429_honours_retry_after_then_succeeds():
     ("overloaded", errors.UPSTREAM_5XX, "http_529", True),
     ("server_error", errors.UPSTREAM_5XX, "http_500", True),
     ("bad_request", errors.REJECTED, "http_400", False),
+    ("spend_limit", errors.CREDIT_EXHAUSTED, "insufficient_credits", False),
 ])
 def test_http_failures_map_to_the_taxonomy(name, kind, code, retryable):
     provider, sent, _ = replying(name)
@@ -212,8 +214,21 @@ def test_a_non_retryable_failure_is_tried_once():
     assert (len(sent), slept) == (1, [])
 
 
-def test_not_json_is_output_not_json_and_not_retried():
-    provider, sent, _ = replying("not_json", tries=4)
+@pytest.mark.parametrize(("name", "text", "finish", "usd"), [
+    ("not_json", "Sure, here is my analysis of FAKEA in prose.", "stop", 0.000320),  # 100 x $2 + 12 x $10 per MTok
+    ("max_tokens", '{"ticker": "FAK', "length", 0.000840),  # cut mid-JSON: 100 x $2 + 64 x $10
+])
+def test_a_billed_reply_that_is_not_json_comes_back_with_its_cost(name, text, finish, usd):
+    provider, sent, _ = replying(name, name, tries=4)  # the second reply is for the run's record below
+    result = provider.invoke(request())
+    assert (result.text, result.finish_reason, len(sent)) == (text, finish, 1)
+    assert result.cost_usd == pytest.approx(usd) and result.cost_status == "derived"
+    span = _model_span(provider, request(), "parent")  # the run's record of the call: the cost is kept, as on OpenRouter
+    assert span.error is None and span.call.cost_usd == pytest.approx(usd)
+
+
+def test_only_an_empty_json_reply_is_output_not_json():
+    provider, sent, _ = replying("empty", tries=4)
     with pytest.raises(OutputNotJSON) as caught:
         provider.invoke(request())
     assert errors.kind(caught.value) == errors.OUTPUT_NOT_JSON
@@ -221,15 +236,16 @@ def test_not_json_is_output_not_json_and_not_retried():
     assert len(sent) == 1
 
 
-def test_refusal_is_refused_names_the_billed_amount_and_is_not_retried():
-    provider, sent, _ = replying("refusal", tries=4)
-    with pytest.raises(errors.Refused) as caught:
-        provider.invoke(request())
-    assert errors.kind(caught.value) == errors.REFUSED
-    assert caught.value.code == "model_refused"
-    assert "cyber" in str(caught.value) and "billed $0.000250" in str(caught.value)
+def test_a_refusal_comes_back_with_its_cost_and_is_not_retried():
+    provider, sent, _ = replying("refusal", "refusal", tries=4)
+    result = provider.invoke(request())
+    assert errors.kind(result) == errors.REFUSED and result.finish_reason == "content_filter"
+    assert result.cost_usd == pytest.approx(0.000250)  # 100 x $2 + 5 x $10 per MTok, billed
+    assert result.usage.raw["stop_details"]["category"] == "cyber"
     assert len(sent) == 1
-    assert provider.route_for("Analyze FAKEA.") == anthropic.UNKNOWN
+    assert provider.route_for("Analyze FAKEA.") == "anthropic:claude-sonnet-5-5"
+    span = _model_span(provider, request(), "parent")
+    assert span.call.cost_usd == pytest.approx(0.000250) and span.finish_reason == "content_filter"
 
 
 def test_openrouter_errors_share_the_taxonomy():
@@ -238,6 +254,18 @@ def test_openrouter_errors_share_the_taxonomy():
     assert errors.kind(OpenRouterError(503, "down")) == errors.UPSTREAM_5XX
     limited = OpenRouterError(429, "slow down", retry_after=3.0)
     assert (errors.kind(limited), limited.code, limited.retry_after) == (errors.RATE_LIMITED, "rate_limited", 3.0)
+
+
+def test_an_openrouter_429_waits_its_retry_after_header():
+    slept: list[float] = []
+    reply = json.loads((Path(__file__).parent / "fixtures" / "tools" / "get_close.reply.json").read_text())
+    queue = [httpx.Response(429, headers={"Retry-After": "5"}, text="slow down"), httpx.Response(200, json=reply)]
+    provider = OpenRouter("FAKEA", policy=Policy(tries=2, sleep=slept.append, rng=random.Random(0)))
+    provider._http = httpx.Client(base_url=str(provider._http.base_url),
+                                  transport=httpx.MockTransport(lambda req: queue.pop(0)))
+    result = provider.invoke(request("text"))
+    assert slept == [5.0]  # the header, not the jitter
+    assert result.retry_count == 1
 
 
 # --- selection ---------------------------------------------------------------------------------------------------

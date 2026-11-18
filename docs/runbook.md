@@ -155,15 +155,17 @@ uv run tr report                    # per-horizon scorecards from 2026-11-17; --
 | `ANTHROPIC_API_KEY is not set: ...` | `TR_PROVIDER=anthropic` and no key in the env file | Add the key, or set `TR_PROVIDER=openrouter` |
 | `TR_PROVIDER=anthropic cannot serve <model>` | The command's model belongs to another vendor (the judge, a non-Claude arm) | Run that command with `TR_PROVIDER=openrouter` |
 | `teachers skipped: OPENROUTER_API_KEY is not set` | `--teachers` under `TR_PROVIDER=anthropic` without an OpenRouter key | Nothing for the champion; add the key for the bake-off |
-| `... failed: ... insufficient_credits` / `model_refused` | Out of credit or billing refused (402, or Anthropic's 400 "credit balance"), or the model declined (Anthropic `stop_reason: refusal`, billed) | Top up; a refusal is not retried, read the run's reply |
+| `... failed: ... insufficient_credits` | Out of credit, billing refused or a spend limit reached (402; Anthropic's 400 "credit balance" or "You have reached your specified [workspace] API usage limits") | Top up, or raise the spend limit in the Console |
+| a run's reply with `finish_reason: content_filter` | Anthropic declined (`stop_reason: refusal`); billed, so the cost is in the trace, and the parse fails as for any non-JSON reply | Read the reply's `stop_details` in the trace call; it is not retried |
 
 ### Retries
 
 Every HTTP call (Alpaca bars and news, EDGAR, OpenRouter and Anthropic model calls, prices and key reads) goes through
 one policy, `retry.DEFAULT`: up to 4 tries, a full-jitter wait of `uniform(0, min(30, 2**retry))` seconds, or the
 server's `Retry-After` (seconds or a date) capped at 30 s, and never more than 300 s in all. Only 429, 5xx (and
-Anthropic's 529, overloaded) and connection or timeout errors are retried; a 400, 401, 402, 403 or 404, a refusal, and
-any reply that arrived and parsed, fails at once. An error after retries ends with `(gave up after N tries)` (or `; a
+Anthropic's 529, overloaded) and connection or timeout errors are retried; a 400, 401, 402, 403 or 404 fails at once,
+and any reply that arrived is returned with its cost and never retried, whether it parses or not (a refusal or a
+reply cut at `max_tokens` included). An error after retries ends with `(gave up after N tries)` (or `; a
 Xs wait would pass the 300s budget`). A model call that was retried records `retry_count` and `last_error_class` on
 its trace call, and its cost includes any cost a failed try reported; a call that gives up names that amount in its
 error. Repeated `gave up` lines: check the provider's status page before rerunning. Both providers' failures share
@@ -186,8 +188,11 @@ Configs keep the OpenRouter id (`anthropic/claude-sonnet-5.5`). The Anthropic ad
 rejects `temperature`, `top_p` and `top_k` on this model, and the adapter refuses them too. Schema calls use
 `output_config.format`; a JSON call has no wire switch and is checked after the reply. Costs are derived from the
 price table in `providers/anthropic.py` (cache writes and hits included), recorded with `cost_status = "derived"`;
-OpenRouter's are `provider_reported`. `tr usage` has no key-spend line for Anthropic (there is no such endpoint):
-compare the trace total with the Console. `tr daily` prints the provider on its first line, dry run included.
+OpenRouter's are `provider_reported`. US-only routing (`inference_geo: "us"`, a route ending in `/us`) costs 1.1x on
+every token category and is not modelled, so such a call's derived cost is 10% low; our requests never ask for it.
+`tr usage` has no key-spend line for Anthropic (there is no such endpoint): compare the trace total with the Console.
+`tr daily` prints the provider on its first line, dry run included. Background for the learner, with links to each
+API's docs: `docs/providers.md`.
 
 A provider change is a new route: runs record `provider.identity` (`anthropic` or `openrouter`) and every row's
 `provider_route` starts with the provider, so an experiment never compares across providers by accident.

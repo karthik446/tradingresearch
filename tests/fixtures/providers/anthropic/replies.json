@@ -67,6 +67,11 @@
     "headers": {},
     "body": {"type": "error", "error": {"type": "invalid_request_error", "message": "max_tokens: field required"}, "request_id": "req_fake_7"}
   },
+  "spend_limit": {
+    "status": 400,
+    "headers": {},
+    "body": {"type": "error", "error": {"type": "invalid_request_error", "message": "You have reached your specified workspace API usage limits. You will regain access on 2026-12-01 at 00:00 UTC."}, "request_id": "req_fake_10"}
+  },
   "not_json": {
     "status": 200,
     "headers": {},
@@ -78,6 +83,32 @@
       "content": [{"type": "text", "text": "Sure, here is my analysis of FAKEA in prose."}],
       "stop_reason": "end_turn",
       "usage": {"input_tokens": 100, "output_tokens": 12}
+    }
+  },
+  "max_tokens": {
+    "status": 200,
+    "headers": {},
+    "body": {
+      "id": "msg_fake_11",
+      "type": "message",
+      "role": "assistant",
+      "model": "claude-sonnet-5-5",
+      "content": [{"type": "text", "text": "{\"ticker\": \"FAK"}],
+      "stop_reason": "max_tokens",
+      "usage": {"input_tokens": 100, "output_tokens": 64}
+    }
+  },
+  "empty": {
+    "status": 200,
+    "headers": {},
+    "body": {
+      "id": "msg_fake_12",
+      "type": "message",
+      "role": "assistant",
+      "model": "claude-sonnet-5-5",
+      "content": [],
+      "stop_reason": "end_turn",
+      "usage": {"input_tokens": 100, "output_tokens": 0}
     }
   },
   "refusal": {

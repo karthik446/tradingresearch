@@ -1,11 +1,13 @@
 """The one error taxonomy every provider adapter maps into (ADR-014).
 
-Five kinds: `credit_exhausted` (out of credit or billing refused), `rate_limited` (429; the server's Retry-After is
-honoured by `retry.Policy.wait`), `upstream_5xx` (the provider or its upstream failed), `output_not_json` (a JSON or
-schema call that returned no usable JSON) and `refused` (the model declined). Any other HTTP error is `rejected`.
-`code` stays the journal's error string and is the same on every provider (`insufficient_credits`, `rate_limited`,
-`http_<status>`, `model_output_not_json`, `model_refused`), so `retry.py`, the daily run and the journal treat a
-failure the same whichever provider raised it. Only 429 and 5xx are retryable."""
+Five kinds: `credit_exhausted` (out of credit, billing refused or a spend limit reached), `rate_limited` (429; the
+server's Retry-After is honoured by `retry.Policy.wait`), `upstream_5xx` (the provider or its upstream failed),
+`output_not_json` (a JSON or schema call that returned an empty reply) and `refused` (the model declined). Any other
+HTTP error is `rejected`. A billed reply is never raised, so its cost reaches the run: a refusal comes back as a
+ModelResult with `finish_reason="content_filter"` (`kind` names it `refused`) and a reply that is not JSON comes back
+for the caller's parser, on every provider. `code` stays the journal's error string and is the same on every provider
+(`insufficient_credits`, `rate_limited`, `http_<status>`, `model_output_not_json`), so `retry.py`, the daily run and
+the journal treat a failure the same whichever provider raised it. Only 429 and 5xx are retryable."""
 
 from __future__ import annotations
 
@@ -45,16 +47,11 @@ class HttpFailure(ProviderError):
         self.retry_after = retry_after if self.retryable else None
 
 
-class Refused(ProviderError):
-    """The model declined the request (Anthropic `stop_reason: refusal`): billed, not retried."""
-
-    code = "model_refused"
-    kind = REFUSED
-    retryable = False
-
-
-def kind(exc: BaseException) -> str | None:
-    """The taxonomy kind of an adapter's error, None for anything else (a connection error, a bug)."""
-    if isinstance(exc, OutputNotJSON):
+def kind(outcome: object) -> str | None:
+    """The taxonomy kind of an adapter's error, or `refused` for a returned refusal (a ModelResult whose
+    finish_reason is content_filter); None for anything else (a success, a connection error, a bug)."""
+    if isinstance(outcome, OutputNotJSON):
         return OUTPUT_NOT_JSON
-    return getattr(exc, "kind", None)
+    if getattr(outcome, "finish_reason", None) == "content_filter":
+        return REFUSED
+    return getattr(outcome, "kind", None)
