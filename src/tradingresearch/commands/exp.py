@@ -18,7 +18,7 @@ from .common import alpaca_client, edgar_client
 
 def cmd_exp_run(args, cfg) -> None:
     config = experiment.load(Path(args.config))
-    models = sorted({arm.model for arm in config.arms})
+    models = experiment.models(config)  # every arm's model, route step models and fallback: checked, then priced
     providers.check_models(cfg, "experiment", models)
     if cfg.provider != "openrouter" and (pinned := [arm.name for arm in config.arms if arm.provider]):
         raise SystemExit(f"{config.name}: arm {', '.join(pinned)} has an OpenRouter `provider` table, which "
@@ -31,6 +31,10 @@ def cmd_exp_run(args, cfg) -> None:
                     for s in config.sessions for t in config.tickers]
     print(f"experiment {config.name}: {len(contexts)} ticker-days x {len(config.arms)} arm(s), "
           f"graders {', '.join(config.graders)}, cap ${config.max_usd_per_arm:.2f}/arm, provider {cfg.provider}")
+    for arm in config.arms:  # the models each arm asks: a pipeline arm's per step (its `route`) and its fallback
+        steps = (f"analyze {arm.analyze_model}  thesis {arm.thesis_model}  fallback {arm.route.fallback or 'none'}"
+                 if arm.kind == "pipeline" else f"model {arm.model}")
+        print(f"    arm {arm.name}: {steps}")
     try:
         results = experiment.run_arms(conn, config, contexts, provider, providers.prices(cfg, "experiment", models),
                                       cfg.data_dir)

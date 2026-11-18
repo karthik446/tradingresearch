@@ -49,6 +49,10 @@ PRICES = {
                           "cache_read": 0.10},
     "claude-opus-5-5": {"input": 4.0, "output": 20.0, "cache_write_5m": 5.0, "cache_write_1h": 8.0,
                         "cache_read": 0.20},
+    # read 2026-11-17 (G15-SPIKE §A cmd 6): the rates for prompts up to 100k tokens; above 100k every category costs
+    # 5x and is not modelled, so such a call is underpriced. The week-8 experiment's prompts are far under 100k.
+    "claude-haiku-5-5": {"input": 0.10, "output": 0.50, "cache_write_5m": 0.125, "cache_write_1h": 0.20,
+                         "cache_read": 0.01},
 }
 
 

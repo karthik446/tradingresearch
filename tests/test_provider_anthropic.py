@@ -175,6 +175,18 @@ def test_routes_and_prices():
     assert cost("claude-unpriced", {"input_tokens": 1}) is None
 
 
+def test_haiku_5_5_is_priced_and_a_call_costs_its_token_counts_at_the_base_tier():
+    haiku = "anthropic/claude-haiku-5.5"
+    priced = anthropic.prices([haiku])
+    assert priced[haiku].prompt_usd_per_token == pytest.approx(0.10 / 1e6)
+    assert priced[haiku].completion_usd_per_token == pytest.approx(0.50 / 1e6)
+    usage = {"input_tokens": 1200, "output_tokens": 300, "cache_creation_input_tokens": 1000,
+             "cache_creation": {"ephemeral_5m_input_tokens": 600, "ephemeral_1h_input_tokens": 400},
+             "cache_read_input_tokens": 4000}
+    # 1200 x $0.10 + 300 x $0.50 + 600 x $0.125 + 400 x $0.20 + 4000 x $0.01 per MTok = $465 per 1e9 tokens
+    assert cost("claude-haiku-5-5", usage) == pytest.approx(465 / 1e6)
+
+
 # --- failures, each mapped into the taxonomy ---------------------------------------------------------------------
 
 def test_429_honours_retry_after_then_succeeds():

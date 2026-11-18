@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+- **Week-8 plumbing: a `route` arm knob, the Haiku 5.5 price, a model fallback (G15-SPIKE §1.1).** A pipeline arm
+  takes `route = { analyze = "...", thesis = "...", fallback = "..." }`: a step left out uses the arm's `model`. The
+  config load refuses a route on an analyze arm, an unknown key, or a value that is not a model id. `tr exp run`
+  checks and prices every route and fallback model, and prints one line per arm with the models it asks. The input
+  hash is unchanged: it did not include the model before, and a route does not add it.
+  `providers.with_fallback` asks the fallback model once more when the adapter is out of retries on a retryable
+  error (429, 5xx, a connection error or timeout). It never falls back after a refusal, an auth, credit or budget
+  error, or a rejected request. The span's `resolved_model` and its cost name the model that answered.
+  Anthropic `PRICES` gains `claude-haiku-5-5` (read 2026-11-17): the rates for prompts up to 100k tokens. Above
+  100k tokens the page charges 5x, which is not modelled.
+  Limits: the budget reserves the first model's worst case, so a dearer fallback can overshoot the reservation.
+  The billed failed tries an OpenRouter error message reports are lost when the fallback answers. The daily loop
+  and the champion are unchanged. Tests: `tests/test_experiment.py`, `tests/test_fallback.py`,
+  `tests/test_provider_anthropic.py`.
+
 - **Fix: a billed empty reply keeps its cost (OpenRouter).** A 200 with empty content on a JSON or schema call
   used to raise `OutputNotJSON` before `usage.cost` was read, so its spend was lost (two traced qwen calls,
   $0.020739). It now goes into the failed-tries `billed` list first, like a 200 with an error body, and the

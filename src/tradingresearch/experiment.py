@@ -9,6 +9,7 @@ and `retrieval`: passages from a pinned index added to a fixed arm's prompt, wee
 REPO-PLAN D5. Week 7 (GUARDS-SPIKE §8): `guards` names the registered rules an arm runs (fetched rules drop or flag
 rows of the user turn before the call, thesis rules check a pipeline arm's theses), `kind = "pipeline"` analyzes and
 then writes theses in memory, never journaled, and `inject = true` runs a pipeline arm on the config's injection set.
+Week 8 (G15-SPIKE §1.1): `route` gives a pipeline arm a model per step and a fallback model.
 """
 
 from __future__ import annotations
@@ -39,6 +40,7 @@ from . import analyze as an, guards, injection, journal, masking, news, redact, 
 from . import guard_rules  # noqa: F401  registers the week-7 guardrail rules, so `tr exp run` can name them
 from .evals import GRADERS, graders as registry
 from .hashing import new_id
+from .providers import with_fallback
 from .providers.openrouter import Routing
 from .records import Analysis, Thesis
 from .retrieval import store as retrieval_store
@@ -49,6 +51,16 @@ REQUIRED = ("name", "model", "max_usd_per_arm", "tickers", "sessions", "graders"
 CLUSTERS = ("ticker", "session")
 MODES = ("fixed", "tools")  # context handed over up front, or asked for with tool calls (week 4)
 KINDS = ("analyze", "pipeline")  # stored analyses, or analyze then thesis in memory (GUARDS-SPIKE §8.5)
+ROUTE_KEYS = ("analyze", "thesis", "fallback")  # a pipeline arm's `route` table (G15-SPIKE §1.1)
+
+
+@dataclass(frozen=True)
+class Route:
+    """A pipeline arm's model per step: a step left out uses the arm's `model`. `fallback` is asked once after the
+    adapter spent its retries on a retryable error (providers.with_fallback); None = no fallback, the default."""
+    analyze: str | None = None
+    thesis: str | None = None
+    fallback: str | None = None
 
 
 @dataclass(frozen=True)
@@ -64,6 +76,15 @@ class Arm:
     guards: tuple[str, ...] = ()  # guards.RULES ids this arm runs; empty = none, the default (GUARDS-SPIKE §8.2)
     inject: bool = False  # a pipeline arm on the config's injection set instead of the clean days
     thesis_prompt: str = th.DEFAULT_PROMPT  # a pipeline arm's thesis step
+    route: Route = Route()  # a pipeline arm's step models and fallback; empty = `model` for both steps, no fallback
+
+    @property
+    def analyze_model(self) -> str:
+        return self.route.analyze or self.model
+
+    @property
+    def thesis_model(self) -> str:
+        return self.route.thesis or self.model
 
 
 @dataclass(frozen=True)
@@ -85,7 +106,8 @@ def load(path: Path) -> Config:
         raise SystemExit(f"{path}: missing {missing}")
     arms = tuple(Arm(a["name"], a["prompt"], a.get("model", raw["model"]), routing(path, a), mode(path, a),
                      drop(path, a), retrieval(path, a), kind=kind(path, a), guards=guard_list(path, a),
-                     inject=inject(path, a), thesis_prompt=thesis_prompt(path, a)) for a in raw["arms"])
+                     inject=inject(path, a), thesis_prompt=thesis_prompt(path, a), route=route(path, a))
+                 for a in raw["arms"])
     for arm in arms:
         an.system_prompt(arm.prompt)  # fail before any spend if a prompt file is missing
         if arm.kind == "pipeline":
@@ -97,6 +119,13 @@ def load(path: Path) -> Config:
     config = replace(config, injections=injections(path, raw, config))
     check_clusters(path, config)
     return config
+
+
+def models(config: Config) -> list[str]:
+    """Every model the config may ask, for `check_models` and the price table: each arm's model and its route's step
+    and fallback models."""
+    return sorted({model for arm in config.arms
+                   for model in (arm.model, arm.route.analyze, arm.route.thesis, arm.route.fallback) if model})
 
 
 def check_clusters(path: Path, config: Config) -> None:
@@ -275,6 +304,27 @@ def thesis_prompt(path: Path, arm: dict) -> str:
     return value
 
 
+def route(path: Path, arm: dict) -> Route:
+    """A pipeline arm's `route` (G15-SPIKE §1.1), refused before any spend: on an analyze arm (its one step's model is
+    its `model`), not a table, an unknown key, or a value that is not a model id."""
+    if "route" not in arm:
+        return Route()
+    value = arm["route"]
+    where = f"{path}: arm {arm.get('name')}: route"
+    if arm.get("kind", "analyze") != "pipeline":
+        raise SystemExit(f"{where}: only a pipeline arm (kind = \"pipeline\") routes its steps; an analyze arm sets "
+                         "its own `model`")
+    if not isinstance(value, dict):
+        raise SystemExit(f"{where} must be a table with {', '.join(ROUTE_KEYS)}")
+    unknown = sorted(set(value) - set(ROUTE_KEYS))
+    if unknown:
+        raise SystemExit(f"{where}: unknown key(s) {', '.join(unknown)}; keys: {', '.join(ROUTE_KEYS)}")
+    for key, model in value.items():
+        if not isinstance(model, str) or not model:
+            raise SystemExit(f"{where}: {key} must be a model id, not {model!r}")
+    return Route(**value)
+
+
 def injections(path: Path, raw: dict, config: Config) -> tuple[injection.Injection, ...]:
     """The config's injection set (`injections = "<jsonl>"`, relative to the repo), refused before any spend: a bad
     or empty file, inject arms without it or it without one, a row off the config's ticker-days, or a channel an
@@ -389,6 +439,8 @@ def run_arm(conn, config: Config, arm: Arm, data: Prepared, found: dict[str, ret
     dataset = data.dataset
     graders = registry(list(config.graders), arm.drop)
     base = provider.routed(arm.provider) if arm.provider else provider
+    if arm.route.fallback:
+        base = with_fallback(base, arm.route.fallback)
     views = guarded_views(arm, data, found)
     routed = wrapped(arm, dataset, found, base, views)
     if arm.mode == "tools":
@@ -398,7 +450,7 @@ def run_arm(conn, config: Config, arm: Arm, data: Prepared, found: dict[str, ret
                     for item in dataset.items} if arm.retrieval or views else None
         run = run_masked(config, arm, dataset, routed, graders, prices, data_dir, grade_as)
     else:
-        run = run_eval(dataset, routed, graders, settings=an.call_settings(arm.model),
+        run = run_eval(dataset, routed, graders, settings=an.call_settings(arm.analyze_model),
                        budget=CallBudget(max_usd=config.max_usd_per_arm, prices=prices),
                        system=an.system_prompt(arm.prompt), trace_dir=data_dir / "traces",
                        tag=f"{config.name}:{arm.name}:{arm.prompt}")
@@ -606,7 +658,8 @@ def run_pipeline(config: Config, arm: Arm, data: Prepared, run: Run, path: Path,
             continue
         view, row = views.get(sample.item_id), data.injected.get(sample.item_id)
         analyses[sample.item_id], _ = an.analysis_for(
-            data.by_item[sample.item_id], sample, run.record.run_id, model=arm.model, prompt_version=arm.prompt,
+            data.by_item[sample.item_id], sample, run.record.run_id, model=arm.analyze_model,
+            prompt_version=arm.prompt,
             route=routed.route_for(run.items[sample.item_id].prompt), drop=arm.drop,
             retrieval=found.get(sample.item_id), guard_ids=arm.guards,
             injection=injection.hashed(row) if row else None, dropped=view.dropped if view else frozenset(),
@@ -621,7 +674,7 @@ def run_pipeline(config: Config, arm: Arm, data: Prepared, run: Run, path: Path,
         item = th.item_for(analysis, th.HORIZONS, THESIS_ARM, None, th.cited_in(analysis, shown))
         asked.append(item.model_copy(update={"id": item_id, "cluster_id": run.items[item_id].cluster_id}))
     theses = run_eval(Dataset.of(f"{config.name}:{arm.name}:thesis", asked), base, [],
-                      settings=th.call_settings(arm.model, arm.thesis_prompt),
+                      settings=th.call_settings(arm.thesis_model, arm.thesis_prompt),
                       budget=CallBudget(max_usd=max(config.max_usd_per_arm - run.record.spent_usd, 0.0),
                                         prices=prices),
                       system=an.system_prompt(arm.thesis_prompt), trace_dir=data_dir / "traces",
@@ -643,7 +696,7 @@ def checked(arm: Arm, analysis: Analysis, sample: Sample, theses: Run, provider,
     _, close = sessions.open_close(analysis.session)
     prompt = theses.items[sample.item_id].prompt
     route = provider.route_for(prompt) if hasattr(provider, "route_for") else "unknown"
-    written = th.Written(THESIS_ARM, close, sample.trace_id, route, th.terms_class(arm.model),
+    written = th.Written(THESIS_ARM, close, sample.trace_id, route, th.terms_class(arm.thesis_model),
                          th.input_hash(analysis, th.HORIZONS, arm.thesis_prompt, guard_ids=arm.guards))
     auditor = guards.Auditor(data_dir, analysis.ticker, analysis.session, theses.record.run_id, arm.name,
                              arm.guards, written.input_hash)
@@ -682,7 +735,7 @@ def run_masked(config: Config, arm: Arm, dataset: Dataset, provider: masking.Mas
     budget = CallBudget(max_usd=config.max_usd_per_arm, prices=prices)
     system = Turn(role="system", content=an.system_prompt(arm.prompt))
     sent = {item.id: provider.request(ModelRequest(
-                settings=an.call_settings(arm.model), turns=(system, Turn(role="user", content=item.prompt)),
+                settings=an.call_settings(arm.analyze_model), turns=(system, Turn(role="user", content=item.prompt)),
                 metadata={"item_id": item.id, "repeat_index": 0}))
             for item in dataset.items}
     budget.plan(list(sent.values()))
@@ -715,7 +768,7 @@ def run_items(config: Config, arm: Arm, dataset: Dataset, provider, graders: lis
     finally:
         trace.close()
     calls = [span.call for sample in samples for span in sample.model_spans]
-    record = RunRecord(run_id=run_id, dataset=dataset.ref, settings=an.call_settings(arm.model),
+    record = RunRecord(run_id=run_id, dataset=dataset.ref, settings=an.call_settings(arm.analyze_model),
                        provider=provider.identity, created_at=created_at, completed_at=datetime.now(UTC), prereg=None,
                        trace_path=trace.path, spent_usd=round(sum(call.cost_usd or 0.0 for call in calls), 6),
                        calls_made=len(calls), repeats=1, tag=f"{config.name}:{arm.name}:{arm.prompt}")

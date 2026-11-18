@@ -1,21 +1,27 @@
-"""The `mode`, `drop`, `guards`, `kind`, `inject` and `thesis_prompt` arm knobs (REPO-PLAN §2.4 week 4, §2.5 week 5,
-GUARDS-SPIKE §8.2 week 7), checked at config load, and a guards arm run at $0. tests/test_week4.py runs a tools arm,
-tests/test_masking.py two drop arms, tests/test_injection.py the pipeline arm."""
+"""The `mode`, `drop`, `guards`, `kind`, `inject`, `thesis_prompt` and `route` arm knobs (REPO-PLAN §2.4 week 4, §2.5
+week 5, GUARDS-SPIKE §8.2 week 7, G15-SPIKE §1.1 week 8), checked at config load, and a guards arm run at $0.
+tests/test_week4.py runs a tools arm, tests/test_masking.py two drop arms, tests/test_injection.py the pipeline arm,
+tests/test_fallback.py the route's fallback."""
 
 import json
 import re
+from contextlib import nullcontext
 from datetime import date
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
 from test_guards import make, registry  # noqa: F401
 from test_headlines import reply as headline_reply, stored, week, with_news
+from test_injection import ADD, answering, config as inject_config, row as injection_row
 from test_masking import TICKERS, keyed, pinned_tokens, served, ten, user_turn  # noqa: F401
 from test_teacher import context as teacher_context
 from test_thesis import ALL, ANALYSIS
 from test_week4 import MODEL, context, prices
-from tradingresearch import analyze as an, experiment, guards, journal, news, thesis as th
+from tradingresearch import analyze as an, experiment, guards, injection, journal, news, thesis as th
+from tradingresearch.commands import exp
+from tradingresearch.evals import GRADERS
 from tradingresearch.retrieval.store import Passage, Retrieved
 
 CONFIG = """name = "modes"
@@ -232,3 +238,93 @@ def test_the_guarded_provider_never_sends_a_prompt_it_has_no_view_of():
     assert wrapper.guarded("guarded view") == "guarded view"  # guarding twice is a no-op
     with pytest.raises(ValueError, match="no guarded view"):
         wrapper.guarded("some other text")
+
+
+# ---------- the `route` knob: a model per pipeline step, plus a fallback (G15-SPIKE §1.1) ----------
+
+ANALYZE, THESIS, FALLBACK = "fakea/analyze-model", "fakea/thesis-model", "fakea/fallback-model"
+
+
+def priced(models) -> dict:
+    """The recorded price under each model id: CallBudget refuses a model with no price."""
+    base = prices()[MODEL]
+    return {model: base.model_copy(update={"model": model}) for model in models}
+
+
+def test_a_pipeline_arm_routes_its_steps_and_a_missing_key_uses_the_arm_model(tmp_path):
+    full = f'kind = "pipeline"\nroute = {{ analyze = "{ANALYZE}", thesis = "{THESIS}", fallback = "{FALLBACK}" }}'
+    routed = experiment.load(guarded(tmp_path, full)).arms[1]
+    assert routed.route == experiment.Route(ANALYZE, THESIS, FALLBACK)
+    assert (routed.analyze_model, routed.thesis_model) == (ANALYZE, THESIS)
+    loaded = experiment.load(guarded(tmp_path, f'kind = "pipeline"\nroute = {{ thesis = "{THESIS}" }}'))
+    arm = loaded.arms[1]
+    assert (arm.analyze_model, arm.thesis_model, arm.route.fallback) == (MODEL, THESIS, None)
+    assert experiment.models(loaded) == sorted({MODEL, THESIS})
+    plain = experiment.load(guarded(tmp_path, 'kind = "pipeline"')).arms
+    assert {a.route for a in plain} == {experiment.Route()} and {a.thesis_model for a in plain} == {MODEL}
+
+
+@pytest.mark.parametrize(("lines", "why"), [
+    (f'route = {{ analyze = "{ANALYZE}" }}',
+     'arm guarded: route: only a pipeline arm (kind = "pipeline") routes its steps; an analyze arm sets its own '
+     "`model`"),
+    (f'kind = "pipeline"\nroute = {{ judge = "{ANALYZE}" }}',
+     "arm guarded: route: unknown key(s) judge; keys: analyze, thesis, fallback"),
+    (f'kind = "pipeline"\nroute = "{ANALYZE}"', "arm guarded: route must be a table with analyze, thesis, fallback"),
+    ('kind = "pipeline"\nroute = { thesis = 1 }', "arm guarded: route: thesis must be a model id"),
+    ('kind = "pipeline"\nroute = { fallback = "" }', "arm guarded: route: fallback must be a model id"),
+])
+def test_a_bad_route_is_refused_at_load(tmp_path, lines, why):
+    with pytest.raises(SystemExit, match=re.escape(why)):
+        experiment.load(guarded(tmp_path, lines))
+
+
+def injected_cite(tmp_path: Path) -> str:
+    """Headlines stored for the ten tickers; the id of the headline the injection row adds to FAKEA's day."""
+    for ticker in TICKERS:
+        stored(tmp_path, ticker)
+    shown = an.with_headlines(ten()[0], tmp_path, "analyze-3")
+    return news.source_ref(injection.headlines(shown, injection_row()).headlines[-1]).source_id
+
+
+def test_a_routed_pipeline_arm_sends_each_step_to_its_model_and_keeps_its_input_hash(tmp_path,
+                                                                                   pinned_tokens):  # noqa: F811
+    cite = injected_cite(tmp_path)
+    sent: list[dict] = []
+    path = inject_config(tmp_path, ADD, extra=f'route = {{ analyze = "{ANALYZE}", thesis = "{THESIS}" }}\n')
+    clean, injected = experiment.run_arms(journal.connect(tmp_path / "journal.db"), experiment.load(path), ten(),
+                                          answering(sent, cite), priced([MODEL, ANALYZE, THESIS]), tmp_path)
+    assert [body["model"] for body in sent] == [MODEL, MODEL, ANALYZE, THESIS]  # analyze, thesis per arm
+    outcome = injected.outcomes["FAKEA:2026-11-13:fakea-h1"]
+    assert outcome.analysis.model == ANALYZE and clean.outcomes["FAKEA:2026-11-13"].analysis.model == MODEL
+    # the model is not part of input_hash today, and a route does not change that: the routed arm's analysis has the
+    # hash the unrouted injected arm records (tests/test_injection.py)
+    shown = an.with_headlines(ten()[0], tmp_path, "analyze-3")
+    assert outcome.analysis.input_hash == an.input_hash(injection.headlines(shown, outcome.injection), "analyze-3",
+                                                        guard_ids=("plain_text",),
+                                                        injection=injection.hashed(outcome.injection))
+
+
+def test_tr_exp_run_checks_and_prices_every_route_model_and_prints_each_arms_route(tmp_path,
+                                                                                 pinned_tokens,  # noqa: F811
+                                                                                 monkeypatch, capsys):
+    monkeypatch.delitem(GRADERS, experiment.RESISTED, raising=False)
+    cite = injected_cite(tmp_path)
+    sent: list[dict] = []
+    checked: list[list[str]] = []
+    asked: list[list[str]] = []
+    by_ticker = {ctx.ticker: ctx for ctx in ten()}
+    monkeypatch.setattr(an, "gather", lambda conn, http, edgar, ticker, session, cache, feed: by_ticker[ticker])
+    monkeypatch.setattr(exp, "alpaca_client", lambda cfg: nullcontext())
+    monkeypatch.setattr(exp, "edgar_client", lambda cfg: None)
+    monkeypatch.setattr(exp.providers, "check_models", lambda cfg, role, models: checked.append(models))
+    monkeypatch.setattr(exp.providers, "make_provider", lambda cfg, role: answering(sent, cite))
+    monkeypatch.setattr(exp.providers, "prices", lambda cfg, role, models: asked.append(models) or priced(models))
+    cfg = SimpleNamespace(provider="openrouter", db_path=tmp_path / "journal.db", data_dir=tmp_path, feed="iex")
+    path = inject_config(tmp_path, ADD, extra=f'route = {{ thesis = "{THESIS}", fallback = "{FALLBACK}" }}\n')
+    exp.cmd_exp_run(SimpleNamespace(config=str(path)), cfg)
+    assert checked == asked == [sorted({MODEL, THESIS, FALLBACK})]
+    out = capsys.readouterr().out.splitlines()
+    assert out[1:3] == [f"    arm clean: analyze {MODEL}  thesis {MODEL}  fallback none",
+                        f"    arm injected: analyze {MODEL}  thesis {THESIS}  fallback {FALLBACK}"]
+    assert [body["model"] for body in sent] == [MODEL, MODEL, MODEL, THESIS]  # no error, so no fallback call
