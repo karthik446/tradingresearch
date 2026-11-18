@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING, Literal
 
 from gigai_core import CallBudget, CallSettings, CoreModel, Dataset, DatasetItem, run as run_eval
 from gigai_core.budget import Price
-from gigai_core.graders.judge import last_json_object, llm_judge
+from gigai_core.graders.judge import ModelJudge, last_json_object, llm_judge
 from gigai_core.graders.protocol import CannotGrade
 from gigai_core.providers import Turn
 from gigai_core.sample import Sample
@@ -509,12 +509,12 @@ def judged_sample(t: Thesis, shown: str) -> Sample:
                   recorded_at=datetime.now(UTC))
 
 
-def p1_judge(conn: sqlite3.Connection, bars: BarSource, thesis_id: str, provider, *, prices: dict[str, Price],
-             data_dir: Path, max_usd: float) -> Score:
-    """Judge one graded champion or challenger thesis with one call; store its verdict and ScoreRecord together.
+def judge_item(conn: sqlite3.Connection, bars: BarSource, thesis_id: str) -> tuple[DatasetItem, CallSettings,
+                                                                                      ModelJudge]:
+    """The judge's one dataset item for a thesis, its call settings and the judge (for its prompt digest), built with
+    no call: the sync judge and the batch judge (`tr grade --judge --batch`, G15-SPIKE §1.3) ask the same item.
 
-    Teacher theses and theses with no Grade (never entered, not closed) are CannotGrade before any call. A failed
-    call or a reply with no verdict is CannotGrade after it: the cost is in the run file, nothing is stored."""
+    Teacher theses and theses with no Grade (never entered, not closed) are CannotGrade."""
     try:
         t, g = label.labelable(conn, thesis_id)
     except label.Refused as exc:
@@ -525,11 +525,19 @@ def p1_judge(conn: sqlite3.Connection, bars: BarSource, thesis_id: str, provider
     rubric = (RUBRICS / "p1_judge_prompt.txt").read_text().replace("{rubric}",
                                                                    (RUBRICS / "p1_thesis_quality.md").read_text())
     settings = CallSettings(model=JUDGE_MODEL, max_output_tokens=JUDGE_MAX_TOKENS)
-    judge = llm_judge(provider, rubric=rubric, settings=settings, grader_id=P1Judge.id)
+    judge = llm_judge(None, rubric=rubric, settings=settings, grader_id=P1Judge.id)  # render and digest only: the
+    # call goes through `judge_run`'s `run_eval`, never through the judge
     item = DatasetItem(id=t.thesis_id, cluster_id=t.ticker, prompt=judge.render(judged_sample(t, shown), None),
                        expected=None)
-    run = run_eval(Dataset.of(P1Judge.id, [item]), provider, [], settings=settings,
-                   budget=CallBudget(max_usd=max_usd, prices=prices), trace_dir=data_dir / "traces", tag=P1Judge.id)
+    return item, settings, judge
+
+
+def judge_run(conn: sqlite3.Connection, item: DatasetItem, settings: CallSettings, judge: ModelJudge, provider, *,
+              budget: CallBudget, data_dir: Path) -> Score:
+    """Ask `item` once through `provider`; store its verdict and ScoreRecord together. A failed call or a reply with
+    no verdict is CannotGrade: the cost is in the run file, nothing is stored."""
+    run = run_eval(Dataset.of(P1Judge.id, [item]), provider, [], settings=settings, budget=budget,
+                   trace_dir=data_dir / "traces", tag=P1Judge.id)
     run_path = an.save(run, data_dir)
     sample = run.samples[0]
     if sample.outcome != "succeeded":
@@ -543,8 +551,19 @@ def p1_judge(conn: sqlite3.Connection, bars: BarSource, thesis_id: str, provider
                          grader_version=P1Judge.version, kind="model", value=score.value, explanation=reason,
                          judge_model=JUDGE_MODEL, judge_prompt_sha256=judge.prompt_sha256,
                          judge_span_ids=tuple(span.span_id for span in spans), recorded_at=datetime.now(UTC))
-    journal.add_judge_score(conn, t.thesis_id, record, verdict, reason)
+    journal.add_judge_score(conn, item.id, record, verdict, reason)
     return score
+
+
+def p1_judge(conn: sqlite3.Connection, bars: BarSource, thesis_id: str, provider, *, prices: dict[str, Price],
+             data_dir: Path, max_usd: float) -> Score:
+    """Judge one graded champion or challenger thesis with one call; store its verdict and ScoreRecord together.
+
+    Teacher theses and theses with no Grade (never entered, not closed) are CannotGrade before any call. A failed
+    call or a reply with no verdict is CannotGrade after it: the cost is in the run file, nothing is stored."""
+    item, settings, judge = judge_item(conn, bars, thesis_id)
+    return judge_run(conn, item, settings, judge, provider, budget=CallBudget(max_usd=max_usd, prices=prices),
+                     data_dir=data_dir)
 
 
 def graders(names: list[str], drop: tuple[str, ...] = ()) -> list:

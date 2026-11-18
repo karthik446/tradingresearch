@@ -8,6 +8,7 @@ exchange (its first user turn), so a tool loop's route covers every turn: it is 
 from __future__ import annotations
 
 import copy
+import re
 import threading
 import time
 from dataclasses import dataclass
@@ -316,3 +317,42 @@ def prices(models: list[str]) -> dict[str, Price]:
 def key_usage(api_key: str) -> float:
     """All-time credits used by this key, in USD (GET /key). Read it before and after a paid step."""
     return float(get(f"{API}/key", headers={"Authorization": f"Bearer {api_key}"})["data"]["usage"])
+
+
+BATCH_ENDPOINT = "/v1/chat/completions"  # the batch runs the sync endpoint's bodies
+CUSTOM_ID = re.compile(r"[a-zA-Z0-9_-]{1,64}")  # OpenRouter's custom_id rule; also the batch id rule here
+
+
+def submit_batch(api_key: str, model: str, requests: list[ModelRequest]) -> str:
+    """Submit `requests` as one batch (POST /batches, G15-SPIKE §1.3) and return its id. Each body is the sync body
+    (`OpenRouter.body`) under the normal model slug, no `:batch` suffix; its `custom_id` is the request's
+    `metadata["item_id"]`. Bad or repeated ids and a request for another model are refused before any request. Sent
+    once, never retried: a retried submit could start a second paid batch."""
+    ids = [request.metadata.get("item_id") for request in requests]
+    bad = [i for i in ids if not isinstance(i, str) or not CUSTOM_ID.fullmatch(i)]
+    if not requests or bad or len(set(ids)) != len(ids):
+        raise ValueError(f"a batch needs unique custom_ids matching {CUSTOM_ID.pattern}; refused: "
+                         f"{bad or sorted({i for i in ids if ids.count(i) > 1}) or 'an empty batch'}")
+    others = sorted({r.settings.model for r in requests} - {model})
+    if others:
+        raise ValueError(f"one model per batch ({model}); refused: {others}")
+    adapter = OpenRouter(api_key)
+    try:
+        body = {"model": model, "endpoint": BATCH_ENDPOINT,
+                "requests": [{"custom_id": i, "body": adapter.body(r)} for i, r in zip(ids, requests, strict=True)]}
+        response = adapter._http.post("/batches", json=body)
+    finally:
+        adapter.close()
+    if response.status_code == 401:
+        raise AuthenticationRequired("OpenRouter rejected the key (401)")
+    if response.status_code != 202:
+        raise OpenRouterError(response.status_code, redact.clip(response.text),
+                              retry_after(response.headers.get("Retry-After")))
+    return response.json()["id"]
+
+
+def get_batch(api_key: str, batch_id: str) -> dict:
+    """The batch as OpenRouter holds it (GET /batches/{id}): its status, `usage` and, once completed, `results`."""
+    if not CUSTOM_ID.fullmatch(batch_id):
+        raise ValueError(f"not a batch id: {batch_id!r}")
+    return get(f"{API}/batches/{batch_id}", headers={"Authorization": f"Bearer {api_key}"})

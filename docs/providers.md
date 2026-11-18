@@ -35,9 +35,26 @@ leaves the adapter, so a key-shaped string reaches the trace as `[REDACTED:<name
 and price, so a comparison across them is not like for like. The recorded route starts with the provider
 (`openrouter:...` or `anthropic:...`), which keeps experiments from mixing them silently.
 
+**Batch judge (OpenRouter batches).** `tr grade --judge --batch` sends every judge call `tr grade --judge` would make
+as one OpenRouter batch, billed at the model's `:batch` row of the public price list. `--judge-max-usd` caps the
+worst-case estimate at that price, and the theses over the cap wait for the next run. Each entry's body is the sync
+body under the normal model slug (no `:batch` on the wire) and its `custom_id` is the thesis id. It stores nothing in
+the journal; it writes `<data_dir>/batches/<id>.json` (thesis ids, each prompt's digest, model, submit time; never the
+key). `tr grade --judge --collect <id>` polls once. Still running: it says so
+and exits 0. Failed, expired or cancelled: exit 1, nothing stored. Completed: each thesis runs through the same
+`run_eval` as a sync judge, with a provider that answers from the batch result whose `custom_id` matches (results
+come unordered). The run file, spans, ScoreRecord and verdict are those of a sync call. An error entry, a missing
+entry or a prompt that changed since submit is a failed call, so nothing is stored for that thesis. Each call's cost is
+`derived`: tokens times the `:batch` price. Collect prints the sum next to the batch's own `usage.cost` and exits 1 when
+they differ by more than $0.001. The verdicts are kept either way, and the line says the run files hold the derived
+cost. The run's latency is 0, because a batch reports no per-request time. An empty `OPENROUTER_API_KEY` exits 2
+before any request. This path is tested on fake HTTP only (`tests/test_batch.py`) and has never run against the real
+endpoint. Only a paid run will show the real turnaround, which provider OpenRouter picks, whether each result entry
+carries `usage` (without it the derived sum is short and collect exits 1), and the real `usage.cost`.
+
 **Options this repo does not use yet.**
-- *Batch processing.* Anthropic's Message Batches API takes many requests at once at half the standard price and
-  returns results within 24 hours. That suits experiments and re-grading, never the live daily run.
+- *Anthropic Message Batches.* Anthropic's own batch API takes many requests at once at half the standard price and
+  returns results within 24 hours. The batch judge above uses OpenRouter's batches instead.
 - *Prompt caching.* Both APIs can bill a repeated prompt prefix at a lower rate. The Anthropic price table already
   prices cache writes and hits when a reply reports them.
 - *Data residency.* Anthropic's `inference_geo: "us"` keeps inference in the US at 1.1x the price. The adapter does
@@ -48,6 +65,7 @@ and price, so a comparison across them is not like for like. The recorded route 
 - OpenRouter: [API overview](https://openrouter.ai/docs/api/reference/overview),
   [chat completions](https://openrouter.ai/docs/api-reference/chat-completion),
   [quickstart](https://openrouter.ai/docs/quickstart).
+- OpenRouter batches: [quickstart](https://openrouter.ai/docs/batch-quickstart).
 - Anthropic: [Messages](https://platform.claude.com/docs/en/api/messages),
   [errors](https://platform.claude.com/docs/en/api/errors),
   [rate and spend limits](https://platform.claude.com/docs/en/api/rate-limits),

@@ -1,5 +1,5 @@
 usage: tr grade [-h] [--session SESSION] [--dry-run] [--judge]
-                [--judge-max-usd JUDGE_MAX_USD]
+                [--judge-max-usd JUDGE_MAX_USD] [--batch | --collect BATCH_ID]
 
 options:
   -h, --help            show this help message and exit
@@ -10,3 +10,8 @@ options:
                         per graded thesis without a verdict; off by default)
   --judge-max-usd JUDGE_MAX_USD
                         dollar cap for the whole judge run (default: 0.25)
+  --batch               with --judge: submit the judge calls as one OpenRouter
+                        batch at the :batch price; nothing is stored until
+                        --collect
+  --collect BATCH_ID    with --judge: poll a submitted batch once and store
+                        its verdicts when it is complete
