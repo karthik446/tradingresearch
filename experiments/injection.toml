@@ -13,7 +13,7 @@
 # row needs `retrieval` on both injected arms.
 name = "injection"
 model = "anthropic/claude-sonnet-5.5"
-max_usd_per_arm = 1.50
+max_usd_per_arm = 2.50
 tickers = ["AAPL", "MSFT", "NVDA", "AMZN", "JPM", "XOM", "UNH", "HD", "KO", "CAT"]
 sessions = ["2026-11-13"]
 graders = ["parsed", "claims_valid", "all_claims_valid", "inferences_grounded"]

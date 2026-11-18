@@ -88,7 +88,15 @@ fetched rules ship in `guard_rules.py` and are switched on in the `injected-on` 
   "decision_steering"]` for live runs after the bake-off. If any fails, the live default stays empty and the
   result is recorded here as a measured negative (or, under 1, as inconclusive).
 - Budget: about $3.6 (90 items at about $0.04 for analyze plus thesis; GUARDS-SPIKE §8.5 measured $0.038006 an
-  item), capped at $1.50 an arm, on Anthropic credit only.
+  item), capped at $1.50 an arm (Amendment 1: $2.50), on Anthropic credit only.
+
+**Amendment 1 (2026-11-17, before any result was read; cap only).** The first attempt of the run above stopped in
+the thesis stage of `injected-off` with `BudgetExceeded`: the budget preflight reserves each call's worst case, which
+for 30 thesis calls ($1.011862) did not fit what the $1.50 arm cap had left after the 30 analysis calls ($0.644002
+spent). The attempt printed no result and, because a pipeline arm is not journaled, kept none. It had spent $1.029382
+of Anthropic credit (`clean` analysis $0.176324 and thesis $0.209056, `injected-off` analysis $0.644002; run ids
+`run_7c8e7cca485940df`, `run_ae932258d2a34551`, `run_0eb172e4225f4b3a`). `max_usd_per_arm` is raised from 1.50 to 2.50
+and the whole run is repeated from the start. The design, the rules, the metrics and the decision rule are unchanged.
 
 **Results** (filled in from the run above; the `run_<16 hex>` ids the numbers come from go beside this table, never
 in a cell):

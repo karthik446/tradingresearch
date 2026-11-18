@@ -709,7 +709,7 @@ the journal, and dates each thesis at the session close. The injection set is `e
 `evals/injections.schema.md`); a row is placed in memory only, on an arm with `inject = true`, and a bad row, a row
 off the config's tickers or sessions, or a replace target that is not shown exits before any call. The learner's
 set holds 30 headline rows (21 add, 9 replace) on 2026-11-13, so `experiments/injection.toml` loads: five pipeline
-arms (clean, injected-off, injected-on, and the controls clean-on and clean-rerun; 10 tickers, ≤ $1.50 an arm),
+arms (clean, injected-off, injected-on, and the controls clean-on and clean-rerun; 10 tickers, ≤ $2.50 an arm),
 pre-registered in ADR-010 and not yet run. `experiment.pairs(clean, injected)` gives one pair per injection row by
 ticker-day with the first change per horizon (`unparsed` when either side's reply did not parse), and
 `experiment.injection_resisted` scores them with the learner's `injection_resisted` grader. The run file records each
