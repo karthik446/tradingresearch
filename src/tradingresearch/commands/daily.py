@@ -12,9 +12,9 @@ from datetime import UTC, datetime
 from functools import cache
 from types import SimpleNamespace
 
-from .. import (analyze as an, daily, grade, journal, openrouter, reconcile_run, rules, screen, teacher as tc,
+from .. import (analyze as an, daily, grade, journal, providers, reconcile_run, rules, screen, teacher as tc,
                 thesis as th)
-from ..config import require
+from ..providers import anthropic
 from .common import alpaca_client, edgar_client
 from .reconcile import completed_session
 from .screen import cmd_screen
@@ -29,7 +29,7 @@ def real_steps(conn, cfg, http, provider, top: int) -> daily.Steps:
 
     @cache
     def prices() -> dict:
-        return openrouter.prices(sorted({an.DEFAULT_MODEL, th.DEFAULT_MODEL}))
+        return providers.prices(cfg, "champion", sorted({an.DEFAULT_MODEL, th.DEFAULT_MODEL}))
 
     def screen_step(day):
         cmd_screen(SimpleNamespace(session=day.isoformat(), universe=None, top=top), cfg)
@@ -60,7 +60,7 @@ def challenger_steps(conn, cfg, provider) -> daily.ChallengerSteps:
     """`tr thesis --arm challenger`: the champion's model with the rule's prompt, and its filter before the store."""
     @cache
     def prices() -> dict:
-        return openrouter.prices([th.DEFAULT_MODEL])
+        return providers.prices(cfg, "champion", [th.DEFAULT_MODEL])
 
     def thesis_step(a, asked, rule):
         return th.thesis(conn, a, provider, asked=asked, arm="challenger", model=th.DEFAULT_MODEL, max_usd=CALL_USD,
@@ -76,7 +76,7 @@ def teacher_steps(conn, cfg, http, provider) -> daily.TeacherSteps:
 
     @cache
     def prices() -> dict:
-        return openrouter.prices(sorted(tc.TEACHERS))
+        return providers.prices(cfg, "teacher", sorted(tc.TEACHERS))
 
     @cache
     def context(ticker, day) -> an.Context:
@@ -101,10 +101,20 @@ def cmd_daily(args, cfg) -> None:
     day = completed_session(args.session, now)
     conn = journal.connect(cfg.db_path)
     paid = not (args.dry_run or args.no_model)
-    provider = openrouter.OpenRouter(require(cfg.openrouter_key, "OPENROUTER_API_KEY")) if paid else None
+    providers.check_models(cfg, "champion", sorted({an.DEFAULT_MODEL, th.DEFAULT_MODEL}))
+    provider = providers.make_provider(cfg, "champion") if paid else None  # a missing key: one line, nothing else
+    wire = f" (API id {anthropic.wire_model(an.DEFAULT_MODEL)})" if cfg.provider == "anthropic" else ""
+    print(f"daily {day}: provider {cfg.provider}, champion {an.DEFAULT_MODEL}{wire}; teachers on openrouter")
+    teaching = args.teachers
+    if teaching and cfg.provider != "openrouter" and not cfg.openrouter_key:
+        print("teachers skipped: OPENROUTER_API_KEY is not set (teachers run on OpenRouter only)")
+        teaching = False
+    # the teachers share the champion's client on OpenRouter, as before; under another provider they get their own
+    teacher_provider = (provider if cfg.provider == "openrouter" or not paid or not teaching
+                        else providers.make_provider(cfg, "teacher"))
     try:
         with alpaca_client(cfg) as http:
-            teachers = teacher_steps(conn, cfg, http, provider) if args.teachers else None
+            teachers = teacher_steps(conn, cfg, http, teacher_provider) if teaching else None
             challenger = None if args.no_challenger else challenger_steps(conn, cfg, provider)
             report = daily.run(conn, real_steps(conn, cfg, http, provider, args.top), day, top=args.top,
                                max_usd=args.max_usd, runs_dir=cfg.data_dir / "runs", now=now, dry_run=args.dry_run,
@@ -113,8 +123,8 @@ def cmd_daily(args, cfg) -> None:
     except sqlite3.Error as error:
         raise SystemExit(f"journal failed: {error}") from error
     finally:
-        if provider is not None:
-            provider.close()
+        for client in {id(p): p for p in (provider, teacher_provider) if p is not None}.values():
+            client.close()
     if report.screen_failed:
         raise SystemExit(1)
 

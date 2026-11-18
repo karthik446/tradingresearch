@@ -20,8 +20,9 @@ from gigai_core.providers import (
     TokenUsage, ToolCall, ToolSpec, Turn, UnsupportedRequestField,
 )
 
-from .records import clean_route
-from .retry import DEFAULT, HttpError, Policy
+from ..records import clean_route
+from ..retry import DEFAULT, HttpError, Policy, retry_after
+from .errors import HttpFailure
 
 API = "https://openrouter.ai/api/v1"
 UNKNOWN = "openrouter:unknown"
@@ -30,11 +31,11 @@ QUANTIZATIONS = ("int4", "int8", "fp4", "fp6", "fp8", "fp16", "bf16", "fp32", "u
 ROUTING_KEYS = ("only", "allow_fallbacks", "quantizations")
 
 
-class OpenRouterError(ProviderError):
-    def __init__(self, status: int, message: str) -> None:
-        super().__init__(f"OpenRouter {status}: {message}")
-        self.code = {402: "insufficient_credits", 429: "rate_limited"}.get(status, f"http_{status}")
-        self.retryable = status == 429 or status >= 500
+class OpenRouterError(HttpFailure):
+    """Codes as before the provider interface: 402 `insufficient_credits`, 429 `rate_limited`, else `http_<status>`."""
+
+    def __init__(self, status: int, message: str, retry_after: float | None = None) -> None:
+        super().__init__("OpenRouter", status, message, retry_after=retry_after)
 
 
 class RouteMismatch(ProviderError):
@@ -236,7 +237,8 @@ class OpenRouter:
         if response.status_code == 401:
             raise AuthenticationRequired("OpenRouter rejected the key (401)")
         if response.status_code != 200:
-            raise OpenRouterError(response.status_code, response.text[:300])
+            raise OpenRouterError(response.status_code, response.text[:300],
+                                  retry_after(response.headers.get("Retry-After")))
         data = response.json()
         if "error" in data:  # some upstream failures arrive as 200 with an error body
             if (data.get("usage") or {}).get("cost"):

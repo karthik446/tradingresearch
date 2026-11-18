@@ -62,7 +62,7 @@ from test_retrieval_ingest import NOW, fake_archives
 
 from tradingresearch import analyze as an, evals, experiment, masking, news, sessions
 from tradingresearch.config import settings
-from tradingresearch.openrouter import API, OpenRouter
+from tradingresearch.providers.openrouter import API, OpenRouter
 from tradingresearch.records import IndicatorSnapshot, SourceRef
 from tradingresearch.retrieval import evaluate, ingest, manifest, store
 

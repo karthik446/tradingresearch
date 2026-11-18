@@ -34,7 +34,7 @@ from gigai_core.trace import JsonlTrace, TrialSpan
 from . import analyze as an, journal, masking, news
 from .evals import graders as registry
 from .hashing import new_id
-from .openrouter import Routing
+from .providers.openrouter import Routing
 from .retrieval import store as retrieval_store
 
 REQUIRED = ("name", "model", "max_usd_per_arm", "tickers", "sessions", "graders", "arms")

@@ -11,7 +11,7 @@ import hashlib
 from dataclasses import dataclass
 from datetime import date
 
-from .openrouter import Routing
+from .providers.openrouter import Routing
 
 QUANTIZATIONS = ("fp8", "bf16")
 BAKEOFF_NAMES = 4  # names per bake-off session, drawn from that session's shortlist of 10 (SPIKE §9.4)

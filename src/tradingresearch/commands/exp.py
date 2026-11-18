@@ -9,25 +9,28 @@ from pathlib import Path
 from gigai_core import Run, open_run
 from gigai_core.comparison import ComparisonRefused
 
-from .. import analyze as an, experiment, journal, openrouter
-from ..config import require
+from .. import analyze as an, experiment, journal, providers
 from .common import alpaca_client, edgar_client
 
 
 def cmd_exp_run(args, cfg) -> None:
     config = experiment.load(Path(args.config))
-    key = require(cfg.openrouter_key, "OPENROUTER_API_KEY")
+    models = sorted({arm.model for arm in config.arms})
+    providers.check_models(cfg, "experiment", models)
+    if cfg.provider != "openrouter" and (pinned := [arm.name for arm in config.arms if arm.provider]):
+        raise SystemExit(f"{config.name}: arm {', '.join(pinned)} has an OpenRouter `provider` table, which "
+                         f"TR_PROVIDER={cfg.provider} cannot carry (set TR_PROVIDER=openrouter)")
+    provider = providers.make_provider(cfg, "experiment")
     conn = journal.connect(cfg.db_path)
     with alpaca_client(cfg) as http:
         edgar = edgar_client(cfg)
         contexts = [an.gather(conn, http, edgar, t, s, cfg.data_dir, cfg.feed)
                     for s in config.sessions for t in config.tickers]
     print(f"experiment {config.name}: {len(contexts)} ticker-days x {len(config.arms)} arm(s), "
-          f"graders {', '.join(config.graders)}, cap ${config.max_usd_per_arm:.2f}/arm")
-    provider = openrouter.OpenRouter(key)
+          f"graders {', '.join(config.graders)}, cap ${config.max_usd_per_arm:.2f}/arm, provider {cfg.provider}")
     try:
-        results = experiment.run_arms(conn, config, contexts, provider,
-                                      openrouter.prices(sorted({arm.model for arm in config.arms})), cfg.data_dir)
+        results = experiment.run_arms(conn, config, contexts, provider, providers.prices(cfg, "experiment", models),
+                                      cfg.data_dir)
     finally:
         provider.close()
     for r in results:

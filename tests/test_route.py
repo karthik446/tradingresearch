@@ -14,7 +14,7 @@ from gigai_core.providers import CallSettings, ModelRequest, ToolCall, ToolSpec,
 from pydantic import ValidationError
 
 from factories import analysis, thesis
-from tradingresearch.openrouter import API, OpenRouter, Routing
+from tradingresearch.providers.openrouter import API, OpenRouter, Routing
 from tradingresearch.records import clean_route
 
 WEEK4 = Path(__file__).parent / "fixtures" / "week4"

@@ -4,7 +4,7 @@ Educational equity research on live market data. Not investment advice; it place
 
 ```
 uv sync
-mkdir -p ~/.config/tradingresearch   # keys go in verify.env there; tr reads it itself
+cp .env.example .env   # then fill in the keys; tr reads .env itself (Prerequisites, below)
 uv run tr --help
 uv run pytest -q
 ```
@@ -39,3 +39,20 @@ The desk's daily loop, one command each (`uv run tr <command> --help` has the fl
 Week 4 as measured (ADR-005, `experiments/tools-vs-fixed.toml`, 20 ticker-days): tools mode left `all_claims_valid` unchanged (0.100 → 0.100, 95% interval −0.200 to +0.200) at $0.026932 per analysis against $0.016968 fixed, so analyze keeps the fixed context; 12 of 20 tool loops were served by more than one provider (`openrouter:mixed(...)`).
 
 Week 5 as measured (ADR-007, `experiments/context-ablation.toml`, 20 ticker-days, analyze-3): dropping headlines moved `claims_valid` +0.005 (95% interval −0.027 to +0.042) and dropping EDGAR +0.023 (−0.014 to +0.068), `parsed` 1.000 in every arm, so by the pre-registered rule both sections "go"; that is no measured loss, not a shown non-inferiority, and analyze's default (analyze-1) does not change. Headlines are 4.69% of the input tokens (139 of 2,963.7), EDGAR 17.96% (532.2); dropping EDGAR costs $0.015394 per analysis against $0.017192 full.
+
+## Prerequisites
+
+All settings live in one file, `.env` at the repo root (git-ignored), copied from `.env.example`, which names every
+variable and holds no value. `tr` reads it itself, so never `source` it; keys are read from the file only, never from
+the shell. `TR_ENV_FILE=<path>` reads another file instead (the LaunchAgent uses `~/.config/tradingresearch/verify.env`).
+
+| Variable | Needed for |
+|---|---|
+| `APCA_API_KEY_ID`, `APCA_API_SECRET_KEY` | Alpaca bars and news (a paper account is enough) |
+| `TR_SEC_USER_AGENT` | EDGAR: `"Your Name you@example.com"` |
+| `TR_PROVIDER` | who serves the model calls: `openrouter` (default) or `anthropic` (runbook, "Providers") |
+| `OPENROUTER_API_KEY` | model calls when `TR_PROVIDER=openrouter`, and the teachers whatever the provider |
+| `ANTHROPIC_API_KEY` | model calls when `TR_PROVIDER=anthropic` |
+| `TR_FEED` | `sip` (default) or `iex` |
+
+Only the chosen provider's key is needed; a missing one stops the command with one line naming it.

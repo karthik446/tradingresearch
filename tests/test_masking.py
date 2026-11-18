@@ -15,7 +15,7 @@ from gigai_core.trace import ModelSpan
 from test_teacher import context as live_context
 from test_week4 import LIVE_CONTEXT_TOKENS, MODEL, PROMPT, context, load, prices, replaying
 from tradingresearch import analyze as an, experiment, journal, masking, tools
-from tradingresearch.openrouter import API, OpenRouter
+from tradingresearch.providers.openrouter import API, OpenRouter
 
 TICKERS = ("FAKEA", "AAPL", "MSFT", "NVDA", "AMZN", "JPM", "XOM", "UNH", "HD", "KO")  # compare needs 10 clusters
 EDGAR_NAMES = ("revenue_", "net_income_", "eps_diluted_")

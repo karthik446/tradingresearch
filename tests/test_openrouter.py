@@ -11,7 +11,7 @@ import pytest
 from gigai_core.providers import CallSettings, ModelRequest, ToolCall, ToolSpec, Turn
 
 from tradingresearch.config import require, settings
-from tradingresearch.openrouter import OpenRouter, OpenRouterError, message
+from tradingresearch.providers.openrouter import OpenRouter, OpenRouterError, message
 from tradingresearch.retry import Policy
 
 TOOLS = Path(__file__).parent / "fixtures" / "tools"

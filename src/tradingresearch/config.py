@@ -1,4 +1,8 @@
-"""Settings. Keys come from one env file read here in Python, never from the shell, and are never printed."""
+"""Settings. Keys come from one env file read here in Python, never from the shell, and are never printed.
+
+The env file is the clone's `.env` (`cp .env.example .env`, then fill it in), found from this package's path so the
+working directory does not matter. `TR_ENV_FILE` points elsewhere (the LaunchAgent:
+`~/.config/tradingresearch/verify.env`)."""
 
 from __future__ import annotations
 
@@ -6,7 +10,8 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
-DEFAULT_ENV_FILE = Path("~/.config/tradingresearch/verify.env")
+DEFAULT_ENV_FILE = Path(__file__).resolve().parents[2] / ".env"  # <repo>/.env: src/tradingresearch/config.py
+PROVIDERS = ("openrouter", "anthropic")  # TR_PROVIDER, ADR-014
 
 
 class Secret:
@@ -52,6 +57,8 @@ class Settings:
     openrouter_key: Secret
     sec_user_agent: str
     feed: str  # "sip" (default) or "iex", the one-flag fallback
+    provider: str = "openrouter"  # TR_PROVIDER: who serves every model call but the teachers'
+    anthropic_key: Secret = Secret("")
 
     @property
     def db_path(self) -> Path:
@@ -66,6 +73,9 @@ def settings() -> Settings:
     def plain(name: str, default: str = "") -> str:
         return os.environ.get(name) or file.get(name, default)
 
+    provider = plain("TR_PROVIDER", "openrouter")
+    if provider not in PROVIDERS:
+        raise SystemExit(f"TR_PROVIDER must be one of {', '.join(PROVIDERS)}, not {provider!r}")
     return Settings(
         data_dir=Path(plain("TR_DATA_DIR", "data")),
         alpaca_key_id=Secret(file.get("APCA_API_KEY_ID", "")),
@@ -73,6 +83,8 @@ def settings() -> Settings:
         openrouter_key=Secret(file.get("OPENROUTER_API_KEY", "")),
         sec_user_agent=plain("TR_SEC_USER_AGENT"),
         feed=plain("TR_FEED", "sip"),
+        provider=provider,
+        anthropic_key=Secret(file.get("ANTHROPIC_API_KEY", "")),
     )
 
 
@@ -80,5 +92,5 @@ def require(value: Secret | str, name: str) -> str:
     """The value, or a failure that names the variable (never its value) when it is missing."""
     if not value:
         raise SystemExit(f"{name} is not set: add it to {os.environ.get('TR_ENV_FILE', DEFAULT_ENV_FILE)} "
-                         "(see the README, Prerequisites)")
+                         "(cp .env.example .env; see the README, Prerequisites)")
     return value.reveal() if isinstance(value, Secret) else value

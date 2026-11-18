@@ -14,7 +14,7 @@ How the daily loop runs, how to check it, and what to do when it fails. Live str
 | TR_DATA_DIR | `/Users/kar/Developer/projects/tradingresearch/data` (the live journal) |
 | PATH | `/Users/kar/.local/bin:/usr/bin:/bin:/usr/sbin:/sbin` |
 | Log | `/Users/kar/Developer/projects/tradingresearch/data/logs/daily.log` (stdout and stderr) |
-| Keys | `tr` reads `~/.config/tradingresearch/verify.env` itself, including `TR_SEC_USER_AGENT`. No key goes in the plist |
+| Keys | `tr` reads its env file itself, including `TR_SEC_USER_AGENT` and `TR_PROVIDER`. From the provider change (ADR-014) on, the plist must carry the path, `TR_ENV_FILE=/Users/kar/.config/tradingresearch/verify.env`, because the default (the worktree's `.env`) does not exist in the pinned worktree; see "Pinned code, live data". No key goes in the plist |
 
 launchd reads Hour/Minute in the Mac's time zone. If the Mac changes zone, the times must be converted again.
 `ops/daily.launchd.plist.example` is the template (written for a Mac on New York time: 16:30 and a 21:00 catch-up on
@@ -51,6 +51,15 @@ Moving the pin, only to a commit whose tests and `ci/gate.py` pass, and never be
 git -C ~/Developer/projects/tradingresearch-live checkout --detach <sha> && (cd ~/Developer/projects/tradingresearch-live && uv sync -q)
 (cd ~/Developer/projects/tradingresearch-live && TR_DATA_DIR=/Users/kar/Developer/projects/tradingresearch/data uv run tr daily --teachers --dry-run)
 ```
+
+**Before moving the pin past the provider change (ADR-014).** From that commit on, `tr` reads `<repo>/.env` unless
+`TR_ENV_FILE` says otherwise, and the pinned worktree has no `.env`. So, first, add
+`TR_ENV_FILE=/Users/kar/.config/tradingresearch/verify.env` to the plist's `EnvironmentVariables` and reload the agent
+(`launchctl bootout gui/$(id -u) ~/Library/LaunchAgents/com.tradingresearch.daily.plist`, then `launchctl bootstrap
+gui/$(id -u) ~/Library/LaunchAgents/com.tradingresearch.daily.plist`), and run the dry run above with the same
+`TR_ENV_FILE=...` in front. Only then move the pin. Without it, the first live run stops with
+`OPENROUTER_API_KEY is not set`. With `TR_PROVIDER` unset in `verify.env` the agent stays on OpenRouter; it moves to
+Anthropic only when `TR_PROVIDER=anthropic` and `ANTHROPIC_API_KEY` are added there.
 
 Schema changes must be new tables (`CREATE TABLE IF NOT EXISTS`), which the pinned code ignores. A change that adds,
 alters or drops a column lands together with a pin move. A dev command that opens the live journal with newer code adds
@@ -143,17 +152,45 @@ uv run tr report                    # per-horizon scorecards from 2026-11-17; --
 | `teachers <session>: stopped: ...` | The teacher step itself broke (e.g. the journal); the evening's rows are already stored | Read the error; rerun with `--teachers` |
 | `late: the entry window ...` | The run came after 09:30 ET next session | Nothing; that session has no theses |
 | `missed: <session>` | No run for a completed session | Nothing; it is not backfilled |
+| `ANTHROPIC_API_KEY is not set: ...` | `TR_PROVIDER=anthropic` and no key in the env file | Add the key, or set `TR_PROVIDER=openrouter` |
+| `TR_PROVIDER=anthropic cannot serve <model>` | The command's model belongs to another vendor (the judge, a non-Claude arm) | Run that command with `TR_PROVIDER=openrouter` |
+| `teachers skipped: OPENROUTER_API_KEY is not set` | `--teachers` under `TR_PROVIDER=anthropic` without an OpenRouter key | Nothing for the champion; add the key for the bake-off |
+| `... failed: ... insufficient_credits` / `model_refused` | Out of credit or billing refused (402, or Anthropic's 400 "credit balance"), or the model declined (Anthropic `stop_reason: refusal`, billed) | Top up; a refusal is not retried, read the run's reply |
 
 ### Retries
 
-Every HTTP call (Alpaca bars and news, EDGAR, OpenRouter calls, prices and key reads) goes through one policy,
-`retry.DEFAULT`: up to 4 tries, a full-jitter wait of `uniform(0, min(30, 2**retry))` seconds, or the server's
-`Retry-After` (seconds or a date) capped at 30 s, and never more than 300 s in all. Only 429, 5xx and connection or
-timeout errors are retried; a 400, 401, 403 or 404, and any reply that arrived and parsed, fails at once. An error
-after retries ends with `(gave up after N tries)` (or `; a Xs wait would pass the 300s budget`). A model call that
-was retried records `retry_count` and `last_error_class` on its trace call, and its cost includes any cost a failed
-try reported; a call that gives up names that amount in its error. Repeated `gave up` lines: check the provider's
-status page before rerunning.
+Every HTTP call (Alpaca bars and news, EDGAR, OpenRouter and Anthropic model calls, prices and key reads) goes through
+one policy, `retry.DEFAULT`: up to 4 tries, a full-jitter wait of `uniform(0, min(30, 2**retry))` seconds, or the
+server's `Retry-After` (seconds or a date) capped at 30 s, and never more than 300 s in all. Only 429, 5xx (and
+Anthropic's 529, overloaded) and connection or timeout errors are retried; a 400, 401, 402, 403 or 404, a refusal, and
+any reply that arrived and parsed, fails at once. An error after retries ends with `(gave up after N tries)` (or `; a
+Xs wait would pass the 300s budget`). A model call that was retried records `retry_count` and `last_error_class` on
+its trace call, and its cost includes any cost a failed try reported; a call that gives up names that amount in its
+error. Repeated `gave up` lines: check the provider's status page before rerunning. Both providers' failures share
+one taxonomy (`providers/errors.py`): credit_exhausted, rate_limited, upstream_5xx, output_not_json, refused.
+
+## Providers
+
+`TR_PROVIDER` picks who serves every model call except the teachers': `openrouter` (the default) or `anthropic`
+(the Messages API, ADR-014). Set it in the env file or the shell. Only the chosen provider's key is read.
+
+| Role | Provider |
+|---|---|
+| champion and challenger (`analyze`, `thesis`, `daily`) | `TR_PROVIDER` |
+| experiment arms (`tr exp run`) | `TR_PROVIDER`; an arm with an OpenRouter `provider` table needs `openrouter` |
+| the judge (`tr grade --judge`) | `TR_PROVIDER`; the judge, `openai/gpt-6-sol`, is not Claude, so run it with `TR_PROVIDER=openrouter` |
+| teachers (`--arm teacher`, `daily --teachers`, the bake-off) | always OpenRouter (pinned DeepInfra routes); skipped with one line if `OPENROUTER_API_KEY` is missing |
+
+Configs keep the OpenRouter id (`anthropic/claude-sonnet-5.5`). The Anthropic adapter sends the API id
+(`claude-sonnet-5-5`: prefix dropped, dots to hyphens); another vendor's id is refused before any call. Anthropic
+rejects `temperature`, `top_p` and `top_k` on this model, and the adapter refuses them too. Schema calls use
+`output_config.format`; a JSON call has no wire switch and is checked after the reply. Costs are derived from the
+price table in `providers/anthropic.py` (cache writes and hits included), recorded with `cost_status = "derived"`;
+OpenRouter's are `provider_reported`. `tr usage` has no key-spend line for Anthropic (there is no such endpoint):
+compare the trace total with the Console. `tr daily` prints the provider on its first line, dry run included.
+
+A provider change is a new route: runs record `provider.identity` (`anthropic` or `openrouter`) and every row's
+`provider_route` starts with the provider, so an experiment never compares across providers by accident.
 
 ## Teacher bake-off
 
@@ -269,12 +306,13 @@ the run ids.
 ## Provenance: the route
 
 `provider_route` on an analysis or thesis says which upstream served the call; the teacher terms filter and the
-fine-tuning set depend on it. `OpenRouter` logs the route of every call (`served`) under the exchange's first user
-turn, so all turns of a tool loop count: one route as is (`openrouter:DeepInfra`), turns from different routes
-`openrouter:mixed(Azure+Google)`, any turn with no provider `openrouter:unknown`. Each `routed()` arm keeps its own
-log. A `trainable` (teacher) record with an unknown or mixed route is refused (`records.clean_route`); a teacher run
-pinned to one host never hits this, so a refusal means the pin or the reply changed: look at the run's replies before
-rerunning.
+fine-tuning set depend on it. Both adapters log the route of every call (`served`) under the exchange's first user
+turn, so all turns of a tool loop count: one route as is (`openrouter:DeepInfra`, `anthropic:claude-sonnet-5-5`,
+`anthropic:claude-sonnet-5-5/us` when the reply says it ran US-only), turns from different routes
+`openrouter:mixed(Azure+Google)`, any turn with no provider `openrouter:unknown` (`anthropic:unknown`). Each
+`routed()` arm keeps its own log. A `trainable` (teacher) record with an unknown or mixed route is refused
+(`records.clean_route`); a teacher run pinned to one host never hits this, so a refusal means the pin or the reply
+changed: look at the run's replies before rerunning.
 
 ## Labels (P1, blind)
 

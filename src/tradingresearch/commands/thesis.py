@@ -5,8 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from datetime import UTC, datetime
 
-from .. import analyze as an, journal, openrouter, rules, sessions, teacher as tc, thesis as th
-from ..config import require
+from .. import analyze as an, journal, providers, rules, sessions, teacher as tc, thesis as th
 from ..records import Analysis, Thesis
 from .common import session_arg
 
@@ -85,11 +84,12 @@ def cmd_thesis(args, cfg) -> None:
     if not asked:
         print(f"nothing to ask for {a.ticker}: every horizon has a live {args.arm} thesis (no model call)")
         return
-    provider = openrouter.OpenRouter(require(cfg.openrouter_key, "OPENROUTER_API_KEY"),
-                                     routing=teacher.routing if teacher else None)
+    role = "teacher" if teacher else "champion"
+    providers.check_models(cfg, role, [model])
+    provider = providers.make_provider(cfg, role, routing=teacher.routing if teacher else None)
     try:
         result = th.thesis(conn, a, provider, asked=asked, arm=args.arm, model=model, max_usd=args.max_usd,
-                           prices=openrouter.prices([model]), data_dir=cfg.data_dir, prompt_version=prompt,
+                           prices=providers.prices(cfg, role, [model]), data_dir=cfg.data_dir, prompt_version=prompt,
                            terms=teacher.terms_class if teacher else None, post=post)
     finally:
         provider.close()

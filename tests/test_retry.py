@@ -9,7 +9,7 @@ import pytest
 
 from tradingresearch import alpaca, retry
 from tradingresearch.edgar import Edgar
-from tradingresearch.openrouter import OpenRouterError
+from tradingresearch.providers.openrouter import OpenRouterError
 from tradingresearch.retry import HttpError, Policy
 
 

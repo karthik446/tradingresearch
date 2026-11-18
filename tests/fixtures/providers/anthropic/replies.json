@@ -1,0 +1,97 @@
+{
+  "_source": "Shapes from platform.claude.com/docs/en/api/messages and /api/errors (read 2026-11-17); hand-written, no real call.",
+  "success": {
+    "status": 200,
+    "headers": {"request-id": "req_fake_1"},
+    "body": {
+      "id": "msg_fake_1",
+      "type": "message",
+      "role": "assistant",
+      "model": "claude-sonnet-5-5",
+      "content": [{"type": "text", "text": "{\"ticker\": \"FAKEA\", \"claims\": []}"}],
+      "stop_reason": "end_turn",
+      "stop_sequence": null,
+      "usage": {
+        "input_tokens": 1200,
+        "output_tokens": 300,
+        "cache_creation_input_tokens": 1000,
+        "cache_read_input_tokens": 4000,
+        "cache_creation": {"ephemeral_5m_input_tokens": 600, "ephemeral_1h_input_tokens": 400},
+        "inference_geo": "global"
+      }
+    }
+  },
+  "tool_use": {
+    "status": 200,
+    "headers": {},
+    "body": {
+      "id": "msg_fake_2",
+      "type": "message",
+      "role": "assistant",
+      "model": "claude-sonnet-5-5",
+      "content": [
+        {"type": "text", "text": "Looking up the bars."},
+        {"type": "tool_use", "id": "toolu_fake", "name": "bars", "input": {"ticker": "FAKEA"}}
+      ],
+      "stop_reason": "tool_use",
+      "usage": {"input_tokens": 50, "output_tokens": 20, "inference_geo": "us"}
+    }
+  },
+  "rate_limited": {
+    "status": 429,
+    "headers": {"retry-after": "7"},
+    "body": {"type": "error", "error": {"type": "rate_limit_error", "message": "Number of request tokens has exceeded your per-minute rate limit"}, "request_id": "req_fake_2"}
+  },
+  "billing": {
+    "status": 402,
+    "headers": {},
+    "body": {"type": "error", "error": {"type": "billing_error", "message": "There is an issue with your account's billing."}, "request_id": "req_fake_3"}
+  },
+  "credit_balance": {
+    "status": 400,
+    "headers": {},
+    "body": {"type": "error", "error": {"type": "invalid_request_error", "message": "Your credit balance is too low to access the Anthropic API."}, "request_id": "req_fake_4"}
+  },
+  "overloaded": {
+    "status": 529,
+    "headers": {},
+    "body": {"type": "error", "error": {"type": "overloaded_error", "message": "Overloaded"}, "request_id": "req_fake_5"}
+  },
+  "server_error": {
+    "status": 500,
+    "headers": {},
+    "body": {"type": "error", "error": {"type": "api_error", "message": "Internal server error"}, "request_id": "req_fake_6"}
+  },
+  "bad_request": {
+    "status": 400,
+    "headers": {},
+    "body": {"type": "error", "error": {"type": "invalid_request_error", "message": "max_tokens: field required"}, "request_id": "req_fake_7"}
+  },
+  "not_json": {
+    "status": 200,
+    "headers": {},
+    "body": {
+      "id": "msg_fake_8",
+      "type": "message",
+      "role": "assistant",
+      "model": "claude-sonnet-5-5",
+      "content": [{"type": "text", "text": "Sure, here is my analysis of FAKEA in prose."}],
+      "stop_reason": "end_turn",
+      "usage": {"input_tokens": 100, "output_tokens": 12}
+    }
+  },
+  "refusal": {
+    "status": 200,
+    "headers": {},
+    "body": {
+      "id": "msg_fake_9",
+      "type": "message",
+      "role": "assistant",
+      "model": "claude-sonnet-5-5",
+      "content": [],
+      "stop_reason": "refusal",
+      "stop_details": {"type": "refusal", "category": "cyber", "explanation": "The request was declined."},
+      "usage": {"input_tokens": 100, "output_tokens": 5}
+    }
+  }
+}

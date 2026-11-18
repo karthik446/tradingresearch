@@ -3,21 +3,22 @@ teacher (SPIKE §9.4)."""
 
 from __future__ import annotations
 
-from .. import analyze as an, openrouter, teacher as tc
-from ..config import require
+from .. import analyze as an, providers, teacher as tc
 from .common import context_for
 
 
 def cmd_analyze(args, cfg) -> None:
     teacher = tc.from_args(args.arm, args.teacher, args.model, an.DEFAULT_MODEL)
     model = teacher.model if teacher else args.model
-    key = require(cfg.openrouter_key, "OPENROUTER_API_KEY")
+    role = "teacher" if teacher else "champion"
+    providers.check_models(cfg, role, [model])
+    provider = providers.make_provider(cfg, role, routing=teacher.routing if teacher else None)
     conn, ctx = context_for(args, cfg)
-    provider = openrouter.OpenRouter(key, routing=teacher.routing if teacher else None)
     prompt = args.prompt or (tc.PROMPT if teacher else an.DEFAULT_PROMPT)
     drop = tc.DROP if teacher and not args.prompt else ()  # the teacher default is analyze-3 without headlines
     try:
-        result = an.analyze(conn, ctx, provider, model=model, max_usd=args.max_usd, prices=openrouter.prices([model]),
+        result = an.analyze(conn, ctx, provider, model=model, max_usd=args.max_usd,
+                            prices=providers.prices(cfg, role, [model]),
                             data_dir=cfg.data_dir, prompt_version=prompt, arm=args.arm, drop=drop,
                             terms_class=teacher.terms_class if teacher else None)
     finally:

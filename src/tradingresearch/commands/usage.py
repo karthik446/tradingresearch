@@ -1,11 +1,13 @@
-"""`tr usage`: cost per run, arm, day or call from the saved run files, then the OpenRouter key's spend (a free read)."""
+"""`tr usage`: cost per run, arm, day or call from the saved run files, then the OpenRouter key's spend (a free read).
+Anthropic has no key-spend endpoint: under TR_PROVIDER=anthropic the trace tables are the record."""
 
 from __future__ import annotations
 
 from datetime import date
 
-from .. import openrouter, trace, usage
+from .. import trace, usage
 from ..config import require
+from ..providers import openrouter
 
 VIEWS = {"call": usage.by_call, "run": usage.by_run, "arm": usage.by_arm, "day": usage.by_day}
 
@@ -45,6 +47,9 @@ def cmd_usage(args, cfg) -> None:
                   *[(r.key, *n, f"{r.mean_latency_ms:.0f} ms") for r, n in zip([*rows, everything], numbers)]], 1)
         if everything.prices_missing:
             print("* a call in this row has no recorded cost, so the cost is a lower bound")
+    if cfg.provider == "anthropic":
+        print("TR_PROVIDER=anthropic: Anthropic has no key-spend endpoint, so its calls are reconciled from the trace "
+              "tables above (costs derived from the price table); the Console shows the billed amount")
     if not cfg.openrouter_key:
         print("OPENROUTER_API_KEY is not set: key usage and the reconcile line are skipped (trace tables only)")
         return

@@ -5,8 +5,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from .. import evals, grade, journal, openrouter, reconcile_run
-from ..config import require
+from .. import evals, grade, journal, providers, reconcile_run
 from .common import alpaca_client
 from .reconcile import completed_session
 
@@ -31,9 +30,10 @@ def judge_lines(conn, args, cfg) -> list[str]:
     if args.dry_run or not grade.to_judge(conn):
         judged = grade.judge(conn, None, None, prices={}, data_dir=cfg.data_dir, max_usd=cap, dry_run=args.dry_run)
         return grade.render_judged(judged, dry_run=args.dry_run, max_usd=cap)
-    provider = openrouter.OpenRouter(require(cfg.openrouter_key, "OPENROUTER_API_KEY"))
+    providers.check_models(cfg, "judge", [evals.JUDGE_MODEL])
+    provider = providers.make_provider(cfg, "judge")
     try:
-        prices = openrouter.prices([evals.JUDGE_MODEL])
+        prices = providers.prices(cfg, "judge", [evals.JUDGE_MODEL])
         with alpaca_client(cfg) as http:
             bars = reconcile_run.AlpacaBars(http, cfg.data_dir / "bars_1m", cfg.feed)
             judged = grade.judge(conn, bars, provider, prices=prices, data_dir=cfg.data_dir, max_usd=cap)

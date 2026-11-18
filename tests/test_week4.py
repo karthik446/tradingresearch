@@ -55,7 +55,7 @@ from gigai_core.score import Score
 from gigai_core.trace import CallError, ToolSpan
 
 from tradingresearch import analyze as an, evals, experiment, journal, rules
-from tradingresearch.openrouter import API, OpenRouter
+from tradingresearch.providers.openrouter import API, OpenRouter
 from tradingresearch.records import IndicatorSnapshot, RuleChange, SourceRef
 
 ROOT = Path(__file__).resolve().parents[1]

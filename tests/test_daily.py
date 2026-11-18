@@ -24,7 +24,7 @@ from tradingresearch import analyze as an, daily, grade, journal, reconcile_run,
 from tradingresearch.cli import build_parser, main
 from tradingresearch.commands.thesis import horizons_to_ask
 from tradingresearch.config import require, settings
-from tradingresearch.openrouter import OpenRouter, Routing
+from tradingresearch.providers.openrouter import OpenRouter, Routing
 from tradingresearch.records import Analysis, NoTrade
 from tradingresearch.screen import CODE_VERSION, ScreenResult
 

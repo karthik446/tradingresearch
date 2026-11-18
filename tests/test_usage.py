@@ -13,8 +13,9 @@ import pytest
 from gigai_core import read_spans
 from gigai_core.trace import ModelSpan
 
-from tradingresearch import openrouter, usage
+from tradingresearch import usage
 from tradingresearch.cli import main
+from tradingresearch.providers import openrouter
 from tradingresearch.trace import calls, iter_runs, kind
 
 DATA = Path(__file__).parent / "fixtures" / "usage"

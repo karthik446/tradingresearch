@@ -47,7 +47,7 @@ from gigai_core.sample import Sample
 from gigai_core.score import Score
 
 from tradingresearch import analyze as an, evals, experiment, journal, masking, news, tools
-from tradingresearch.openrouter import API, OpenRouter
+from tradingresearch.providers.openrouter import API, OpenRouter
 from tradingresearch.records import IndicatorSnapshot, SourceRef
 
 ROOT = Path(__file__).resolve().parents[1]

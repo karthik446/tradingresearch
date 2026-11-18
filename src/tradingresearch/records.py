@@ -36,10 +36,11 @@ RULES_VERSION = "rules-1"  # the reconcile rules (SPIKE §6) a thesis or event i
 
 
 def clean_route(route: str) -> bool:
-    """True only for one known provider: the teacher terms filter and the training set need who served every turn."""
+    """True only for one known provider: the teacher terms filter and the training set need who served every turn.
+    `openrouter:<host>[/tier]` or `anthropic:<model>[/geo]`; unknown or mixed is never clean."""
     prefix, _, rest = route.partition(":")
     host = rest.split("/")[0].lower()
-    return prefix == "openrouter" and host not in ("", "unknown") and not host.startswith("mixed(")
+    return prefix in ("openrouter", "anthropic") and host not in ("", "unknown") and not host.startswith("mixed(")
 
 
 def _trainable_route(terms_class: str, route: str) -> None:

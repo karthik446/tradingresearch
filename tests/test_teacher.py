@@ -15,7 +15,7 @@ from gigai_core.providers import ModelRequest, Turn
 from tradingresearch import analyze as an, experiment, journal, teacher as tc, thesis as th
 from tradingresearch.cli import main
 from tradingresearch.commands.thesis import analysis_for
-from tradingresearch.openrouter import API, OpenRouter, RouteMismatch, Routing
+from tradingresearch.providers.openrouter import API, OpenRouter, RouteMismatch, Routing
 from tradingresearch.records import Analysis, IndicatorSnapshot, SourceRef
 
 FIXTURES = Path(__file__).parent / "fixtures"

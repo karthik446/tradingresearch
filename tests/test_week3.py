@@ -42,7 +42,7 @@ from test_grade import D0, D1, D2, D3, DAILY, NOW, Bars, ny, settle
 from tradingresearch import grade, journal, label, trace
 from tradingresearch.analyze import snapshot_rows
 from tradingresearch.cli import main
-from tradingresearch.openrouter import API, OpenRouter
+from tradingresearch.providers.openrouter import API, OpenRouter
 from tradingresearch.records import RULES_VERSION, Congestion, EntryRule, Thesis
 from tradingresearch.sessions import NY
 
