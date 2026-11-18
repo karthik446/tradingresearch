@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **Cost ledger (COST-1, COST-2b).** `analyze.save` appends one row per saved run (step, purpose, arm, models, tokens,
+  `spent_usd`, `calls_without_cost`) to `TR_LEDGER` (default `data/cost-ledger.jsonl`, outside `TR_DATA_DIR`, so a
+  deleted scratch dir keeps its spend); `TR_COST_TAG=<step>:<purpose>` names a run's step. A ledger that cannot be
+  written is one warning line, not a failed run. `tr usage` gains `--by tag`, `--tag`, `--step` and `--all-dirs`
+  (every `runs` directory under `data/` and `data-dev/` plus ledger-only rows, one row per run id). Nothing reads the
+  OpenRouter `/credits` yet (COST-3b).
+
 - **Week 8 replication pre-registered (ADR-011 Amendment 1, `experiments/routing-replication.toml`).** A second
   `sonnet` vs `routed` run on 120 fresh items (the same 10 tickers x the 12 NYSE sessions before the first run's
   earliest, 2026-10-23 to 2026-11-09; no `cached` arm), sized on the first run's discordant share 0.333 with the

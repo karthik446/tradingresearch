@@ -1,5 +1,5 @@
-"""Trace and usage layer: per-call rows, sums per run, arm, day, step and model, run_cost, `tr usage` and the cost
-ledger row `save` appends per run (G7, G15-SPIKE §3, COST-SPIKE §2.2).
+"""Trace and usage layer: per-call rows, sums per run, arm, day, step, model and tag, run_cost, `tr usage` (with
+`--all-dirs` over the ledger) and the cost ledger row `save` appends per run (G7, G15-SPIKE §3, COST-SPIKE §2.2, §2.4).
 
 The fixtures are real week-1 runs from `data/`: run_10fc0a886ddb42a2 (`tr analyze`, 1 call) whole, and
 run_c40caab0968e44a3 (`exp run` arm observe:baseline) cut to its first 2 samples, with `calls_made` and `spent_usd`
@@ -22,6 +22,7 @@ from gigai_core.trace import ModelSpan
 from tradingresearch import usage
 from tradingresearch.analyze import input_hash, save
 from tradingresearch.cli import main
+from tradingresearch.commands import usage as usage_cmd
 from tradingresearch.providers import openrouter
 from tradingresearch.trace import cache_tokens, calls, iter_runs, kind
 from test_openrouter import recorded, replaying, tool_request
@@ -372,3 +373,122 @@ def test_a_call_without_cost_is_counted_and_an_unwritable_ledger_is_a_warning_no
     err = capsys.readouterr().err
     assert err.startswith(f"warning: cost ledger {blocker / 'cost-ledger.jsonl'} not written (") and "is saved" in err
     assert len(ledger(written)) == 1
+
+
+# ---------- the ledger read back: --by tag, --tag/--step, --all-dirs (COST-SPIKE §2.4, COST-2b) ----------
+
+
+@pytest.fixture
+def tree(tmp_path, monkeypatch):
+    """A repo-shaped tmp tree: `tr` points at `data/`, `--all-dirs` at `data/` and `data-dev/` under tmp_path, the
+    ledger at `tmp_path/cost-ledger.jsonl` (conftest), no key."""
+    roots = (tmp_path / "data", tmp_path / "data-dev")
+    monkeypatch.setattr(usage_cmd, "ROOTS", roots)
+    monkeypatch.setenv("TR_DATA_DIR", str(roots[0]))
+    return tmp_path
+
+
+def lines(capsys) -> list[str]:
+    return capsys.readouterr().out.splitlines()
+
+
+def test_all_dirs_counts_a_ledger_row_whose_scratch_dir_was_deleted_and_names_it_in_call_views(tree, capsys):
+    save_one(tree / "data")
+    scratch = tree / "data-dev" / "g99-capture"
+    gone = save_one(scratch, dataset_id="thesis", tag="thesis-1")
+    shutil.rmtree(scratch)
+    main(["usage", "--by", "step", "--all-dirs"])
+    assert lines(capsys)[:4] == [  # the thesis row is the ledger's: its calls, tokens and cost, no items or latency
+        "step     calls  items  tokens in  cache write  cache read  tokens out       cost     $/item     p50     p95",
+        "analyze      1      1       1000            -           -         200  $0.010100  $0.010100  100 ms  100 ms",
+        "thesis       1      0       1000            -           -         200  $0.010100  $0.000000    0 ms    0 ms",
+        "total        2      1       2000            -           -         400  $0.020200  $0.010100  100 ms  100 ms",
+    ]
+    main(["usage", "--by", "run", "--all-dirs", "--run", gone.stem])
+    assert lines(capsys)[1].split() == [gone.stem, "ledger", "-", "1", "1000", "200", "$0.010100"]
+    for view in ("call", "model", "arm"):
+        main(["usage", "--by", view, "--all-dirs"])
+        out = lines(capsys)
+        assert out[0].startswith(view) and out[-1].startswith("OPENROUTER_API_KEY is not set")
+        assert out[-2] == ("1 ledger-only run(s) (run file not found) left out of --by " + view + ": a ledger row has "
+                           "no per-call detail; --by run, step, tag or day counts them")
+    main(["usage", "--by", "day", "--all-dirs"])  # the ledger-only run's day is its created_at; counted once
+    out = lines(capsys)
+    assert out[-2].split() == ["total", "2", "2000", "400", "$0.020200", "100", "ms"]
+    assert not any("left out" in line for line in out)
+    main(["usage", "--by", "step"])  # without --all-dirs the ledger row is not counted
+    assert lines(capsys)[-2].split()[:2] == ["total", "1"]
+
+
+def test_all_dirs_reads_every_runs_directory_below_the_roots_once_per_run_id_and_skips_dot_dirs(tree, capsys):
+    run_path = save_one(tree / "data")
+    copies = [tree / "data-dev" / "scratch" / "runs" / run_path.name, tree / "data" / ".venv" / "runs" / run_path.name,
+              tree / "data" / ".git" / "runs" / ANALYZE.name]  # a different run id, so only the dot-dir hides it
+    for source, copy in zip([run_path, run_path, ANALYZE], copies):
+        copy.parent.mkdir(parents=True)
+        shutil.copy(source, copy)
+    runs, orphans = usage.all_runs(usage_cmd.ROOTS, usage.read_ledger(Path(os.environ["TR_LEDGER"])))
+    assert [path for _, path in runs] == [run_path] and orphans == []
+    main(["usage", "--all-dirs"])
+    out = lines(capsys)
+    assert out[1].split()[:4] == [run_path.stem, "analyze", "-", "1"] and out[2].split()[:2] == ["total", "1"]
+
+
+def test_all_dirs_reads_the_run_file_at_the_ledger_row_s_own_data_dir_outside_the_roots(tree, tmp_path, capsys):
+    elsewhere = save_one(tmp_path / "elsewhere")
+    runs, orphans = usage.all_runs(usage_cmd.ROOTS, usage.read_ledger(Path(os.environ["TR_LEDGER"])))
+    assert [path for _, path in runs] == [elsewhere] and orphans == []
+
+
+def test_by_tag_groups_on_the_ledger_tag_with_an_untagged_row_and_the_tag_and_step_filters(tree, monkeypatch, capsys):
+    plain = save_one(tree / "data")
+    monkeypatch.setenv("TR_COST_TAG", "worker:G99")
+    tagged = [save_one(tree / "data"), save_one(tree / "data")]
+    monkeypatch.delenv("TR_COST_TAG")
+    main(["usage", "--by", "tag"])
+    assert lines(capsys)[:4] == [
+        "tag         calls  tokens in  tokens out       cost  mean latency",
+        "(untagged)      1       1000         200  $0.010100        100 ms",
+        "worker:G99      2       2000         400  $0.020200        100 ms",
+        "total           3       3000         600  $0.030300        100 ms",
+    ]
+    main(["usage", "--tag", "worker:G99"])
+    assert [line.split()[0] for line in lines(capsys)[1:4]] == [tagged[0].stem, tagged[1].stem, "total"]
+    main(["usage", "--by", "step", "--step", "worker"])  # the ledger's step (the tag's) wins over trace.step
+    assert [line.split()[:2] for line in lines(capsys)[1:3]] == [["worker", "2"], ["total", "2"]]
+    main(["usage", "--by", "run", "--step", "analyze"])
+    assert [line.split()[0] for line in lines(capsys)[1:3]] == [plain.stem, "total"]
+    main(["usage", "--by", "run", "--tag", "nobody"])
+    assert lines(capsys)[0] == f"no model calls under {tree / 'data' / 'runs'}"
+    assert [(r.key, r.calls) for r in usage.by_tag(every_call())] == [(usage.UNTAGGED, 3)]  # no ledger: no tag
+
+
+def test_a_call_without_cost_puts_the_star_and_a_no_cost_column_on_run_file_and_ledger_only_rows(tree, capsys):
+    priced = save_one(tree / "data")
+    scratch = tree / "data-dev" / "unpriced"
+    unpriced = save_one(scratch, Fake(dict.fromkeys(ITEMS), {}))
+    shutil.rmtree(scratch)
+    main(["usage", "--all-dirs"])
+    assert lines(capsys)[:5] == [
+        "run                   kind     arm  calls  tokens in  tokens out        cost  no-cost",
+        f"{priced.stem}  analyze  -        1       1000         200   $0.010100        0",
+        f"{unpriced.stem}  ledger   -        1       1000         200  $0.000000*        1",
+        "total                                   2       2000         400  $0.010100*        1",
+        "* a call in this row has no recorded cost, so the cost is a lower bound",
+    ]
+    main(["usage", "--by", "tag", "--all-dirs"])
+    assert lines(capsys)[1:3] == [
+        "(untagged)      2       2000         400  $0.010100*        1        100 ms",
+        "total           2       2000         400  $0.010100*        1        100 ms",
+    ]
+
+
+def test_the_ledger_adds_no_column_to_the_default_output_when_every_call_has_a_cost(tree, monkeypatch, capsys):
+    monkeypatch.setenv("TR_COST_TAG", "worker:G99")
+    write_pipeline_arm(tree / "data")
+    main(["usage"])
+    with_ledger = capsys.readouterr().out
+    Path(os.environ["TR_LEDGER"]).unlink()
+    main(["usage"])
+    assert capsys.readouterr().out == with_ledger
+    assert with_ledger.splitlines()[0] == "run                   kind  arm             calls  tokens in  tokens out       cost"

@@ -1,12 +1,20 @@
-usage: tr usage [-h] [--by {arm,call,day,model,run,step}] [--run RUN_ID]
-                [--since DATE]
+usage: tr usage [-h] [--by {arm,call,day,model,run,step,tag}] [--run RUN_ID]
+                [--since DATE] [--step STEP] [--tag TAG] [--all-dirs]
 
-cost per run, arm, day or call from the saved run files, then the OpenRouter
-key's lifetime spend and the two reconciled (free reads)
+cost per run, arm, day, call, step, model or tag from the saved run files and
+the cost ledger, then the OpenRouter key's lifetime spend and the two
+reconciled (free reads)
 
 options:
   -h, --help            show this help message and exit
-  --by {arm,call,day,model,run,step}
+  --by {arm,call,day,model,run,step,tag}
                         group the calls by (default run)
   --run RUN_ID          only this run's calls
   --since DATE          only calls on or after this New York date (YYYY-MM-DD)
+  --step STEP           only runs of this step (the ledger's, e.g. analyze or
+                        worker)
+  --tag TAG             only runs saved under this TR_COST_TAG (e.g.
+                        worker:G99)
+  --all-dirs            every runs directory under data/ and data-dev/, plus
+                        the ledger rows whose run file is gone, one row per
+                        run id
