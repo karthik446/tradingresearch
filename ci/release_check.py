@@ -3,7 +3,7 @@ setup, the .gitignore audit, no tracked data or keys. No network, no model call,
 
 `uv run python ci/release_check.py` prints one `ok|FAIL <check>: <detail>` line per check and exits 1 on any FAIL.
 `--fresh-clone` also clones HEAD into a temp dir, runs `uv sync --frozen` there (needs network), then the gate and
-`pytest -q -x` with `TR_DATA_DIR` inside the temp dir, and removes the temp dir.
+`pytest -q -x` (without the retrieval-index test) with `TR_DATA_DIR` inside the temp dir, and removes the temp dir.
 """
 
 from __future__ import annotations
@@ -35,6 +35,9 @@ SECRETS = {
     "aws_key_id": re.compile(r"AKIA[0-9A-Z]{16}"),
 }
 SHOWN = 10  # hits named per FAIL line
+# The one test that needs the retrieval index, a reader-built, networked artefact (`tr retrieval build`) that a fresh
+# clone does not have; it says so itself when it fails, so the clone run leaves it out.
+NO_INDEX_TEST = "--deselect=tests/test_week6.py::test_every_gold_quote_resolves_in_the_local_index"
 UNSET = ("TR_PROVIDER", "TR_ENV_FILE", "VIRTUAL_ENV")  # the clone runs as a fresh reader would: no provider, no key
 
 Result = tuple[bool, str]
@@ -184,13 +187,13 @@ def check_fresh_clone(root: Path) -> Result:
                  (["git", "checkout", "--quiet", "--detach", head], clone),
                  (["uv", "sync", "--frozen"], clone),
                  (["uv", "run", "--frozen", "python", "ci/gate.py"], clone),
-                 (["uv", "run", "--frozen", "pytest", "-q", "-x"], clone)]
+                 (["uv", "run", "--frozen", "pytest", "-q", "-x", NO_INDEX_TEST], clone)]
         for cmd, cwd in steps:
             done = run(cmd, cwd, env)
             if done.returncode:
                 last = next((ln for ln in reversed(f"{done.stdout}\n{done.stderr}".splitlines()) if ln.strip()), "")
                 return False, f"`{' '.join(cmd[:4])}` exited {done.returncode}: {last.strip()[:200]}"
-    return True, f"HEAD {head[:12]} in a clean clone: uv sync --frozen, ci/gate.py and pytest -q -x pass"
+    return True, f"HEAD {head[:12]} in a clean clone: uv sync --frozen, ci/gate.py and pytest -q -x pass (the retrieval-index test is deselected)"
 
 
 # -- command --------------------------------------------------------------------------------------------------------

@@ -544,7 +544,8 @@ uv run python ci/release_check.py --fresh-clone   # also: clone HEAD, uv sync --
   architecture` and `Reader setup`, the latter naming `ANTHROPIC_API_KEY`, `APCA_API_KEY_ID` and `US-only`).
 - **Fresh clone.** Clones HEAD (committed work only) into a temp dir, runs `uv sync --frozen`, `ci/gate.py` and
   `pytest -q -x` there with `TR_DATA_DIR` inside the temp dir and no `TR_PROVIDER` or `TR_ENV_FILE`, then removes
-  the temp dir. It needs network for `uv sync`.
+  the temp dir. It needs network for `uv sync`. It deselects `tests/test_week6.py::test_every_gold_quote_resolves_in_the_local_index`:
+  that test needs the retrieval index a reader builds with `tr retrieval build` (network), which a clone does not have.
 
 ## Demo: free commands, 2026-11-17 04:46 UTC
 

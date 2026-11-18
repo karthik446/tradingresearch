@@ -140,12 +140,12 @@ def test_fresh_clone_runs_clone_sync_gate_and_tests_in_a_removed_temp_dir(tmp_pa
     out = capsys.readouterr().out.splitlines()
     assert code == 0
     assert out[-2] == "fresh-clone: needs network for `uv sync --frozen`; no key and no model call"
-    assert out[-1] == f"ok fresh_clone: HEAD {head[:12]} in a clean clone: uv sync --frozen, ci/gate.py and pytest -q -x pass"
+    assert out[-1] == f"ok fresh_clone: HEAD {head[:12]} in a clean clone: uv sync --frozen, ci/gate.py and pytest -q -x pass (the retrieval-index test is deselected)"
     [clone_cmd, *rest] = [cmd for cmd, _, _ in stub.calls]
     temp = Path(clone_cmd[-1]).parent
     assert clone_cmd == ["git", "clone", "--quiet", str(root), str(temp / "repo")]
     assert rest == [["git", "checkout", "--quiet", "--detach", head], ["uv", "sync", "--frozen"],
-                    ["uv", "run", "--frozen", "python", "ci/gate.py"], ["uv", "run", "--frozen", "pytest", "-q", "-x"]]
+                    ["uv", "run", "--frozen", "python", "ci/gate.py"], ["uv", "run", "--frozen", "pytest", "-q", "-x", release_check.NO_INDEX_TEST]]
     assert all(cwd == temp / "repo" for _, cwd, _ in stub.calls[1:])
     env = stub.calls[-1][2]
     assert env["TR_DATA_DIR"] == str(temp / "data") and "TR_PROVIDER" not in env and "TR_ENV_FILE" not in env
