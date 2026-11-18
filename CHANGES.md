@@ -2,6 +2,36 @@
 
 ## Unreleased
 
+- **Week-8 plumbing: a batch judge (G15-SPIKE §1.3).** `tr grade --judge --batch` submits the P1 judge calls as one
+  OpenRouter batch (the sync request bodies, the normal model slug, `custom_id` = thesis id, the `:batch` price held to
+  the `--judge-max-usd` cap; the record goes in `<data_dir>/batches/<id>.json` and nothing in the journal).
+  `tr grade --judge --collect <id>` polls once: still running exits 0; failed, expired or cancelled exits 1 and stores
+  nothing; completed sends each answer through the sync `run_eval` via `providers.BatchReplay`, so the run file, spans,
+  `ScoreRecord` and verdict match a sync judge, and a derived cost is reconciled against the batch `usage.cost` (exit 1
+  beyond $0.001). An empty `OPENROUTER_API_KEY` exits 2 before any request. `evals.p1_judge` is split into
+  `judge_item` and `judge_run`, behaviour unchanged. Fake-HTTP tests only (`tests/test_batch.py`); never run against
+  the real endpoint, so turnaround, per-entry usage and the real `usage.cost` are unmeasured.
+
+- **`tr exp run`: the plan-total pre-flight (COST-3 item 3).** Before the first call, each arm's whole plan is
+  priced the way its CallBudgets reserve it (`experiment.plan`). That covers every analysis request, built as the
+  run builds it (plain, drop/retrieval/guards wrapper, tools first turn, routed analyze model, cache-write prices for
+  a cached arm). A pipeline arm also gets one thesis request per item, priced twice. The floor assumes an analysis
+  that cites nothing and claims nothing. The upper bound adds the analysis's whole output as claims and every
+  headline it was shown. If an arm's floor is over `max_usd_per_arm`, `OverCap` is raised: `tr exp run` prints the
+  arm, the floor, the cap and the smallest whole-cent cap that clears it, then exits 2 with no call. If only the upper
+  bound is over, a `WARNING arm ...` header line is printed and the run goes on. When the plan fits, a `plan worst
+  case $X per arm` line follows the arm lines. `run_arms` is now `stage` + `plan` + `run_staged`, so every caller
+  is checked.
+  - Why: on 2026-11-17 the first W7RefB attempt spent $0.644 on a pipeline arm's 30 analyses. The 30 thesis
+    reservations ($1.011862) then did not fit the $1.50 cap, and `BudgetExceeded` stopped the run after $1.029382
+    with no result (ADR-010 Amendment 1). The COST-SPIKE addendum (2026-11-17 14:50) shows the same mid-run stop at
+    the account level: a 402 at a $0.365 balance, after the analyses had spent.
+  - On the week-7 shape (30 injected items at Sonnet 5.5 rates, fixture prompts), the floor is $2.249640. At $1.50
+    the run is now refused with 0 calls, where HEAD sent 50 before stopping. At the shipped $2.50 it runs, with a
+    warning for the two inject arms (upper bound $2.518230).
+  - Tests: `tests/test_preflight.py`. `test_a_cached_arm_runs_on_the_cached_copy...` now also sees the pre-flight's
+    two plan budgets (listed and 1.25x prices) before the run's four.
+
 - **`tr usage --by step` and `--by model`: the cost table (G15-SPIKE §3).** Both views print calls, items (distinct
   item ids), tokens in, cache write and cache read tokens (`-` when no call reported them), tokens out, cost, `$/item`
   and the p50/p95 over items of each item's summed latency (nearest rank). The step comes from the run: `analyze` /

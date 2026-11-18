@@ -390,10 +390,11 @@ def test_a_cached_arm_runs_on_the_cached_copy_its_fallback_too_reserved_at_the_w
     # the clean arm on the plain adapter; the cache arm's analyze fails once and its fallback goes through the copy
     assert log == [(None, MODEL), (None, MODEL), ("5m", MODEL), ("5m", FALLBACK), ("5m", MODEL)]
     assert [body["model"] for body in sent] == [MODEL, MODEL, FALLBACK, MODEL]
-    # clean analyze and thesis budgets at the listed prices, the cache arm's at 1.25x input, output unchanged
+    # the pre-flight's plan per arm first (COST-3a), then the clean analyze and thesis budgets at the listed prices,
+    # the cache arm's at 1.25x input, output unchanged
     listed = priced_models[MODEL]
     assert [b[MODEL].prompt_usd_per_token / listed.prompt_usd_per_token for b in budgets] == pytest.approx(
-        [1, 1, 1.25, 1.25])
+        [1, 1.25, 1, 1, 1.25, 1.25])
     assert {b[MODEL].completion_usd_per_token for b in budgets} == {listed.completion_usd_per_token}
     # cache is not part of input_hash: the cached arm's analysis has the plain injected arm's hash
     outcome = injected.outcomes["FAKEA:2026-11-13:fakea-h1"]

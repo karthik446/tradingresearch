@@ -5,6 +5,7 @@ the same compare block for two stored runs ($0)."""
 
 from __future__ import annotations
 
+import sys
 from collections import Counter
 from collections.abc import Sequence
 from pathlib import Path
@@ -36,8 +37,20 @@ def cmd_exp_run(args, cfg) -> None:
                  if arm.kind == "pipeline" else f"model {arm.model}")
         print(f"    arm {arm.name}: {steps}" + (f"  cache {arm.cache}" if arm.cache else ""))
     try:
-        results = experiment.run_arms(conn, config, contexts, provider, providers.prices(cfg, "experiment", models),
-                                      cfg.data_dir)
+        prices = providers.prices(cfg, "experiment", models)
+        staged = experiment.stage(config, contexts, provider, cfg.data_dir)
+        try:  # every arm's worst case for the whole plan, before the first call (COST-3 item 3)
+            worst = experiment.plan(config, staged, provider, prices)
+        except experiment.OverCap as exc:
+            print(exc, file=sys.stderr)
+            raise SystemExit(2) from None
+        top = max(worst, key=lambda name: worst[name].bound)  # a pipeline arm's thesis prompts: up to; and at least
+        least = f", at least ${worst[top].floor:.6f}" if worst[top].floor != worst[top].bound else ""
+        print(f"plan worst case ${worst[top].bound:.6f} per arm (arm {top}{least}), "
+              f"cap ${config.max_usd_per_arm:.2f}")
+        for line in experiment.warnings(config, worst):
+            print(line)
+        results = experiment.run_staged(conn, config, staged, provider, prices, cfg.data_dir)
     finally:
         provider.close()
     records, _ = guards.read_audit(cfg.data_dir)

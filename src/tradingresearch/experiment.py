@@ -15,6 +15,7 @@ arm's system prompt on Anthropic for "5m" or "1h".
 
 from __future__ import annotations
 
+import math
 import re
 import threading
 import tomllib
@@ -26,7 +27,7 @@ from pathlib import Path
 from gigai_core import CallBudget, Dataset, DatasetItem, Run
 from gigai_core import compare as core_compare
 from gigai_core import run as run_eval
-from gigai_core.budget import budgeted
+from gigai_core.budget import CHARS_PER_TOKEN, budgeted
 from gigai_core.comparison import BOOTSTRAP_SEED, Comparison, ComparisonRefused
 from gigai_core.graders.builtin import parse_json_text
 from gigai_core.graders.protocol import CannotGrade, Grader
@@ -421,10 +422,31 @@ class View:
     dropped: frozenset[str]
 
 
+@dataclass(frozen=True)
+class Staged:
+    """What every arm asks, built before the first call: the clean dataset, the injected one (the clean one again
+    when no arm injects) and each retrieval arm's passages by item id."""
+
+    clean: Prepared
+    injected: Prepared
+    retrieved: dict[str, dict[str, retrieval_store.Retrieved]]
+
+    def data(self, arm: Arm) -> Prepared:
+        return self.injected if arm.inject else self.clean
+
+
 def run_arms(conn, config: Config, contexts: list[an.Context], provider, prices: dict, data_dir: Path
              ) -> list[ArmResult]:
-    """One run per arm on one Dataset (an inject arm's: the injected one). Each parsed sample of an analyze arm is
-    also stored as an Analysis, so `tr check` reads it; a pipeline arm stores nothing."""
+    """One run per arm on one Dataset (an inject arm's: the injected one), after the plan-total pre-flight. Each
+    parsed sample of an analyze arm is also stored as an Analysis, so `tr check` reads it; a pipeline arm stores
+    nothing. `tr exp run` calls the three steps itself, to print the plan between them."""
+    staged = stage(config, contexts, provider, data_dir)
+    plan(config, staged, provider, prices)
+    return run_staged(conn, config, staged, provider, prices, data_dir)
+
+
+def stage(config: Config, contexts: list[an.Context], provider, data_dir: Path) -> Staged:
+    """Every refusal that needs no price, and every arm's input, before the first arm: no call made."""
     judges = [g.id for g in registry(list(config.graders)) if g.kind != "code"]
     if judges and any(arm.mode == "tools" or arm.drop for arm in config.arms):  # before the first arm: no call made
         raise SystemExit(f"{config.name}: a tools or drop arm grades with code graders only, not {', '.join(judges)}")
@@ -452,15 +474,124 @@ def run_arms(conn, config: Config, contexts: list[an.Context], provider, prices:
     # index or injection target costs no call
     retrieved = {arm.name: passages_for(config, arm, injected if arm.inject else clean, data_dir)
                  for arm in config.arms if arm.retrieval}
-    return [run_arm(conn, config, arm, injected if arm.inject else clean, retrieved.get(arm.name, {}), provider,
-                    prices, data_dir) for arm in config.arms]
+    return Staged(clean, injected, retrieved)
 
 
-def run_arm(conn, config: Config, arm: Arm, data: Prepared, found: dict[str, retrieval_store.Retrieved], provider,
-            prices: dict, data_dir: Path) -> ArmResult:
-    """One arm's run; a guards arm's fetched hits are audited, a pipeline arm goes on to its theses."""
-    dataset = data.dataset
-    graders = registry(list(config.graders), arm.drop)
+def run_staged(conn, config: Config, staged: Staged, provider, prices: dict, data_dir: Path) -> list[ArmResult]:
+    return [run_arm(conn, config, arm, staged.data(arm), staged.retrieved.get(arm.name, {}), provider, prices,
+                    data_dir) for arm in config.arms]
+
+
+# ---------- the plan-total pre-flight (COST-3 item 3) ----------
+
+# The thesis turn past its SOURCES table and claims: the CLAIMS header, the reference price, the stop floor, three
+# horizon lines and the closing line (about 560 characters), with room to spare. Only the upper bound counts it.
+THESIS_FRAME_CHARS = 1000
+
+
+@dataclass(frozen=True)
+class Worst:
+    """One arm's worst case before any call, in USD, at the reservations its CallBudgets make (gigai-core's own
+    estimate: ceil(chars / 4) input tokens at the prompt price, max_output_tokens at the completion price). A
+    pipeline arm's thesis prompts are built from its analysis replies, so they are bounded both ways: `floor` takes
+    the smallest analysis (no claims, no headline cited), `bound` the largest (claims as long as the analysis call's
+    whole output, every headline the analysis was shown). Any other arm has `floor == bound`."""
+
+    floor: float
+    bound: float
+
+
+class OverCap(Exception):
+    """An arm's plan floor is over `max_usd_per_arm`: its CallBudget would stop it part way, after spending. Raised
+    before any call; `tr exp run` prints it and exits 2."""
+
+
+def plan(config: Config, staged: Staged, provider, prices: dict) -> dict[str, Worst]:
+    """Every arm's worst case, by arm name; `OverCap` naming each arm whose floor does not fit the cap."""
+    worst = {arm.name: worst_case(arm, staged.data(arm), staged.retrieved.get(arm.name, {}), provider, prices)
+             for arm in config.arms}
+    cap = config.max_usd_per_arm
+    if over := [(name, w) for name, w in worst.items() if w.floor > cap]:
+        raise OverCap("\n".join(
+            f"{config.name}: arm {name}: plan worst case is at least ${w.floor:.6f}, over max_usd_per_arm "
+            f"${cap:.2f}; the smallest cap that clears it is ${cents_up(w.floor):.2f} (no call made)"
+            for name, w in over))
+    return worst
+
+
+def warnings(config: Config, worst: Mapping[str, Worst]) -> list[str]:
+    """The arms whose floor fits but whose upper bound does not: they run, and may stop part way."""
+    cap = config.max_usd_per_arm
+    return [f"WARNING arm {name}: plan worst case up to ${w.bound:.6f} with every thesis prompt at its largest, over "
+            f"the cap ${cap:.2f} (floor ${w.floor:.6f} fits): its thesis stage may stop part way"
+            for name, w in worst.items() if w.bound > cap]
+
+
+def cents_up(usd: float) -> float:
+    """The smallest whole-cent cap at or above `usd` (CallBudget passes a reservation equal to what is left)."""
+    return math.ceil(round(usd * 100, 6)) / 100
+
+
+def worst_case(arm: Arm, data: Prepared, found: dict[str, retrieval_store.Retrieved], provider,
+               prices: dict) -> Worst:
+    """One arm's plan: every analysis request as its budget plans it, plus for a pipeline arm one thesis request per
+    item at each end, all priced by CallBudget's `plan` (the arm's cache-write prices; a missing price refused)."""
+    built = armed(arm, data, found, provider, prices)
+    budget = CallBudget(max_usd=math.inf, prices=built.prices)
+    analysis = budget.plan(analysis_requests(arm, data, built.routed, built.views))
+    if arm.kind != "pipeline":
+        return Worst(analysis, analysis)
+    smallest, largest = thesis_requests(arm, data)
+    return Worst(round(analysis + budget.plan(smallest), 6), round(analysis + budget.plan(largest), 6))
+
+
+def analysis_requests(arm: Arm, data: Prepared, routed, views: dict[str, View]) -> list[ModelRequest]:
+    """The requests an arm's analysis budget plans on, one per item, built as `run_tools`, `run_masked` and core
+    `run` build them."""
+    if arm.mode == "tools":
+        return tools_requests(arm, data.dataset, data.by_item)
+    if masks(arm, views):
+        return list(masked_requests(arm, data.dataset, routed).values())
+    system = Turn(role="system", content=an.system_prompt(arm.prompt))
+    return [ModelRequest(settings=an.call_settings(arm.analyze_model),
+                         turns=(system, Turn(role="user", content=item.prompt))) for item in data.dataset.items]
+
+
+def thesis_requests(arm: Arm, data: Prepared) -> tuple[list[ModelRequest], list[ModelRequest]]:
+    """A pipeline arm's thesis requests, one per item, before any analysis exists. Smallest: the user turn is the
+    SOURCES table of an analysis that cites no headline and makes no claim (`th.source_block`, which rebuilds it
+    from the snapshot the analysis keeps). Largest: the item's analysis prompt (its SOURCES table and every headline
+    shown, a superset of the cited ones), the claims as long as the analysis call's whole output at CallBudget's
+    four characters a token, and the frame."""
+    settings = th.call_settings(arm.thesis_model, arm.thesis_prompt)
+    system = Turn(role="system", content=an.system_prompt(arm.thesis_prompt))
+    claims = an.call_settings(arm.analyze_model).max_output_tokens * CHARS_PER_TOKEN
+
+    def request(text: str) -> ModelRequest:
+        return ModelRequest(settings=settings, turns=(system, Turn(role="user", content=text)))
+    smallest = [request(sources_only(data.by_item[item.id])) for item in data.dataset.items]
+    largest = [request(item.prompt + " " * (claims + THESIS_FRAME_CHARS)) for item in data.dataset.items]
+    return smallest, largest
+
+
+def sources_only(ctx: an.Context) -> str:
+    """`th.source_block` of an analysis of `ctx` that cites no headline."""
+    sources, rows = an.snapshot_rows(ctx.snapshot)
+    return an.render(an.Context(ctx.ticker, ctx.session, ctx.snapshot, sources, rows, ())).rsplit("\n\n", 1)[0]
+
+
+@dataclass(frozen=True)
+class Armed:
+    """An arm's providers and prices: `base` routed, cached and with its fallback, `routed` with the arm's views,
+    mask or passages over it, `prices` at the cache-write rate for a cached arm."""
+
+    base: object
+    routed: object
+    views: dict[str, View]
+    prices: dict
+
+
+def armed(arm: Arm, data: Prepared, found: dict[str, retrieval_store.Retrieved], provider, prices: dict) -> Armed:
     base = provider.routed(arm.provider) if arm.provider else provider
     if arm.cache:  # the cached copy, reserved at the cache-write rate; a fallback asks through it too
         base = base.cached(arm.cache)
@@ -468,10 +599,24 @@ def run_arm(conn, config: Config, arm: Arm, data: Prepared, found: dict[str, ret
     if arm.route.fallback:
         base = with_fallback(base, arm.route.fallback)
     views = guarded_views(arm, data, found)
-    routed = wrapped(arm, dataset, found, base, views)
+    return Armed(base, wrapped(arm, data.dataset, found, base, views), views, prices)
+
+
+def masks(arm: Arm, views: dict[str, View]) -> bool:
+    """Whether an arm's analysis requests are built here (`run_masked`) rather than by core `run`."""
+    return bool(arm.drop or arm.retrieval or views)
+
+
+def run_arm(conn, config: Config, arm: Arm, data: Prepared, found: dict[str, retrieval_store.Retrieved], provider,
+            prices: dict, data_dir: Path) -> ArmResult:
+    """One arm's run; a guards arm's fetched hits are audited, a pipeline arm goes on to its theses."""
+    dataset = data.dataset
+    graders = registry(list(config.graders), arm.drop)
+    built = armed(arm, data, found, provider, prices)
+    base, routed, views, prices = built.base, built.routed, built.views, built.prices
     if arm.mode == "tools":
         run = run_tools(config, arm, dataset, data.by_item, routed, graders, prices, data_dir)
-    elif arm.drop or arm.retrieval or views:
+    elif masks(arm, views):
         grade_as = {item.id: grading_view(item.expected, found.get(item.id), views.get(item.id))
                     for item in dataset.items} if arm.retrieval or views else None
         run = run_masked(config, arm, dataset, routed, graders, prices, data_dir, grade_as)
@@ -740,17 +885,23 @@ def with_passages(expected: dict, retrieved: retrieval_store.Retrieved) -> dict:
 def run_tools(config: Config, arm: Arm, dataset: Dataset, by_item: dict[str, an.Context], provider,
               graders: list[Grader], prices: dict, data_dir: Path) -> Run:
     """A `mode = "tools"` arm as a gigai-core Run: core `run` asks once per item, so the tool loop runs here."""
-    from .tools import TOOLS
     budget = CallBudget(max_usd=config.max_usd_per_arm, prices=prices)
-    system = Turn(role="system", content=an.system_prompt(arm.prompt))
-    budget.plan([ModelRequest(settings=an.call_settings(arm.model), tools=TOOLS,
-                              turns=(system, Turn(role="user", content=an.tools_prompt(by_item[item.id]))))
-                 for item in dataset.items])
+    budget.plan(tools_requests(arm, dataset, by_item))
 
     def ask(item: DatasetItem, subject, run_id: str, trace: JsonlTrace) -> Sample:
         return an.analyze_with_tools(by_item[item.id], subject, model=arm.model, prompt_version=arm.prompt,
                                      item=item, run_id=run_id, trace=trace)
     return run_items(config, arm, dataset, provider, graders, budget, data_dir, ask)
+
+
+def tools_requests(arm: Arm, dataset: Dataset, by_item: dict[str, an.Context]) -> list[ModelRequest]:
+    """A tools arm's first request per item, what its budget plans on (the tool loop's later turns are reserved
+    as they come)."""
+    from .tools import TOOLS
+    system = Turn(role="system", content=an.system_prompt(arm.prompt))
+    return [ModelRequest(settings=an.call_settings(arm.model), tools=TOOLS,
+                         turns=(system, Turn(role="user", content=an.tools_prompt(by_item[item.id]))))
+            for item in dataset.items]
 
 
 def run_masked(config: Config, arm: Arm, dataset: Dataset, provider: masking.Masked | masking.Augmented,
@@ -759,16 +910,22 @@ def run_masked(config: Config, arm: Arm, dataset: Dataset, provider: masking.Mas
     item prompt), so the masked or augmented request, what the model saw, is built and traced here; the dataset, and
     its digest, stay full. `grade_as` replaces an item's `expected` for the graders (a retrieval arm's passages)."""
     budget = CallBudget(max_usd=config.max_usd_per_arm, prices=prices)
-    system = Turn(role="system", content=an.system_prompt(arm.prompt))
-    sent = {item.id: provider.request(ModelRequest(
-                settings=an.call_settings(arm.analyze_model), turns=(system, Turn(role="user", content=item.prompt)),
-                metadata={"item_id": item.id, "repeat_index": 0}))
-            for item in dataset.items}
+    sent = masked_requests(arm, dataset, provider)
     budget.plan(list(sent.values()))
 
     def ask(item: DatasetItem, subject, run_id: str, trace: JsonlTrace) -> Sample:
         return asked_once(item, sent[item.id], subject, run_id, trace)
     return run_items(config, arm, dataset, provider, graders, budget, data_dir, ask, grade_as)
+
+
+def masked_requests(arm: Arm, dataset: Dataset, provider: masking.Masked | masking.Augmented
+                    ) -> dict[str, ModelRequest]:
+    """A drop, retrieval or guards arm's request per item id, built by its wrapper: what the model is sent."""
+    system = Turn(role="system", content=an.system_prompt(arm.prompt))
+    return {item.id: provider.request(ModelRequest(
+                settings=an.call_settings(arm.analyze_model), turns=(system, Turn(role="user", content=item.prompt)),
+                metadata={"item_id": item.id, "repeat_index": 0}))
+            for item in dataset.items}
 
 
 def run_items(config: Config, arm: Arm, dataset: Dataset, provider, graders: list[Grader], budget: CallBudget,

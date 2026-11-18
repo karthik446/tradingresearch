@@ -243,6 +243,17 @@ uv run tr bakeoff report                 # inputs to the pick rule; the operator
 Measured teacher cost so far: `deepseek/deepseek-v4-pro`, one analyze call $0.004119 (run_7d0a596b94a44095) and one
 thesis call $0.003016 (G6c's fixture capture, 2026-11-17).
 
+## Experiment cap: the plan pre-flight
+
+Before the first call, `tr exp run` prices each arm's whole plan the way its CallBudgets reserve it: every analysis
+request, and for a pipeline arm one thesis request per item. A thesis prompt is built from its analysis reply, so it
+gets two prices. The floor assumes an analysis with no claims and no cited headline; the upper bound assumes the
+longest possible reply. If any arm's floor is over `max_usd_per_arm`, the run is refused with **exit code 2** and no
+call is made. The message (on stderr) names the arm, the floor, the cap and the smallest whole-cent cap that clears
+the floor. Raise the cap or cut items, then run again. If only the upper bound is over the cap, a `WARNING arm ...`
+line is printed in the header and the run goes on, but its thesis stage may still stop part way with
+`BudgetExceeded`. When the plan fits, the header prints `plan worst case $X per arm`.
+
 ## Experiment arms: `mode`
 
 An arm may set `mode = "fixed"` (the default: the context goes in the prompt) or `mode = "tools"` (the model asks for
