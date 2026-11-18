@@ -65,7 +65,7 @@ store holds headlines for every ticker on every session below.
   - fallback count on `routed`: the analysis calls whose served model is Sonnet 5.5 rather than the Haiku 5.5 that was
     asked. No `tr usage` view shows it (`--by call` has no served-model column and `--by model` keys on the asked
     model), so it is counted from the arm's analysis run in `traces/`, where each call records the model that
-    answered in `provider_route`;
+    answered in `resolved_model`;
 - Excluded:
   - P1 vs Sonnet: the journal has 1 graded trade and 0 verdicts, and `P1Judge` cannot grade samples, so it cannot be
     measured in week 8;
@@ -91,21 +91,55 @@ store holds headlines for every ticker on every session below.
 Sonnet 5.5 on both steps, no cache. The result and the recommendation go in a later **Result** section, read under
 the registered rule; the status stays proposed until then.
 
-**Results** (awaiting the run; the `run_<16 hex>` ids the numbers come from go beside each table, never in a cell):
+**Results** (one run, 2026-11-17 New York; run ids in the list below the tables, never in a cell):
 
 | metric | sonnet | routed | cached |
 |---|---|---|---|
-| `all_claims_valid` (mean of the items, 95% CI) | awaiting experiment | awaiting experiment | awaiting experiment |
-| $ per ticker-day (USD, analyze plus thesis) | awaiting experiment | awaiting experiment | awaiting experiment |
-| p50 latency per item, analyze step (ms) | awaiting experiment | awaiting experiment | awaiting experiment |
-| p95 latency per item, analyze step (ms) | awaiting experiment | awaiting experiment | awaiting experiment |
-| thesis changed (share of items, against `sonnet`) | n/a | awaiting experiment | awaiting experiment |
+| `all_claims_valid` (mean of the items) | 0.767 | 0.800 | 0.700 |
+| $ per ticker-day (USD, analyze plus thesis) | 0.0385 | 0.0225 | 0.0325 |
+| p50 latency per item, analyze step (ms) | 7819 | 9714 | 7676 |
+| p95 latency per item, analyze step (ms) | 9515 | 11872 | 11778 |
+| thesis changed (share of items, against `sonnet`) | n/a | 0.617 | 0.650 |
+
+Run ids (analysis run, thesis run): `sonnet` run_1eba503380b7444c, run_b7a046db477e4359; `routed`
+run_98681aba3fe24a79, run_80c8bf85db874007; `cached` run_0311bd3c03344a3a, run_073c4b1e547f4930.
 
 | judge | sync | batch |
 |---|---|---|
 | cost per call (USD) | awaiting run | awaiting run |
 | turnaround (s) | awaiting run | awaiting run |
 | cost per day at 10x shortlist (USD) | awaiting run | awaiting run |
+
+**Result (read under the registered rule, written after the run).**
+- The registered rule passes. `compare sonnet -> routed` printed `all_claims_valid` 0.767 -> 0.800, difference +0.033,
+  95% CI [-0.100, +0.167]. The lower bound -0.100 is above -0.15, so `NoWorseThan("all_claims_valid", margin=0.15,
+  bound="ci_lower")` passes, applied by hand.
+- The registered power caveat applies. The discordant share of the 60 paired items is 20 of 60, ψ = 0.333 (9 items
+  valid only on `sonnet`, 11 only on `routed`), above the registered 0.22. The interval is wide, so the pass is not a
+  proof of non-inferiority. The same-model noise floor is no smaller: `cached` against `sonnet` gave ψ = 0.267 (10 and
+  6), a difference of -0.067 with CI [-0.167, +0.050], whose lower bound is below -0.15 for a pair that differs only
+  by a cache. The earlier resample estimate of ψ 0.10 to 0.25 (G15 spike §2) was too low for these 60 items.
+- Secondary graders, not deciding: `claims_valid` 0.962 -> 0.973 (CI [-0.011, +0.032]); `inferences_grounded` 0.983 ->
+  0.983 (CI [-0.050, +0.050]); `parsed` 1.000 in all three arms. `routed` had one audit reject (`reject=1`).
+- Cost: the analyze step costs $0.0858 on Haiku 5.5 against $1.0304 on Sonnet 5.5 (60 items each; the Haiku output is
+  135,389 tokens against 66,809), 92% less. The thesis step is unchanged ($1.2659 against $1.2783). Per ticker-day,
+  `routed` costs 41% less than `sonnet` (0.0225 against 0.0385). The run spent $5.6118 in all ($2.3086, $1.3517,
+  $1.9515), above the expected $5.4 and below every cap.
+- Latency: Haiku 5.5 is slower per item on the analyze step (p50 9714 ms against 7819 ms), because it writes about
+  twice as many tokens.
+- Drift: the thesis changed on 0.617 of the items under `routed` (CI [0.483, 0.750]) and on 0.650 under `cached`
+  (CI [0.483, 0.800]). The two are the same within noise: a thesis changes between any two runs about as often as it
+  changes under a different analyze model, so `thesis changed` does not separate the model effect.
+- Fallback: 0 of 60 analysis calls of `routed` were served by Sonnet 5.5 (every span's `resolved_model` is
+  `claude-haiku-5-5`), so the fallback path did not run in this experiment.
+- Cache: the cache worked. Analyze: 1,216 cache-write tokens once and 71,744 read tokens (59 calls of 1,216), against 0
+  and 0 on `sonnet`. Thesis: 2,112 written and 124,608 read. `cached` cost 12.7% less on the analysis ($0.8990 against
+  $1.0304) and 17.7% less on the thesis ($1.0525 against $1.2783). The risk registered above did not occur: the cached
+  analyze block is 1,216 tokens, so the "about 510 tokens" estimate of the prompt was too low.
+- Recommendation: route the analyze step to Haiku 5.5 only after a second run settles the quality question, because
+  the interval cannot rule out a loss of 0.10 and ψ is above the registered 0.22. The saving is real and measured
+  (41% per ticker-day), the quality evidence is not conclusive. `tr daily` stays on Sonnet 5.5 on both steps; nothing
+  was adopted.
 
 **Consequences.**
 - `tr exp run` on `routing.toml` prints a header line per arm (analyze model, thesis model, fallback, cache), a

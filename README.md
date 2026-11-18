@@ -48,6 +48,8 @@ Week 6 as measured (ADR-009, `experiments/retrieval.toml`, 20 ticker-days, analy
 
 Week 7 as measured (ADR-010, `experiments/injection.toml`, 30 blind injections, pipeline arms on Anthropic's API): attack success was 0.800 with the guards off and 0.767 with them on, a difference of 0.033 against the pre-registered 0.20, so the guards did not pass and the live `guards` setting stays empty. A clean rerun alone changed 0.500 of the theses, so the noise floor is large; false rejection was 0 of 10 clean items. The first attempt stopped on its budget pre-flight after $1.03 with no result; ADR-010 Amendment 1 raised the arm cap from $1.50 to $2.50.
 
+Week 8 as measured (ADR-011, `experiments/routing.toml`, 60 ticker-days per arm, pipeline arms on Anthropic's API): routing the analyze step to Haiku 5.5 cut its cost by 92% and the cost per ticker-day by 41% ($0.0385 to $0.0225). `all_claims_valid` went from 0.767 to 0.800 with a 95% interval of -0.100 to +0.167, so the registered rule (lower bound at least -0.15) passes, but the interval is wide and 20 of 60 items disagreed between the arms, above the 0.22 the pre-registration had planned for, so the live loop stays on Sonnet 5.5. The prompt cache worked (12.7% off the analysis, 17.7% off the thesis); the fallback model was never used. The run spent $5.61.
+
 ## Prerequisites
 
 All settings live in one file, `.env` at the repo root (git-ignored), copied from `.env.example`, which names every

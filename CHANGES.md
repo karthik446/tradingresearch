@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **Week 8 measured (ADR-011, `docs/measured-costs.md`).** One paid run of `experiments/routing.toml` on Anthropic's API
+  ($5.6118 in all): the registered rule passes (`all_claims_valid` difference +0.033, CI [-0.100, +0.167], margin 0.15)
+  with ψ = 0.333 above the planned 0.22; Haiku 5.5 on the analyze step costs 92% less, 41% less per ticker-day; the
+  cache worked; the fallback never ran. Nothing adopted in `tr daily`. ADR-011 pre-registration committed first
+  (`3792699`).
+
 - **The week-8 contract (`tests/test_week8.py`, G15-SPIKE §4).** Six tests on the two learner parts,
   `experiments/routing.toml` (a baseline, a routed and a cached pipeline arm; every model priced by
   `anthropic.prices`) and `docs/adr/ADR-011-*.md` (options, decision, readings; a pre-registration before the

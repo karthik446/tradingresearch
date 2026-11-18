@@ -261,3 +261,22 @@ prompt and the reply. The first attempt stopped in the thesis stage of `injected
 each call's worst case, $1.011862 for 30 thesis calls, against $0.855998 left of a $1.50 arm cap) and spent
 $1.029382 before it stopped (ADR-010 Amendment 1); the cap is now $2.50 an arm. The GUARDS-SPIKE estimate was $3.6
 for the five arms; the measured total is $3.71 for the run plus $1.03 for the stopped attempt.
+
+## Week 8: routing and caching
+
+One run of `experiments/routing.toml` (ADR-011): three pipeline arms over 10 tickers x 6 sessions (60 items each), each
+item an analysis call then a thesis call on Anthropic's API, `TR_PROVIDER=anthropic`, cost derived from the adapter's
+price table (the Console's billed amount was not read). Run output `data-dev/scratch/w8refb-run.txt`; per-run rows from
+`tr usage --by step --run RUN_ID`.
+
+| Arm | Analysis run | Analysis cost | Thesis run | Thesis cost | Spend | Per ticker-day |
+|---|---|---|---|---|---|---|
+| sonnet | run_1eba503380b7444c | $1.0304 | run_b7a046db477e4359 | $1.2783 | $2.3086 | $0.0385 |
+| routed | run_98681aba3fe24a79 | $0.0858 | run_80c8bf85db874007 | $1.2659 | $1.3517 | $0.0225 |
+| cached | run_0311bd3c03344a3a | $0.8990 | run_073c4b1e547f4930 | $1.0525 | $1.9515 | $0.0325 |
+
+The run spent $5.6118 in all against about $5.4 expected (G15 spike §2); the arm cap was $5.50 and the plan's worst
+case $5.270661 per arm. Haiku 5.5 on the analyze step cost 92% less than Sonnet 5.5 (135,389 output tokens against
+66,809, input tokens equal at 181,139), and the thesis step did not move. The cached arm wrote 1,216 cache tokens once
+and read 71,744 on the analyze step (2,112 written and 124,608 read on the thesis step), so the analyze block is long
+enough to cache. The fallback model answered none of the 60 routed analysis calls.
