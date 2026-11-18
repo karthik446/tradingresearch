@@ -29,6 +29,8 @@ def cmd_grade(args, cfg) -> None:
         raise SystemExit("--batch and --collect go with --judge")
     if args.collect and args.dry_run:
         raise SystemExit("--collect has no dry run: it polls the batch and stores what came back")
+    # a batch's key and model check run first: an empty key exits 2 before grade.run reads bars or writes a grade
+    key = batch_key(cfg) if args.collect or (args.batch and not args.dry_run) else ""
     day = completed_session(args.session, datetime.now(UTC))
     conn = journal.connect(cfg.db_path)
     if all(state == "PROPOSED" for _, state in journal.ungraded_theses(conn)):  # nothing filled: no bars to read
@@ -41,12 +43,12 @@ def cmd_grade(args, cfg) -> None:
     if not args.judge:
         return
     if args.collect:
-        lines, code = collect_lines(conn, args.collect, cfg)
+        lines, code = collect_lines(conn, args.collect, cfg, key)
         print("\n".join(lines))
         if code:
             raise SystemExit(code)
     elif args.batch and not args.dry_run:
-        print("\n".join(submit_lines(conn, args, cfg)))
+        print("\n".join(submit_lines(conn, args, cfg, key)))
     else:
         print("\n".join(judge_lines(conn, args, cfg)))
 
@@ -93,11 +95,11 @@ def head(t: Thesis) -> str:
     return f"{t.ticker:<6} {t.horizon:<5} {t.thesis_id} {t.arm:<10}"
 
 
-def submit_lines(conn, args, cfg) -> list[str]:
+def submit_lines(conn, args, cfg, key: str) -> list[str]:
     """`--judge --batch`: every thesis `tr grade --judge` would judge, as one batch under the same cap; the request
     is the one `run_eval` makes. `<data_dir>/batches/<id>.json` keeps the ids, each prompt's digest, the model and
-    the submit time (never the key). Nothing reaches the journal before `--collect`."""
-    key, cap = batch_key(cfg), args.judge_max_usd
+    the submit time (never the key). Nothing reaches the journal before `--collect`. `key` is `batch_key`'s."""
+    cap = args.judge_max_usd
     waiting = grade.to_judge(conn)
     if not waiting:
         return grade.render_judged([], dry_run=False, max_usd=cap)
@@ -134,11 +136,11 @@ def submit_lines(conn, args, cfg) -> list[str]:
                     f"`tr grade --judge --collect {batch_id}` (record {path})"]
 
 
-def collect_lines(conn, batch_id: str, cfg) -> tuple[list[str], int]:
+def collect_lines(conn, batch_id: str, cfg, key: str) -> tuple[list[str], int]:
     """`--judge --collect <id>`: poll once. Not final: "still <status>", exit 0. Failed, expired or cancelled: exit
     1, nothing stored. Completed: each submitted thesis runs the sync `run_eval` on a `BatchReplay`, then the derived
-    cost sum is printed next to the batch's `usage.cost`; exit 1 when they differ by more than $0.001."""
-    key = batch_key(cfg)
+    cost sum is printed next to the batch's `usage.cost`; exit 1 when they differ by more than $0.001. `key` is
+    `batch_key`'s."""
     if not openrouter.CUSTOM_ID.fullmatch(batch_id):
         raise SystemExit(f"not a batch id: {batch_id!r}")
     path = cfg.data_dir / "batches" / f"{batch_id}.json"

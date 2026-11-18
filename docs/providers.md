@@ -44,13 +44,16 @@ key). `tr grade --judge --collect <id>` polls once. Still running: it says so
 and exits 0. Failed, expired or cancelled: exit 1, nothing stored. Completed: each thesis runs through the same
 `run_eval` as a sync judge, with a provider that answers from the batch result whose `custom_id` matches (results
 come unordered). The run file, spans, ScoreRecord and verdict are those of a sync call. An error entry, a missing
-entry or a prompt that changed since submit is a failed call, so nothing is stored for that thesis. Each call's cost is
-`derived`: tokens times the `:batch` price. Collect prints the sum next to the batch's own `usage.cost` and exits 1 when
-they differ by more than $0.001. The verdicts are kept either way, and the line says the run files hold the derived
-cost. The run's latency is 0, because a batch reports no per-request time. An empty `OPENROUTER_API_KEY` exits 2
-before any request. This path is tested on fake HTTP only (`tests/test_batch.py`) and has never run against the real
-endpoint. Only a paid run will show the real turnaround, which provider OpenRouter picks, whether each result entry
-carries `usage` (without it the derived sum is short and collect exits 1), and the real `usage.cost`.
+entry or a prompt that changed since submit is a failed call, so nothing is stored for that thesis. A result entry
+with no `custom_id` is skipped: the thesis it answered has no result (a failed call) and the other theses still store.
+Each call's cost is `derived`: tokens times the `:batch` price. Collect prints the sum next to the batch's own
+`usage.cost` and exits 1 when they differ by more than $0.001. The verdicts are kept either way, and the line says the
+run files hold the derived cost. The run's latency is 0, because a batch reports no per-request time. With `--batch`
+(not a dry run) or `--collect`, an empty `OPENROUTER_API_KEY` exits 2 first: before the grade step reads Alpaca bars
+or writes a grade, and before any OpenRouter request. This path is tested on fake HTTP only (`tests/test_batch.py`)
+and has never run against the real endpoint. Only a paid run will show the real turnaround, which provider OpenRouter
+picks, whether each result entry carries `usage` (without it the derived sum is short and collect exits 1), and the
+real `usage.cost`.
 
 **Options this repo does not use yet.**
 - *Anthropic Message Batches.* Anthropic's own batch API takes many requests at once at half the standard price and

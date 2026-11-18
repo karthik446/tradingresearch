@@ -1,8 +1,8 @@
 """The batch judge (`tr grade --judge --batch` / `--collect`, G15-SPIKE §1.3) on fake HTTP only: the batch body is the
-sync body under the normal slug, custom_ids are checked before any request, results map by custom_id in any order,
-an error entry is a failed call, a collected answer stores what the sync judge stores, and the derived cost is
-reconciled against the batch's own `usage.cost`. Nothing here reaches OpenRouter; what only a paid run shows is in
-docs/providers.md, "Batch judge"."""
+sync body under the normal slug, custom_ids are checked before any request, an empty key exits 2 before grading,
+results map by custom_id in any order, an entry without a custom_id is skipped, an error entry is a failed call, a
+collected answer stores what the sync judge stores, and the derived cost is reconciled against the batch's own
+`usage.cost`. Nothing here reaches OpenRouter; what only a paid run shows is in docs/providers.md, "Batch judge"."""
 
 from __future__ import annotations
 
@@ -16,9 +16,11 @@ from gigai_core import CallSettings
 from gigai_core.budget import Price
 from gigai_core.providers import ModelRequest, Turn, request_sha256
 
-from test_week3 import MODEL, alpaca_daily, closed, load, recorded_verdict
+from test_grade import D1, Bars, settle
+from test_week3 import MODEL, alpaca_daily, closed, load, recorded_verdict, written
 from tradingresearch import grade, journal, providers, trace
 from tradingresearch.cli import main
+from tradingresearch.commands import grade as grade_command
 from tradingresearch.providers import openrouter
 
 BATCH_ID = "batch_test_1"
@@ -86,14 +88,19 @@ class Fake:
         raise AssertionError(f"unexpected request {request.method} {url}")
 
 
-def workspace(tmp_path, monkeypatch, key: str = "not-a-real-key"):
-    """A data dir holding the closed, graded, unjudged FAKEA thesis, with keys in an env file: (thesis, fake)."""
+def workspace(tmp_path, monkeypatch, key: str = "not-a-real-key", filled: bool = False):
+    """A data dir holding the closed, graded, unjudged FAKEA thesis (`filled`: filled on D1, open and not graded), with
+    keys in an env file: (thesis, fake)."""
     keys = tmp_path / "keys.env"
     keys.write_text(f"OPENROUTER_API_KEY={key}\nAPCA_API_KEY_ID=not-a-real-id\nAPCA_API_SECRET_KEY=not-a-real-secret\n")
     monkeypatch.setenv("TR_DATA_DIR", str(tmp_path))
     monkeypatch.setenv("TR_ENV_FILE", str(keys))
     conn = journal.connect(tmp_path / "journal.db")
-    t, _ = closed(conn)
+    if filled:
+        t = written(conn)
+        settle(conn, Bars(), D1)
+    else:
+        t, _ = closed(conn)
     conn.close()
     return t, Fake(monkeypatch)
 
@@ -150,6 +157,27 @@ def test_an_empty_key_exits_2_naming_the_variable_before_any_request(flag, tmp_p
     assert fake.requests == []
 
 
+@pytest.mark.parametrize("flag", [["--batch"], ["--collect", BATCH_ID]])
+def test_an_empty_key_exits_2_before_grading_a_filled_thesis(flag, tmp_path, monkeypatch, capsys):
+    """A filled thesis makes `grade.run` open the Alpaca client and write a grade; the key check comes before both."""
+    t, fake = workspace(tmp_path, monkeypatch, key="", filled=True)
+    conn = journal.connect(tmp_path / "journal.db")
+    assert [(u.thesis_id, state) for u, state in journal.ungraded_theses(conn)] == [(t.thesis_id, "OPEN")]
+    conn.close()
+
+    def no_alpaca(cfg):
+        raise AssertionError("the Alpaca client was opened before the key check")
+
+    monkeypatch.setattr(grade_command, "alpaca_client", no_alpaca)
+    with pytest.raises(SystemExit) as exc:
+        main(["grade", "--judge", *flag])
+    assert exc.value.code == 2 and "OPENROUTER_API_KEY" in capsys.readouterr().err
+    assert fake.requests == []
+    conn = journal.connect(tmp_path / "journal.db")
+    assert [u.thesis_id for u, _ in journal.ungraded_theses(conn)] == [t.thesis_id]  # no grade written
+    conn.close()
+
+
 # ---------- replay ----------
 
 def test_results_map_by_custom_id_in_any_order_and_failures_raise():
@@ -166,6 +194,24 @@ def test_results_map_by_custom_id_in_any_order_and_failures_raise():
         replay.invoke(request_for("th_c", "judge c"))
     with pytest.raises(providers.BatchEntryFailed, match="not the one submitted"):
         replay.invoke(request_for("th_a", "a prompt edited since submit"))
+
+
+def test_an_entry_without_a_custom_id_is_skipped_and_the_good_ones_still_answer():
+    digests = {i: request_sha256(request_for(i, f"judge {i}")) for i in ("th_a", "th_b")}
+    malformed = {"id": "req_lost", "error": {"type": "server_error", "message": "lost"}, "response": None}
+    replay = providers.BatchReplay([answered("th_a"), malformed, answered("th_b")], BATCH_PRICE, digests)
+    for i in ("th_a", "th_b"):
+        assert replay.invoke(request_for(i, f"judge {i}")).cost_usd == pytest.approx(DERIVED)
+
+
+def test_collect_with_a_malformed_entry_still_stores_the_good_one(tmp_path, monkeypatch, capsys):
+    t, fake = workspace(tmp_path, monkeypatch)
+    main(["grade", "--judge", "--batch"])
+    malformed = {"id": "req_lost", "error": {"type": "server_error", "message": "lost"}, "response": None}
+    fake.batch = completed([malformed, answered(t.thesis_id)], cost=round(DERIVED, 6))
+    main(["grade", "--judge", "--collect", BATCH_ID])  # costs agree: no SystemExit
+    out = capsys.readouterr().out
+    assert judge_record(tmp_path, t.thesis_id)[0] is not None, out
 
 
 def test_a_collected_answer_stores_what_the_sync_judge_stores(tmp_path, monkeypatch, capsys):

@@ -118,10 +118,11 @@ class BatchReplay:
     """A provider over a completed OpenRouter batch's `results`: `invoke(request)` answers from the entry whose
     `custom_id` is `request.metadata["item_id"]` (results come unordered), so `run_eval` writes the run file, spans and
     ScoreRecord of a sync call. `digests` (item id -> `request_sha256` at submit) refuses a prompt that changed since.
-    The cost is `derived` (`entry_cost`); the latency is 0 because the batch reports none per request."""
+    The cost is `derived` (`entry_cost`); the latency is 0 because the batch reports none per request. An entry with
+    no `custom_id` is skipped, so the thesis it answered has no result: a failed call, and the rest still store."""
 
     def __init__(self, results: list[dict], price: Price, digests: dict[str, str]) -> None:
-        self.entries = {entry["custom_id"]: entry for entry in results}
+        self.entries = {entry["custom_id"]: entry for entry in results if entry.get("custom_id")}
         self.price = price
         self.digests = digests
 
