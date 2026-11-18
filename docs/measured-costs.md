@@ -348,7 +348,7 @@ usage exactly, diff +0.000000000):
 | teacher candidates: 2 qwen `not_json` replies billed but untraced | 0.020739 | key residual = price x tokens |
 | rounding residual | 0.000001 | key minus traced |
 | **tradingresearch** | **3.766002** | = the key's delta over the period |
-| other projects (learning center $0.032601, gigai-2 base runs $0.312900) | 0.345501 | their own reports |
+| other projects billed to the same key | 0.345501 | their own reports |
 | unattributed ($60.031326 before 2026-10-19, no ledger; $0.273991 on 2026-11-16 before the pilot; $0.010821 residual Nov 9 to 16) | 60.316138 | key windows; owner unknown |
 | **account** | **64.427641** | `/key` usage at the read |
 

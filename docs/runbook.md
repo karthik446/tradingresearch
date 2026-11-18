@@ -9,12 +9,15 @@ How the daily loop runs, how to check it, and what to do when it fails. Live str
 | Setting | Value |
 |---|---|
 | When | Monday–Friday 14:30 and 19:00, and Tuesday–Saturday 05:00, Mac time zone America/Denver (16:30, 21:00 and 07:00 New York). 19:00 and 05:00 are catch-ups: 05:00 is the second one, before the 09:30 ET entry window, and retries what an upstream failure left undone (15 runs a week) |
-| Program | `/Users/kar/.local/bin/uv run tr daily --teachers` (uv by absolute path; `--teachers` runs the bake-off) |
-| WorkingDirectory | `/Users/kar/Developer/projects/tradingresearch-live` (the pinned worktree, below) |
-| TR_DATA_DIR | `/Users/kar/Developer/projects/tradingresearch/data` (the live journal) |
-| PATH | `/Users/kar/.local/bin:/usr/bin:/bin:/usr/sbin:/sbin` |
-| Log | `/Users/kar/Developer/projects/tradingresearch/data/logs/daily.log` (stdout and stderr) |
-| Keys | `tr` reads its env file itself, including `TR_SEC_USER_AGENT` and `TR_PROVIDER`. From the provider change (ADR-014) on, the plist must carry the path, `TR_ENV_FILE=/Users/kar/.config/tradingresearch/verify.env`, because the default (the worktree's `.env`) does not exist in the pinned worktree; see "Pinned code, live data". No key goes in the plist |
+| Program | `~/.local/bin/uv run tr daily --teachers` (uv by absolute path; `--teachers` runs the bake-off) |
+| WorkingDirectory | `~/Developer/projects/tradingresearch-live` (the pinned worktree, below) |
+| TR_DATA_DIR | `<repo>/data` (the live journal) |
+| PATH | `~/.local/bin:/usr/bin:/bin:/usr/sbin:/sbin` |
+| Log | `<repo>/data/logs/daily.log` (stdout and stderr) |
+| Keys | `tr` reads its env file itself, including `TR_SEC_USER_AGENT` and `TR_PROVIDER`. From the provider change (ADR-014) on, the plist must carry the path, `TR_ENV_FILE=~/.config/tradingresearch/verify.env`, because the default (the worktree's `.env`) does not exist in the pinned worktree; see "Pinned code, live data". No key goes in the plist |
+
+`~` is the home directory and `<repo>` the clone of this repository; the plist spells both out as full absolute
+paths (launchd expands neither).
 
 launchd reads Hour/Minute in the Mac's time zone. If the Mac changes zone, the times must be converted again.
 `ops/daily.launchd.plist.example` is the template (written for a Mac on New York time: 16:30 and a 21:00 catch-up on
@@ -28,19 +31,19 @@ The journal is append-only and the bake-off is pre-registered, so the code that 
 change under the stream. Two rules follow, and they are separate on purpose.
 
 1. **The agent runs pinned code.** Its WorkingDirectory is the git worktree `~/Developer/projects/tradingresearch-live`,
-   detached at a verified commit, with `TR_DATA_DIR=/Users/kar/Developer/projects/tradingresearch/data`. Editing
+   detached at a verified commit, with `TR_DATA_DIR=<repo>/data`. Editing
    or committing on master does not change what runs at 14:30.
 2. **Dev never writes the live journal.** `<repo>/data/journal.db` is live evidence. Nothing writes rows to it except the
    agent: no `daily`, `analyze`, `thesis`, `reconcile`, `label`, `grade` (without `--dry-run`), `exp run` or
    `learn --decide`. Tests, experiments and packet runs use `TR_DATA_DIR=<repo>/data-dev` (git-ignored). Read-only
    commands (`report`, `usage`, `slo`, `--dry-run`) may read the live data.
 
-   Who may write the live journal, and what (operator ruling 2026-11-17): the agent writes the daily rows. Two more
-   writes are sanctioned and logged (what, when, spend), run by the coordinator from the pinned worktree with
+   Who may write the live journal, and what (rule in force since 2026-11-17): the agent writes the daily rows. Two more
+   writes are sanctioned and logged (what, when, spend), run by the maintainer from the pinned worktree with
    `TR_DATA_DIR=<repo>/data`: registering a rule change, once per change, and `grade --judge`. `tr split register` is
-   the operator's decision (the cutoff): the coordinator registers it from the pinned worktree only on the operator's
-   go through Main, once per split. **`label add` is human only** (so is `label --claims add`): the operator's labels
-   are the ground truth the judge's kappa is measured against, and a label written by a model or a worker would make
+   the operator's decision (the cutoff): the maintainer registers it from the pinned worktree only on the operator's
+   go, once per split. **`label add` is human only** (so is `label --claims add`): the operator's labels
+   are the ground truth the judge's kappa is measured against, and a label written by a model or a script would make
    kappa model against model. `learn --decide` runs only after the operator's go (the decision is an ADR, at
    `n_planned`). Everything else stays on `data-dev`.
 
@@ -49,19 +52,19 @@ Moving the pin, only to a commit whose tests and `ci/gate.py` pass, and never be
 
 ```sh
 git -C ~/Developer/projects/tradingresearch-live checkout --detach <sha> && (cd ~/Developer/projects/tradingresearch-live && uv sync -q)
-(cd ~/Developer/projects/tradingresearch-live && TR_DATA_DIR=/Users/kar/Developer/projects/tradingresearch/data uv run tr daily --teachers --dry-run)
+(cd ~/Developer/projects/tradingresearch-live && TR_DATA_DIR=~/Developer/projects/tradingresearch/data uv run tr daily --teachers --dry-run)
 ```
 
 **Before moving the pin past the provider change (ADR-014).** From that commit on, `tr` reads `<repo>/.env` unless
 `TR_ENV_FILE` says otherwise, and the pinned worktree has no `.env`. So, first, add
-`TR_ENV_FILE=/Users/kar/.config/tradingresearch/verify.env` to the plist's `EnvironmentVariables` and reload the agent
+`TR_ENV_FILE=~/.config/tradingresearch/verify.env` to the plist's `EnvironmentVariables` and reload the agent
 (`launchctl bootout gui/$(id -u) ~/Library/LaunchAgents/com.tradingresearch.daily.plist`, then `launchctl bootstrap
 gui/$(id -u) ~/Library/LaunchAgents/com.tradingresearch.daily.plist`), and run the dry run above with the same
 `TR_ENV_FILE=...` in front. Only then move the pin. Without it, the first live run stops with
 `OPENROUTER_API_KEY is not set`. With `TR_PROVIDER` unset in `verify.env` the agent stays on OpenRouter; it moves to
 Anthropic only when `TR_PROVIDER=anthropic` and `ANTHROPIC_API_KEY` are added there.
 
-**When the pin moves past the provider change.** Not before the bake-off's 10 sessions are done (orchestrator decision,
+**When the pin moves past the provider change.** Not before the bake-off's 10 sessions are done (decided
 2026-11-17): the change makes OpenRouter calls wait the server's `Retry-After` time on 429 and 5xx replies, which alters
 teacher outcomes the bake-off measures, so moving the pin mid-bake-off would change the teacher arms' conditions. The
 plist step above therefore comes with the first pin move after the bake-off. A move before then is only for a verified
@@ -238,7 +241,7 @@ trainable licence (Apache-2.0): `qwen/qwen3.5-397b-a17b` became `qwen/qwen3-235b
 `openai/gpt-oss-120b` became `qwen/qwen3-next-80b-a3b-instruct`, each on its `deepinfra/fp8` endpoint. The swap, the
 runs and the candidates tried are the `[swap.<model>]` tables in that file.
 
-Limitation for the bake-off report (Main, 2026-11-17; a limitation, not a rule change): after the swap two of the three
+Limitation for the bake-off report (noted 2026-11-17; a limitation, not a rule change): after the swap two of the three
 arms are Qwen3 models from the same lab, so the comparison mostly measures DeepSeek against Qwen, not three independent
 teachers. The registered rule allowed the swap.
 

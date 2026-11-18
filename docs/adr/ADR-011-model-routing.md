@@ -203,7 +203,7 @@ analyze with Sonnet 5.5 on the thesis and as the fallback), prompt `analyze-3`, 
 graders. There is NO `cached` arm. That is a choice, and the reasons are: the cache effect is already measured above
 (1,216 tokens written, 12.7% and 17.7% saved) and does not need a second sample; a third arm at 120 items would bring
 the expected spend to about 11.2 USD (2 x (2.3086 + 1.3517 + 1.9515) = 11.22, computed from the first run's arm
-totals, linear in items) of the 12 USD ceiling the orchestrator set for this run; and the reading the same-model pair
+totals, linear in items) of a 12 USD ceiling set before the run; and the reading the same-model pair
 gave, the run-to-run noise, is carried into the rule by item 6 instead of a new arm.
 
 **4. Size.** The paired non-inferiority sample size is n = (z(1-a) + z(1-b))^2 x psi / margin^2. The first
@@ -304,8 +304,8 @@ the run. Then, in this order:
 
 ### Result (replication)
 
-Read under rule 5 and nothing else; written 2026-11-18 after the run and after the independent reader's recompute
-(`workers/W8Rep1ResRead.md` in the orchestrator workspace). The run was made as item 8 says, on 2026-11-18 (UTC),
+Read under rule 5 and nothing else; written 2026-11-18 after the run and after an independent reader recomputed the
+figures and accepted the result. The run was made as item 8 says, on 2026-11-18 (UTC),
 the first analysis span starting 12:20:58 and the last thesis span starting 13:40:25 (about 80 minutes of calls,
 computed from `traces/run_c4fe9f7fac0749f1.jsonl` and `traces/run_e45d8b17614b4854.jsonl`), on the Anthropic credit,
 no prompt cache. Every number below is quoted from `data-dev/scratch/w8rep1-run.txt` (the whole stdout, next), from

@@ -1,5 +1,5 @@
-"""The OpenRouter adapter's wire bodies are byte-identical to master `18a7209`, before the move into `providers/`
-(bead gigai-csy.66). The golden files were captured from the unmodified `tradingresearch/openrouter.py`; a mismatch
+"""The OpenRouter adapter's wire bodies are byte-identical to master `18a7209`, before the move into `providers/`.
+The golden files were captured from the unmodified `tradingresearch/openrouter.py`; a mismatch
 means the move changed what OpenRouter is sent. Re-capture only on a deliberate wire change, never to make this pass."""
 
 from pathlib import Path

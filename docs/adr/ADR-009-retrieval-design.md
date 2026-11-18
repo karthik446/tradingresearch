@@ -111,7 +111,7 @@ Exactly one paid run; no rerun for a better result. If `tr exp run` refuses a co
 is **void for infrastructure, not for its result**. The `none` arm finished (`run_e9d0ebaf14da424e`, 20 items, $0.3306).
 The `hybrid` arm (`run_f965ff876c724f65`) completed 4 of 20 items ($0.1012); the other 16 were refused by OpenRouter
 with HTTP 402 `in_flight_budget_exhausted` before any output, because the account balance was too low. Nothing was
-decided from it. The coordinator and the worker did look at the 4 completed hybrid items and at the `none` arm, so
+decided from it. The people running the experiment did look at the 4 completed hybrid items and at the `none` arm, so
 the rerun is not blind to them; the decision rule is the one registered above and is not retuned. The registration's
 "exactly one paid run" is read as "one complete run": this rerun is that run. Changes, and only these:
 - **Provider and route.** Both arms run on one provider, Anthropic's API directly (`TR_PROVIDER=anthropic`, route

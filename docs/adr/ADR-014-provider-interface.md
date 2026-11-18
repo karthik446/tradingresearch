@@ -1,8 +1,8 @@
 # ADR-014: one provider interface, OpenRouter and Anthropic adapters
 
-**Status:** accepted, 2026-11-17 (bead gigai-csy.66). Code: `src/tradingresearch/providers/`. Tests:
+**Status:** accepted, 2026-11-17. Code: `src/tradingresearch/providers/`. Tests:
 `tests/test_provider_golden.py` and `tests/test_provider_anthropic.py`. No paid call was made to write it; the first
-paid Anthropic call is the coordinator's smoke run.
+paid Anthropic call is the maintainer's smoke run.
 
 **Context.** Every model call went to OpenRouter (`openrouter.py`). The operator's Claude plan includes Anthropic API
 credit, so the champion's Claude calls can go straight to Anthropic's Messages API. Teachers are DeepSeek and Qwen on
