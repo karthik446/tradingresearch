@@ -203,6 +203,14 @@ API's docs: `docs/providers.md`.
 A provider change is a new route: runs record `provider.identity` (`anthropic` or `openrouter`) and every row's
 `provider_route` starts with the provider, so an experiment never compares across providers by accident.
 
+`tr usage --by step` and `--by model` print the cost table (G15-SPIKE §3), from the same run files as the other
+views. Columns: calls, items (distinct item ids), tokens in (cache included), cache write and cache read (`-` when
+no call reported them), tokens out, cost, `$/item`, and p50/p95 over items of each item's summed latency in that row
+(nearest rank). A step is `analyze` or `thesis` (from the run's tag or dataset), `judge` (`tr grade --judge`) or
+`other`; no call is dropped. `--by model` keys on the requested model, not the served one (`trace.Call.provider_route`).
+Their total cost adds each run's micro-dollar cost, so it equals the `--by run` total; the older
+`arm`, `day` and `call` views add their own rounded rows and can differ from it by $0.000001.
+
 ## Teacher bake-off
 
 `tr daily --teachers` runs it. Session 1 is the first session on or after 2026-11-17 with a stored teacher analysis

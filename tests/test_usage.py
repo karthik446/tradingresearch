@@ -1,22 +1,26 @@
-"""Trace and usage layer: per-call rows, sums per run, arm and day, run_cost, and `tr usage` (G7).
+"""Trace and usage layer: per-call rows, sums per run, arm, day, step and model, run_cost, and `tr usage` (G7,
+G15-SPIKE §3).
 
 The fixtures are real week-1 runs from `data/`: run_10fc0a886ddb42a2 (`tr analyze`, 1 call) whole, and
 run_c40caab0968e44a3 (`exp run` arm observe:baseline) cut to its first 2 samples, with `calls_made` and `spent_usd`
-in its header set to those 2 calls. Each has its `data/traces` file, cut to the same spans.
+in its header set to those 2 calls. Each has its `data/traces` file, cut to the same spans. The cost-table tests write
+a two-step pipeline arm at test time with gigai-core `run` and a fake provider (no key, no network).
 """
 
 import json
-from datetime import date
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 import pytest
-from gigai_core import read_spans
+from gigai_core import CallBudget, CallSettings, Dataset, DatasetItem, read_spans, run as run_eval
+from gigai_core.providers import ModelResult, ProviderIdentity, TokenUsage
 from gigai_core.trace import ModelSpan
 
 from tradingresearch import usage
+from tradingresearch.analyze import save
 from tradingresearch.cli import main
 from tradingresearch.providers import openrouter
-from tradingresearch.trace import calls, iter_runs, kind
+from tradingresearch.trace import cache_tokens, calls, iter_runs, kind
 
 DATA = Path(__file__).parent / "fixtures" / "usage"
 ANALYZE = DATA / "runs" / "run_10fc0a886ddb42a2.jsonl"
@@ -53,7 +57,7 @@ def test_the_run_file_holds_the_same_model_calls_as_the_trace_file(run):
 
 def test_sums_per_run_arm_and_day_equal_the_hand_added_numbers():
     rows = every_call()
-    total = usage.total(usage.by_run(rows))
+    total = usage.total(rows)
     assert (total.calls, total.tokens_in, total.tokens_out) == (3, 2672 + 2472 + 2604, 1196 + 1150 + 1159)
     assert total.cost_usd == round(0.017304 + 0.016444 + 0.016798, 6)
     assert total.mean_latency_ms == pytest.approx((8267 + 10399 + 9175) / 3)
@@ -64,8 +68,12 @@ def test_sums_per_run_arm_and_day_equal_the_hand_added_numbers():
     assert [(r.key, r.calls) for r in usage.by_call(rows)] == [
         ("run_10fc0a886ddb42a2 MSFT:2026-11-13", 1), ("run_c40caab0968e44a3 AAPL:2026-11-12", 1),
         ("run_c40caab0968e44a3 MSFT:2026-11-12", 1)]
-    for view in (usage.by_call, usage.by_arm, usage.by_day):
-        assert usage.total(view(rows)) == total
+    assert [(r.key, r.calls) for r in usage.by_step(rows)] == [("analyze", 3)]
+    for view in (usage.by_run, usage.by_call, usage.by_arm, usage.by_day, usage.by_step, usage.by_model):
+        found = view(rows)
+        assert (sum(r.calls for r in found), sum(r.tokens_in for r in found), sum(r.tokens_out for r in found)) == (
+            total.calls, total.tokens_in, total.tokens_out)
+        assert round(sum(r.cost_usd for r in found), 6) == total.cost_usd
 
 
 def test_a_day_is_the_new_york_date_so_an_evening_run_stays_on_its_day():
@@ -88,7 +96,7 @@ def test_a_call_with_no_cost_flags_prices_missing(tmp_path):
     path.write_text("".join(json.dumps(line) + "\n" for line in lines))
     cost = usage.run_cost(path)
     assert (cost.cost_usd, cost.prices_missing) == (0.016444, True)
-    assert usage.total([usage.run_cost(ANALYZE), cost]).prices_missing
+    assert usage.total([*calls(ANALYZE), *calls(path)]).prices_missing
 
 
 @pytest.fixture
@@ -141,3 +149,146 @@ def test_tr_usage_since_a_later_day_shows_no_calls(tr_env, capsys):
 def test_tr_usage_refuses_an_unknown_run(tr_env):
     with pytest.raises(SystemExit, match="no saved run run_nope"):
         main(["usage", "--run", "run_nope"])
+
+
+# ---------- the cost table: --by step / --by model (G15-SPIKE §3) ----------
+
+ANALYZE_MODEL, THESIS_MODEL = "anthropic/claude-haiku-5.5", "anthropic/claude-sonnet-5.5"
+ITEMS = ["AAPL:2026-11-12", "MSFT:2026-11-12", "NVDA:2026-11-12", "AMZN:2026-11-12"]
+LATENCY = dict(zip(ITEMS, [100, 200, 300, 400]))  # per step, so the per-item sums are 200/400/600/800
+ANALYZE_COST = dict(zip(ITEMS, [0.0101, 0.0102, 0.0103, 0.0104]))
+THESIS_COST = 0.0051
+# the raw Anthropic cache fields on 3 of the 4 analyze calls: one 5m write, then two reads of it
+CACHE = {ITEMS[0]: {"cache_creation_input_tokens": 600, "cache_read_input_tokens": 0},
+         ITEMS[1]: {"cache_creation_input_tokens": 0, "cache_read_input_tokens": 600},
+         ITEMS[2]: {"cache_creation_input_tokens": 0, "cache_read_input_tokens": 600}}
+
+
+class Fake:
+    """Answers each item with its known latency, cost and usage; the served model is a dated id of the asked one."""
+
+    identity = ProviderIdentity(provider="fake", endpoint="none", adapter="test_usage")
+    capabilities = frozenset({"text", "system"})
+
+    def __init__(self, cost: dict[str, float], cache: dict[str, dict[str, int]]) -> None:
+        self.cost, self.cache = cost, cache
+
+    def invoke(self, request, *, cancel=None):
+        item = request.turns[-1].content
+        started = datetime(2026, 11, 12, 21, 0, tzinfo=UTC)
+        cache = self.cache.get(item, {})
+        prompt = 1000 + sum(cache.values())  # input tokens including the cache, as anthropic.py records them
+        return ModelResult(text="{}", finish_reason="stop", resolved_model=f"{request.settings.model}-20261101",
+                           usage=TokenUsage(input_tokens=prompt, output_tokens=200, total_tokens=prompt + 200,
+                                            raw={"input_tokens": 1000, "output_tokens": 200, **cache}),
+                           cost_status="derived", cost_usd=self.cost[item], latency_ms=LATENCY[item],
+                           started_at=started, completed_at=started)
+
+    def close(self) -> None:
+        pass
+
+
+def write_pipeline_arm(data_dir: Path) -> None:
+    """`routing:sonnet` as `exp run` saves a pipeline arm: an analyze run and a thesis run over the same items."""
+    for dataset_id, model, tag, provider in [
+        ("routing", ANALYZE_MODEL, "routing:sonnet:analyze-3", Fake(ANALYZE_COST, CACHE)),
+        ("routing:sonnet:thesis", THESIS_MODEL, "routing:sonnet:thesis-1", Fake(dict.fromkeys(ITEMS, THESIS_COST), {})),
+    ]:
+        items = [DatasetItem(id=item, cluster_id=item.split(":")[0], prompt=item, expected=None) for item in ITEMS]
+        save(run_eval(Dataset.of(dataset_id, items), provider, [],
+                      settings=CallSettings(model=model, max_output_tokens=500), budget=CallBudget(), tag=tag),
+             data_dir)
+
+
+@pytest.fixture
+def arm_dir(tmp_path):
+    write_pipeline_arm(tmp_path)
+    return tmp_path
+
+
+def arm_calls(data_dir: Path):
+    return [call for _, path in iter_runs(data_dir) for call in calls(path)]
+
+
+def test_a_pipeline_arm_is_one_row_with_items_cost_per_ticker_day_and_per_item_latency(arm_dir):
+    [row] = usage.by_arm(arm_calls(arm_dir))
+    cost = sum(ANALYZE_COST.values()) + 4 * THESIS_COST
+    assert (row.key, row.calls, row.items) == ("routing:sonnet", 8, 4)
+    assert (row.cost_usd, row.usd_per_item) == (round(cost, 6), round(cost / 4, 6)) == (0.0614, 0.01535)
+    assert (row.p50_ms, row.p95_ms) == (400, 800)  # nearest rank over the per-item sums 200/400/600/800
+    assert (row.cache_write, row.cache_read) == (600, 1200)
+    assert (row.tokens_in, row.tokens_out) == (8 * 1000 + 1800, 8 * 200)
+
+
+def test_by_step_splits_the_arm_into_analyze_and_thesis_and_adds_up_to_it(arm_dir):
+    rows = arm_calls(arm_dir)
+    analyze, thesis = usage.by_step(rows)
+    assert (analyze.key, analyze.calls, analyze.items, analyze.cost_usd) == ("analyze", 4, 4, 0.041)
+    assert (analyze.cache_write, analyze.cache_read, analyze.usd_per_item) == (600, 1200, 0.01025)
+    assert (analyze.p50_ms, analyze.p95_ms) == (200, 400)
+    assert (thesis.key, thesis.calls, thesis.items, thesis.cost_usd, thesis.usd_per_item) == (
+        "thesis", 4, 4, 0.0204, 0.0051)
+    assert (thesis.cache_write, thesis.cache_read) == (None, None)  # no call reported the cache fields
+    # the total comes from the same calls as the arm row, so it equals the arm row field for field
+    assert usage.total(rows).model_dump(exclude={"key"}) == usage.by_arm(rows)[0].model_dump(exclude={"key"})
+
+
+def test_by_model_keys_on_the_requested_model_not_the_served_one(arm_dir):
+    rows = arm_calls(arm_dir)
+    assert {call.provider_route for call in rows} == {f"{ANALYZE_MODEL}-20261101", f"{THESIS_MODEL}-20261101"}
+    assert [(r.key, r.calls, r.cost_usd) for r in usage.by_model(rows)] == [
+        (ANALYZE_MODEL, 4, 0.041), (THESIS_MODEL, 4, 0.0204)]
+
+
+def test_cache_tokens_read_anthropic_and_openrouter_usage_and_none_where_absent():
+    assert cache_tokens({"cache_creation_input_tokens": 600, "cache_read_input_tokens": 0}) == (600, 0)
+    assert cache_tokens({"prompt_tokens": 900, "prompt_tokens_details": {"cached_tokens": 512}}) == (None, 512)
+    assert cache_tokens({"input_tokens": 10, "output_tokens": 5}) == (None, None)
+
+
+@pytest.mark.parametrize(("dataset_id", "tag", "step"), [
+    ("analyze", "analyze-3", "analyze"), ("thesis", "thesis-1", "thesis"), ("p1_judge", "p1_judge", "judge"),
+    ("scratch", "probe", "other"), ("scratch", None, "other"),
+], ids=["tr_analyze", "tr_thesis", "judge", "unknown_tag", "no_tag"])
+def test_a_run_s_step_comes_from_its_tag_or_dataset_and_an_unknown_one_is_other_not_dropped(
+        tmp_path, dataset_id, tag, step):
+    item = DatasetItem(id=ITEMS[0], cluster_id="AAPL", prompt=ITEMS[0], expected=None)
+    save(run_eval(Dataset.of(dataset_id, [item]), Fake(ANALYZE_COST, {}), [],
+                  settings=CallSettings(model=ANALYZE_MODEL, max_output_tokens=500), budget=CallBudget(), tag=tag),
+         tmp_path)
+    assert [(r.key, r.calls) for r in usage.by_step(arm_calls(tmp_path))] == [(step, 1)]
+
+
+def test_tr_usage_by_step_prints_the_cost_table_with_dashes_for_unreported_cache(arm_dir, monkeypatch, capsys):
+    monkeypatch.setenv("TR_DATA_DIR", str(arm_dir))
+    monkeypatch.setenv("TR_ENV_FILE", str(arm_dir / "verify.env"))
+    main(["usage", "--by", "step"])
+    assert capsys.readouterr().out.splitlines()[:4] == [
+        "step     calls  items  tokens in  cache write  cache read  tokens out       cost     $/item     p50     p95",
+        "analyze      4      4       5800          600        1200         800  $0.041000  $0.010250  200 ms  400 ms",
+        "thesis       4      4       4000            -           -         800  $0.020400  $0.005100  200 ms  400 ms",
+        "total        8      4       9800          600        1200        1600  $0.061400  $0.015350  400 ms  800 ms",
+    ]
+
+
+DATA_DEV = Path(__file__).parent.parent / "data-dev"
+
+
+@pytest.mark.skipif(not (DATA_DEV / "runs").is_dir(), reason="no data-dev runs in this checkout")
+def test_by_step_and_by_run_totals_agree_on_the_data_dev_runs(monkeypatch, tmp_path, capsys):
+    monkeypatch.setenv("TR_DATA_DIR", str(DATA_DEV))
+    monkeypatch.setenv("TR_ENV_FILE", str(tmp_path / "verify.env"))
+    total = {}
+    for view in ("run", "step"):
+        main(["usage", "--by", view])
+        total[view] = next(line for line in capsys.readouterr().out.splitlines() if line.startswith("total")).split()
+    # run: total calls, tokens in, tokens out, cost; step: total calls, items, tokens in, cache write, cache read,
+    # tokens out, cost, $/item, p50, p95
+    assert total["run"][1:5] == [total["step"][i] for i in (1, 3, 6, 7)]
+    rows = [call for _, path in iter_runs(DATA_DEV) for call in calls(path)]
+    steps, runs = usage.by_step(rows), usage.by_run(rows)
+    for field in ("calls", "tokens_in", "tokens_out"):
+        assert sum(getattr(r, field) for r in steps) == sum(getattr(r, field) for r in runs) == getattr(
+            usage.total(rows), field)
+    for view in (steps, runs):  # each row's cost is rounded to the micro-dollar, so row sums may differ by that much
+        assert sum(r.cost_usd for r in view) == pytest.approx(usage.total(rows).cost_usd, abs=1e-6 * len(view))

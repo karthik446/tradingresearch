@@ -2,6 +2,28 @@
 
 ## Unreleased
 
+- **`tr usage --by step` and `--by model`: the cost table (G15-SPIKE §3).** Both views print calls, items (distinct
+  item ids), tokens in, cache write and cache read tokens (`-` when no call reported them), tokens out, cost, `$/item`
+  and the p50/p95 over items of each item's summed latency (nearest rank). The step comes from the run: `analyze` /
+  `thesis` from the tag's prompt part or the dataset id, `judge` for a `tr grade --judge` run, else `other` (never
+  dropped). `--by model` keys on the requested model. `trace.Call` gains `cache_write_tokens`, `cache_read_tokens`
+  (Anthropic `cache_creation_input_tokens` / `cache_read_input_tokens`, OpenRouter
+  `prompt_tokens_details.cached_tokens`) and `step`; `usage.Usage` gains `items`, `cache_write`, `cache_read`,
+  `usd_per_item`, `p50_ms` and `p95_ms`. The step and model totals add each run's micro-dollar cost, so they equal the
+  `--by run` total; the existing views print exactly what they printed before. Their totals add their own rounded
+  rows, so `--by arm` and `--by day` can differ from the run total by $0.000001 (on `data-dev` today: $7.909094 vs
+  $7.909093). No ledger file, no `--account`. Tests: `tests/test_usage.py`.
+
+- **Week-8 plumbing: a `cache` arm knob (G15-SPIKE §1.2).** Experiment arms take `cache = "5m" | "1h"` (default off).
+  On `TR_PROVIDER=anthropic` the arm runs on `Anthropic.cached(ttl)`, which sends `system` as text blocks with one
+  `cache_control {"type": "ephemeral", "ttl"}` breakpoint on the last block (user turn uncached; with the knob off the
+  body is unchanged). A route fallback asks through the cached copy. The arm's budget reserves input at the
+  cache-write rate (1.25x for 5m, 2x for 1h), so a cached arm's recorded `spent` reads high (core keeps the
+  reservation as the spend on Anthropic); the per-call `cost_usd` in the trace is exact. `load` refuses another value
+  or a tools arm; `tr exp run` refuses a cache arm on OpenRouter before any call, naming the arm, and prints
+  `cache <ttl>` on the arm line. `cache` is not part of `input_hash`. Whether the prompt clears Anthropic's
+  512-token minimum is settled by the paid run (`cache_creation_input_tokens` of 0 on every call means it did not).
+
 - **Week-8 plumbing: a `route` arm knob, the Haiku 5.5 price, a model fallback (G15-SPIKE §1.1).** A pipeline arm
   takes `route = { analyze = "...", thesis = "...", fallback = "..." }`: a step left out uses the arm's `model`. The
   config load refuses a route on an analyze arm, an unknown key, or a value that is not a model id. `tr exp run`

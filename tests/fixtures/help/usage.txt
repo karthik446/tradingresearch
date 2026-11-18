@@ -1,11 +1,12 @@
-usage: tr usage [-h] [--by {arm,call,day,run}] [--run RUN_ID] [--since DATE]
+usage: tr usage [-h] [--by {arm,call,day,model,run,step}] [--run RUN_ID]
+                [--since DATE]
 
 cost per run, arm, day or call from the saved run files, then the OpenRouter
 key's lifetime spend and the two reconciled (free reads)
 
 options:
   -h, --help            show this help message and exit
-  --by {arm,call,day,run}
+  --by {arm,call,day,model,run,step}
                         group the calls by (default run)
   --run RUN_ID          only this run's calls
   --since DATE          only calls on or after this New York date (YYYY-MM-DD)
