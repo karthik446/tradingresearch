@@ -120,7 +120,9 @@ shortlist (`--top`, default 10), write one thesis-step decision per analysis, th
 tail -20 data/logs/daily.log        # "daily <session>: N ok, ..." or "already done, no model call"; then "teachers ..."
 launchctl list | grep tradingresearch   # second column is the last exit status
 uv run tr usage --by day            # spend per New York day, then the key's lifetime spend
+uv run tr usage --account           # the traced spend against the key's own counter and the balance; exit 1 on a settled gap or a low balance
 uv run tr slo                       # the SLOs for the latest live session tr daily ran for; exit 1 on a breach
+uv run tr slo --account             # the same, plus the `credits` reading (3 x the daily budget left at OpenRouter)
 uv run tr report                    # per-horizon scorecards from 2026-11-17; --horizon / --arm pick one
 ```
 
@@ -153,6 +155,11 @@ uv run tr report                    # per-horizon scorecards from 2026-11-17; --
 | `journal failed: ...` | The database refused a write; everything stops | Do not edit `data/journal.db` by hand; read the error, fix the code or the disk, rerun |
 | `analyze <T> failed` / `thesis <T> failed` | One model call failed; the rest of the run continues | Nothing; the cost is still recorded. Repeated failures: check `tr usage --by call` |
 | `stopped budget: ...` | `--max-usd` reached | Expected on a long shortlist; raise `--max-usd` only on purpose |
+| `stopped credits: $L left at OpenRouter is under the evening's estimate ≈$N ...` | The pre-call check: the balance would not cover the paid steps the evening planned, so none ran and nothing was spent | Top up at OpenRouter, then rerun (the rows are `stopped`, so the rerun does the work) |
+| `credits: read failed (...)` | GET /credits failed; the evening went on without the check | Nothing; the provider's own 402 is the stop. Repeated: run `tr usage --account` |
+| `teachers <session>: skipped: credits: ...` or `... skipped: champion <step> <T> was refused for credit` | The teacher step did not run: the evening was refused, or a champion step got a 402 (the teachers' rows would have no champion row to compare with) | Top up, then rerun with `--teachers` |
+| `ALERT gap $G between the traced calls and the key ...` (`tr usage --account`, exit 1) | Two `/key` reads 60 s apart agree and still differ from the trace by more than `--alert-usd`: a call spent without a trace row, or a trace row without a charge | Compare `tr usage --by call` with the OpenRouter activity page for the window printed; a known cause is the 2026-11-17 `BudgetExceeded` run |
+| `ALERT credits $L left under --min-credit-usd ...` (exit 1) | Under 3 days of the daily budget left | Top up before the next `tr daily` |
 | `failed teacher <model>: ...` | One teacher call failed (e.g. `model call failed: http_400`); exit code unchanged | Nothing; the next `--teachers` run retries it. Repeated: check the slug against OpenRouter |
 | `stopped teacher <model>: budget: ...` | The next teacher call's worst case would pass `--teacher-max-usd` for the session | Nothing; raise `--teacher-max-usd` only on purpose, then rerun |
 | `teachers <session>: stopped: ...` | The teacher step itself broke (e.g. the journal); the evening's rows are already stored | Read the error; rerun with `--teachers` |
@@ -915,6 +922,27 @@ OpenRouter key's lifetime spend (a free read; there is no such line for Anthropi
 ticker-day as one item across every arm and run in the table, so they are one arm's figures only for one arm's run.
 `tr exp run` prints each arm's run ids (`run=`, and `theses=` for a pipeline arm). Pass them to `--run` to see one
 arm, or read each run's cost with `tr usage --by run`.
+
+### Credits: `tr usage --account`, `tr slo --account`, the `tr daily` pre-call check
+
+Both account reads are free GETs on OpenRouter (`/key`: the key's lifetime, daily and weekly spend; `/credits`: bought
+and used, so the balance); Anthropic has no equivalent, so under `TR_PROVIDER=anthropic` they print one line and do
+nothing. `tr usage --account` compares the traced calls since the last reading with the key's own counter: a gap over
+`--alert-usd` (default $0.025) is re-read after 60 s (OpenRouter's counter can trail a call by seconds), and only two
+agreeing reads make an `ALERT` (exit 1); a moving counter prints `unsettled` and the later value is kept. Each run
+appends a `key_reading` row to `TR_LEDGER` (`{"kind": "key_reading", "at", "usage", "usage_daily", "usage_weekly",
+"total_credits"}`), so the next run checks only the gap since. A balance under `--min-credit-usd` (default $1.80, 3 x
+the $0.60 daily budget) is the second `ALERT`. `tr slo --account` adds the same balance as a `credits` reading with
+that target; the plain `tr slo` is unchanged. Before its first paid call a paid `tr daily` on OpenRouter plans the
+evening the way `--dry-run` does and reads the balance once; under the plan's estimate it records every paid step as
+`stopped credits: ...` and spends nothing (COST-SPIKE 2.5: the 2026-11-17 run at $0.365 left paid for 7 refused
+theses). The check compares the balance with the dry-run estimate ($0.02 per analyze, $0.03 per thesis), while
+OpenRouter refuses on a per-call worst-case reservation (about $0.37-0.39 for a Sonnet thesis at max_tokens 3000,
+COST-SPIKE 14:50 addendum): a balance between the two passes the check and the provider's 402 does the stopping,
+which is why the $1.80 floor of `--account` sits well above either. A champion step the provider refuses for credit
+(`insufficient_credits`) skips the teacher step for the day.
+Exit codes: `tr usage --account` 1 on either ALERT, `tr slo --account` 1 on a breach as before (a failed read is `no
+data`, not a breach), `tr daily` unchanged (a refused evening exits 0 with its `stopped` rows, like a budget stop).
 
 ### The batch judge: `tr grade --judge --batch` and `--collect`
 

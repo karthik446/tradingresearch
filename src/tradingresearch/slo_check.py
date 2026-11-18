@@ -1,29 +1,38 @@
 """SLOs of the after-close loop (PLAN-60 week 3): `tr daily` finished by 17:30 ET, zero missed sessions, data fresh,
 and (COST-6) the session's first paid run within the cost budget.
 
-Reads the journal only (no model, no network). Finish time comes from the `daily_run` rows, which are written as each
+Reads the journal only (no model, no network); `--account` adds one network read, the OpenRouter balance (GET
+/credits), as a `credits` line. Finish time comes from the `daily_run` rows, which are written as each
 step ends, so traces are not needed; cost comes from the same rows' `cost_usd`, the run files' measured cost.
 `--inject-delay-minutes` adds to the measured finish to exercise the breach path without waiting. Only live sessions
 (from `sessions.FIRST_SESSION`) are checked and counted; an earlier session is checked only when named with
-`--session`, labelled pre-live. Exit 0 = every SLO met (a `cost` with no data is neither met nor breached), 1 = a
-breach. Run as `tr slo` or `python -m tradingresearch.slo_check`.
+`--session`, labelled pre-live. Exit 0 = every SLO met (a `cost` or `credits` with no data is neither met nor
+breached), 1 = a breach. Run as `tr slo` or `python -m tradingresearch.slo_check`.
 """
 
 from __future__ import annotations
 
 import argparse
 import sqlite3
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, time, timedelta
 
 from . import journal, sessions
 from .config import Settings, settings
 from .daily import MISSED_WINDOW, TEACHER
+from .providers import openrouter
 
 DEADLINE = time(17, 30)  # New York: the run's results are in before the evening review
 COST_BUDGET_USD = 0.60  # the cost SLO's target for a session's first paid run, teacher steps apart: COST-SPIKE §2.3
 # (analyze $0.27 + thesis $0.36 per session at shortlist 10, measured means with headroom). A target, not a stop:
 # `tr daily` stops at `--max-usd`, whose default 1.00 is a literal in commands/daily.py and has no named setting.
+CREDIT_DAYS = 3  # `credits` (--account) and `tr usage --min-credit-usd`: the balance must cover this many budgets
+
+
+def min_credit(budget: float = COST_BUDGET_USD) -> float:
+    """The least balance to keep at OpenRouter: `CREDIT_DAYS` days at the daily budget (COST-SPIKE 2.5: 3 x $0.60)."""
+    return round(CREDIT_DAYS * budget, 6)
 
 
 @dataclass(frozen=True)
@@ -120,6 +129,25 @@ def cost(conn: sqlite3.Connection, session: date, budget: float = COST_BUDGET_US
                "more)", target)
 
 
+def credits(cfg: Settings, budget: float = COST_BUDGET_USD,
+            read: Callable[[str], openrouter.Credits] | None = None) -> Slo:
+    """`tr slo --account` only: the OpenRouter balance (GET /credits, a free read over the network) against
+    `CREDIT_DAYS` x the daily budget, so a low account is a reading before a run is refused for it (COST-3b). No data
+    under TR_PROVIDER=anthropic (no account endpoint), with no key, or when the read fails."""
+    floor = min_credit(budget)
+    target = f"at least ${floor:.2f} left at OpenRouter ({CREDIT_DAYS} x the daily budget ${budget:.2f})"
+    if cfg.provider == "anthropic":
+        return Slo("credits", None, "no data: TR_PROVIDER=anthropic has no account endpoint", target)
+    if not cfg.openrouter_key:
+        return Slo("credits", None, "no data: OPENROUTER_API_KEY is not set", target)
+    try:
+        account = (read or openrouter.credits)(cfg.openrouter_key.reveal())
+    except Exception as error:  # a network or HTTP failure is no reading, never a breach
+        return Slo("credits", None, f"no data: credits read failed ({error})", target)
+    return Slo("credits", account.left >= floor,
+               f"${account.left:.6f} left of ${account.total_credits:.2f} credits", target)
+
+
 def check(conn: sqlite3.Connection, session: date, feed: str, delay: timedelta = timedelta(),
           window: int = MISSED_WINDOW, since: date | None = sessions.FIRST_SESSION,
           budget: float = COST_BUDGET_USD) -> list[Slo]:
@@ -151,14 +179,19 @@ def no_live_run(conn: sqlite3.Connection, now: datetime, window: int = MISSED_WI
     return [*render(gone[-1], [slo])[:1], f"slo: no tr daily run for any live session{before}"], 1
 
 
+VERDICT = {True: "ok", False: "BREACH", None: "n/a"}
+
+
+def line(slo: Slo) -> str:
+    return f"{VERDICT[slo.ok]:<6} {slo.name:<8} {slo.measured}  (target: {slo.target})"
+
+
 def render(session: date, slos: list[Slo]) -> list[str]:
     """One line per SLO (verdict, measured, target), then the total over the SLOs that had data."""
-    verdict = {True: "ok", False: "BREACH", None: "n/a"}
-    lines = [f"{verdict[s.ok]:<6} {s.name:<8} {s.measured}  (target: {s.target})" for s in slos]
     decided = [s for s in slos if s.ok is not None]
     none = [s.name for s in slos if s.ok is None]
     tail = f"; no data: {', '.join(none)}" if none else ""
-    return [*lines, f"slo {session}: {sum(s.ok for s in decided)}/{len(decided)} met{tail}"]
+    return [*map(line, slos), f"slo {session}: {sum(s.ok for s in decided)}/{len(decided)} met{tail}"]
 
 
 def add_arguments(p: argparse.ArgumentParser) -> None:
@@ -170,14 +203,21 @@ def add_arguments(p: argparse.ArgumentParser) -> None:
                    help=f"sessions looked back for misses (default {MISSED_WINDOW})")
     p.add_argument("--budget-usd", type=float, default=COST_BUDGET_USD,
                    help=f"the cost target for the session's first paid run (default {COST_BUDGET_USD:.2f})")
+    p.add_argument("--account", action="store_true",
+                   help=f"also read the OpenRouter balance (one network call): a `credits` line, met when at least "
+                        f"{CREDIT_DAYS} x --budget-usd is left; no data under TR_PROVIDER=anthropic")
 
 
 def run(args: argparse.Namespace, cfg: Settings, now: datetime | None = None) -> int:
     """Print the SLO lines; 0 when every SLO is met, 1 on any breach."""
     conn = journal.connect(cfg.db_path)
     session = date.fromisoformat(args.session) if args.session else latest_session(conn)
-    if session is None:
+    if session is None:  # the `credits` reading does not need a session: it goes before the closing line
         lines, code = no_live_run(conn, now or datetime.now(UTC), args.window)
+        if args.account:
+            reading = credits(cfg, args.budget_usd)
+            lines.insert(-1, line(reading))
+            code = 1 if reading.ok is False else code
         print("\n".join(lines))
         return code
     if not sessions.is_session(session):
@@ -188,6 +228,8 @@ def run(args: argparse.Namespace, cfg: Settings, now: datetime | None = None) ->
               "because --session named it")
     slos = check(conn, session, cfg.feed, timedelta(minutes=args.inject_delay_minutes), args.window,
                  sessions.FIRST_SESSION if live else None, args.budget_usd)
+    if args.account:
+        slos.append(credits(cfg, args.budget_usd))
     print("\n".join(render(session, slos)))
     return 1 if any(s.ok is False for s in slos) else 0
 

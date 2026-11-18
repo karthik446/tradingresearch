@@ -104,5 +104,7 @@ now holds the session's first paid `tr daily` run to `COST_BUDGET_USD` ($0.60; `
 `--teacher-max-usd`. A session with no paid row is `no data`, not `met`. The trace policy itself is unchanged: `tr slo`
 still reads the journal only. Account burn (the balance at the provider, `GET /credits`) is deliberately not an SLI:
 it is a network read that answers for every project on the key, not for this loop, and the pre-flight that would use
-it is COST-3b's. `docs/slo-review.md` has the SLO; `docs/measured-costs.md`, "Cost attribution", has the snapshot of
-where the money went and the commands that answer it today.
+it is COST-3b's. COST-3b (2026-11-18) landed that read as the opt-in `tr slo --account` and `tr usage --account`,
+and as `tr daily`'s check before its first paid call; the plain `tr slo` is still journal-only. `docs/slo-review.md`
+has the SLO; `docs/measured-costs.md`, "Cost attribution", has the snapshot of where the money went and the
+commands that answer it today.

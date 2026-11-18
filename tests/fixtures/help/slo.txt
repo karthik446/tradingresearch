@@ -1,6 +1,6 @@
 usage: tr slo [-h] [--session SESSION]
               [--inject-delay-minutes INJECT_DELAY_MINUTES] [--window WINDOW]
-              [--budget-usd BUDGET_USD]
+              [--budget-usd BUDGET_USD] [--account]
 
 options:
   -h, --help            show this help message and exit
@@ -13,3 +13,6 @@ options:
   --budget-usd BUDGET_USD
                         the cost target for the session's first paid run
                         (default 0.60)
+  --account             also read the OpenRouter balance (one network call): a
+                        `credits` line, met when at least 3 x --budget-usd is
+                        left; no data under TR_PROVIDER=anthropic

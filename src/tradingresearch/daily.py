@@ -7,6 +7,11 @@ pre-registered rule change is pending (SPIKE §8.2), the challenger answers each
 under that rule (`ChallengerSteps`, rules.py); its rows are labelled and nothing in it can fail the evening. With
 `TeacherSteps` (`tr daily --teachers`), the bake-off's teachers then answer the session's drawn names (SPIKE §9.4)
 under their own cap; nothing in that step can fail the evening either.
+
+Credits (COST-3b, COST-SPIKE 2.5): given a `credits` reader (OpenRouter, a paid run), the evening's paid steps are
+planned first, silently, over the same path a dry run prints, and refused as `stopped` rows when the account's
+balance is under their estimate; a champion step the provider refuses for credit (402, `insufficient_credits`) skips
+the teacher step, whose rows would have no champion row to compare with.
 """
 
 from __future__ import annotations
@@ -21,6 +26,7 @@ from gigai_core.budget import BudgetExceeded
 
 from . import analyze as an, grade as gr, journal, reconcile_run, rules, sessions, teacher as tc, thesis as th, usage
 from .hashing import new_id
+from .providers.errors import CODES, CREDIT_EXHAUSTED
 from .records import Analysis, RuleChange
 from .screen import ScreenResult
 
@@ -28,6 +34,7 @@ ANALYZE_USD = 0.02  # estimate per call: measured `tr analyze` runs cost $0.016-
 THESIS_USD = 0.03  # measured `tr thesis` run: $0.0195
 MISSED_WINDOW = 10  # trading days looked back for sessions with no daily_run row
 DONE = "already done"
+CREDIT_CODE = CODES[CREDIT_EXHAUSTED]  # the journal's error string for a 402: `model call failed: insufficient_credits`
 TEACHER = "teacher"  # a teacher row's reason starts "teacher <model>: " (daily_run.step allows only the five steps)
 GRADE = "grade"  # the grade row is step "reconcile" with a reason starting "grade: ", for the same CHECK
 TEACHER_MAX_USD = 0.40  # --teacher-max-usd default: the teacher step's cap per session, every run of it counted
@@ -94,32 +101,47 @@ class Daily:
     max_usd: float
     runs_dir: Path
     dry_run: bool
+    quiet: bool = False  # the planning pass: no line printed (nothing is written in a dry run anyway)
     daily_id: str = field(default_factory=lambda: new_id("dy"))
     rows: list[Row] = field(default_factory=list)
     spent_usd: float = 0.0
     planned: list[tuple[str, str]] = field(default_factory=list)  # (step, ticker) a dry run would pay for
     stopped: bool = False
+    refusal: str | None = None  # the credit check's reason: every paid step is a `stopped` row with it
+    exhausted: str | None = None  # the first champion step the provider refused for credit: no teacher step
     screen_failed: bool = False
 
     def record(self, row: Row, session: date | None = None) -> None:
         """Print the row and, outside a dry run, store it at once (a crash keeps every row before it)."""
         day = session or self.session
         self.rows.append(row)
-        print(line(row, day))
+        self.say(line(row, day))
         if not self.dry_run:
             journal.add_daily_run(self.conn, {
                 "daily_id": self.daily_id, "session": day.isoformat(), "step": row.step, "ticker": row.ticker,
                 "status": row.status, "reason": row.reason, "ids": row.ids, "cost_usd": row.cost_usd,
             })
 
+    def say(self, text: str) -> None:
+        if not self.quiet:
+            print(text)
+
     def affordable(self, step: str, ticker: str, estimate: float, prefix: str = "") -> bool:
-        """False, with a `stopped` row, once the next call's estimate would take the run past `max_usd`."""
+        """False, with a `stopped` row, once the next call's estimate would take the run past `max_usd` (or the credit
+        check refused the evening)."""
         if self.stopped or self.spent_usd + estimate > self.max_usd:
             self.stopped = True
-            self.record(Row(step, ticker, "stopped", f"{prefix}budget: spent ${self.spent_usd:.4f} + ≈${estimate:.2f} "
-                                                     f"would pass --max-usd ${self.max_usd:.2f}"))
+            why = self.refusal or (f"budget: spent ${self.spent_usd:.4f} + ≈${estimate:.2f} would pass --max-usd "
+                                   f"${self.max_usd:.2f}")
+            self.record(Row(step, ticker, "stopped", prefix + why))
             return False
         return True
+
+    def failed(self, step: str, ticker: str, error: str | None, cost: float) -> None:
+        """A failed champion step; the first one the provider refused for credit (402) stops the teacher step."""
+        self.record(Row(step, ticker, "failed", error or "?", cost_usd=cost))
+        if error and CREDIT_CODE in error and self.exhausted is None:
+            self.exhausted = f"champion {step} {ticker} was refused for credit ({CREDIT_CODE})"
 
     def call[T](self, step: Callable[[], T]) -> tuple[T | None, str | None, float]:
         """Run one paid step: (result or None, error or None, cost of the run files it saved, failed calls too)."""
@@ -190,9 +212,11 @@ def shortlist(results: list[ScreenResult], top: int) -> list[str]:
 
 def run(conn: sqlite3.Connection, steps: Steps, session: date, *, top: int, max_usd: float, runs_dir: Path,
         now: datetime, dry_run: bool = False, no_model: bool = False, teachers: TeacherSteps | None = None,
-        teacher_max_usd: float = TEACHER_MAX_USD, challenger: ChallengerSteps | None = None) -> Daily:
+        teacher_max_usd: float = TEACHER_MAX_USD, challenger: ChallengerSteps | None = None,
+        credits: Callable[[], float] | None = None) -> Daily:
     """The whole evening for `session`, then the teacher step when `teachers` is given. Only a failed screen ends it
-    early (`screen_failed`). `challenger` None (--no-challenger) leaves a pending change's challenger skipped."""
+    early (`screen_failed`). `challenger` None (--no-challenger) leaves a pending change's challenger skipped.
+    `credits` (the account's balance left, OpenRouter only) is read once before the first paid call."""
     daily = Daily(conn, session, max_usd, runs_dir, dry_run)
     for day in missed_sessions(conn, session, now):
         daily.record(Row("session", None, "missed", "no tr daily row for this completed session"), day)
@@ -211,6 +235,8 @@ def run(conn: sqlite3.Connection, steps: Steps, session: date, *, top: int, max_
     if opens <= now:  # `tr thesis` refuses now, so an analysis would be paid for and never used
         gate = f"late: the entry window after {session} opened at {opens:%Y-%m-%d %H:%M} UTC"
     challenge = challenge_for(conn, session, challenger)
+    if credits is not None and not dry_run:
+        check_credits(daily, steps, tickers, now, gate, challenge, credits)
     analyze_all(daily, steps, tickers, gate)
     thesis_all(daily, steps, now, gate, challenge)
     reconcile(daily, steps)
@@ -234,16 +260,44 @@ def analyze_all(daily: Daily, steps: Steps, tickers: list[str], gate: str | None
             daily.record(Row("analyze", ticker, "skipped", gate))
         elif daily.dry_run:
             daily.planned.append(("analyze", ticker))
-            print(f"would analyze {ticker} (≈${ANALYZE_USD:.2f}), then thesis (≈${THESIS_USD:.2f})")
+            daily.say(f"would analyze {ticker} (≈${ANALYZE_USD:.2f}), then thesis (≈${THESIS_USD:.2f})")
         elif daily.affordable("analyze", ticker, ANALYZE_USD):
             result, error, cost = daily.call(lambda: steps.analyze(ticker, daily.session))
             if result is None:
-                daily.record(Row("analyze", ticker, "failed", error or "?", cost_usd=cost))
+                daily.failed("analyze", ticker, error, cost)
                 continue
             a = result.analysis
             status = "ok" if a.claims else "failed"
             text = f"{len(a.claims)} claims, {len(result.rejected)} rejected"
             daily.record(Row("analyze", ticker, status, text, (a.analysis_id,), cost))
+
+
+def plan(daily: Daily, steps: Steps, tickers: list[str], now: datetime, gate: str | None,
+         challenge: Challenge | None) -> list[tuple[str, str]]:
+    """What the evening would pay for, before it pays: the dry run's pass over the journal, with no line printed."""
+    scratch = Daily(daily.conn, daily.session, daily.max_usd, daily.runs_dir, dry_run=True, quiet=True)
+    analyze_all(scratch, steps, tickers, gate)
+    thesis_all(scratch, steps, now, gate, challenge)
+    return scratch.planned
+
+
+def check_credits(daily: Daily, steps: Steps, tickers: list[str], now: datetime, gate: str | None,
+                  challenge: Challenge | None, credits: Callable[[], float]) -> None:
+    """Refuse the paid steps when the balance is under their estimate (COST-SPIKE 14:50: a run at $0.365 left paid
+    for 7 refused theses). A failed read is one line and the evening goes on: the provider's own 402 is then the
+    stop. Nothing to pay for (all done, gated) reads nothing."""
+    need = estimate(plan(daily, steps, tickers, now, gate, challenge))
+    if need == 0:
+        return
+    try:
+        left = credits()
+    except Exception as error:
+        print(f"credits: read failed ({reason(error)}); the evening goes on without the check")
+        return
+    if left < need:
+        daily.stopped = True
+        daily.refusal = (f"credits: ${left:.6f} left at OpenRouter is under the evening's estimate ≈${need:.2f}; "
+                         "nothing spent, top up and rerun")
 
 
 def thesis_all(daily: Daily, steps: Steps, now: datetime, gate: str | None,
@@ -278,11 +332,11 @@ def thesis_one(daily: Daily, steps: Steps, a: Analysis, now: datetime) -> None:
         daily.record(Row("thesis", a.ticker, "skipped", "every horizon has a live champion thesis"))
     elif daily.dry_run:
         daily.planned.append(("thesis", a.ticker))
-        print(f"would thesis {a.ticker} {','.join(asked)} from {a.analysis_id} (≈${THESIS_USD:.2f})")
+        daily.say(f"would thesis {a.ticker} {','.join(asked)} from {a.analysis_id} (≈${THESIS_USD:.2f})")
     elif daily.affordable("thesis", a.ticker, THESIS_USD):
         result, error, cost = daily.call(lambda: steps.thesis(a, asked))
         if result is None:
-            daily.record(Row("thesis", a.ticker, "failed", error or "?", cost_usd=cost))
+            daily.failed("thesis", a.ticker, error, cost)
             return
         status, text = decision(result.checked)
         daily.record(Row("thesis", a.ticker, status, text, tuple(t.thesis_id for t in result.checked.theses), cost))
@@ -344,8 +398,8 @@ def challenge_step(daily: Daily, c: Challenge, a: Analysis, now: datetime, gate:
         return row("ok", "no call: every horizon has a live challenger thesis")
     if daily.dry_run:
         daily.planned.append((rules.CHALLENGER, a.ticker))
-        print(f"would challenger thesis {a.ticker} {','.join(asked)} from {a.analysis_id} under "
-              f"{c.change.change_id} (≈${THESIS_USD:.2f})")
+        daily.say(f"would challenger thesis {a.ticker} {','.join(asked)} from {a.analysis_id} under "
+                  f"{c.change.change_id} (≈${THESIS_USD:.2f})")
     elif daily.affordable("thesis", a.ticker, THESIS_USD, tag):
         result, error, cost = daily.call(lambda: c.steps.thesis(a, asked, c.rule))
         if result is None:
@@ -401,12 +455,16 @@ def grade(daily: Daily, steps: Steps) -> None:
     daily.record(Row("reconcile", None, "ok", f"{GRADE}: {total}", gr.written_ids(report)))
 
 
+def estimate(planned: list[tuple[str, str]]) -> float:
+    """The dry-run estimate: ≈ANALYZE_USD per planned analyze, ≈THESIS_USD per planned champion or challenger thesis."""
+    return round(sum(ANALYZE_USD if step == "analyze" else THESIS_USD for step, _ in planned), 6)
+
+
 def summary(daily: Daily) -> str:
     if daily.dry_run:
         n_analyze = sum(step == "analyze" for step, _ in daily.planned)
         n_thesis = sum(step == "thesis" for step, _ in daily.planned)
-        n_challenger = sum(step == rules.CHALLENGER for step, _ in daily.planned)
-        cost = n_analyze * ANALYZE_USD + (n_thesis + n_challenger) * THESIS_USD
+        cost = estimate(daily.planned)
         return (f"daily {daily.session} (dry run): would analyze {n_analyze}, thesis {n_thesis}, estimated ${cost:.2f} "
                 f"(≈${ANALYZE_USD:.2f} per analyze, ${THESIS_USD:.2f} per thesis); nothing written to daily_run")
     paid = [r for r in daily.rows if r.step in ("analyze", "thesis") and not is_challenger(r)]
@@ -424,6 +482,10 @@ def teach(daily: Daily, steps: TeacherSteps, results: list[ScreenResult], max_us
     """Each pinned teacher on each drawn name of the session, after the evening's steps. Never raises: the evening is
     done and the exit code is its own."""
     try:
+        short = daily.refusal or daily.exhausted
+        if short:
+            print(f"teachers {daily.session}: skipped: {short}")
+            return
         spend = TeacherSpend(max_usd, teacher_spent(daily.conn, daily.session))
         start = len(daily.rows)
         names = teach_all(daily, steps, results, spend, "--no-model" if no_model else None)

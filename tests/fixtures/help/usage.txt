@@ -1,5 +1,6 @@
 usage: tr usage [-h] [--by {arm,call,day,model,run,step,tag}] [--run RUN_ID]
                 [--since DATE] [--step STEP] [--tag TAG] [--all-dirs]
+                [--account] [--alert-usd USD] [--min-credit-usd USD]
 
 cost per run, arm, day, call, step, model or tag from the saved run files and
 the cost ledger, then the OpenRouter key's lifetime spend and the two
@@ -18,3 +19,12 @@ options:
   --all-dirs            every runs directory under data/ and data-dev/, plus
                         the ledger rows whose run file is gone, one row per
                         run id
+  --account             also read the account's credits, compare the key's
+                        move since the previous key_reading with the calls
+                        traced since, append a key_reading row to the ledger;
+                        exit 1 on a settled gap over --alert-usd or a balance
+                        under --min-credit-usd (OpenRouter only)
+  --alert-usd USD       --account: the gap (key delta minus traced) that exits
+                        1 once settled (default 0.025)
+  --min-credit-usd USD  --account: exit 1 when fewer credits are left (default
+                        1.80, 3 x the daily cost budget)

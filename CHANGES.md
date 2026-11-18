@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- COST-3b (2026-11-18): the OpenRouter account as a reading. `openrouter.key_reading()` / `credits()` (free GETs); `tr usage --account` compares the traced spend since the last `key_reading` ledger row with the key's own counter (a gap over `--alert-usd` $0.025 is re-read 60 s later and alerts only when two reads agree), alerts under `--min-credit-usd` ($1.80 = 3 x the daily budget), exit 1 on either; `tr slo --account` adds a `credits` reading (plain `tr slo` unchanged); a paid `tr daily` on OpenRouter plans the evening silently, reads the balance once before its first paid call and records every paid step `stopped credits: ...` with nothing spent when the balance is under the estimate, and a champion step refused with `insufficient_credits` skips the teacher step. Motivated by the 2026-11-17 W7RefB `BudgetExceeded` run ($1.029382 spent, no result, which a settled key-vs-trace gap would have flagged) and the COST-SPIKE 14:50 addendum (the live run at $0.365 left paid for 7 refused theses while the teacher step kept spending). Runbook "Credits", slo-review and ADR-004 addenda.
+
 - **Week 8 replication result (ADR-011 Amendment 1, "Result (replication)").** The pre-registered second `sonnet`
   vs `routed` run was made on 2026-11-18 (120 fresh ticker-days, Anthropic credit, $7.416325 against about 7.3
   expected). Every rule of item 5 holds: `failed=0` and `n=120` on both arms, `all_claims_valid` 0.750 -> 0.817,

@@ -10,7 +10,7 @@ a two-step pipeline arm at test time with gigai-core `run` and a fake provider (
 import json
 import os
 import shutil
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 
 import httpx
@@ -23,9 +23,10 @@ from tradingresearch import usage
 from tradingresearch.analyze import input_hash, save
 from tradingresearch.cli import main
 from tradingresearch.commands import usage as usage_cmd
+from tradingresearch.config import settings
 from tradingresearch.providers import openrouter
 from tradingresearch.trace import cache_tokens, calls, iter_runs, kind
-from test_openrouter import recorded, replaying, tool_request
+from test_openrouter import KEY, account_api, recorded, replaying, tool_request
 from test_teacher import context
 
 DATA = Path(__file__).parent / "fixtures" / "usage"
@@ -155,6 +156,145 @@ def test_tr_usage_since_a_later_day_shows_no_calls(tr_env, capsys):
 def test_tr_usage_refuses_an_unknown_run(tr_env):
     with pytest.raises(SystemExit, match="no saved run run_nope"):
         main(["usage", "--run", "run_nope"])
+
+
+# ---------- --account: the key's counters and the account's credits against the traces (COST-3b) ----------
+
+KEY_LINE = ("openrouter key usage $64.697878 (today $0.500000, this week $2.250000); credits $70.00 bought, "
+            "$64.697878 used, $5.302122 left\n")
+
+
+@pytest.fixture
+def account_env(tr_env, monkeypatch):
+    """`tr usage --account` with the key set and a settled read that fails the test if it sleeps; tests that want
+    the wait replace `SLEEP` again."""
+    tr_env.write_text(f"OPENROUTER_API_KEY={KEY}\n")
+    monkeypatch.setattr(usage_cmd, "SLEEP", lambda s: pytest.fail(f"slept {s} s"))
+    return tr_env
+
+
+def previous_reading(at: str, usage_usd: float) -> Path:
+    path = Path(os.environ["TR_LEDGER"])
+    with path.open("a") as f:
+        f.write(json.dumps({"kind": "key_reading", "at": at, "usage": usage_usd, "usage_daily": 0.0,
+                            "usage_weekly": 0.0, "total_credits": 70.0}) + "\n")
+    return path
+
+
+def key_data(usage_usd: float) -> dict:
+    return {"label": "tr", "usage": usage_usd, "usage_daily": 0.5, "usage_weekly": 2.25, "limit": None}
+
+
+def test_tr_usage_account_prints_the_balance_and_appends_the_first_key_reading(account_env, monkeypatch, capsys):
+    seen = account_api(monkeypatch, key_data(64.697878), {"total_credits": 70.0, "total_usage": 64.697878})
+    main(["usage", "--account"])
+    ledger_path = Path(os.environ["TR_LEDGER"])
+    out = capsys.readouterr().out
+    assert out == RUN_TABLE + KEY_LINE + (
+        f"no previous key_reading in {ledger_path}: the gap is checked from the next --account run\n"
+        f"key_reading appended to {ledger_path}\n")
+    assert KEY not in out and seen == ["/api/v1/key", "/api/v1/credits"]
+    [row] = ledger()
+    assert row == {"kind": "key_reading", "at": row["at"], "usage": 64.697878, "usage_daily": 0.5,
+                   "usage_weekly": 2.25, "total_credits": 70.0}
+    assert row["at"].endswith("+00:00")
+    assert usage.read_ledger(ledger_path) == [] and len(usage.read_key_readings(ledger_path)) == 1
+
+
+def test_tr_usage_account_reports_the_gap_since_the_previous_reading_and_no_alert_under_the_threshold(
+        account_env, monkeypatch, capsys):
+    previous_reading("2026-11-01T00:00:00+00:00", 64.637332)  # the three fixture calls ($0.050546) came after it
+    account_api(monkeypatch, key_data(64.697878), {"total_credits": 70.0, "total_usage": 64.697878})
+    main(["usage", "--account"])
+    out = capsys.readouterr().out
+    assert out == RUN_TABLE + KEY_LINE + (
+        "since 2026-11-01 00:00:00Z: traced $0.050546 vs key delta $0.060546, gap $0.010000 (--alert-usd 0.025)\n"
+        f"key_reading appended to {os.environ['TR_LEDGER']}\n")
+    assert len(usage.read_key_readings(Path(os.environ["TR_LEDGER"]))) == 2
+
+
+def test_tr_usage_account_alerts_on_a_settled_gap_and_a_low_balance(account_env, monkeypatch, capsys):
+    previous_reading("2026-11-01T00:00:00+00:00", 64.597332)  # key delta $0.100546 against $0.050546 traced
+    slept: list[float] = []
+    monkeypatch.setattr(usage_cmd, "SLEEP", slept.append)
+    seen = account_api(monkeypatch, key_data(64.697878), {"total_credits": 65.0, "total_usage": 64.697878})
+    with pytest.raises(SystemExit) as alerted:
+        main(["usage", "--account"])
+    assert alerted.value.code == 1 and slept == [60.0]
+    assert seen == ["/api/v1/key", "/api/v1/credits", "/api/v1/key"]  # the second /key read settles the gap
+    lines = capsys.readouterr().out.splitlines()
+    assert lines[-4].startswith("since 2026-11-01 00:00:00Z: traced $0.050546 vs key delta $0.100546, gap $0.050000")
+    assert lines[-3].startswith("ALERT gap $0.050000 over --alert-usd 0.025: two /key reads 60 s apart agree")
+    assert lines[-2].startswith("ALERT credits $0.302122 left under --min-credit-usd 1.80: top up")
+    assert len(usage.read_key_readings(Path(os.environ["TR_LEDGER"]))) == 2
+
+
+def test_tr_usage_account_does_not_alert_an_unsettled_gap_and_keeps_the_later_read(account_env, monkeypatch, capsys):
+    previous_reading("2026-11-01T00:00:00+00:00", 64.597332)
+    monkeypatch.setattr(usage_cmd, "SLEEP", lambda s: None)
+    account_api(monkeypatch, [key_data(64.697878), key_data(64.707878)],
+                {"total_credits": 70.0, "total_usage": 64.707878})
+    main(["usage", "--account"])  # exit 0
+    out = capsys.readouterr().out
+    assert "unsettled: the key moved from $64.697878 to $64.707878 between two reads 60 s apart" in out
+    assert "ALERT" not in out
+    assert usage.read_key_readings(Path(os.environ["TR_LEDGER"]))[-1].usage == 64.707878
+
+
+def test_the_account_read_waits_until_the_last_traced_call_is_a_minute_old(account_env, monkeypatch, capsys):
+    account_api(monkeypatch, key_data(64.697878), {"total_credits": 70.0, "total_usage": 64.697878})
+    slept: list[float] = []
+    calls_made = every_call()
+    now = max(call.started_at for call in calls_made) + timedelta(seconds=20)
+    assert usage_cmd.account(settings(), calls_made, [], alert_usd=0.025, min_credit_usd=1.8, clock=lambda: now,
+                             sleep=slept.append) == 0
+    assert slept == [pytest.approx(40.0)]
+    assert capsys.readouterr().out.startswith("waiting 40 s: the last traced call is under 60 s old\n")
+
+
+class Clock:
+    """A wall clock the sleeps advance, so the row's `at` can be checked against the waits."""
+
+    def __init__(self, at: datetime) -> None:
+        self.at = at
+
+    def now(self) -> datetime:
+        return self.at
+
+    def sleep(self, seconds: float) -> None:
+        self.at += timedelta(seconds=seconds)
+
+
+def test_the_key_reading_row_is_stamped_after_the_last_read_not_before_the_waits(account_env, monkeypatch):
+    previous_reading("2026-11-01T00:00:00+00:00", 64.597332)  # gap $0.05 over the threshold: a second read follows
+    account_api(monkeypatch, key_data(64.697878), {"total_credits": 70.0, "total_usage": 64.697878})
+    calls_made = every_call()
+    clock = Clock(max(call.started_at for call in calls_made) + timedelta(seconds=20))
+    started = clock.at
+    code = usage_cmd.account(settings(), calls_made, [], alert_usd=0.025, min_credit_usd=1.8, clock=clock.now,
+                             sleep=clock.sleep)
+    assert code == 1  # the two reads agree: a settled gap
+    [_, row] = usage.read_key_readings(settings().ledger)
+    assert row.at == started + timedelta(seconds=40 + 60)  # after the pre-wait and the settle wait, not `started`
+
+
+def test_tr_usage_account_without_a_key_or_under_anthropic_writes_no_row(tr_env, monkeypatch, capsys):
+    seen = account_api(monkeypatch, key_data(1.0), {"total_credits": 1.0, "total_usage": 0.0})
+    main(["usage", "--account"])
+    assert capsys.readouterr().out == RUN_TABLE + (
+        "OPENROUTER_API_KEY is not set: key usage and the reconcile line are skipped (trace tables only)\n")
+    tr_env.write_text(f"OPENROUTER_API_KEY={KEY}\n")
+    monkeypatch.setenv("TR_PROVIDER", "anthropic")
+    main(["usage", "--account"])
+    assert capsys.readouterr().out.splitlines()[-1] == (
+        "TR_PROVIDER=anthropic: Anthropic has no account endpoint, so --account is skipped (no key_reading row)")
+    assert seen == [] and ledger() == []
+
+
+def test_tr_usage_views_leave_key_reading_rows_out_of_the_ledger_join(tr_env, capsys):
+    previous_reading("2026-11-01T00:00:00+00:00", 1.0)
+    main(["usage", "--by", "step"])
+    assert "key_reading" not in capsys.readouterr().out
 
 
 # ---------- the cost table: --by step / --by model (G15-SPIKE §3) ----------

@@ -13,6 +13,7 @@ import shutil
 import sqlite3
 from datetime import UTC, date, datetime
 from pathlib import Path
+from types import SimpleNamespace
 
 import httpx
 import pytest
@@ -22,8 +23,9 @@ from factories import T0, analysis
 from test_teacher import API, PRICE, REPLY as TEACHER_ANALYZE_REPLY, TEACHER, context, pinned_tokens  # noqa: F401
 from tradingresearch import analyze as an, daily, grade, journal, reconcile_run, sessions, teacher as tc, thesis as th
 from tradingresearch.cli import build_parser, main
+from tradingresearch.commands.daily import credit_reader
 from tradingresearch.commands.thesis import horizons_to_ask
-from tradingresearch.config import require, settings
+from tradingresearch.config import Secret, require, settings
 from tradingresearch.providers.openrouter import OpenRouter, Routing
 from tradingresearch.records import Analysis, NoTrade
 from tradingresearch.screen import CODE_VERSION, ScreenResult
@@ -55,8 +57,9 @@ def ranked(*tickers: str) -> list[ScreenResult]:
 class Recorded:
     """The step table over recorded results; it counts the calls each paid step got."""
 
-    def __init__(self, conn, runs_dir: Path, screen: list[ScreenResult], fail: tuple[str, ...] = ()) -> None:
-        self.conn, self.runs_dir, self.screen_rows, self.fail = conn, runs_dir, screen, fail
+    def __init__(self, conn, runs_dir: Path, screen: list[ScreenResult], fail: tuple[str, ...] = (),
+                 code: str = "parse_error") -> None:
+        self.conn, self.runs_dir, self.screen_rows, self.fail, self.code = conn, runs_dir, screen, fail, code
         self.analyzed: list[str] = []
         self.thesised: list[str] = []
         self.reconciled: list[bool] = []
@@ -68,7 +71,7 @@ class Recorded:
     def analyze(self, ticker: str, day: date) -> an.Result:
         self.analyzed.append(ticker)
         if ticker in self.fail:
-            raise SystemExit("model call failed: parse_error (run run_x)")
+            raise SystemExit(f"model call failed: {self.code} (run run_x)")
         journal.add_analysis(self.conn, ANALYSIS, [])
         shutil.copy(ANALYZE_RUN, self.runs_dir / ANALYZE_RUN.name)
         return an.Result(ANALYSIS, [], 0.017304, str(self.runs_dir / ANALYZE_RUN.name), "")
@@ -177,6 +180,74 @@ def test_the_budget_stops_before_the_call_that_would_pass_max_usd(conn, runs_dir
     assert statuses(conn)[1:4] == [("analyze", "AAPL", "ok"), ("analyze", "MSFT", "stopped"),
                                    ("thesis", "AAPL", "stopped")]
     assert "budget: spent $0.0173 + ≈$0.02 would pass --max-usd $0.03" in capsys.readouterr().out
+
+
+def never(*args):
+    pytest.fail(f"called with {args}")
+
+
+def test_a_short_balance_refuses_the_paid_steps_before_any_model_call(conn, runs_dir, capsys):
+    steps = Recorded(conn, runs_dir, ranked("AAPL", "MSFT"))  # plan: 2 analyze + 2 thesis ≈ $0.10
+    reads: list[float] = []
+    report = run(conn, steps, runs_dir, credits=lambda: reads.append(0.05) or 0.05,
+                 teachers=daily.TeacherSteps(never, never))
+    assert (steps.analyzed, steps.thesised, report.stopped, report.spent_usd, reads) == ([], [], True, 0.0, [0.05])
+    refusal = "credits: $0.050000 left at OpenRouter is under the evening's estimate ≈$0.10; nothing spent, top up and rerun"
+    assert [(r["step"], r["ticker"], r["status"], r["reason"]) for r in journal.daily_runs(conn, SESSION)][1:3] == [
+        ("analyze", "AAPL", "stopped", refusal), ("analyze", "MSFT", "stopped", refusal)]
+    out = capsys.readouterr().out
+    assert "would analyze" not in out  # the planning pass is silent
+    assert "0 ok, 0 failed, 0 skipped, 2 stopped; 0 model steps, spent $0.0000 of $1.00" in out
+    assert out.rstrip().endswith(f"teachers 2026-11-16: skipped: {refusal}")
+
+
+def test_a_sufficient_balance_changes_nothing_and_a_rerun_with_nothing_to_pay_never_reads_it(conn, runs_dir, capsys):
+    steps = Recorded(conn, runs_dir, ranked("AAPL"))
+    reads: list[float] = []
+    report = run(conn, steps, runs_dir, credits=lambda: reads.append(5.0) or 5.0)
+    assert (steps.analyzed, steps.thesised, report.stopped, reads) == (["AAPL"], ["AAPL"], False, [5.0])
+    assert statuses(conn) == MAIN_ROWS and "credits" not in capsys.readouterr().out
+    run(conn, steps, runs_dir, credits=never)  # all done: nothing to pay for, so no read
+    assert steps.analyzed == ["AAPL"]
+
+
+def test_a_failed_credit_read_is_one_line_and_the_evening_goes_on(conn, runs_dir, capsys):
+    def failing():
+        raise httpx.HTTPStatusError("Server error '500 Internal Server Error'", request=None, response=None)
+
+    steps = Recorded(conn, runs_dir, ranked("AAPL"))
+    report = run(conn, steps, runs_dir, credits=failing)
+    assert (steps.analyzed, report.stopped) == (["AAPL"], False) and statuses(conn) == MAIN_ROWS
+    assert ("credits: read failed (Server error '500 Internal Server Error'); the evening goes on without the check"
+            in capsys.readouterr().out)
+
+
+def test_a_dry_run_or_a_gated_run_never_reads_the_balance(conn, runs_dir):
+    steps = Recorded(conn, runs_dir, ranked("AAPL"))
+    run(conn, steps, runs_dir, dry_run=True, credits=never)
+    run(conn, steps, runs_dir, no_model=True, credits=never)
+    assert steps.analyzed == [] and statuses(conn)[1] == ("analyze", "AAPL", "skipped")  # the --no-model row
+
+
+def test_a_champion_step_refused_for_credit_skips_the_teacher_step(conn, runs_dir, capsys):
+    steps = Recorded(conn, runs_dir, ranked("AAPL"), fail=("AAPL",), code="insufficient_credits")
+    report = run(conn, steps, runs_dir, credits=lambda: 5.0, teachers=daily.TeacherSteps(never, never))
+    assert (steps.analyzed, report.stopped) == (["AAPL"], False)
+    assert report.exhausted == "champion analyze AAPL was refused for credit (insufficient_credits)"
+    assert statuses(conn)[1] == ("analyze", "AAPL", "failed")
+    assert capsys.readouterr().out.rstrip().endswith(
+        "teachers 2026-11-16: skipped: champion analyze AAPL was refused for credit (insufficient_credits)")
+
+
+def test_the_credit_reader_exists_only_for_a_paid_run_on_openrouter_with_a_key(monkeypatch):
+    openrouter = SimpleNamespace(provider="openrouter", openrouter_key=Secret("placeholder-not-a-key"))
+    assert credit_reader(openrouter, paid=False) is None
+    assert credit_reader(SimpleNamespace(provider="anthropic", openrouter_key=Secret("x")), paid=True) is None
+    assert credit_reader(SimpleNamespace(provider="openrouter", openrouter_key=Secret("")), paid=True) is None
+    seen = []
+    monkeypatch.setattr("tradingresearch.commands.daily.openrouter.credits",
+                        lambda key: seen.append(key) or SimpleNamespace(left=1.25))
+    assert credit_reader(openrouter, paid=True)() == 1.25 and seen == ["placeholder-not-a-key"]
 
 
 def test_missed_sessions_are_listed_and_stored_once_and_only_since_the_first_run(conn, runs_dir, capsys):

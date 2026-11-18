@@ -1,6 +1,7 @@
 """The OpenRouter adapter's week 4 plumbing: tool specs and tool calls on the wire, and the shared retry policy inside
 `invoke`. The tool reply is the recorded real gpt-4.1-nano call (re-record with `uv run pytest -m live
-tests/test_openrouter.py`), replayed at the HTTP transport; no fake model."""
+tests/test_openrouter.py`), replayed at the HTTP transport; no fake model. The account reads (GET /key, GET
+/credits; COST-3b) are replayed the same way, through `account_api`."""
 
 import json
 import random
@@ -11,12 +12,14 @@ import pytest
 from gigai_core.providers import CallSettings, ModelRequest, OutputNotJSON, ToolCall, ToolSpec, Turn
 
 from tradingresearch.config import require, settings
+from tradingresearch.providers import openrouter
 from tradingresearch.providers.openrouter import OpenRouter, OpenRouterError, message
 from tradingresearch.retry import Policy
 
 TOOLS = Path(__file__).parent / "fixtures" / "tools"
 NAME = "get_close"
 MODEL = "openai/gpt-4.1-nano"  # cheap and tool-capable
+KEY = "placeholder-not-a-key"
 
 
 def tool_request() -> ModelRequest:
@@ -51,6 +54,48 @@ def replaying(provider: OpenRouter, *responses: httpx.Response) -> list[dict]:
 
 def no_wait() -> Policy:
     return Policy(sleep=lambda s: None, rng=random.Random(0))
+
+
+def account_api(monkeypatch, key: dict | list[dict], credits: dict, token: str = KEY) -> list[str]:
+    """GET /key and GET /credits answered at the transport, no network: successive /key reads take the next entry of
+    `key` (the last one repeats). Returns the paths requested in order; a request without the bearer token fails."""
+    readings = list(key) if isinstance(key, list) else [key]
+    seen: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.headers["Authorization"] == f"Bearer {token}"
+        seen.append(request.url.path)
+        if request.url.path == "/api/v1/key":
+            return httpx.Response(200, json={"data": readings.pop(0) if len(readings) > 1 else readings[0]})
+        if request.url.path == "/api/v1/credits":
+            return httpx.Response(200, json={"data": credits})
+        return httpx.Response(404, json={"error": {"message": "no such endpoint"}})
+
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+    monkeypatch.setattr(httpx, "get", lambda url, headers=None, timeout=None: client.get(url, headers=headers))
+    return seen
+
+
+def test_key_reading_and_credits_are_free_reads_of_the_account_that_never_show_the_key(monkeypatch, capsys):
+    seen = account_api(monkeypatch, {"label": "tr", "usage": 64.647332, "usage_daily": 0.5, "usage_weekly": 2.25,
+                                     "usage_monthly": 9.0, "limit": None, "is_free_tier": False},
+                       {"total_credits": 65.0, "total_usage": 64.647332})
+    reading = openrouter.key_reading(KEY)
+    assert (reading.usage, reading.usage_daily, reading.usage_weekly) == (64.647332, 0.5, 2.25)
+    assert openrouter.key_usage(KEY) == 64.647332
+    balance = openrouter.credits(KEY)
+    assert (balance.total_credits, balance.total_usage, balance.left) == (65.0, 64.647332, 0.352668)
+    assert seen == ["/api/v1/key", "/api/v1/key", "/api/v1/credits"]
+    assert KEY not in capsys.readouterr().out
+
+
+def test_a_failed_account_read_raises_the_http_error_with_its_status(monkeypatch):
+    def unauthorized(url, headers=None, timeout=None):
+        return httpx.Response(401, json={"error": {"message": "No auth credentials found"}}, request=httpx.Request("GET", url))
+
+    monkeypatch.setattr(httpx, "get", unauthorized)
+    with pytest.raises(Exception, match="401"):
+        openrouter.credits(KEY)
 
 
 def test_the_tool_request_matches_the_recorded_wire_body_and_the_reply_parses_to_tool_calls():

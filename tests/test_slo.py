@@ -10,6 +10,7 @@ import pytest
 from tradingresearch import journal, slo_check
 from tradingresearch.cli import main
 from tradingresearch.config import settings
+from tradingresearch.providers import openrouter
 
 SESSION = date(2026, 11, 18)
 ON_TIME = datetime(2026, 11, 18, 21, 40, tzinfo=UTC)  # 16:40 ET
@@ -181,6 +182,77 @@ def test_the_command_exits_1_on_a_breach_and_0_when_met(tmp_path, monkeypatch, c
     out = capsys.readouterr().out
     assert "BREACH finished dy_1 finished 2026-11-18 17:40 ET (+60 min injected)" in out
     assert out.rstrip().endswith("slo 2026-11-18: 2/3 met; no data: cost")  # $0 rows: cost has nothing to measure
+
+
+def test_the_credits_reading_appears_only_with_account_and_the_plain_output_is_unchanged(tmp_path, monkeypatch,
+                                                                                         capsys):
+    monkeypatch.setenv("TR_DATA_DIR", str(tmp_path))
+    env_file = tmp_path / "verify.env"
+    monkeypatch.setenv("TR_ENV_FILE", str(env_file))
+    conn = journal.connect(tmp_path / "journal.db")
+    evening(conn, SESSION, ON_TIME)
+    screened(conn, SESSION, ["AAPL"], ["AAPL"])
+    conn.close()
+    monkeypatch.setattr(slo_check.openrouter, "credits", lambda key: pytest.fail("tr slo read the account"))
+    main(["slo"])
+    plain = capsys.readouterr().out
+    assert plain.rstrip().endswith("slo 2026-11-18: 3/3 met; no data: cost")
+    main(["slo", "--account"])  # no key: no data, not a breach
+    assert capsys.readouterr().out.splitlines()[-2:] == [
+        "n/a    credits  no data: OPENROUTER_API_KEY is not set  (target: at least $1.80 left at OpenRouter (3 x the "
+        "daily budget $0.60))",
+        "slo 2026-11-18: 3/3 met; no data: cost, credits"]
+    env_file.write_text("OPENROUTER_API_KEY=placeholder-not-a-key\n")
+    monkeypatch.setattr(slo_check.openrouter, "credits", lambda key: openrouter.Credits(65.0, 60.0))
+    main(["slo", "--account"])
+    with_account = capsys.readouterr().out
+    assert with_account.splitlines()[-2:] == [
+        "ok     credits  $5.000000 left of $65.00 credits  (target: at least $1.80 left at OpenRouter (3 x the daily "
+        "budget $0.60))",
+        "slo 2026-11-18: 4/4 met; no data: cost"]
+    assert "placeholder-not-a-key" not in with_account
+    monkeypatch.setattr(slo_check.openrouter, "credits", lambda key: openrouter.Credits(65.0, 64.647332))
+    with pytest.raises(SystemExit) as breach:
+        main(["slo", "--account", "--budget-usd", "0.60"])
+    assert breach.value.code == 1
+    assert "BREACH credits  $0.352668 left of $65.00 credits  (target: at least $1.80" in capsys.readouterr().out
+    main(["slo"])
+    assert capsys.readouterr().out == plain
+
+
+def test_the_credits_reading_is_no_data_under_anthropic_or_when_the_read_fails(tmp_path, monkeypatch):
+    env_file = tmp_path / "verify.env"
+    env_file.write_text("OPENROUTER_API_KEY=placeholder-not-a-key\n")
+    monkeypatch.setenv("TR_ENV_FILE", str(env_file))
+
+    def down(key):
+        raise OSError("connection refused")
+
+    failed = slo_check.credits(settings(), read=down)
+    assert (failed.ok, failed.measured) == (None, "no data: credits read failed (connection refused)")
+    monkeypatch.setenv("TR_PROVIDER", "anthropic")
+    skipped = slo_check.credits(settings(), read=lambda key: pytest.fail("read the account under anthropic"))
+    assert (skipped.ok, skipped.measured) == (None, "no data: TR_PROVIDER=anthropic has no account endpoint")
+
+
+def test_the_credits_reading_shows_and_turns_the_exit_code_with_no_live_run_yet(tmp_path, monkeypatch, capsys):
+    monkeypatch.setenv("TR_DATA_DIR", str(tmp_path))
+    env_file = tmp_path / "verify.env"
+    env_file.write_text("OPENROUTER_API_KEY=placeholder-not-a-key\n")
+    monkeypatch.setenv("TR_ENV_FILE", str(env_file))
+    monkeypatch.setattr(slo_check.openrouter, "credits", lambda key: openrouter.Credits(65.0, 64.647332))
+    assert slo(["--account"], datetime(2026, 11, 17, 20, 0, tzinfo=UTC)) == 1  # no deadline passed, balance low
+    assert capsys.readouterr().out.splitlines() == [
+        "BREACH credits  $0.352668 left of $65.00 credits  (target: at least $1.80 left at OpenRouter (3 x the daily "
+        "budget $0.60))",
+        "slo: no live session yet: the live stream starts 2026-11-17"]
+    monkeypatch.setattr(slo_check.openrouter, "credits", lambda key: openrouter.Credits(65.0, 60.0))
+    assert slo(["--account"], datetime(2026, 11, 18, 23, 0, tzinfo=UTC)) == 1  # the misses breach, credits ok
+    lines = capsys.readouterr().out.splitlines()
+    assert lines[0].startswith("BREACH missed   2 of the last 2 sessions") and lines[1].startswith("ok     credits  ")
+    assert lines[2] == "slo: no tr daily run for any live session"
+    assert slo(["--account"], datetime(2026, 11, 17, 20, 0, tzinfo=UTC)) == 0
+    capsys.readouterr()
 
 
 def test_a_journal_of_only_the_pre_live_dev_run_has_no_live_session_and_session_names_it(tmp_path, monkeypatch,

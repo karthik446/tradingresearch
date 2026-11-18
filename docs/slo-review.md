@@ -103,8 +103,9 @@ the target. That is arithmetic on one dev run, not a measurement; the first live
   21:00 ET catch-up, is timed by the catch-up and breaches.
 - `fresh` checks that bars exist for the session, not that their values are right.
 - `cost` reads one run per session. What a catch-up or a rerun spent on the same session is not in the reading
-  (`tr report` and `tr usage --by step` show it), and account burn across projects is not an SLI at all: that
-  number lives on the provider's side (`GET /credits`, COST-3b) and needs the network, which `tr slo` never uses.
+  (`tr report` and `tr usage --by step` show it), and account burn across projects is not an SLI of the plain
+  `tr slo`: that number lives on the provider's side and needs the network, so it is the opt-in `credits` reading
+  of `tr slo --account` (COST-3b, addendum below).
 
 ## Addendum, 2026-11-18 (COST-6): the `cost` SLO
 
@@ -139,3 +140,12 @@ provider refused the other 7 theses on a low balance (COST-SPIKE 14:50 addendum)
 `met` at roughly $0.18 although 7 of its 8 theses failed. That is the point of separate verdicts: a cheap day is
 not a good day, and `cost` says nothing about why a run stopped. Exact `met`, `BREACH` and `no data` output is
 pinned by `tests/test_slo.py`.
+
+## Addendum, 2026-11-18 (COST-3b): the `credits` reading, by request only
+
+`tr slo --account` appends one more line, `credits`: the balance left at OpenRouter (`GET /credits`, a free read)
+against `at least $1.80` (`slo_check.CREDIT_DAYS` = 3 x the $0.60 daily budget; `--budget-usd` moves both). Under
+`TR_PROVIDER=anthropic`, without a key, or when the read fails it is `no data`, never a breach. The plain `tr slo`
+is unchanged and still reads the journal only; the same balance also stops a paid `tr daily` before its first call
+when it would not cover the evening's estimate, and `tr usage --account` alerts on it under `--min-credit-usd`
+(`docs/runbook.md`, "Credits"). The gap named above stands: nothing runs `tr slo --account` on a schedule either.

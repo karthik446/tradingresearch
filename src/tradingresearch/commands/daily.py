@@ -3,18 +3,21 @@
 Paid unless --dry-run or --no-model; --max-usd stops it before the next model call. While a rule change is pending,
 the challenger answers each analysis after the champion under the same --max-usd (SPIKE §8.2; --no-challenger skips
 it). --teachers then runs the bake-off's pinned teachers on the session's drawn names under --teacher-max-usd (SPIKE
-§9.4)."""
+§9.4). On OpenRouter a paid run first reads the account's balance (GET /credits, free) and refuses the paid steps
+when it is under their estimate (COST-3b); Anthropic has no such endpoint, so there the provider's own refusal is
+the stop."""
 
 from __future__ import annotations
 
 import sqlite3
+from collections.abc import Callable
 from datetime import UTC, datetime
 from functools import cache
 from types import SimpleNamespace
 
 from .. import (analyze as an, daily, grade, journal, providers, reconcile_run, rules, screen, teacher as tc,
                 thesis as th)
-from ..providers import anthropic
+from ..providers import anthropic, openrouter
 from .common import alpaca_client, edgar_client
 from .reconcile import completed_session
 from .screen import cmd_screen
@@ -96,6 +99,15 @@ def teacher_steps(conn, cfg, http, provider) -> daily.TeacherSteps:
     return daily.TeacherSteps(analyze_step, thesis_step)
 
 
+def credit_reader(cfg, paid: bool) -> Callable[[], float] | None:
+    """The balance left at OpenRouter, for `daily.run`'s check before the first paid call: only a paid run on
+    OpenRouter with a key has one (Anthropic has no account endpoint; a missing key is already the provider's line)."""
+    if not paid or cfg.provider != "openrouter" or not cfg.openrouter_key:
+        return None
+    key = cfg.openrouter_key.reveal()
+    return lambda: openrouter.credits(key).left
+
+
 def cmd_daily(args, cfg) -> None:
     now = datetime.now(UTC)
     day = completed_session(args.session, now)
@@ -119,7 +131,7 @@ def cmd_daily(args, cfg) -> None:
             report = daily.run(conn, real_steps(conn, cfg, http, provider, args.top), day, top=args.top,
                                max_usd=args.max_usd, runs_dir=cfg.data_dir / "runs", now=now, dry_run=args.dry_run,
                                no_model=args.no_model, teachers=teachers, teacher_max_usd=args.teacher_max_usd,
-                               challenger=challenger)
+                               challenger=challenger, credits=credit_reader(cfg, paid))
     except sqlite3.Error as error:
         raise SystemExit(f"journal failed: {error}") from error
     finally:

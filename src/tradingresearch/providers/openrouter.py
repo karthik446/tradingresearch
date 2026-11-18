@@ -287,7 +287,7 @@ class OpenRouter:
 
 
 def get(url: str, *, headers: dict[str, str] | None = None, policy: Policy = DEFAULT) -> dict:
-    """A GET of the model list or the key, under the shared retry policy."""
+    """A GET of the model list, the key or the credits, under the shared retry policy."""
     def once() -> dict:
         response = httpx.get(url, headers=headers, timeout=30.0)
         if not response.is_success:
@@ -314,9 +314,44 @@ def prices(models: list[str]) -> dict[str, Price]:
     return out
 
 
+@dataclass(frozen=True)
+class KeyReading:
+    """What GET /key says this key has spent, in USD: all time, today and this week (OpenRouter's UTC windows)."""
+
+    usage: float
+    usage_daily: float
+    usage_weekly: float
+
+
+@dataclass(frozen=True)
+class Credits:
+    """GET /credits: the credits bought on the account and the total used; `left` is the balance a paid call needs."""
+
+    total_credits: float
+    total_usage: float
+
+    @property
+    def left(self) -> float:
+        return round(self.total_credits - self.total_usage, 6)
+
+
+def key_reading(api_key: str) -> KeyReading:
+    """The key's spend counters (GET /key, a free read). The reply's label and limits are not kept."""
+    data = get(f"{API}/key", headers={"Authorization": f"Bearer {api_key}"})["data"]
+    return KeyReading(float(data["usage"]), float(data.get("usage_daily") or 0.0),
+                      float(data.get("usage_weekly") or 0.0))
+
+
 def key_usage(api_key: str) -> float:
     """All-time credits used by this key, in USD (GET /key). Read it before and after a paid step."""
-    return float(get(f"{API}/key", headers={"Authorization": f"Bearer {api_key}"})["data"]["usage"])
+    return key_reading(api_key).usage
+
+
+def credits(api_key: str) -> Credits:
+    """The account's balance (GET /credits, a free read): what `tr usage --account`, `tr daily` and `tr slo --account`
+    hold a run or a day against (COST-SPIKE 2.5). Never the key: the reply carries none."""
+    data = get(f"{API}/credits", headers={"Authorization": f"Bearer {api_key}"})["data"]
+    return Credits(float(data["total_credits"]), float(data["total_usage"]))
 
 
 BATCH_ENDPOINT = "/v1/chat/completions"  # the batch runs the sync endpoint's bodies

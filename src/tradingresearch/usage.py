@@ -4,6 +4,7 @@ step and tag, and a ledger row whose run file is gone still counts in the totals
 
 from __future__ import annotations
 
+import json
 import os
 from collections.abc import Callable, Iterable, Iterator, Mapping
 from datetime import date
@@ -17,6 +18,7 @@ from .sessions import NY
 from .trace import Call, calls, header
 
 UNTAGGED = "(untagged)"  # the `--by tag` row of runs with no `cost_tag`
+KEY_READING = "key_reading"  # the ledger's other row kind: what `tr usage --account` read at the provider (COST-3b)
 
 
 class Usage(CoreModel):
@@ -65,11 +67,36 @@ class LedgerRow(CoreModel):
     calls_without_cost: int
 
 
-def read_ledger(path: Path) -> list[LedgerRow]:
-    """Every row of the ledger in file order; none when there is no ledger yet."""
+class KeyReadingRow(CoreModel):
+    """One `tr usage --account` reading (COST-SPIKE 2.5): the key's counters and the account's credits at `at`. The
+    next reading's gap is its key delta against the calls traced since `at`."""
+
+    kind: str
+    at: AwareDatetime
+    usage: float
+    usage_daily: float
+    usage_weekly: float
+    total_credits: float
+
+
+def ledger_lines(path: Path) -> list[tuple[dict, str]]:
+    """Every row of the ledger, parsed and as written, in file order; none when there is no ledger yet. The models
+    validate the text (JSON mode reads the dates and paths that CoreModel's strict Python mode does not)."""
     if not path.is_file():
         return []
-    return [LedgerRow.model_validate_json(line) for line in path.read_text(encoding="utf-8").splitlines() if line]
+    return [(json.loads(line), line) for line in path.read_text(encoding="utf-8").splitlines() if line]
+
+
+def read_ledger(path: Path) -> list[LedgerRow]:
+    """The run rows of the ledger in file order: a row with a `run_id` and no `kind`. Other kinds (`key_reading`) are
+    not runs, so every view over the ledger leaves them out."""
+    return [LedgerRow.model_validate_json(line) for row, line in ledger_lines(path)
+            if "run_id" in row and "kind" not in row]
+
+
+def read_key_readings(path: Path) -> list[KeyReadingRow]:
+    return [KeyReadingRow.model_validate_json(line) for row, line in ledger_lines(path)
+            if row.get("kind") == KEY_READING]
 
 
 def day(call: Call | LedgerRow) -> date:
