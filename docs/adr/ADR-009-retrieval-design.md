@@ -105,6 +105,23 @@ Exactly one paid run; no rerun for a better result. If `tr exp run` refuses a co
   cites no passage says nothing about retrieval quality, only that this prompt did not lead it to use passages. A
   failed condition is not evidence that passages hurt, unless the interval says so.
 
+**Amendment 1 (2026-11-17, before the rerun; the thresholds above do not change).** The first run of this registration
+is **void for infrastructure, not for its result**. The `none` arm finished (`run_e9d0ebaf14da424e`, 20 items, $0.3306).
+The `hybrid` arm (`run_f965ff876c724f65`) completed 4 of 20 items ($0.1012); the other 16 were refused by OpenRouter
+with HTTP 402 `in_flight_budget_exhausted` before any output, because the account balance was too low. Nothing was
+decided from it. The coordinator and the worker did look at the 4 completed hybrid items and at the `none` arm, so
+the rerun is not blind to them; the decision rule is the one registered above and is not retuned. The registration's
+"exactly one paid run" is read as "one complete run": this rerun is that run. Changes, and only these:
+- **Provider and route.** Both arms run on one provider, Anthropic's API directly (`TR_PROVIDER=anthropic`, route
+  `anthropic:claude-sonnet-5-5`), not OpenRouter. The config still names `anthropic/claude-sonnet-5.5` (the same
+  model); the route differs, so the void run's `none` arm is not reused and neither arm is compared across providers.
+- **Cap.** `max_usd_per_arm = 1.00` per arm is unchanged. Cost uses the Anthropic price table of the adapter
+  (ADR-014).
+- **Sampling noise.** The `none` arm sent requests byte-identical to week 5's `full` arm on all 20 items and still
+  scored differently (claims_valid 0.9350 against 0.9636), so identical input does not give identical scores. The
+  interval from `tr exp` already counts that noise; the ADR says so once the result is in.
+- A second incomplete run is not retried: if the rerun is cut short, the result is reported as incomplete.
+
 **Free pre-run** (before the registration, no model call; `data-dev/scratch/w6refb/prerun.py`): the pinned index
 loads and its manifest hashes to the pinned digest; 0 of the 100 retrieved chunks (20 items × 5) became public after
 their session's close; 12 of 20 items have a 10-Q or 8-K chunk in their top 5 (all 20 counting the 8-K's EX-99.1
