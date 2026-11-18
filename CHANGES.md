@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **README release sections (REPO-PLAN Week 9, SPIKE §11).** `## Reference architecture` (a text diagram of
+  screen -> analyze -> thesis -> reconcile -> grade -> report with each box's module, and the cross-cutting traces,
+  evals, experiments, guards, retrieval, routing and caching, and cost trail); `## Reader setup` (accounts and keys,
+  the settings table, free vs paid costs from `docs/measured-costs.md`, US-only, no orders); `## Licences` (MIT code,
+  CC BY-NC 4.0 guide text, CDLA-Permissive-2.0 dataset); `## Disclaimer` (not financial advice). `ci/release_check.py`
+  passes its offline checks. `ci/README.md` names the release check.
+
 - **Week 9 release code (REPO-PLAN Week 9, SPIKE §11).** `tr report --export PATH` also writes the graded
   scorecards as one JSON file (`{"schema": 1, "stream_from", "arms": [...]}`: per arm and horizon the counts, fill
   rate, abstention, Wilson win rate, mean r_net and real − shadow with their cluster-bootstrap CIs, median MFE/MAE,

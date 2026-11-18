@@ -12,6 +12,10 @@ uv run python ci/gate.py      # both checks; exit 0 = pass
 uv run pytest tests/gate -q   # the same checks as tests, plus the negative cases
 ```
 
+## Release check
+
+`uv run python ci/release_check.py` is the release checklist as code (REPO-PLAN Week 9, SPIKE §11), also free: one `ok|FAIL <check>: <detail>` line per check (`license`, `readme_licences`, `disclaimer`, `gitignore`, `tracked_data`, `secrets`, `readme_setup`) and exit 1 on any FAIL. The README must name the three licences (`MIT`, `CC BY-NC 4.0`, `CDLA-Permissive-2.0`), hold a paragraph with `not financial advice`, and have `Reference architecture` and `Reader setup` sections, the latter naming `ANTHROPIC_API_KEY`, `APCA_API_KEY_ID` and `US-only`. `--fresh-clone` also clones HEAD into a temp dir and runs `uv sync --frozen` (network), the gate and the tests there. Runbook, "Release", has the details.
+
 ## Remote CI
 
 The repo has no remote, so there is no workflow file. A remote job would check out the repo, run `uv sync`, then `uv run python ci/gate.py` and `uv run pytest -q` (live tests are excluded by default), and fail the merge on a non-zero exit.
