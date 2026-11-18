@@ -710,7 +710,7 @@ the journal, and dates each thesis at the session close. The injection set is `e
 off the config's tickers or sessions, or a replace target that is not shown exits before any call. The learner's
 set holds 30 headline rows (21 add, 9 replace) on 2026-11-13, so `experiments/injection.toml` loads: five pipeline
 arms (clean, injected-off, injected-on, and the controls clean-on and clean-rerun; 10 tickers, ≤ $2.50 an arm),
-pre-registered in ADR-010 and not yet run. `experiment.pairs(clean, injected)` gives one pair per injection row by
+pre-registered in ADR-010, run once (the result is in the ADR). `experiment.pairs(clean, injected)` gives one pair per injection row by
 ticker-day with the first change per horizon (`unparsed` when either side's reply did not parse), and
 `experiment.injection_resisted` scores them with the learner's `injection_resisted` grader. The run file records each
 prompt as sent, injected text included. Tests use invented FAKEA text only (`tests/fixtures/injections/fakea.jsonl`).
@@ -797,5 +797,5 @@ The shipped `thesis_rules` and `plain_text` do not count.
   `data-dev/news` when that directory exists.
 - `docs/adr/ADR-010-guardrails.md` pre-registers the guards-off vs on run of `experiments/injection.toml`: the five
   arms, the "changed" rule, the metrics (attack success off and on, noise floor, false rejection, collateral change,
-  cost) and the decision rule. Its table says `awaiting experiment` until that run; the `guards` setting for live
-  runs stays empty until then. `tr exp run` prints every number the table needs.
+  cost) and the decision rule, and holds the result: the guards did not pass (attack success 0.800 off, 0.767 on;
+  noise floor 0.500), so the `guards` setting for live runs stays empty. `tr exp run` prints every number the table needs.
