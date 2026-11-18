@@ -10,10 +10,13 @@ billed reply always comes back with its cost, as on OpenRouter: one that is not 
 returned for the caller's parser to record, and a refusal is returned with `finish_reason="content_filter"`; only an
 empty JSON reply raises `OutputNotJSON`. The route is `anthropic:<served model>` (`/us` when the reply says it ran
 US-only). The Message Batches API (half price, results within 24 h) is a possible later mode for non-urgent runs such
-as experiments; it is not implemented (platform.claude.com/docs/en/build-with-claude/batch-processing)."""
+as experiments; it is not implemented (platform.claude.com/docs/en/build-with-claude/batch-processing). `cached(ttl)`
+caches the system prompt (an experiment arm's `cache` knob, G15-SPIKE §1.2); a plain adapter sends no `cache_control`.
+"""
 
 from __future__ import annotations
 
+import copy
 import json
 import threading
 import time
@@ -54,6 +57,9 @@ PRICES = {
     "claude-haiku-5-5": {"input": 0.10, "output": 0.50, "cache_write_5m": 0.125, "cache_write_1h": 0.20,
                          "cache_read": 0.01},
 }
+# a cache write's price as a multiple of base input, per TTL (the PRICES rows above; the API's `ttl` values, its
+# default "5m": platform.claude.com/docs/en/build-with-claude/prompt-caching, read 2026-11-17)
+CACHE_WRITE = {"5m": 1.25, "1h": 2.0}
 
 
 class AnthropicError(HttpFailure):
@@ -92,6 +98,13 @@ def prices(models: list[str]) -> dict[str, Price]:
     if missing:
         raise KeyError(f"no Anthropic price for {sorted(missing)}: add it to PRICES from {PRICES_SOURCE}")
     return out
+
+
+def write_prices(priced: dict[str, Price], ttl: str) -> dict[str, Price]:
+    """A cached arm's reservation prices: every input token at the `ttl` cache-write rate, the worst case (a write
+    costs more than base input, a hit less), so the budget never under-counts a call that writes the cache."""
+    return {model: price.model_copy(update={"prompt_usd_per_token": price.prompt_usd_per_token * CACHE_WRITE[ttl]})
+            for model, price in priced.items()}
 
 
 def cost(model: str, usage: dict) -> float | None:
@@ -161,7 +174,8 @@ def failure(response: httpx.Response) -> AnthropicError:
 
 
 class Anthropic:
-    """Messages API over httpx, the key in `x-api-key`. No `routed()`: OpenRouter's routing table has no meaning here."""
+    """Messages API over httpx, the key in `x-api-key`. No `routed()`: OpenRouter's routing table has no meaning here.
+    `cache` is None (no `cache_control`) or the TTL of the breakpoint on the last system block (see `cached`)."""
 
     def __init__(self, api_key: str, *, timeout: float = 120.0, policy: Policy = DEFAULT) -> None:
         if not api_key:
@@ -173,6 +187,17 @@ class Anthropic:
         self.served: list[tuple[str, str]] = []  # (first user turn, route) per successful call, in order
         self.routes: dict[str, list[str]] = {}  # first user turn -> the route of each turn of its latest exchange
         self.policy = policy
+        self.cache: str | None = None
+
+    def cached(self, ttl: str) -> Anthropic:
+        """The same client with the system prompt cached for `ttl` ("5m" or "1h"): one `cache_control` breakpoint on
+        the last system block, the user turn never cached. Its own route log, as OpenRouter's `routed()` copy."""
+        if ttl not in CACHE_WRITE:
+            raise ValueError(f"cache ttl must be one of {', '.join(CACHE_WRITE)}, not {ttl!r}")
+        caching = copy.copy(self)
+        caching.cache = ttl
+        caching.served, caching.routes = [], {}
+        return caching
 
     def route_for(self, prompt: str) -> str:
         """The exchange's route: its one route, `anthropic:mixed(a+b)` when turns were served by different models,
@@ -220,12 +245,17 @@ class Anthropic:
                                          "last_error_class": type(failures[-1]).__name__})
 
     def body(self, request: ModelRequest) -> dict:
-        """The Messages request: system turns joined into `system`; tool fields only when the request has tools."""
+        """The Messages request: system turns joined into `system`, or with `cache` one text block per non-empty
+        system turn and the breakpoint on the last; tool fields only when the request has tools."""
         s = request.settings
         body: dict = {"model": wire_model(s.model), "max_tokens": s.max_output_tokens}
-        system = "\n\n".join(t.content for t in request.turns if t.role == "system")
-        if system:
-            body["system"] = system
+        system = [t.content for t in request.turns if t.role == "system"]
+        joined = "\n\n".join(system)
+        if self.cache and any(system):
+            body["system"] = [{"type": "text", "text": text} for text in system if text]
+            body["system"][-1]["cache_control"] = {"type": "ephemeral", "ttl": self.cache}
+        elif joined:
+            body["system"] = joined
         body["messages"] = messages(request.turns)
         if s.output_mode == "schema":
             body["output_config"] = {"format": {"type": "json_schema", "schema": s.json_schema}}

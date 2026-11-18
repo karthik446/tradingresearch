@@ -1,7 +1,7 @@
-"""The `mode`, `drop`, `guards`, `kind`, `inject`, `thesis_prompt` and `route` arm knobs (REPO-PLAN §2.4 week 4, §2.5
-week 5, GUARDS-SPIKE §8.2 week 7, G15-SPIKE §1.1 week 8), checked at config load, and a guards arm run at $0.
-tests/test_week4.py runs a tools arm, tests/test_masking.py two drop arms, tests/test_injection.py the pipeline arm,
-tests/test_fallback.py the route's fallback."""
+"""The `mode`, `drop`, `guards`, `kind`, `inject`, `thesis_prompt`, `route` and `cache` arm knobs (REPO-PLAN §2.4
+week 4, §2.5 week 5, GUARDS-SPIKE §8.2 week 7, G15-SPIKE §1.1 and §1.2 week 8), checked at config load, and a guards
+arm run at $0. tests/test_week4.py runs a tools arm, tests/test_masking.py two drop arms, tests/test_injection.py the
+pipeline arm, tests/test_fallback.py the route's fallback, tests/test_provider_anthropic.py the cached wire body."""
 
 import json
 import re
@@ -22,6 +22,7 @@ from test_week4 import MODEL, context, prices
 from tradingresearch import analyze as an, experiment, guards, injection, journal, news, thesis as th
 from tradingresearch.commands import exp
 from tradingresearch.evals import GRADERS
+from tradingresearch.providers.openrouter import OpenRouterError
 from tradingresearch.retrieval.store import Passage, Retrieved
 
 CONFIG = """name = "modes"
@@ -328,3 +329,107 @@ def test_tr_exp_run_checks_and_prices_every_route_model_and_prints_each_arms_rou
     assert out[1:3] == [f"    arm clean: analyze {MODEL}  thesis {MODEL}  fallback none",
                         f"    arm injected: analyze {MODEL}  thesis {THESIS}  fallback {FALLBACK}"]
     assert [body["model"] for body in sent] == [MODEL, MODEL, MODEL, THESIS]  # no error, so no fallback call
+
+
+# ---------- the `cache` knob: a cache breakpoint on the system prompt, Anthropic only (G15-SPIKE §1.2) ----------
+
+def test_cache_defaults_to_off_and_takes_a_ttl(tmp_path):
+    loaded = experiment.load(guarded(tmp_path, 'cache = "1h"'))
+    assert [a.cache for a in loaded.arms] == [None, "1h"]
+    assert experiment.models(loaded) == [MODEL]  # a TTL is not a model
+    assert experiment.load(guarded(tmp_path, 'cache = "5m"')).arms[1].cache == "5m"
+
+
+@pytest.mark.parametrize(("lines", "why"), [
+    ('cache = "10m"', "arm guarded: cache must be one of '5m', '1h', not '10m'"),
+    ("cache = 5", "arm guarded: cache must be one of '5m', '1h', not 5"),
+    ("cache = true", "arm guarded: cache must be one of '5m', '1h', not True"),
+    ('mode = "tools"\ncache = "5m"', "arm guarded: cache: a tools arm is never cached"),
+])
+def test_a_bad_cache_is_refused_at_load(tmp_path, lines, why):
+    with pytest.raises(SystemExit, match=re.escape(why)):
+        experiment.load(guarded(tmp_path, lines))
+
+
+class Caching:
+    """`answering`'s adapter behind Anthropic's `cached` seam: `cached(ttl)` returns a copy that logs (ttl, model) per
+    call and fails `fail_model` once with a retryable 503, so the route's fallback is asked through the cached copy."""
+
+    def __init__(self, inner, log: list, fail_model: str | None = None, ttl: str | None = None) -> None:
+        self.inner, self.log, self.fail_model, self.ttl = inner, log, fail_model, ttl
+
+    def cached(self, ttl: str) -> "Caching":
+        return Caching(self.inner, self.log, self.fail_model, ttl)
+
+    def invoke(self, request, *, cancel=None):
+        model = request.settings.model
+        self.log.append((self.ttl, model))
+        if self.ttl and model == self.fail_model:
+            self.fail_model = None
+            raise OpenRouterError(503, "overloaded")
+        return self.inner.invoke(request, cancel=cancel)
+
+    def __getattr__(self, name: str):  # identity, capabilities, route_for, close
+        return getattr(self.inner, name)
+
+
+def test_a_cached_arm_runs_on_the_cached_copy_its_fallback_too_reserved_at_the_write_rate(tmp_path, monkeypatch,
+                                                                                        pinned_tokens):  # noqa: F811
+    cite = injected_cite(tmp_path)
+    sent: list[dict] = []
+    log: list[tuple[str | None, str]] = []
+    budgets: list[dict] = []
+    real = experiment.CallBudget
+    monkeypatch.setattr(experiment, "CallBudget", lambda max_usd, prices: budgets.append(prices) or real(
+        max_usd=max_usd, prices=prices))
+    path = inject_config(tmp_path, ADD, extra=f'cache = "5m"\nroute = {{ fallback = "{FALLBACK}" }}\n')
+    priced_models = priced([MODEL, FALLBACK])
+    clean, injected = experiment.run_arms(journal.connect(tmp_path / "journal.db"), experiment.load(path), ten(),
+                                          Caching(answering(sent, cite), log, fail_model=MODEL), priced_models,
+                                          tmp_path)
+    # the clean arm on the plain adapter; the cache arm's analyze fails once and its fallback goes through the copy
+    assert log == [(None, MODEL), (None, MODEL), ("5m", MODEL), ("5m", FALLBACK), ("5m", MODEL)]
+    assert [body["model"] for body in sent] == [MODEL, MODEL, FALLBACK, MODEL]
+    # clean analyze and thesis budgets at the listed prices, the cache arm's at 1.25x input, output unchanged
+    listed = priced_models[MODEL]
+    assert [b[MODEL].prompt_usd_per_token / listed.prompt_usd_per_token for b in budgets] == pytest.approx(
+        [1, 1, 1.25, 1.25])
+    assert {b[MODEL].completion_usd_per_token for b in budgets} == {listed.completion_usd_per_token}
+    # cache is not part of input_hash: the cached arm's analysis has the plain injected arm's hash
+    outcome = injected.outcomes["FAKEA:2026-11-13:fakea-h1"]
+    shown = an.with_headlines(ten()[0], tmp_path, "analyze-3")
+    assert outcome.analysis.input_hash == an.input_hash(injection.headlines(shown, outcome.injection), "analyze-3",
+                                                        guard_ids=("plain_text",),
+                                                        injection=injection.hashed(outcome.injection))
+    assert clean.outcomes
+
+
+def exp_run(tmp_path: Path, monkeypatch, provider) -> None:
+    """`tr exp run` on the injection config with a cache arm, every outside call stubbed and `provider` answering."""
+    monkeypatch.delitem(GRADERS, experiment.RESISTED, raising=False)
+    by_ticker = {ctx.ticker: ctx for ctx in ten()}
+    monkeypatch.setattr(an, "gather", lambda conn, http, edgar, ticker, session, cache, feed: by_ticker[ticker])
+    monkeypatch.setattr(exp, "alpaca_client", lambda cfg: nullcontext())
+    monkeypatch.setattr(exp, "edgar_client", lambda cfg: None)
+    monkeypatch.setattr(exp.providers, "check_models", lambda cfg, role, models: None)
+    monkeypatch.setattr(exp.providers, "make_provider", lambda cfg, role: provider)
+    monkeypatch.setattr(exp.providers, "prices", lambda cfg, role, models: priced(models))
+    cfg = SimpleNamespace(provider="openrouter", db_path=tmp_path / "journal.db", data_dir=tmp_path, feed="iex")
+    exp.cmd_exp_run(SimpleNamespace(config=str(inject_config(tmp_path, ADD, extra='cache = "5m"\n'))), cfg)
+
+
+def test_tr_exp_run_prints_the_cache_on_the_arm_line(tmp_path, monkeypatch, capsys, pinned_tokens):  # noqa: F811
+    sent: list[dict] = []
+    exp_run(tmp_path, monkeypatch, Caching(answering(sent, injected_cite(tmp_path)), []))
+    out = capsys.readouterr().out.splitlines()
+    assert out[1:3] == [f"    arm clean: analyze {MODEL}  thesis {MODEL}  fallback none",
+                        f"    arm injected: analyze {MODEL}  thesis {MODEL}  fallback none  cache 5m"]
+
+
+def test_tr_exp_run_refuses_a_cache_arm_on_openrouter_before_any_call(tmp_path, monkeypatch):
+    sent: list[dict] = []
+    with pytest.raises(SystemExit, match=re.escape(
+            "inject-pair: arm injected: cache '5m' runs on TR_PROVIDER=anthropic only; OpenRouter sends no "
+            "cache_control")):
+        exp_run(tmp_path, monkeypatch, answering(sent))
+    assert sent == []

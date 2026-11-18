@@ -9,7 +9,8 @@ and `retrieval`: passages from a pinned index added to a fixed arm's prompt, wee
 REPO-PLAN D5. Week 7 (GUARDS-SPIKE §8): `guards` names the registered rules an arm runs (fetched rules drop or flag
 rows of the user turn before the call, thesis rules check a pipeline arm's theses), `kind = "pipeline"` analyzes and
 then writes theses in memory, never journaled, and `inject = true` runs a pipeline arm on the config's injection set.
-Week 8 (G15-SPIKE §1.1): `route` gives a pipeline arm a model per step and a fallback model.
+Week 8 (G15-SPIKE §1.1, §1.2): `route` gives a pipeline arm a model per step and a fallback model; `cache` caches an
+arm's system prompt on Anthropic for "5m" or "1h".
 """
 
 from __future__ import annotations
@@ -40,7 +41,7 @@ from . import analyze as an, guards, injection, journal, masking, news, redact, 
 from . import guard_rules  # noqa: F401  registers the week-7 guardrail rules, so `tr exp run` can name them
 from .evals import GRADERS, graders as registry
 from .hashing import new_id
-from .providers import with_fallback
+from .providers import anthropic, with_fallback
 from .providers.openrouter import Routing
 from .records import Analysis, Thesis
 from .retrieval import store as retrieval_store
@@ -77,6 +78,7 @@ class Arm:
     inject: bool = False  # a pipeline arm on the config's injection set instead of the clean days
     thesis_prompt: str = th.DEFAULT_PROMPT  # a pipeline arm's thesis step
     route: Route = Route()  # a pipeline arm's step models and fallback; empty = `model` for both steps, no fallback
+    cache: str | None = None  # the TTL of a cache breakpoint on the system prompt (Anthropic only); None = off
 
     @property
     def analyze_model(self) -> str:
@@ -106,7 +108,8 @@ def load(path: Path) -> Config:
         raise SystemExit(f"{path}: missing {missing}")
     arms = tuple(Arm(a["name"], a["prompt"], a.get("model", raw["model"]), routing(path, a), mode(path, a),
                      drop(path, a), retrieval(path, a), kind=kind(path, a), guards=guard_list(path, a),
-                     inject=inject(path, a), thesis_prompt=thesis_prompt(path, a), route=route(path, a))
+                     inject=inject(path, a), thesis_prompt=thesis_prompt(path, a), route=route(path, a),
+                     cache=cache(path, a))
                  for a in raw["arms"])
     for arm in arms:
         an.system_prompt(arm.prompt)  # fail before any spend if a prompt file is missing
@@ -325,6 +328,20 @@ def route(path: Path, arm: dict) -> Route:
     return Route(**value)
 
 
+def cache(path: Path, arm: dict) -> str | None:
+    """An arm's `cache` (G15-SPIKE §1.2), refused before any spend: a value other than "5m" or "1h", or a tools arm.
+    Not part of `input_hash`: caching does not change what the model reads. The provider is checked in `run_arms`."""
+    if "cache" not in arm:
+        return None
+    value = arm["cache"]
+    where = f"{path}: arm {arm.get('name')}: cache"
+    if not isinstance(value, str) or value not in anthropic.CACHE_WRITE:
+        raise SystemExit(f"{where} must be one of {', '.join(map(repr, anthropic.CACHE_WRITE))}, not {value!r}")
+    if arm.get("mode", "fixed") == "tools":
+        raise SystemExit(f"{where}: a tools arm is never cached (week 8 caches a fixed arm's system prompt)")
+    return value
+
+
 def injections(path: Path, raw: dict, config: Config) -> tuple[injection.Injection, ...]:
     """The config's injection set (`injections = "<jsonl>"`, relative to the repo), refused before any spend: a bad
     or empty file, inject arms without it or it without one, a row off the config's ticker-days, or a channel an
@@ -416,6 +433,12 @@ def run_arms(conn, config: Config, contexts: list[an.Context], provider, prices:
     if judges and any(arm.guards or arm.kind == "pipeline" for arm in config.arms):  # nor the guarded or injected one
         raise SystemExit(f"{config.name}: a guards or pipeline arm grades with code graders only, "
                          f"not {', '.join(judges)}")
+    for arm in config.arms:  # before the first arm: a provider that cannot cache (OpenRouter) costs no call
+        if arm.cache:
+            try:
+                provider.cached(arm.cache)
+            except ValueError as exc:
+                raise SystemExit(f"{config.name}: arm {arm.name}: {exc}") from None
     if shown := [arm.prompt for arm in config.arms if arm.mode == "fixed" and an.shows_headlines(arm.prompt)]:
         fetched(config.name, contexts, data_dir)
         contexts = [an.with_headlines(ctx, data_dir, shown[0]) for ctx in contexts]  # read only, before the dataset
@@ -439,6 +462,9 @@ def run_arm(conn, config: Config, arm: Arm, data: Prepared, found: dict[str, ret
     dataset = data.dataset
     graders = registry(list(config.graders), arm.drop)
     base = provider.routed(arm.provider) if arm.provider else provider
+    if arm.cache:  # the cached copy, reserved at the cache-write rate; a fallback asks through it too
+        base = base.cached(arm.cache)
+        prices = anthropic.write_prices(prices, arm.cache)
     if arm.route.fallback:
         base = with_fallback(base, arm.route.fallback)
     views = guarded_views(arm, data, found)

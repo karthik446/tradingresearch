@@ -34,7 +34,7 @@ def cmd_exp_run(args, cfg) -> None:
     for arm in config.arms:  # the models each arm asks: a pipeline arm's per step (its `route`) and its fallback
         steps = (f"analyze {arm.analyze_model}  thesis {arm.thesis_model}  fallback {arm.route.fallback or 'none'}"
                  if arm.kind == "pipeline" else f"model {arm.model}")
-        print(f"    arm {arm.name}: {steps}")
+        print(f"    arm {arm.name}: {steps}" + (f"  cache {arm.cache}" if arm.cache else ""))
     try:
         results = experiment.run_arms(conn, config, contexts, provider, providers.prices(cfg, "experiment", models),
                                       cfg.data_dir)

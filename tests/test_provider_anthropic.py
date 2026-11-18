@@ -17,7 +17,9 @@ from gigai_core.providers import (
 from tradingresearch import config
 from tradingresearch.analyze import _model_span
 from tradingresearch.config import Secret, Settings, read_env_file
-from tradingresearch.providers import Anthropic, OpenRouter, check_models, errors, make_provider, prices
+from tradingresearch.providers import (
+    Anthropic, OpenRouter, check_models, errors, make_provider, prices, with_fallback,
+)
 from tradingresearch.providers import anthropic
 from tradingresearch.providers.anthropic import AnthropicError, WrongProvider, cost, wire_model
 from tradingresearch.providers.openrouter import OpenRouterError
@@ -94,6 +96,51 @@ def test_the_request_is_a_messages_body_with_the_key_in_x_api_key():
         "messages": [{"role": "user", "content": "Analyze FAKEA."}],
         "output_config": {"format": {"type": "json_schema", "schema": SCHEMA}},
     }
+
+
+@pytest.mark.parametrize("ttl", ["5m", "1h"])
+def test_a_cached_copy_puts_one_breakpoint_on_the_last_system_block_and_the_plain_adapter_none(ttl):
+    provider, sent, _ = replying("success", "success")
+    caching = provider.cached(ttl)
+    two = request().model_copy(update={"turns": (Turn(role="system", content="You are the analyst."),
+                                                 Turn(role="system", content="Cite every number."),
+                                                 Turn(role="user", content="Analyze FAKEA."))})
+    caching.invoke(two)
+    provider.invoke(request())
+    assert json.loads(sent[0].content) == {  # golden: the user turn is never cached
+        "model": "claude-sonnet-5-5", "max_tokens": 4000,
+        "system": [{"type": "text", "text": "You are the analyst."},
+                   {"type": "text", "text": "Cite every number.", "cache_control": {"type": "ephemeral", "ttl": ttl}}],
+        "messages": [{"role": "user", "content": "Analyze FAKEA."}],
+        "output_config": {"format": {"type": "json_schema", "schema": SCHEMA}},
+    }
+    # the copy leaves the adapter it came from as it was: a string system prompt, no cache_control anywhere
+    assert b"cache_control" not in sent[1].content
+    assert json.loads(sent[1].content)["system"] == "You are the analyst."
+    assert (provider.cache, caching.cache) == (None, ttl)
+    assert caching.route_for("Analyze FAKEA.") == provider.route_for("Analyze FAKEA.") == "anthropic:claude-sonnet-5-5"
+    assert len(caching.served) == len(provider.served) == 1  # each keeps its own log
+
+
+def test_a_ttl_the_api_does_not_take_is_refused():
+    with pytest.raises(ValueError, match="cache ttl must be one of 5m, 1h, not '10m'"):
+        Anthropic("FAKEA").cached("10m")
+
+
+def test_the_fallback_wrapper_on_a_cached_copy_asks_its_model_with_the_same_breakpoint():
+    provider, sent, _ = replying("overloaded", "success")  # one try each: the 529 spends the adapter's retries
+    haiku = "anthropic/claude-haiku-5.5"
+    result = with_fallback(provider.cached("5m"), haiku).invoke(request())
+    assert result.resolved_model == "claude-sonnet-5-5"  # the fixture's served model
+    bodies = [json.loads(req.content) for req in sent]
+    assert [body["model"] for body in bodies] == ["claude-sonnet-5-5", "claude-haiku-5-5"]
+    assert [body["system"] for body in bodies] == 2 * [[{"type": "text", "text": "You are the analyst.",
+                                                         "cache_control": {"type": "ephemeral", "ttl": "5m"}}]]
+
+
+def test_openrouter_refuses_the_cache_knob():
+    with pytest.raises(ValueError, match="cache '1h' runs on TR_PROVIDER=anthropic only"):
+        OpenRouter("not-a-real-key").cached("1h")
 
 
 def test_json_mode_sends_no_format_and_tools_map_to_input_schema():
@@ -185,6 +232,33 @@ def test_haiku_5_5_is_priced_and_a_call_costs_its_token_counts_at_the_base_tier(
              "cache_read_input_tokens": 4000}
     # 1200 x $0.10 + 300 x $0.50 + 600 x $0.125 + 400 x $0.20 + 4000 x $0.01 per MTok = $465 per 1e9 tokens
     assert cost("claude-haiku-5-5", usage) == pytest.approx(465 / 1e6)
+
+
+@pytest.mark.parametrize(("usage", "per_mtok"), [
+    # a 5m write, no breakdown in the reply: 500 x $2 + 200 x $10 + 1500 x $2.50
+    ({"input_tokens": 500, "output_tokens": 200, "cache_creation_input_tokens": 1500, "cache_read_input_tokens": 0},
+     6750),
+    # a 1h write, as its reply breaks it down: 500 x $2 + 200 x $10 + 1500 x $4
+    ({"input_tokens": 500, "output_tokens": 200, "cache_creation_input_tokens": 1500, "cache_read_input_tokens": 0,
+      "cache_creation": {"ephemeral_5m_input_tokens": 0, "ephemeral_1h_input_tokens": 1500}}, 9000),
+    # a hit: 500 x $2 + 200 x $10 + 1500 x $0.10
+    ({"input_tokens": 500, "output_tokens": 200, "cache_creation_input_tokens": 0, "cache_read_input_tokens": 1500},
+     3150),
+])
+def test_cache_write_and_hit_tokens_cost_exactly_their_price_rows(usage, per_mtok):
+    assert cost("claude-sonnet-5-5", usage) == pytest.approx(per_mtok / 1e6, rel=1e-12)
+
+
+@pytest.mark.parametrize("ttl", ["5m", "1h"])
+def test_a_cached_arm_reserves_every_input_token_at_the_cache_write_rate(ttl):
+    for row in anthropic.PRICES.values():  # the multiplier is each row's own write rate
+        assert row["input"] * anthropic.CACHE_WRITE[ttl] == pytest.approx(row[f"cache_write_{ttl}"])
+    priced = anthropic.prices([MODEL])
+    reserved = anthropic.write_prices(priced, ttl)[MODEL]
+    assert reserved.prompt_usd_per_token == pytest.approx(anthropic.PRICES["claude-sonnet-5-5"][f"cache_write_{ttl}"]
+                                                          / 1e6)
+    assert reserved.completion_usd_per_token == priced[MODEL].completion_usd_per_token
+    assert priced[MODEL].prompt_usd_per_token == pytest.approx(2 / 1e6)  # the input is not changed in place
 
 
 # --- failures, each mapped into the taxonomy ---------------------------------------------------------------------

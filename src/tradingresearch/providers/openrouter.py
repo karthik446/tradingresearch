@@ -151,6 +151,10 @@ class OpenRouter:
         pinned.served, pinned.routes = [], {}  # its own log: arms never see each other's routes
         return pinned
 
+    def cached(self, ttl: str) -> OpenRouter:
+        """Refused: an arm's `cache` knob is Anthropic's alone (G15-SPIKE §1.2), so this wire body stays as captured."""
+        raise ValueError(f"cache {ttl!r} runs on TR_PROVIDER=anthropic only; OpenRouter sends no cache_control")
+
     def route_for(self, prompt: str) -> str:
         """The exchange's route (Analysis.provider_route): its one route, `openrouter:mixed(a+b)` when turns were
         served by different routes, unknown when any turn's provider is (or nothing was served)."""
