@@ -35,7 +35,7 @@ from gigai_core.score import Score, ScoreRecord
 from gigai_core.stats.intervals import MIN_CLUSTERS
 from gigai_core.trace import JsonlTrace, TrialSpan
 
-from . import analyze as an, guards, injection, journal, masking, news, sessions, thesis as th
+from . import analyze as an, guards, injection, journal, masking, news, redact, sessions, thesis as th
 from .evals import GRADERS, graders as registry
 from .hashing import new_id
 from .providers.openrouter import Routing
@@ -695,17 +695,19 @@ def run_items(config: Config, arm: Arm, dataset: Dataset, provider, graders: lis
               data_dir: Path, ask, grade_as: dict[str, dict] | None = None) -> Run:
     """Core `run`'s contract for an arm asked here (the budget already planned on every item's first request):
     every call reserved, one trace file per run, code graders score each succeeded sample, `CannotGrade` leaves no
-    score."""
+    score. Every span is scrubbed before the trace file sees it, with a `redact` audit line per hit, and each sample
+    the same way before it is graded and stored, so the run file matches the trace (redact.py, ADR-004 Gaps)."""
     grade_as = grade_as or {}
     run_id, created_at = new_id("run"), datetime.now(UTC)
     (data_dir / "traces").mkdir(parents=True, exist_ok=True)
-    trace = JsonlTrace(data_dir / "traces" / f"{run_id}.jsonl")
+    trace = redact.Scrubbing(JsonlTrace(data_dir / "traces" / f"{run_id}.jsonl"),
+                             guards.Auditor(data_dir, run_id=run_id, arm=arm.name))
     subject = budgeted(provider, budget)
     samples: list[Sample] = []
     scores: list[ScoreRecord] = []
     try:
         for item in dataset.items:
-            sample = ask(item, subject, run_id, trace)
+            sample = redact.model(ask(item, subject, run_id, trace))[0]
             samples.append(sample)
             if sample.outcome == "succeeded":
                 scores.extend(graded(sample, grade_as.get(item.id, item.expected), graders))

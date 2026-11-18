@@ -1,4 +1,4 @@
-usage: tr guards [-h] [--rule ID] [--run RUN_ID] [--last N]
+usage: tr guards [-h] [--rule ID] [--run RUN_ID] [--last N] {scan} ...
 
 read <data_dir>/audit.jsonl (GUARDS-SPIKE §3.3): the last guard decisions,
 then counts by stage, rule and decision; an empty or missing log prints the
@@ -9,3 +9,8 @@ options:
   --rule ID     only this rule's decisions (e.g. stop_floor, one_live)
   --run RUN_ID  only this run's decisions
   --last N      show the last N decisions (default 20)
+
+subcommands:
+  {scan}
+    scan        search a directory for keys and tokens, read only (exit 1 on a
+                hit)
