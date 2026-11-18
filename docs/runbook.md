@@ -818,3 +818,110 @@ The shipped `thesis_rules` and `plain_text` do not count.
   arms, the "changed" rule, the metrics (attack success off and on, noise floor, false rejection, collateral change,
   cost) and the decision rule, and holds the result: the guards did not pass (attack success 0.800 off, 0.767 on;
   noise floor 0.500), so the `guards` setting for live runs stays empty. `tr exp run` prints every number the table needs.
+
+## Week 8: routing, caching and the batch judge
+
+Week 8 asks whether a cheaper analyze model holds up: Haiku 5.5 on the analyze step, Sonnet 5.5 on the thesis step,
+read against Sonnet on both (G15-SPIKE §2). The plumbing ships at week-8-start. Your parts are
+`experiments/routing.toml` and `docs/adr/ADR-011-*.md`.
+
+### Arm knobs: `route` and `cache`
+
+- **`route`** (pipeline arms only): `route = { analyze = "...", thesis = "...", fallback = "..." }`. A step you leave
+  out uses the arm's `model`. `experiment.load` refuses a route on an analyze arm, an unknown key, or a value that is
+  not a model id. Before any model call, `tr exp run` checks and prices every model a config may ask (each arm's
+  `model`, its route's step models and its fallback). On `TR_PROVIDER=anthropic` every one of them must be an
+  `anthropic/claude-*` id with a row in `PRICES` (`providers/anthropic.py`; `claude-haiku-5-5` is there, at the rates
+  for prompts up to 100k tokens). The header prints one line per arm:
+  `arm NAME: analyze MODEL  thesis MODEL  fallback MODEL|none`.
+  - **Fallback.** `providers.with_fallback` asks the fallback model once, and only when the adapter has spent its
+    retries on a retryable error (429, 5xx, a connection error or a timeout). It never falls back after a refusal,
+    an auth, credit or budget error, or a rejected request. The span's `resolved_model` and its cost name the model
+    that answered. The budget reserves the first model's worst case, so a dearer fallback can overshoot the
+    reservation.
+- **`cache`**: `cache = "5m"` or `"1h"`; leave it out for no caching. Only on `TR_PROVIDER=anthropic`: the arm's
+  system prompt is sent as text blocks with one `cache_control` breakpoint on the last block, and the user turn is
+  never cached.
+  - On OpenRouter, `tr exp run` refuses a cache arm before any call and names the arm. `load` refuses a tools arm or
+    any other value.
+  - The header adds `cache <ttl>` to the arm line. `cache` is not part of `input_hash`.
+  - The arm's budget reserves input at the cache-write rate (1.25x for 5m, 2x for 1h), so the arm's `spent=` reads
+    high. Each call's `cost_usd` in the trace is exact, cache writes and hits included.
+  - Anthropic caches nothing under its minimum prompt length. If every call of the cached arm shows 0 cache-write
+    tokens in `tr usage --by step`, your prompt was too short to cache.
+
+### The plan pre-flight and exit code 2
+
+Before the first call, `tr exp run` prices each arm's whole plan ("Experiment cap: the plan pre-flight" above). That
+includes a routed arm's analyze model and a cached arm's cache-write prices. If an arm's floor is over
+`max_usd_per_arm`, the run prints the arm, the floor, the cap and the smallest whole-cent cap that clears it on stderr
+and **exits 2** with no call made. Raise the cap in the config (and in ADR-011, which states it) or cut items. A
+`WARNING arm ...` line means only the upper bound is over: the run goes on and may stop part way with
+`BudgetExceeded`. There is no dry run: the pre-flight stops a run that cannot fit, and a run that fits spends.
+
+### The cost table: `tr usage --by step|model`
+
+`uv run tr usage --by step` (or `--by model`; `--run RUN_ID`, `--since YYYY-MM-DD` narrow it) prints, per row:
+calls, items, tokens in, cache write, cache read, tokens out, cost, `$/item`, and the p50/p95 latency per item. The
+columns are explained in "Providers" above. It reads saved run files only. After the table, `tr usage` reads the
+OpenRouter key's lifetime spend (a free read; there is no such line for Anthropic). `tr exp run` prints each arm's
+run ids (`run=`, and `theses=` for a pipeline arm). Pass them to `--run` to see one arm, or read each run's cost
+with `tr usage --by run`.
+
+### The batch judge: `tr grade --judge --batch` and `--collect`
+
+The P1 judge (`openai/gpt-6-sol`) can run as one OpenRouter batch at the `:batch` price instead of one sync call per
+thesis. A batch always goes to OpenRouter, so it needs `OPENROUTER_API_KEY` and a judge model that `TR_PROVIDER`
+accepts (`TR_PROVIDER=openrouter`).
+
+```
+uv run tr grade --judge --batch [--judge-max-usd 0.25]   # submit; prints the collect command
+uv run tr grade --judge --collect BATCH_ID               # poll once; store the verdicts when complete
+```
+
+- `--batch`: with an empty `OPENROUTER_API_KEY` it **exits 2** before any request and names the variable. Otherwise
+  it reads the judge's `:batch` price from OpenRouter's public price list (no key). It reserves each waiting thesis
+  under `--judge-max-usd`, submits one batch and writes `<data_dir>/batches/<id>.json`. Nothing goes in the journal
+  before `--collect`. `--batch --dry-run` lists what a sync `--judge --dry-run` lists and submits nothing.
+- `--collect BATCH_ID` polls once. Run it from the `TR_DATA_DIR` that submitted the batch, since it reads the record
+  there.
+  - Still running: it says `still <status>` and exits 0.
+  - Failed, expired or cancelled: it exits 1 and stores nothing.
+  - Completed: each answer goes through the same path as a sync judge call, so you get the same run file, spans,
+    score and verdict. The derived cost is printed beside the batch's own `usage.cost`, and the command exits 1 if
+    they differ by more than $0.001.
+  - `--collect` has no dry run. `--batch` and `--collect` both need `--judge`.
+- Background: `docs/providers.md`, batch section.
+
+**Untested against the real endpoints at week-8-start:**
+- The batch judge has fake-HTTP tests only (`tests/test_batch.py`). Its turnaround, per-entry usage and real
+  `usage.cost` are unmeasured.
+- The cache knob is checked against golden request bodies only. Whether a cache write happens is unknown until the
+  paid run.
+- The fallback is tested on a fake provider only.
+- The Haiku 5.5 price is read from Anthropic's pricing page; no billed Haiku call has been checked against it yet.
+
+### Week 8 contract
+
+`uv run pytest tests/test_week8.py -q` is the week-8 contract (its docstring gives every rule). At week-8-start its
+six contract tests fail, each with `learner part missing: ...`. Its tests that run the same checks on a small example
+config and ADR pass from the start.
+
+Work in this order:
+1. Write `experiments/routing.toml`. Every arm is a pipeline arm, over at least 10 tickers, with the same prompts. The
+   baseline comes first, with no `route` and no `cache`. Add a routed arm (`route.analyze` another model, the thesis
+   on the baseline model) and a cached arm (the baseline plus `cache`). Grade with `all_claims_valid`. Tests 1 and 2
+   then pass, and test 2 means `anthropic.prices` knows every model.
+2. Write ADR-011 before any paid run: `**Status:** proposed`, the options, and a `**Pre-registration...**` paragraph
+   before `**Decision.**`. The paragraph names `all_claims_valid`, `NoWorseThan`, the margin, the item count (tickers
+   x sessions) and the cap. Add both tables with every cell `awaiting experiment` (routing) or `awaiting run` (judge).
+   Tests 3 to 6 then pass.
+3. Commit `routing.toml` and ADR-011, then run. The pre-registration only counts if it is committed before the run.
+   No test can check that: code cannot see commit order.
+4. Run `TR_PROVIDER=anthropic uv run tr exp run experiments/routing.toml` (paid; the pre-flight may refuse it with
+   exit 2 first). Read `all_claims_valid` in `compare <baseline> -> <routed>`. `tr exp run` prints the difference and
+   its CI; it does not apply `NoWorseThan` or set an exit code from it, so compare the CI's lower bound with your
+   margin yourself. `drift <baseline> -> <arm>: changed ...` gives the `thesis changed` row.
+5. Fill the routing table from `tr exp run` and `tr usage`. Put the `run_<16 hex>` ids beside the table, not in a cell,
+   then write the decision. The judge table's `batch` column stays `awaiting run` until a batch has been submitted and
+   collected.

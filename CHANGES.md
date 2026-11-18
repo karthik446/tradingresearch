@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **The week-8 contract (`tests/test_week8.py`, G15-SPIKE §4).** Six tests on the two learner parts,
+  `experiments/routing.toml` (a baseline, a routed and a cached pipeline arm; every model priced by
+  `anthropic.prices`) and `docs/adr/ADR-011-*.md` (options, decision, readings; a pre-registration before the
+  decision; the routing comparison table; the judge sync vs batch table). At week-8-start the six fail, each with
+  `learner part missing: ...`; the same checks run on a small example config and ADR, which pass and whose broken
+  variants fail, so no check passes on nothing. Runbook: "Week 8: routing, caching and the batch judge", which gives
+  the order (ADR-011's pre-registration committed before the paid run; no test can see commit order).
+
 - **Week-8 plumbing: a batch judge (G15-SPIKE §1.3).** `tr grade --judge --batch` submits the P1 judge calls as one
   OpenRouter batch (the sync request bodies, the normal model slug, `custom_id` = thesis id, the `:batch` price held to
   the `--judge-max-usd` cap; the record goes in `<data_dir>/batches/<id>.json` and nothing in the journal).
