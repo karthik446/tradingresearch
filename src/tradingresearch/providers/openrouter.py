@@ -182,7 +182,7 @@ class OpenRouter:
         if all(t.role in ("system", "user") for t in request.turns):  # a fresh exchange, not a tool-loop follow-up
             self.routes[exchange_key(request)] = []
         failures: list[Exception] = []
-        billed: list[float] = []  # usage.cost of failed tries (a 200 carrying an error body may have billed)
+        billed: list[float] = []  # usage.cost of failed tries (a 200 with an error body or an empty JSON reply)
 
         def attempt() -> ModelResult:
             try:
@@ -255,7 +255,9 @@ class OpenRouter:
             ToolCall(id=c["id"], name=c["function"]["name"], arguments=redact.scrub(c["function"]["arguments"]))
             for c in choice["message"].get("tool_calls") or ()
         )
-        if s.output_mode != "text" and not text.strip() and not calls:
+        if s.output_mode != "text" and not text.strip() and not calls:  # billed like a 200 error body, then raised
+            if (data.get("usage") or {}).get("cost"):
+                billed.append(float(data["usage"]["cost"]))
             raise OutputNotJSON("empty reply in JSON mode")
         usage = data.get("usage", {})
         cost = usage.get("cost")

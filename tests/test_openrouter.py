@@ -8,7 +8,7 @@ from pathlib import Path
 
 import httpx
 import pytest
-from gigai_core.providers import CallSettings, ModelRequest, ToolCall, ToolSpec, Turn
+from gigai_core.providers import CallSettings, ModelRequest, OutputNotJSON, ToolCall, ToolSpec, Turn
 
 from tradingresearch.config import require, settings
 from tradingresearch.providers.openrouter import OpenRouter, OpenRouterError, message
@@ -126,6 +126,22 @@ def test_a_billed_failure_that_gives_up_names_what_it_billed():
     with pytest.raises(OpenRouterError) as raised:
         provider.invoke(tool_request())
     assert str(raised.value) == "OpenRouter 503: busy (gave up after 2 tries) (failed tries billed $0.002000)"
+
+
+def test_a_billed_empty_json_reply_records_its_cost_then_raises():
+    request = ModelRequest(settings=CallSettings(model=MODEL, max_output_tokens=64, output_mode="json"),
+                           turns=(Turn(role="user", content="Reply in JSON."),))
+    empty = {"choices": [{"message": {"content": ""}, "finish_reason": "length"}], "usage": {"cost": 0.0123}}
+    provider = OpenRouter("sk-test", policy=no_wait())
+    sent = replaying(provider, httpx.Response(200, json=empty))
+    with pytest.raises(OutputNotJSON) as raised:
+        provider.invoke(request)
+    assert len(sent) == 1 and str(raised.value) == "empty reply in JSON mode (failed tries billed $0.012300)"
+    unbilled = {"choices": [{"message": {"content": ""}, "finish_reason": "length"}]}
+    replaying(provider, httpx.Response(200, json=unbilled))
+    with pytest.raises(OutputNotJSON) as raised:
+        provider.invoke(request)
+    assert str(raised.value) == "empty reply in JSON mode"
 
 
 def test_a_400_is_not_retried_and_keeps_its_code():
