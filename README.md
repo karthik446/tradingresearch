@@ -40,6 +40,8 @@ Week 4 as measured (ADR-005, `experiments/tools-vs-fixed.toml`, 20 ticker-days):
 
 Week 5 as measured (ADR-007, `experiments/context-ablation.toml`, 20 ticker-days, analyze-3): dropping headlines moved `claims_valid` +0.005 (95% interval −0.027 to +0.042) and dropping EDGAR +0.023 (−0.014 to +0.068), `parsed` 1.000 in every arm, so by the pre-registered rule both sections "go"; that is no measured loss, not a shown non-inferiority, and analyze's default (analyze-1) does not change. Headlines are 4.69% of the input tokens (139 of 2,963.7), EDGAR 17.96% (532.2); dropping EDGAR costs $0.015394 per analysis against $0.017192 full.
 
+Week 6 as measured (ADR-009, `experiments/retrieval.toml`, 20 ticker-days, analyze-3 on Anthropic's API): adding the top 5 hybrid passages (BM25 and BAAI's bge-small-en-v1.5 by reciprocal rank fusion) moved `claims_valid` −0.038 (95% interval −0.081 to +0.008, whose lower bound misses the pre-registered −0.05 non-inferiority margin), and only 3 of 20 analyses cited a passage (`citation_accuracy` 1.000 on those 3), so the retrieval default stays `none`; a measured negative for this prompt, not evidence that passages hurt. Passages add 2,201.3 input tokens per analysis (74.3%) and cost $0.024861 per analysis against $0.017127 without.
+
 ## Prerequisites
 
 All settings live in one file, `.env` at the repo root (git-ignored), copied from `.env.example`, which names every

@@ -1,8 +1,8 @@
 # ADR-009: retrieval design: which retriever feeds passages to analyze-3
 
-**Status:** proposed (week 6). The retriever choice below rests on the recall eval, which cost nothing. Whether
-passages help an analysis at all waits for one run of `experiments/retrieval.toml`; its table at the end reads
-`awaiting experiment` until then.
+**Status:** accepted, 2026-11-17 (week 6). The retriever choice below rests on the recall eval, which cost nothing.
+Whether passages help an analysis was judged by one complete run of `experiments/retrieval.toml` against the rule
+pre-registered below: the retrieval default stays `none` (see Result).
 
 **Context.** Week 6 lets a fixed-context arm add the top k chunks of a filing index to the analyze-3 prompt
 (`[arms.retrieval]`, `masking.augment`). What the index holds, who may see it and the injection risk are in
@@ -20,7 +20,8 @@ the mean share of a query's gold quotes found. Run:
 
 **Options considered.**
 - `bm25`: keyword scoring over the chunk text. No model, nothing to download.
-- `dense`: cosine similarity of `BAAI/bge-small-en-v1.5` vectors (revision `aa8f8b060edb`).
+- `dense`: cosine similarity of vectors from BAAI's bge-small-en-v1.5, run as the ONNX export
+  `Qdrant/bge-small-en-v1.5-onnx-Q` at revision `aa8f8b060edb`.
 - `hybrid`: reciprocal rank fusion of the bm25 and dense lists.
 - `hybrid+rerank`: the hybrid top 20 reordered by the cross-encoder `Xenova/ms-marco-MiniLM-L-6-v2`.
 - No retrieval: analyze-3 as in week 5, SOURCES only. This is the `none` arm of the experiment.
@@ -80,7 +81,8 @@ the mean share of a query's gold quotes found. Run:
 - The default query stays `store.DEFAULT_QUERY` ("{ticker} quarterly results: revenue, earnings, guidance, outlook
   and risks"). On the 20 experiment ticker-days it returns 5 passages each: 72 from press releases, 24 from 10-Qs,
   4 from 8-K cover documents and no headlines.
-- The experiment's decision rule is the pre-registration below, written before any paid call.
+- The experiment's decision rule is the pre-registration below, written before any paid call. By it the retrieval
+  default stays `none` (Result).
 
 **Pre-registration (written before the run, 2026-11-17; not to change after it).** One run of
 `experiments/retrieval.toml`: arm `none` (analyze-3, SOURCES only) against arm `hybrid` (the same prompt plus the top
@@ -119,7 +121,9 @@ the rerun is not blind to them; the decision rule is the one registered above an
   (ADR-014).
 - **Sampling noise.** The `none` arm sent requests byte-identical to week 5's `full` arm on all 20 items and still
   scored differently (claims_valid 0.9350 against 0.9636), so identical input does not give identical scores. The
-  interval from `tr exp` already counts that noise; the ADR says so once the result is in.
+  interval from `tr exp` covers item-to-item variation within one pair of runs; run-to-run noise on identical input
+  is separate and is not covered by it (see Reading the result). *(Corrected 2026-11-17 after the run, thresholds and
+  decision rule untouched: this bullet first said the interval already counts that noise, which is not true.)*
 - A second incomplete run is not retried: if the rerun is cut short, the result is reported as incomplete.
 
 **Free pre-run** (before the registration, no model call; `data-dev/scratch/w6refb/prerun.py`): the pinned index
@@ -128,16 +132,74 @@ their session's close; 12 of 20 items have a 10-Q or 8-K chunk in their top 5 (a
 press release); the `none` request is byte-identical to week 5's `full` request on all 20 items (dataset sha256
 `6b185e21…`).
 
-**Experiment: none vs hybrid** (one run of `experiments/retrieval.toml`, 20 ticker-days):
+**Result.** One complete run, `TR_PROVIDER=anthropic TR_DATA_DIR=$PWD/data-dev uv run --extra retrieval tr exp run
+experiments/retrieval.toml` on 2026-11-17 (UTC 2026-11-18), route `anthropic:claude-sonnet-5-5` on all 40 stored
+analyses, cap $1.00 per arm: none `run_3cb557202363406d`, hybrid `run_83464659837d44e8`. No item failed and every
+item parsed in both arms, so every mean is over 20 analyses unless it says otherwise. Grader means are the ones
+`tr exp` printed; claim counts, tokens, cost and latency come from the two runs' records and traces
+(`data-dev/scratch/w6refb/read_run2.py`).
 
-| metric | none | hybrid |
+| metric | none (`run_3cb557202363406d`) | hybrid (`run_83464659837d44e8`) |
 |---|---|---|
-| claims_valid | awaiting experiment | awaiting experiment |
-| all_claims_valid | awaiting experiment | awaiting experiment |
-| citation_accuracy | n/a | awaiting experiment |
-| cost (USD per arm) | awaiting experiment | awaiting experiment |
+| parsed | 1.000 | 1.000 |
+| claims_valid (primary) | 0.971 | 0.933 |
+| all_claims_valid | 0.850 | 0.600 |
+| citation_accuracy (hybrid: over the 3 items with graded claims) | n/a | 1.000 |
+| items with a passage-citing claim, of 20 | 0 | 3 |
+| failed items | 0 | 0 |
+| claims per item, mean | 11.25 | 11.10 |
+| input tokens per item, mean | 2,963.7 | 5,165.0 |
+| output tokens per item, mean | 1,119.95 | 1,453.1 |
+| cost (USD per arm) | $0.342538 | $0.497220 |
+| cost per item, mean | $0.017127 | $0.024861 |
+| latency per item, mean | 8,084.9 ms | 10,439.3 ms |
+
+`tr exp` paired the 20 items in 10 ticker clusters (hybrid minus none, 95% interval): `claims_valid` −0.038
+[−0.081, +0.008] (Wilcoxon p = 0.264, MDE 0.071); `all_claims_valid` −0.250 [−0.500, +0.050] (McNemar p = 0.18);
+`parsed` +0.000 [+0.000, +0.000]. It skipped `citation_accuracy` (not scored in the none arm, which has no passages).
+The three passage-citing items are UNH 11-12, KO 11-12 and AAPL 11-13, one passage-citing claim each, three distinct
+chunks.
+
+**Result decision, by the registered rule.**
+- (1) Non-inferiority on `claims_valid`: **fails.** The lower bound, −0.081, is below −0.05.
+- (2) Passage-citing claims in at least 25% of hybrid items: **fails.** 3 of 20 items (15%) against 5 needed.
+- (3) `citation_accuracy` at least 0.90: holds on its face, 1.000, but over n = 3 items, so no interval is claimed
+  and it rests on three claims.
+- **The retrieval default stays `none`.** Two of the three conditions fail, so nothing changes; this is a measured
+  negative, read as registered.
+
+**Reading the result (what it shows and what it does not).**
+- It shows that with this prompt and model, five passages in the request rarely become cited evidence: 3 of 222
+  hybrid claims cite a passage. It does not say the retriever found the wrong text; a passage the model does not cite
+  is not graded, so retrieval quality is not tested here beyond the recall table above.
+- It does not show that passages hurt. The `claims_valid` interval runs from −0.081 to +0.008 and contains 0; the
+  rule failed because the interval also reaches below the −0.05 margin, not because a loss was measured. Losses
+  smaller than about 0.071 (the run's MDE) are likely to go undetected at n = 20.
+- Sampling noise: the same analyze-3 prompts with no passages scored `claims_valid` 0.964 in week 5's `full` arm
+  (`run_c32ea07781a54982`, OpenRouter), 0.935 in the void run's `none` arm (`run_e9d0ebaf14da424e`, OpenRouter) and
+  0.971 here (Anthropic; input tokens per item equal to week 5's on all 20 items; 4 items scored differently), a
+  spread of 0.036 across two routes. Identical input does not give identical scores. The interval from `tr exp`
+  covers item-to-item variation within one pair of runs; run-to-run noise on identical input is separate and is not
+  covered: week 5's `full` against the void `none` (byte-identical requests, both OpenRouter) gives `claims_valid`
+  −0.029 [−0.053, −0.003] and `all_claims_valid` 0.850 → 0.600 under the same `tr exp compare`. A difference of that
+  size between two runs, such as the −0.038 here, is not by itself evidence of a prompt effect. *(Corrected
+  2026-11-17 after the run, thresholds and decision rule untouched, as in Amendment 1.)*
+- Post hoc, not registered, decides nothing: `all_claims_valid` moved by the same −0.250 (0.850 → 0.600) between
+  those two identical-input runs, so its 0.850 → 0.600 here is not to be read as an effect of the passages.
+- Post hoc, not registered, decides nothing: 8 hybrid analyses fall below 1.000 on `claims_valid` against 3 in none
+  (12 and 17 at 1.000), and 7 of those 8 carry a `number_in_text` rejection (a digit written into the claim text),
+  against 2 of 3 in none. Whether those digits came from the passages was not checked.
+- One model, one prompt, 20 ticker-days: 10 tickers over two adjacent sessions, which retrieve the same passages per
+  ticker, so the 20 items are closer to 10 retrieval cases. analyze-3 says how to cite a passage only in the passage
+  banner; the result does not carry to a prompt that asks for passage citations, another model, `hybrid+rerank` or
+  another k.
 
 **Consequences.**
+- Nothing in the pipeline changes: retrieval stays an experiment option (`[arms.retrieval]`) and no default prompt or
+  command gains passages. Passages cost 2,201.3 more input tokens per item here (2,050 to 2,422; 74.3% over none's
+  2,963.7) and 45.2% more per analysis ($0.024861 against $0.017127), for 3 cited passages in 20 analyses.
+- The `hybrid+rerank` run named in the Decision was conditional on passages helping; this result does not trigger
+  it. Any further retrieval experiment needs its own registration and run.
 - The recall numbers belong to this index digest and query set. A rebuild (new filings, another chunker or
   embedding revision) gives a new digest, and the eval has to be rerun before any number here is quoted again.
 - Numeric recall stays low until a query can name the row the way a filing labels it, or a table row is indexed
@@ -151,7 +213,7 @@ press release); the `none` request is byte-identical to week 5's `full` request 
 **Readings.**
 - Reciprocal rank fusion, the hybrid rule: Cormack, Clarke and Büttcher (2009),
   https://cormack.uwaterloo.ca/cormacksigir09-rrf.pdf
-- Cross-encoder rerankers: https://www.sbert.net/docs/cross_encoder/applications/README.html
+- Cross-encoder rerankers: https://www.sbert.net/examples/cross_encoder/applications/README.html
 - recall@k and related measures: https://en.wikipedia.org/wiki/Evaluation_measures_(information_retrieval)
 - Retrieval-augmented generation: Lewis et al. (2020), https://arxiv.org/abs/2005.11401
 - Indirect prompt injection: Greshake et al. (2023), https://arxiv.org/abs/2302.12173

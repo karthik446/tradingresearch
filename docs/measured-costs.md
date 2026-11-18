@@ -208,3 +208,36 @@ context-ablation:no-edgar         20      48630       21061  $0.307870       743
 The key's lifetime spend read $62.922903 before the run and $63.896139 at the last read after it (two reads several
 minutes apart agreed), a delta of $0.973236, $0.016050 below the trace total; earlier reads after the run were lower
 still ($63.643149, $63.741341). The key lags the traces, so the trace total, $0.989286, is the measured cost.
+
+## Week 6: retrieval
+
+One run of `experiments/retrieval.toml` on 2026-11-17 (UTC 2026-11-18) under `TR_DATA_DIR=data-dev` with
+`TR_PROVIDER=anthropic` (ADR-009 has the result and the decision): the same 20 ticker-days, analyze-3 on Anthropic's
+API directly (route `anthropic:claude-sonnet-5-5` on all 40 stored analyses), one call per item. `none` sends week
+5's `full` prompt; `hybrid` adds the top 5 hybrid passages from the pinned index. Tokens and latency are measured,
+from `tr usage` on that data directory; per-item latency is the item's model-call `latency_ms` in the trace. Cost is
+derived from those tokens by the adapter's Anthropic price table (ADR-014), not reported by the provider: Anthropic
+has no key-spend endpoint, so there is no key reading to reconcile against.
+
+| Arm | Run id | Items | Model calls | Tokens in | Tokens out | Cost | Per item: tokens in / out, cost, latency |
+|---|---|---|---|---|---|---|---|
+| none | run_3cb557202363406d | 20 | 20 | 59,274 | 22,399 | $0.342538 | 2,963.7 / 1,119.95, $0.017127, 8,084.9 ms |
+| hybrid | run_83464659837d44e8 | 20 | 20 | 103,300 | 29,062 | $0.497220 | 5,165.0 / 1,453.1, $0.024861, 10,439.3 ms |
+
+Each `hybrid` request differs from `none`'s only by the passage block, so the per-item difference in input tokens is
+what the passages cost: 2,201.3 tokens per item (74.3% of `none`'s input), 2,050 to 2,422 on every day. Output grew
+by 29.7% (1,453.1 ÷ 1,119.95 = 1.297) and cost per analysis by 45.2% ($0.024861 ÷ $0.017127 = 1.452); latency per
+item rose by 2,354.4 ms. `none` sends as many input tokens as week 5's `full` arm on every item (2,963.7 per item on
+average) and costs $0.017127 against $0.017192 there. The two arms total $0.839758: the trace total read $2.331739
+before the run and $3.171497 after it.
+
+```
+$ TR_PROVIDER=anthropic TR_DATA_DIR=data-dev uv run tr usage
+run_3cb557202363406d  exp      retrieval:none                    20      59274       22399   $0.342538
+run_83464659837d44e8  exp      retrieval:hybrid                  20     103300       29062   $0.497220
+```
+
+(Two rows of the per-run table; the rest of the data directory's runs are left out above.)
+
+The first, void attempt (ADR-009 Amendment 1, on OpenRouter) cost $0.3306 for `none` and $0.1012 for 4 of 20
+`hybrid` items before the account's balance ran out; it is not used above.

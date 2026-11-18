@@ -15,9 +15,10 @@ documents. Numbers are from one build, index `sha256:71917448df40d8bedb619d7937e
 - **Chunks.** 8,951 of at most 256 tokens (`regex-v1` counter, chunker `chunk-v2`): 6,824 from 10-Qs, 1,732 from
   press releases, 334 from 8-K cover documents, 61 headlines. A table row becomes one line, `Label | value | ...`,
   with the table's header rows repeated in each chunk.
-- **Retrievers.** BM25 over the chunk text; dense vectors from `BAAI/bge-small-en-v1.5` at revision `aa8f8b060edb`
-  (7,830 chunks embedded in this build, the rest reused from the cache; a 20-chunk spot check passed); hybrid =
-  reciprocal rank fusion of the two; hybrid+rerank = `Xenova/ms-marco-MiniLM-L-6-v2` reordering the hybrid top 20.
+- **Retrievers.** BM25 over the chunk text; dense vectors from BAAI's bge-small-en-v1.5, run as the ONNX export
+  `Qdrant/bge-small-en-v1.5-onnx-Q` at revision `aa8f8b060edb` (7,830 chunks embedded in this build, the rest reused
+  from the cache; a 20-chunk spot check passed); hybrid = reciprocal rank fusion of the two; hybrid+rerank =
+  `Xenova/ms-marco-MiniLM-L-6-v2` reordering the hybrid top 20.
 - **Build cost.** 148 SEC requests and 273.3 s for this build. Archives text is cached under
   `<data dir>/edgar/archives/` and never fetched twice.
 
