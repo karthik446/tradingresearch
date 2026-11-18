@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **Redaction at the providers (ADR-004).** Both adapters now scrub key-shaped strings out of error messages, reply
+  text and tool-call arguments before returning, and the error body is cut with `redact.clip`. Billed costs and the
+  request bodies are unchanged. Every `tr` command now loads the configured keys for exact-value matching
+  (`cli.main` calls `redact.configure`), not only `tr guards scan`.
+- **`tr exp run` runs pipeline arms (week 7).** Per arm it prints the analyze and theses runs, spend, scores and that
+  arm's `audit drop/flag/reject` counts. Each inject arm is paired with the clean arm. The run prints `verdict clean
+  -> <arm>: attack success X  CI ...  n=N` once the learner's `injection_resisted` grader is registered. Until then
+  it says the grader is not registered and exits 0.
 - **Providers (ADR-014).** `TR_PROVIDER=openrouter|anthropic` picks who serves the model calls: the champion,
   challenger, experiment arms and judge. Teachers always run on OpenRouter.
   - The new `providers/anthropic.py` calls the Messages API directly. It maps `anthropic/claude-sonnet-5.5` to

@@ -26,6 +26,11 @@ thrown away.** A reply that is not valid JSON, is cut at the token cap, or is a 
 its cost, and the caller's parser records the failure. An exception would lose the cost, because the run records
 only a result's cost.
 
+**Redaction at the adapter.** An API can echo what it was sent, a key included, in an error body or a reply. Both
+adapters run `redact.scrub` on the error message, the reply text and each tool call's arguments before anything
+leaves the adapter, so a key-shaped string reaches the trace as `[REDACTED:<name>]` and the billed cost is kept
+(ADR-004 Gaps).
+
 **Why a provider change is a new route.** The same model behind two providers can differ in serving stack, region
 and price, so a comparison across them is not like for like. The recorded route starts with the provider
 (`openrouter:...` or `anthropic:...`), which keeps experiments from mixing them silently.

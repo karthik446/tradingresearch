@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 
+from . import redact
 from .commands import COMMANDS
 from .config import settings
 
@@ -19,5 +20,6 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> None:
     args = build_parser().parse_args(argv)
     cfg = settings()
+    redact.configure(cfg)  # every command scrubs the configured keys too, not only the patterns (ADR-004)
     cfg.data_dir.mkdir(parents=True, exist_ok=True)
     args.func(args, cfg)

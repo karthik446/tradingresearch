@@ -20,6 +20,7 @@ from gigai_core.providers import (
     TokenUsage, ToolCall, ToolSpec, Turn, UnsupportedRequestField,
 )
 
+from .. import redact
 from ..records import clean_route
 from ..retry import DEFAULT, HttpError, Policy, retry_after
 from .errors import HttpFailure
@@ -237,13 +238,13 @@ class OpenRouter:
         if response.status_code == 401:
             raise AuthenticationRequired("OpenRouter rejected the key (401)")
         if response.status_code != 200:
-            raise OpenRouterError(response.status_code, response.text[:300],
+            raise OpenRouterError(response.status_code, redact.clip(response.text),
                                   retry_after(response.headers.get("Retry-After")))
         data = response.json()
         if "error" in data:  # some upstream failures arrive as 200 with an error body
             if (data.get("usage") or {}).get("cost"):
                 billed.append(float(data["usage"]["cost"]))
-            raise OpenRouterError(int(data["error"].get("code", 502)), str(data["error"].get("message"))[:300])
+            raise OpenRouterError(int(data["error"].get("code", 502)), redact.clip(str(data["error"].get("message"))))
         route = f"openrouter:{data.get('provider') or 'unknown'}" if self.routing is None else self.routing.served(data)
         key = exchange_key(request)
         self.routes.setdefault(key, []).append(route)
@@ -251,7 +252,7 @@ class OpenRouter:
         choice = data["choices"][0]
         text = choice["message"].get("content") or ""
         calls = tuple(
-            ToolCall(id=c["id"], name=c["function"]["name"], arguments=c["function"]["arguments"])
+            ToolCall(id=c["id"], name=c["function"]["name"], arguments=redact.scrub(c["function"]["arguments"]))
             for c in choice["message"].get("tool_calls") or ()
         )
         if s.output_mode != "text" and not text.strip() and not calls:
@@ -259,7 +260,7 @@ class OpenRouter:
         usage = data.get("usage", {})
         cost = usage.get("cost")
         return ModelResult(
-            text=text,
+            text=redact.scrub(text),
             finish_reason=FINISH.get(choice.get("finish_reason"), "unknown"),
             resolved_model=data.get("model", s.model),
             usage=TokenUsage(

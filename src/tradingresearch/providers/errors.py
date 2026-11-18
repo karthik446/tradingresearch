@@ -13,6 +13,8 @@ from __future__ import annotations
 
 from gigai_core.providers import OutputNotJSON, ProviderError
 
+from .. import redact
+
 CREDIT_EXHAUSTED = "credit_exhausted"
 RATE_LIMITED = "rate_limited"
 UPSTREAM_5XX = "upstream_5xx"
@@ -39,7 +41,7 @@ class HttpFailure(ProviderError):
 
     def __init__(self, provider: str, status: int, message: str, *, kind: str | None = None,
                  retry_after: float | None = None) -> None:
-        super().__init__(f"{provider} {status}: {message}")
+        super().__init__(f"{provider} {status}: {redact.scrub(message)}")
         self.status = status
         self.kind = kind or kind_of(status)
         self.code = CODES.get(self.kind, f"http_{status}")

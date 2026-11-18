@@ -1,24 +1,22 @@
-"""`tr exp run`: every arm of an experiment config on the same ticker-days, then compare (paid calls);
-`tr exp compare`: the same compare block for two stored runs ($0)."""
+"""`tr exp run`: every arm of an experiment config on the same ticker-days, then compare (paid calls); a pipeline
+arm's theses stay in memory, and each inject arm gets a paired verdict against the clean arm. `tr exp compare`: the
+same compare block for two stored runs ($0)."""
 
 from __future__ import annotations
 
+from collections import Counter
 from collections.abc import Sequence
 from pathlib import Path
 
 from gigai_core import Run, open_run
 from gigai_core.comparison import ComparisonRefused
 
-from .. import analyze as an, experiment, journal, providers
+from .. import analyze as an, experiment, guards, journal, providers
 from .common import alpaca_client, edgar_client
 
 
 def cmd_exp_run(args, cfg) -> None:
     config = experiment.load(Path(args.config))
-    pipeline = [arm.name for arm in config.arms if arm.kind == "pipeline"]
-    if pipeline:  # their theses and pairs live only in memory, and this command prints only the analyze run
-        raise SystemExit(f"{args.config}: arm(s) {', '.join(pipeline)}: pipeline arms run through the library until "
-                         "the report is wired (G14c)")
     models = sorted({arm.model for arm in config.arms})
     providers.check_models(cfg, "experiment", models)
     if cfg.provider != "openrouter" and (pinned := [arm.name for arm in config.arms if arm.provider]):
@@ -37,15 +35,41 @@ def cmd_exp_run(args, cfg) -> None:
                                       cfg.data_dir)
     finally:
         provider.close()
+    records, _ = guards.read_audit(cfg.data_dir)
     for r in results:
-        failed = sum(1 for s in r.run.samples if s.outcome != "succeeded")
+        runs = (r.run, r.theses) if r.theses else (r.run,)
+        failed = sum(1 for run in runs for s in run.samples if s.outcome != "succeeded")
         scores = "  ".join(f"{g}={m:.3f} (n={n})" for g, (m, n) in experiment.means(r.run).items())
-        print(f"arm {r.arm.name:<10} prompt={r.arm.prompt} run={r.run.record.run_id} "
-              f"spent=${r.run.record.spent_usd:.4f} failed={failed} analyses={r.analyses}")
+        theses = f" theses={r.theses.record.run_id}" if r.theses else ""
+        print(f"arm {r.arm.name:<10} prompt={r.arm.prompt} run={r.run.record.run_id}{theses} "
+              f"spent=${sum(run.record.spent_usd for run in runs):.4f} failed={failed} analyses={r.analyses}")
         print(f"    {scores}")
+        print(f"    audit {decisions(records, r)}")
     baseline = results[0]
     for r in results[1:]:
-        show(baseline.arm.name, r.arm.name, baseline.run, r.run, config.graders)
+        if not r.arm.inject:  # an injected item has its own id, so it pairs with no analyze item
+            show(baseline.arm.name, r.arm.name, baseline.run, r.run, config.graders)
+    injected = [r for r in results if r.arm.inject]
+    clean = next((r for r in results if r.arm.kind == "pipeline" and not r.arm.inject), None)
+    if injected and clean is None:
+        print(f"no clean pipeline arm: arm(s) {', '.join(r.arm.name for r in injected)} have nothing to pair against")
+        return
+    for r in injected:
+        found = experiment.verdict(config, clean, r)
+        if found is None:
+            print(f"{experiment.RESISTED} not registered (week 7 learner part)")
+            return
+        ci = (f"[{found.ci.lower:.3f}, {found.ci.upper:.3f}] ({found.ci.level:.0%}, cluster bootstrap)" if found.ci
+              else f"none ({found.clusters} clusters < {experiment.MIN_CLUSTERS})")
+        print(f"verdict {clean.arm.name} -> {r.arm.name}: attack success {found.attack_success:.3f}  CI {ci}  "
+              f"n={found.n}")
+
+
+def decisions(records: list[guards.AuditRecord], r: experiment.ArmResult) -> str:
+    """An arm's guard decisions in `audit.jsonl`, by the arm's run ids (analyze and, for a pipeline arm, thesis)."""
+    runs = {r.run.record.run_id} | ({r.theses.record.run_id} if r.theses else set())
+    counts = Counter(rec.decision for rec in records if rec.run_id in runs and rec.arm == r.arm.name)
+    return f"drop={counts['drop']} flag={counts['flag']} reject={counts['reject']}"
 
 
 def cmd_exp_compare(args, cfg) -> None:

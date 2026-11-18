@@ -95,6 +95,7 @@ clone had no file naming the variables.
 
 **Consequences.**
 - Paid champion runs can use Anthropic credit by setting `TR_PROVIDER=anthropic`.
+- Both adapters scrub error messages, reply text and tool-call arguments with `redact.scrub` before returning (ADR-004).
 - The judge (`openai/gpt-6-sol`) and the bake-off still need OpenRouter.
 - A price change at Anthropic needs an edit to `PRICES`, because there is no price endpoint.
 - Under `TR_PROVIDER=anthropic` the live stream would record `anthropic:` routes, which are a new route. Switching the

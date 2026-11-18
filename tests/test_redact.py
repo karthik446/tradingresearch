@@ -167,8 +167,10 @@ mode = "tools"
 
 
 def test_a_key_in_a_provider_error_never_reaches_the_trace_or_the_run(tmp_path, monkeypatch):
-    """The unwired adapter carries the key into the span's error; the trace sink and the sample scrub take it out,
-    and one audit line names the pattern, never the key."""
+    """The backstop behind the provider sites: with the adapter's scrub stubbed out, as an adapter that forgot it would
+    be, the key reaches the span's error; the trace sink and the sample scrub take it out, and one audit line names
+    the pattern, never the key."""
+    monkeypatch.setattr(redact, "scrub", lambda text: text)  # the provider sites only; the sink scrubs via `scrubbed`
     monkeypatch.setattr(an, "context_tokens", lambda system, prompt: LIVE_CONTEXT_TOKENS)
     config_path = tmp_path / "redact.toml"
     config_path.write_text(TOOLS_ARM)
@@ -186,6 +188,31 @@ def test_a_key_in_a_provider_error_never_reaches_the_trace_or_the_run(tmp_path, 
     assert bad == 0 and [(r.stage, r.decision, r.rule, r.subject.kind) for r in records] == [
         ("redact", "redact", "sk_or_key", "span")] * 2
     assert all(r.run_id == result.run.record.run_id and r.arm == "tools" and "hit" in r.detail for r in records)
+
+
+def test_a_provider_error_is_scrubbed_where_it_is_raised(tmp_path, monkeypatch):
+    """The wired adapter: the span's error already carries the marker, so the sink finds nothing left to audit."""
+    monkeypatch.setattr(an, "context_tokens", lambda system, prompt: LIVE_CONTEXT_TOKENS)
+    config_path = tmp_path / "redact.toml"
+    config_path.write_text(TOOLS_ARM)
+    data = tmp_path / "data"
+    [result] = experiment.run_arms(journal.connect(data / "journal.db"), experiment.load(config_path), [context()],
+                                   replaying([json.loads(ERROR_401)], []), prices(), data)
+    assert result.run.samples[0].error.message == "OpenRouter 401: FAKEA: no user for key [REDACTED:sk_or_key]"
+    assert OR_KEY not in Path(result.run.record.trace_path).read_text() and guards.read_audit(data) == ([], 0)
+
+
+# ---------- `tr` configures the exact-value match once, for every command ----------
+
+def test_every_tr_command_matches_the_configured_keys_and_ignores_an_empty_one(tmp_path, capsys):
+    (tmp_path / "none.env").write_text(f"APCA_API_SECRET_KEY={ALPACA_SECRET}\nOPENROUTER_API_KEY=\n")
+    with pytest.raises(SystemExit, match="no stored run run_a"):
+        main(["exp", "compare", "run_a", "run_b"])  # a command that never calls configure itself
+    assert redact.scrub(f"echo {ALPACA_SECRET}") == "echo [REDACTED:alpaca_secret]"
+    assert redact.scrub("plain text") == "plain text"  # an empty key would match between every character
+    assert ALPACA_SECRET not in capsys.readouterr().out
+    assert all(ALPACA_SECRET not in path.read_text(errors="replace") for path in tmp_path.rglob("*")
+               if path.is_file() and path.name != "none.env")
 
 
 # ---------- tr guards scan ----------

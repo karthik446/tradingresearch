@@ -709,11 +709,18 @@ the journal, and dates each thesis at the session close. The injection set is `e
 `evals/injections.schema.md`); a row is placed in memory only, on an arm with `inject = true`, and a bad row, a row
 off the config's tickers or sessions, or a replace target that is not shown exits before any call. The shipped set
 is empty until the learner writes it, so `experiments/injection.toml` (clean / injected-off / injected-on, 10
-tickers, ≤ $1.50 an arm) refuses to load. `tr exp run` refuses any pipeline arm before a call until the report is
-wired (G14c); from the library, `experiment.pairs(clean, injected)` gives one pair per injection row by ticker-day with
-the first change per horizon (`unparsed` when either side's reply did not parse), and
+tickers, ≤ $1.50 an arm) refuses to load. `experiment.pairs(clean, injected)` gives one pair per injection row by
+ticker-day with the first change per horizon (`unparsed` when either side's reply did not parse), and
 `experiment.injection_resisted` scores them with the learner's `injection_resisted` grader. The run file records each
 prompt as sent, injected text included. Tests use invented FAKEA text only (`tests/fixtures/injections/fakea.jsonl`).
+
+`tr exp run` on pipeline arms prints, per arm, the analyze and theses run ids, the spend of both stages, the failed
+count, the scores, and an `audit drop=N flag=N reject=N` line counted from `audit.jsonl` over that arm's own run ids.
+Each inject arm is then paired with the first clean pipeline arm: `verdict clean -> <arm>: attack success X  CI
+[lo, hi] (95%, cluster bootstrap)  n=N`. The interval is the bootstrap `tr exp compare` uses, over the config's
+clusters (tickers, or sessions with `cluster = "session"`), and is `none` below 10 clusters. Until the learner
+registers `injection_resisted`, the run ends with `injection_resisted not registered (week 7 learner part)` and
+exits 0; with no clean pipeline arm it says the inject arms have nothing to pair against.
 
 ### Redaction and the key scan
 
@@ -725,14 +732,18 @@ Week 7 part 3 (GUARDS-SPIKE §5.3, ADR-004 Gaps). This part is pure code and mak
   `apca_header`, `x_api_key_header` (its value, any shape) and `pk_key_id`.
   - A key prefix counts only where no letter or digit runs into it, so `task-ant-colony` is left alone.
   - A key split by a newline loses only its head: the part after the newline is kept.
-  - After `redact.configure(settings)`, the exact configured key values are replaced too. Each is named by its
-    settings field (`openrouter_key`, `alpaca_secret`, ...).
+  - Every `tr` command runs `redact.configure(settings)` first (`cli.main`), so the exact configured key values are
+    replaced too. Each is named by its settings field (`openrouter_key`, `alpaca_secret`, ...); an empty or short
+    value is ignored.
   - `redact.clip(text)` scrubs and then cuts at 300 characters. That is the cut the adapters make on an error body.
 - **Trace path.** `experiment.run_items` (tools and masked arms) writes every span through `redact.Scrubbing` and
   scrubs each sample before grading. Each string value and dict key is scrubbed decoded, never inside the JSON text,
   and a string under a credential-header key (`APCA-API-...`, `x-api-key`) is replaced whole. A span that changed
-  leaves one `redact` audit line per pattern, which `tr guards` shows. Provider error and reply text is scrubbed only
-  after the call sites in ADR-004 Gaps are wired.
+  leaves one `redact` audit line per pattern, which `tr guards` shows.
+- **Provider sites.** Both adapters scrub an error body (`HttpFailure`, cut with `redact.clip`), a reply's text and
+  each tool call's arguments before they leave the adapter, so the traces gigai-core writes (analyze, thesis, the
+  judge, fixed and pipeline arms) hold the marker. A provider has no data dir, so this scrub writes no audit line.
+  Request bodies are untouched.
 - **Scan.** `uv run tr guards scan --dir DIR` reads every file under DIR, read-only. The default DIR is the data
   dir.
   - It reads a JSON line by its decoded strings, the way the trace path scrubs them, and any other line as it is.

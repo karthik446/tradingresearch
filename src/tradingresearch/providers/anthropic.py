@@ -26,6 +26,7 @@ from gigai_core.providers import (
     TokenUsage, ToolCall, ToolSpec, Turn, UnsupportedRequestField,
 )
 
+from .. import redact
 from ..records import clean_route
 from ..retry import DEFAULT, Policy, retry_after
 from .errors import CREDIT_EXHAUSTED, HttpFailure
@@ -145,7 +146,7 @@ def failure(response: httpx.Response) -> AnthropicError:
         error = response.json().get("error") or {}
     except ValueError:
         error = {}
-    message = str(error.get("message") or response.text)[:300]
+    message = redact.clip(str(error.get("message") or response.text))
     lower = message.lower()
     out_of_credit = (response.status_code == 402 or error.get("type") == "billing_error"
                      or (response.status_code == 400
@@ -251,7 +252,7 @@ class Anthropic:
         self.served.append((key, route))
         content = data.get("content") or []
         text = "".join(block.get("text", "") for block in content if block.get("type") == "text")
-        calls = tuple(ToolCall(id=b["id"], name=b["name"], arguments=json.dumps(b.get("input") or {}))
+        calls = tuple(ToolCall(id=b["id"], name=b["name"], arguments=redact.scrub(json.dumps(b.get("input") or {})))
                       for b in content if b.get("type") == "tool_use")
         refused = data.get("stop_reason") == "refusal"  # billed: returned with its cost, never raised
         if s.output_mode != "text" and not text.strip() and not calls and not refused:
@@ -260,7 +261,7 @@ class Anthropic:
         prompt = (usage["input_tokens"] + cached) if usage.get("input_tokens") is not None else None
         output = usage.get("output_tokens")
         return ModelResult(
-            text=text,
+            text=redact.scrub(text),
             finish_reason=FINISH.get(data.get("stop_reason"), "unknown"),
             resolved_model=served,
             usage=TokenUsage(input_tokens=prompt, output_tokens=output,

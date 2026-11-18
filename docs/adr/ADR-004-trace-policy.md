@@ -37,7 +37,8 @@ levels) and EDGAR XBRL facts (revenue, net income, EPS); the thesis prompt adds 
 - **Redaction rule: structural first, patterns as a backstop.** What keeps a value out of a trace is that the trace
   has no place for it: no credential field, and no earlier turns (`store_inputs` stays False, so a request is stored
   as its digest plus its last turn). Turning `store_inputs` on is a change to this ADR. Since week 7 a pattern scrub
-  (`redact.py`, Gaps) also rewrites key-shaped strings on the repo-written trace path before a span is written.
+  (`redact.py`, Gaps) also rewrites key-shaped strings in every provider error, reply and tool-call arguments, and
+  again on the repo-written trace path before a span is written.
 
 **Gaps (what code enforces since week 7, and what it still does not).**
 - **Built (G14c, `redact.py`):**
@@ -47,7 +48,8 @@ levels) and EDGAR XBRL facts (revenue, net income, EPS); the thesis prompt adds 
     - `Bearer …` (a token of 20 characters or more with a digit among them)
     - `APCA-API-KEY-ID` and `APCA-API-SECRET-KEY` headers, and `x-api-key` headers, whatever the value's shape
     - Alpaca key ids (`PK`/`AK` plus 18)
-  - Once `redact.configure(settings)` has run, the exact configured key values are replaced too.
+  - `cli.main` runs `redact.configure(settings)` before every command, so the exact configured key values are
+    replaced too, wherever `scrub` runs. An empty or short value is ignored.
   - A marker names the pattern or the settings field, never the value. `redact.clip` scrubs first and cuts after,
     so a key cut at 300 characters is still caught.
   - A record is scrubbed by its decoded string values and dict keys, never as JSON text, so a key after a newline
@@ -59,27 +61,22 @@ levels) and EDGAR XBRL facts (revenue, net income, EPS); the thesis prompt adds 
   `redact.Scrubbing`, and scrubs each sample before the sample is graded and written to `data/runs/`. Every
   scrubbed span leaves one audit line per pattern (`tr guards`). The line carries stage and decision `redact`, the
   pattern name and a digest of the scrubbed span. Fixed and pipeline arms go through gigai-core's `run_eval`,
-  which writes its own trace; that trace is covered only once the providers below are wired.
+  which writes its own trace; that trace holds what the providers return, scrubbed at the provider sites below.
 - **Built: the checks.**
   - `tests/test_redact.py` greps `tests/fixtures/` for every pattern and for headline rows from any source other
     than `fakewire`, the invented FAKEA source (0 hits).
   - `tr guards scan --dir DIR` walks a directory read-only and exits 1 on any hit. Its patterns include the
     configured keys by exact value.
   - On 2026-11-17 the scan found 0 hits in the live `data/`: 276 files.
-- **Not wired: the provider error and reply text.** `CallError.message` is still `str(exc)`, and a reply's `text`
-  is still written as the provider returned it.
-  - On the pre-adapter `openrouter.py` (`_post`), the error bodies are cut with `[:300]` (lines 239 and 244) and
-    the reply goes out through `ModelResult(text=...)` (line 259).
-  - After the provider adapters land, the sites to wire are:
-    1. `providers/errors.py` `HttpFailure.__init__`: scrub `message`. This covers `OpenRouterError` and
-       `AnthropicError`.
-    2. `ModelResult(text=redact.scrub(text), ...)` in `providers/openrouter.py` and `providers/anthropic.py`
-       `_post`.
-  - Until then, the traces gigai-core writes are not scrubbed. That covers `analyze`, `thesis`, the judge, and the
-    fixed and pipeline arms of `tr exp run`. A provider-level scrub leaves the `[REDACTED:…]` marker but no audit
-    line, because a provider has no data dir. Tool-call arguments are not scrubbed at either site.
-- **Configured values are matched only where `configure` runs.** Today that is only `tr guards scan`. Elsewhere
-  only the patterns apply, until `cli.main` or provider construction calls `redact.configure(settings)`.
+- **Built (G14d): the provider sites.** Nothing an adapter returns carries a raw key:
+  - `providers/errors.py` `HttpFailure.__init__` scrubs `message`, which covers `OpenRouterError` and
+    `AnthropicError`; the adapters cut an error body with `redact.clip` instead of `[:300]`.
+  - `providers/openrouter.py` and `providers/anthropic.py` scrub a reply's `text` and each tool call's `arguments`
+    before they become a `ModelResult`. The billed cost is unchanged; request bodies are untouched, so the
+    OpenRouter wire bodies stay byte-identical.
+  - So the traces gigai-core writes (`analyze`, `thesis`, the judge, the fixed and pipeline arms of `tr exp run`)
+    hold the `[REDACTED:…]` marker. A provider has no data dir, so this scrub leaves no audit line; the trace-path
+    scrub above stays as the backstop, and audits whatever still gets through.
 - **`.gitignore` is still the only barrier for fetched content.** A copy bypasses it.
   - `tests/fixtures/usage/` holds two real runs, committed with their traces (`run_10fc0a886ddb42a2`,
     `run_c40caab0968e44a3`).
@@ -93,8 +90,8 @@ levels) and EDGAR XBRL facts (revenue, net income, EPS); the thesis prompt adds 
 - Cost per run, arm, day or call (`tr usage`) comes from the run files, so `docs/measured-costs.md` needs no
   extra logging.
 - The safety of fetched content depends on `data/` staying git-ignored and on nobody copying a trace into the repo.
-  Keys are scrubbed on the repo-written trace path and the fixtures are grepped for them (Gaps); the traces
-  gigai-core writes are scrubbed only once the provider call sites are wired.
+  Keys are scrubbed where a provider returns text and again on the repo-written trace path, and the fixtures are
+  grepped for them (Gaps).
 
 **Readings.** OWASP Top 10 for LLM applications, LLM02 Sensitive Information Disclosure
 (https://genai.owasp.org/llm-top-10/); OpenTelemetry semantic conventions for GenAI spans

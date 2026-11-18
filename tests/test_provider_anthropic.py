@@ -268,6 +268,54 @@ def test_an_openrouter_429_waits_its_retry_after_header():
     assert result.retry_count == 1
 
 
+# --- redaction at the provider sites (ADR-004) -------------------------------------------------------------------
+
+KEY = "sk-or-v1-" + "0f" * 32  # a key's shape, built at run time so no file holds one
+ONCE = Policy(tries=1, sleep=lambda seconds: None)
+
+
+def answering(provider, reply: httpx.Response):
+    provider._http = httpx.Client(base_url=str(provider._http.base_url), headers=provider._http.headers,
+                                  transport=httpx.MockTransport(lambda req: reply))
+    return provider
+
+
+def test_a_key_in_an_anthropic_error_body_reply_or_tool_input_comes_back_redacted():
+    error = {"type": "error", "error": {"type": "invalid_request_error", "message": f"bad header {KEY}"}}
+    with pytest.raises(AnthropicError) as caught:
+        answering(Anthropic("FAKEA", policy=ONCE), httpx.Response(400, json=error)).invoke(request())
+    assert KEY not in str(caught.value) and "bad header [REDACTED:sk_or_key]" in str(caught.value)
+    body = {**REPLIES["tool_use"]["body"], "content": [
+        {"type": "text", "text": f"echo {KEY}"},
+        {"type": "tool_use", "id": "toolu_fake", "name": "bars", "input": {"ticker": "FAKEA", "note": KEY}}]}
+    result = answering(Anthropic("FAKEA"), httpx.Response(200, json=body)).invoke(request("text"))
+    assert result.text == "echo [REDACTED:sk_or_key]"
+    assert result.tool_calls[0].arguments == '{"ticker": "FAKEA", "note": "[REDACTED:sk_or_key]"}'
+    assert result.cost_usd == pytest.approx((50 * 2 + 20 * 10) / 1e6)  # the billed cost is still returned
+
+
+def test_a_key_in_an_openrouter_error_body_reply_or_tool_arguments_comes_back_redacted():
+    for status, body in [(500, {"error": {"code": 500, "message": f"upstream echoed {KEY}"}}),
+                         (200, {"error": {"code": 502, "message": f"upstream echoed {KEY}"}})]:
+        with pytest.raises(OpenRouterError) as caught:
+            answering(OpenRouter("FAKEA", policy=ONCE), httpx.Response(status, json=body)).invoke(request("text"))
+        assert KEY not in str(caught.value) and "upstream echoed [REDACTED:sk_or_key]" in str(caught.value)
+    reply = json.loads((Path(__file__).parent / "fixtures" / "tools" / "get_close.reply.json").read_text())
+    message = reply["choices"][0]["message"]
+    message["content"] = f"echo {KEY}"
+    message["tool_calls"][0]["function"]["arguments"] = json.dumps({"ticker": "AAPL", "note": KEY})
+    result = answering(OpenRouter("FAKEA"), httpx.Response(200, json=reply)).invoke(request("text"))
+    assert result.text == "echo [REDACTED:sk_or_key]"
+    assert json.loads(result.tool_calls[0].arguments) == {"ticker": "AAPL", "note": "[REDACTED:sk_or_key]"}
+    assert result.cost_usd == reply["usage"]["cost"]  # the billed cost is still returned
+
+
+def test_a_reply_without_a_key_comes_back_byte_for_byte():
+    reply = json.loads((Path(__file__).parent / "fixtures" / "tools" / "get_close.reply.json").read_text())
+    result = answering(OpenRouter("FAKEA"), httpx.Response(200, json=reply)).invoke(request("text"))
+    assert result.tool_calls[0].arguments == reply["choices"][0]["message"]["tool_calls"][0]["function"]["arguments"]
+
+
 # --- selection ---------------------------------------------------------------------------------------------------
 
 def test_tr_provider_picks_the_adapter_and_only_its_key_is_needed():
