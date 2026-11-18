@@ -1,33 +1,38 @@
 """COST-3a: the plan-total pre-flight of `tr exp run`. Before the first call each arm's worst case for the whole plan
 is priced as its CallBudgets reserve it. A pipeline arm's thesis prompts depend on its analysis replies, so they are
 bounded both ways: an arm whose floor is over `max_usd_per_arm` is refused with exit code 2 and no call, one whose
-upper bound only is over it runs with a header warning. The week-7 cases: 30 injected items at Sonnet 5.5 rates
-stopped part way at $1.50 (ADR-010 Amendment 1) and ran at $2.50."""
+upper bound only is over it runs with a header warning. The week-7 cases: 30 injected items at Sonnet 5.5 rates had
+their thesis stage refused at $1.50 after the analyses spent (ADR-010 Amendment 1) and ran at $2.50."""
 
 from __future__ import annotations
 
 import json
+import math
 import re
 import tomllib
 from contextlib import nullcontext
 from pathlib import Path
 from types import SimpleNamespace
 
+import httpx
 import pytest
+from gigai_core import CallBudget
 
 from test_experiment import Caching, injected_cite
 from test_headlines import stored
 from test_injection import ADD, answering, config, run_exp
-from test_masking import TICKERS, pinned_tokens, ten  # noqa: F401
+from test_masking import TICKERS, pinned_tokens, reply, ten  # noqa: F401
 from test_week4 import MODEL, prices
 from tradingresearch import analyze as an, experiment, journal, thesis as th
 from tradingresearch.commands import exp
 from tradingresearch.evals import GRADERS
 from tradingresearch.providers import anthropic
+from tradingresearch.providers.openrouter import API, OpenRouter
 
 SHIPPED = experiment.ROOT / "experiments" / "injection.toml"
 HAIKU = "anthropic/claude-haiku-5.5"
 SONNET = anthropic.prices([MODEL, HAIKU])  # the listed Sonnet 5.5 and Haiku 5.5 rates the week-7 run paid
+W7REFB_ANALYSES, W7REFB_THESES = 0.644, 1.011862  # the real W7RefB arm: its 30 analyses' spend, its thesis reservations
 
 
 def week7(tmp_path: Path, cap: float | None = None) -> Path:
@@ -66,6 +71,15 @@ def tr_exp(tmp_path: Path, monkeypatch, path: Path, provider, priced_models: dic
     exp.cmd_exp_run(SimpleNamespace(config=str(path)), cfg)
 
 
+def refusal(name: str, floor: float, cap: float) -> str:
+    """The OverCap line for arm `name` of the injection experiment."""
+    return (f"injection: arm {name}: conservative pre-flight ${floor:.6f} (analysis reservations + smallest thesis "
+            f"reservations) is over max_usd_per_arm ${cap:.2f}; the smallest whole-cent cap that clears this check is "
+            f"${experiment.cents_up(floor):.2f}. Real spend is lower and the cap is a ceiling: the thesis stage gets "
+            f"the cap minus what the analyses actually spend, so this check can refuse a cap the run would fit "
+            f"(no call made)")
+
+
 def test_the_week7_plan_fits_the_shipped_cap(tmp_path):
     assert tomllib.loads(SHIPPED.read_text())["max_usd_per_arm"] == 2.50  # ADR-010 Amendment 1
     sent: list[dict] = []
@@ -89,13 +103,32 @@ def test_the_week7_arm_at_1_50_is_refused_before_any_call_with_exit_code_2(tmp_p
     assert not any(line.startswith("plan worst case") for line in out.splitlines())
     lines = err.splitlines()
     assert [line.split(": ")[1] for line in lines] == ["arm injected-off", "arm injected-on"]  # the clean arms fit
-    assert lines[0] == (f"injection: arm injected-off: plan worst case is at least ${floor:.6f}, over max_usd_per_arm "
-                        f"$1.50; the smallest cap that clears it is ${experiment.cents_up(floor):.2f} (no call made)")
+    assert lines[0] == refusal("injected-off", floor, 1.50)
+
+
+def test_the_pre_flight_refuses_a_cap_the_w7refb_run_would_have_fitted(tmp_path, monkeypatch, capsys):
+    """W8Read M1, kept on record: the check is conservative. At $1.70 the real W7RefB arm passes both plans the run
+    makes itself (its analysis reservations; then its analysis spend plus its thesis reservations), yet the
+    pre-flight, which counts the analyses at their reservations, refuses it."""
+    floor = planned(tmp_path, week7(tmp_path), answering([]), SONNET)["injected-off"].floor
+    config = experiment.load(week7(tmp_path))
+    arm = next(arm for arm in config.arms if arm.name == "injected-off")
+    data = experiment.stage(config, ten(), answering([]), tmp_path).data(arm)
+    built = experiment.armed(arm, data, {}, answering([]), SONNET)
+    analysis = CallBudget(max_usd=math.inf, prices=built.prices).plan(
+        experiment.analysis_requests(arm, data, built.routed, built.views))  # as `worst_case` and the run plan it
+    assert analysis <= 1.70 and W7REFB_ANALYSES + W7REFB_THESES <= 1.70  # the run's own two plans fit $1.70
+    assert W7REFB_ANALYSES < analysis < floor and floor > 1.70  # the pre-flight counts reservations, not spend
+    sent: list[dict] = []
+    with pytest.raises(SystemExit) as refused:
+        tr_exp(tmp_path, monkeypatch, week7(tmp_path, cap=1.70), answering(sent), SONNET)
+    assert refused.value.code == 2 and sent == []
+    assert capsys.readouterr().err.splitlines()[0] == refusal("injected-off", floor, 1.70)
 
 
 def test_run_arms_refuses_too_before_the_first_arm(tmp_path):
     sent: list[dict] = []
-    with pytest.raises(experiment.OverCap, match="arm injected-off: plan worst case is at least"):
+    with pytest.raises(experiment.OverCap, match="arm injected-off: conservative pre-flight"):
         experiment.run_arms(journal.connect(tmp_path / "journal.db"), experiment.load(week7(tmp_path, cap=1.50)),
                             ten(), answering(sent), SONNET, tmp_path)
     assert sent == []
@@ -114,7 +147,7 @@ def test_a_plan_that_fits_prints_its_worst_case_after_the_arm_lines_and_no_warni
     worst = planned(tmp_path, config(tmp_path, ADD), answering([]), prices())
     top = worst["injected"]
     assert top.bound >= worst["clean"].bound
-    assert out[3] == (f"plan worst case ${top.bound:.6f} per arm (arm injected, at least ${top.floor:.6f}), "
+    assert out[3] == (f"plan worst case ${top.bound:.6f} per arm (arm injected, floor ${top.floor:.6f}), "
                       f"cap $1.50")
     assert not any("WARNING" in line for line in out)
 
@@ -133,9 +166,45 @@ def test_an_arm_whose_upper_bound_only_is_over_the_cap_runs_with_a_warning(tmp_p
     out = capsys.readouterr().out.splitlines()
     assert [line for line in out if "WARNING" in line] == [
         f"WARNING arm {name}: plan worst case up to ${w.bound:.6f} with every thesis prompt at its largest, "
-        f"over the cap ${cap:.2f} (floor ${w.floor:.6f} fits): its thesis stage may stop part way"
+        f"over the cap ${cap:.2f} (floor ${w.floor:.6f} fits): its thesis stage may be refused by its budget after "
+        f"the analyses have spent, with no thesis result"
         for name, w in worst.items()]
     assert len(sent) == 4  # both arms ran on
+
+
+def billing(sent: list[dict], usd: float) -> OpenRouter:
+    """The real adapter: each analyze call answered with the cut reply billed at `usd` (OpenRouter's `usage.cost`,
+    which the run records as its spend); any other request gets a non-retryable 400."""
+    analyze = an.system_prompt("analyze-3")
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        sent.append(body)
+        if system_turn(body) != analyze:
+            return httpx.Response(400, json={"error": {"code": 400, "message": "not a request this test expects"}})
+        raw = reply()
+        return httpx.Response(200, json={**raw, "usage": {**raw.get("usage", {}), "cost": usd}})
+
+    provider = OpenRouter("not-a-real-key")
+    provider._http = httpx.Client(base_url=API, transport=httpx.MockTransport(handler))
+    return provider
+
+
+def test_a_refused_thesis_stage_exits_1_naming_the_arm_and_the_analysis_spend(tmp_path, pinned_tokens,  # noqa: F811
+                                                                             monkeypatch, capsys):
+    """W8Read m2: the plan fits, but the analysis bills the whole cap, so core refuses the thesis stage whole before
+    its first call. `tr exp run` prints one stderr line and exits 1, with no thesis call and no traceback."""
+    injected_cite(tmp_path)  # headlines stored
+    sent: list[dict] = []
+    with pytest.raises(SystemExit) as stopped:
+        tr_exp(tmp_path, monkeypatch, config(tmp_path, ADD), billing(sent, 1.50), prices())
+    assert stopped.value.code == 1
+    assert [system_turn(body) for body in sent] == [an.system_prompt("analyze-3")]  # the clean arm's analysis only
+    err = capsys.readouterr().err.splitlines()
+    assert len(err) == 1
+    assert re.fullmatch(r"inject-pair: arm clean: the thesis stage was refused whole by its budget after the analyses "
+                        r"spent \$1\.500000 of the \$1\.50 cap \(analysis run run_\w+\); no thesis result \(.+\)",
+                        err[0])
 
 
 def test_a_routed_arm_plans_less_than_the_same_arm_unrouted(tmp_path):

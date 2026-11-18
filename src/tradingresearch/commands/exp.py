@@ -11,6 +11,7 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from gigai_core import Run, open_run
+from gigai_core.budget import BudgetExceeded
 from gigai_core.comparison import ComparisonRefused
 
 from .. import analyze as an, experiment, guards, journal, providers
@@ -44,13 +45,17 @@ def cmd_exp_run(args, cfg) -> None:
         except experiment.OverCap as exc:
             print(exc, file=sys.stderr)
             raise SystemExit(2) from None
-        top = max(worst, key=lambda name: worst[name].bound)  # a pipeline arm's thesis prompts: up to; and at least
-        least = f", at least ${worst[top].floor:.6f}" if worst[top].floor != worst[top].bound else ""
+        top = max(worst, key=lambda name: worst[name].bound)  # a pipeline arm's thesis prompts: up to; and the floor
+        least = f", floor ${worst[top].floor:.6f}" if worst[top].floor != worst[top].bound else ""
         print(f"plan worst case ${worst[top].bound:.6f} per arm (arm {top}{least}), "
               f"cap ${config.max_usd_per_arm:.2f}")
         for line in experiment.warnings(config, worst):
             print(line)
-        results = experiment.run_staged(conn, config, staged, provider, prices, cfg.data_dir)
+        try:  # a thesis stage refused by its budget (experiment.ThesisRefused) is one stderr line, not a traceback
+            results = experiment.run_staged(conn, config, staged, provider, prices, cfg.data_dir)
+        except BudgetExceeded as exc:
+            print(f"{config.name}: {exc}", file=sys.stderr)
+            raise SystemExit(1) from None
     finally:
         provider.close()
     records, _ = guards.read_audit(cfg.data_dir)

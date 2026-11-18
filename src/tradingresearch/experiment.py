@@ -27,7 +27,7 @@ from pathlib import Path
 from gigai_core import CallBudget, Dataset, DatasetItem, Run
 from gigai_core import compare as core_compare
 from gigai_core import run as run_eval
-from gigai_core.budget import CHARS_PER_TOKEN, budgeted
+from gigai_core.budget import CHARS_PER_TOKEN, BudgetExceeded, budgeted
 from gigai_core.comparison import BOOTSTRAP_SEED, Comparison, ComparisonRefused
 from gigai_core.graders.builtin import parse_json_text
 from gigai_core.graders.protocol import CannotGrade, Grader
@@ -495,15 +495,25 @@ class Worst:
     estimate: ceil(chars / 4) input tokens at the prompt price, max_output_tokens at the completion price). A
     pipeline arm's thesis prompts are built from its analysis replies, so they are bounded both ways: `floor` takes
     the smallest analysis (no claims, no headline cited), `bound` the largest (claims as long as the analysis call's
-    whole output, every headline the analysis was shown). Any other arm has `floor == bound`."""
+    whole output, every headline the analysis was shown). Any other arm has `floor == bound`. Both count the analyses
+    at their reservations, not at what they will spend, so `floor` is a conservative pre-flight, not the least the
+    run needs: the run's thesis budget is the cap minus the analyses' actual spend (`run_pipeline`)."""
 
     floor: float
     bound: float
 
 
 class OverCap(Exception):
-    """An arm's plan floor is over `max_usd_per_arm`: its CallBudget would stop it part way, after spending. Raised
-    before any call; `tr exp run` prints it and exits 2."""
+    """An arm's conservative pre-flight (its analysis reservations plus its smallest thesis reservations) is over
+    `max_usd_per_arm`. Raised before any call; `tr exp run` prints it and exits 2. The check can refuse a cap the run
+    would fit: real analysis spend is lower than its reservation, and the thesis stage is held to the cap minus that
+    real spend (W8Read M1)."""
+
+
+class ThesisRefused(BudgetExceeded):
+    """A pipeline arm's thesis stage refused whole by its budget: core `run` plans every thesis request before the
+    first thesis call, against the cap minus what the analyses spent. The analyses have spent, no thesis call was
+    made and there is no thesis result. `tr exp run` prints it on one line and exits 1."""
 
 
 def plan(config: Config, staged: Staged, provider, prices: dict) -> dict[str, Worst]:
@@ -513,17 +523,21 @@ def plan(config: Config, staged: Staged, provider, prices: dict) -> dict[str, Wo
     cap = config.max_usd_per_arm
     if over := [(name, w) for name, w in worst.items() if w.floor > cap]:
         raise OverCap("\n".join(
-            f"{config.name}: arm {name}: plan worst case is at least ${w.floor:.6f}, over max_usd_per_arm "
-            f"${cap:.2f}; the smallest cap that clears it is ${cents_up(w.floor):.2f} (no call made)"
+            f"{config.name}: arm {name}: conservative pre-flight ${w.floor:.6f} (analysis reservations + smallest "
+            f"thesis reservations) is over max_usd_per_arm ${cap:.2f}; the smallest whole-cent cap that clears this "
+            f"check is ${cents_up(w.floor):.2f}. Real spend is lower and the cap is a ceiling: the thesis stage gets "
+            f"the cap minus what the analyses actually spend, so this check can refuse a cap the run would fit "
+            f"(no call made)"
             for name, w in over))
     return worst
 
 
 def warnings(config: Config, worst: Mapping[str, Worst]) -> list[str]:
-    """The arms whose floor fits but whose upper bound does not: they run, and may stop part way."""
+    """The arms whose floor fits but whose upper bound does not: they run, and their thesis stage may be refused."""
     cap = config.max_usd_per_arm
     return [f"WARNING arm {name}: plan worst case up to ${w.bound:.6f} with every thesis prompt at its largest, over "
-            f"the cap ${cap:.2f} (floor ${w.floor:.6f} fits): its thesis stage may stop part way"
+            f"the cap ${cap:.2f} (floor ${w.floor:.6f} fits): its thesis stage may be refused by its budget after "
+            f"the analyses have spent, with no thesis result"
             for name, w in worst.items() if w.bound > cap]
 
 
@@ -844,12 +858,18 @@ def run_pipeline(config: Config, arm: Arm, data: Prepared, run: Run, path: Path,
                       if view is None or news.source_ref(h).source_id not in view.dropped)
         item = th.item_for(analysis, th.HORIZONS, THESIS_ARM, None, th.cited_in(analysis, shown))
         asked.append(item.model_copy(update={"id": item_id, "cluster_id": run.items[item_id].cluster_id}))
-    theses = run_eval(Dataset.of(f"{config.name}:{arm.name}:thesis", asked), base, [],
-                      settings=th.call_settings(arm.thesis_model, arm.thesis_prompt),
-                      budget=CallBudget(max_usd=max(config.max_usd_per_arm - run.record.spent_usd, 0.0),
-                                        prices=prices),
-                      system=an.system_prompt(arm.thesis_prompt), trace_dir=data_dir / "traces",
-                      tag=f"{config.name}:{arm.name}:{arm.thesis_prompt}")
+    try:  # core plans every thesis request before the first: a refusal comes after the analyses, before any thesis
+        theses = run_eval(Dataset.of(f"{config.name}:{arm.name}:thesis", asked), base, [],
+                          settings=th.call_settings(arm.thesis_model, arm.thesis_prompt),
+                          budget=CallBudget(max_usd=max(config.max_usd_per_arm - run.record.spent_usd, 0.0),
+                                            prices=prices),
+                          system=an.system_prompt(arm.thesis_prompt), trace_dir=data_dir / "traces",
+                          tag=f"{config.name}:{arm.name}:{arm.thesis_prompt}")
+    except BudgetExceeded as exc:
+        raise ThesisRefused(
+            f"arm {arm.name}: the thesis stage was refused whole by its budget after the analyses spent "
+            f"${run.record.spent_usd:.6f} of the ${config.max_usd_per_arm:.2f} cap (analysis run "
+            f"{run.record.run_id}); no thesis result ({exc})") from exc
     an.save(theses, data_dir)
     outcomes = {sample.item_id: Outcome(analyses[sample.item_id],
                                         checked(arm, analyses[sample.item_id], sample, theses, base, data_dir),

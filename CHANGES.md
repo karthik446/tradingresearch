@@ -16,20 +16,33 @@
   `tr grade --judge --collect <id>` polls once: still running exits 0; failed, expired or cancelled exits 1 and stores
   nothing; completed sends each answer through the sync `run_eval` via `providers.BatchReplay`, so the run file, spans,
   `ScoreRecord` and verdict match a sync judge, and a derived cost is reconciled against the batch `usage.cost` (exit 1
-  beyond $0.001). An empty `OPENROUTER_API_KEY` exits 2 before any request. `evals.p1_judge` is split into
+  beyond $0.001). An empty `OPENROUTER_API_KEY` exits 2 before any request, and before the grade step reads Alpaca bars
+  or writes a grade (`--batch --dry-run` needs no key). A batch result entry without a `custom_id` is skipped, and its
+  thesis counts as a failed call. `evals.p1_judge` is split into
   `judge_item` and `judge_run`, behaviour unchanged. Fake-HTTP tests only (`tests/test_batch.py`); never run against
   the real endpoint, so turnaround, per-entry usage and the real `usage.cost` are unmeasured.
 
 - **`tr exp run`: the plan-total pre-flight (COST-3 item 3).** Before the first call, each arm's whole plan is
   priced the way its CallBudgets reserve it (`experiment.plan`). That covers every analysis request, built as the
   run builds it (plain, drop/retrieval/guards wrapper, tools first turn, routed analyze model, cache-write prices for
-  a cached arm). A pipeline arm also gets one thesis request per item, priced twice. The floor assumes an analysis
-  that cites nothing and claims nothing. The upper bound adds the analysis's whole output as claims and every
-  headline it was shown. If an arm's floor is over `max_usd_per_arm`, `OverCap` is raised: `tr exp run` prints the
-  arm, the floor, the cap and the smallest whole-cent cap that clears it, then exits 2 with no call. If only the upper
-  bound is over, a `WARNING arm ...` header line is printed and the run goes on. When the plan fits, a `plan worst
-  case $X per arm` line follows the arm lines. `run_arms` is now `stage` + `plan` + `run_staged`, so every caller
-  is checked.
+  a cached arm). A pipeline arm also gets one thesis request per item, priced twice. The floor is the analysis
+  reservations plus the thesis reservations of an analysis that cites nothing and claims nothing. The upper bound adds
+  the analysis's whole output as claims and every headline it was shown. If an arm's floor is over
+  `max_usd_per_arm`, `OverCap` is raised: `tr exp run` prints the arm, the floor, the cap and the smallest whole-cent
+  cap that clears this check, says that real spend is lower and the cap is a ceiling, then exits 2 with no call. If
+  only the upper bound is over, a `WARNING arm ...` header line is printed and the run goes on. When the plan fits, a
+  `plan worst case $X per arm` line follows the arm lines (with `floor $X` for a pipeline arm). `run_arms` is now
+  `stage` + `plan` + `run_staged`, so every caller is checked.
+  - The check is a conservative pre-flight (W8Read M1): analysis reservations plus the smallest thesis reservations.
+    It can refuse caps the run would fit, because the run's thesis stage is bounded by the cap minus the analyses'
+    actual spend, which is well under their reservations; an analysis that fails to parse also gets no thesis call
+    but is counted. With the W7RefB numbers ($0.644 analysis spend, $1.011862 thesis reservations) $1.70 would have
+    fitted, yet the fixture shape's floor is $2.249640, so the check refuses $1.70 and names $2.25
+    (`test_the_pre_flight_refuses_a_cap_the_w7refb_run_would_have_fitted`). The refusal rule is unchanged.
+  - A thesis stage refused by its budget is refused whole: core plans every thesis request before the first thesis
+    call, so the analyses have spent and there is no thesis result. `run_pipeline` raises
+    `experiment.ThesisRefused` (a `BudgetExceeded`) naming the arm, the analyses' spend, the cap and the analysis run
+    id; `tr exp run` catches `BudgetExceeded`, prints one stderr line and exits 1 instead of a traceback.
   - Why: on 2026-11-17 the first W7RefB attempt spent $0.644 on a pipeline arm's 30 analyses. The 30 thesis
     reservations ($1.011862) then did not fit the $1.50 cap, and `BudgetExceeded` stopped the run after $1.029382
     with no result (ADR-010 Amendment 1). The COST-SPIKE addendum (2026-11-17 14:50) shows the same mid-run stop at
@@ -37,8 +50,10 @@
   - On the week-7 shape (30 injected items at Sonnet 5.5 rates, fixture prompts), the floor is $2.249640. At $1.50
     the run is now refused with 0 calls, where HEAD sent 50 before stopping. At the shipped $2.50 it runs, with a
     warning for the two inject arms (upper bound $2.518230).
-  - Tests: `tests/test_preflight.py`. `test_a_cached_arm_runs_on_the_cached_copy...` now also sees the pre-flight's
-    two plan budgets (listed and 1.25x prices) before the run's four.
+  - Tests: `tests/test_preflight.py` (with the W7RefB $1.70 case above and
+    `test_a_refused_thesis_stage_exits_1_naming_the_arm_and_the_analysis_spend`).
+    `test_a_cached_arm_runs_on_the_cached_copy...` now also sees the pre-flight's two plan budgets (listed and 1.25x
+    prices) before the run's four.
 
 - **`tr usage --by step` and `--by model`: the cost table (G15-SPIKE §3).** Both views print calls, items (distinct
   item ids), tokens in, cache write and cache read tokens (`-` when no call reported them), tokens out, cost, `$/item`
@@ -51,14 +66,17 @@
   `--by run` total; the existing views print exactly what they printed before. Their totals add their own rounded
   rows, so `--by arm` and `--by day` can differ from the run total by $0.000001 (on `data-dev` today: $7.909094 vs
   $7.909093). No ledger file, no `--account`. Tests: `tests/test_usage.py`.
+  - `$/item` and p50/p95 key items on the item id alone, so `--by step` and `--by model` count one ticker-day as one
+    item across all arms and runs: with several arms or runs in the table they are not per-arm figures. For one arm,
+    narrow to its run with `--run RUN_ID`; `--by arm` prints cost and mean latency only (W8Read m3).
 
 - **Week-8 plumbing: a `cache` arm knob (G15-SPIKE §1.2).** Experiment arms take `cache = "5m" | "1h"` (default off).
   On `TR_PROVIDER=anthropic` the arm runs on `Anthropic.cached(ttl)`, which sends `system` as text blocks with one
   `cache_control {"type": "ephemeral", "ttl"}` breakpoint on the last block (user turn uncached; with the knob off the
-  body is unchanged). A route fallback asks through the cached copy. The arm's budget reserves input at the
-  cache-write rate (1.25x for 5m, 2x for 1h), so a cached arm's recorded `spent` reads high (core keeps the
-  reservation as the spend on Anthropic); the per-call `cost_usd` in the trace is exact. `load` refuses another value
-  or a tools arm; `tr exp run` refuses a cache arm on OpenRouter before any call, naming the arm, and prints
+  body is unchanged). A route fallback asks through the cached copy. The arm reserves and plans at the cache-write
+  rate (1.25x for 5m, 2x for 1h), so its pre-flight floor and upper bound are 1.25x/2x higher on input; the recorded
+  spend and each span's `cost_usd` are exact. `load` refuses another value or a tools arm; `tr exp run` refuses a
+  cache arm on OpenRouter before any call, naming the arm, and prints
   `cache <ttl>` on the arm line. `cache` is not part of `input_hash`. Whether the prompt clears Anthropic's
   512-token minimum is settled by the paid run (`cache_creation_input_tokens` of 0 on every call means it did not).
 

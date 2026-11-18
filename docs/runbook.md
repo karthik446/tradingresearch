@@ -210,6 +210,10 @@ no call reported them), tokens out, cost, `$/item`, and p50/p95 over items of ea
 `other`; no call is dropped. `--by model` keys on the requested model, not the served one (`trace.Call.provider_route`).
 Their total cost adds each run's micro-dollar cost, so it equals the `--by run` total; the older
 `arm`, `day` and `call` views add their own rounded rows and can differ from it by $0.000001.
+An item is one ticker-day across every arm and run: a row's `$/item` and p50/p95 add every arm's and every run's
+calls for that ticker-day, so with several arms or runs in the table they are not one arm's figures. For one arm's
+per-item figures pass its run id: `tr usage --by step --run RUN_ID` (the `run=` id for its analyses, `theses=` for
+its theses). `--by arm` prints cost and mean latency per arm, with no per-item columns.
 
 ## Teacher bake-off
 
@@ -245,14 +249,27 @@ thesis call $0.003016 (G6c's fixture capture, 2026-11-17).
 
 ## Experiment cap: the plan pre-flight
 
-Before the first call, `tr exp run` prices each arm's whole plan the way its CallBudgets reserve it: every analysis
-request, and for a pipeline arm one thesis request per item. A thesis prompt is built from its analysis reply, so it
-gets two prices. The floor assumes an analysis with no claims and no cited headline; the upper bound assumes the
-longest possible reply. If any arm's floor is over `max_usd_per_arm`, the run is refused with **exit code 2** and no
-call is made. The message (on stderr) names the arm, the floor, the cap and the smallest whole-cent cap that clears
-the floor. Raise the cap or cut items, then run again. If only the upper bound is over the cap, a `WARNING arm ...`
-line is printed in the header and the run goes on, but its thesis stage may still stop part way with
-`BudgetExceeded`. When the plan fits, the header prints `plan worst case $X per arm`.
+Before the first call, `tr exp run` runs a conservative pre-flight: it prices each arm's whole plan the way its
+CallBudgets reserve it, every analysis request and, for a pipeline arm, one thesis request per item. A thesis prompt is
+built from its analysis reply, so it gets two prices. The floor is the analysis reservations plus the thesis
+reservations of an analysis with no claims and no cited headline; the upper bound assumes the longest possible reply.
+If any arm's floor is over `max_usd_per_arm`, the run is refused with **exit code 2** and no call is made. The message
+(on stderr) names the arm, the floor, the cap and the smallest whole-cent cap that clears this check, and says that
+real spend is lower and the cap is a ceiling. Raise the cap or cut items, then run again.
+
+The check can refuse a cap the run would fit. It counts each analysis at its reservation (the full
+`max_output_tokens`), while the run gives its thesis stage the cap minus what the analyses actually spent, and real
+analysis replies are much shorter. An analysis that fails to parse gets no thesis call, but the floor still counts
+one. The run itself needs only that its analysis reservations fit the cap, then that its analysis spend plus its
+thesis reservations fit. The first W7RefB arm spent $0.644 on its 30 analyses and reserved $1.011862 for its theses,
+so $1.70 would have fitted it; on the fixture version of that shape the floor is $2.249640 and the check names $2.25
+(`tests/test_preflight.py` keeps this case). The cap is a ceiling, not a forecast of the spend.
+
+If only the upper bound is over the cap, a `WARNING arm ...` line is printed in the header and the run goes on. Its
+thesis stage may then be refused by its budget after the analyses have spent. Core plans every thesis request before
+the first thesis call, so the stage is refused whole, with no thesis result: `tr exp run` prints one stderr line
+naming the arm, what its analyses spent and the analysis run id, and exits 1. When the plan fits, the header prints
+`plan worst case $X per arm`.
 
 ## Experiment arms: `mode`
 
@@ -264,8 +281,8 @@ context with tool calls, week 4). Any other value fails `tr exp run` at config l
 table shows). A bad call comes back to the model as `{"error": ...}`, never as a crash. The loop stops at the first
 reply without tool calls, or after `analyze.MAX_TOOL_TURNS` (5) calls with a failed sample (`max_tool_turns`), so
 nothing is stored for that item. The budget is planned on each item's first request and every later call is reserved;
-a refused reservation ends `tr exp run` with `BudgetExceeded`, as a fixed arm's does, and the trace keeps the items
-done so far. A tools arm takes code graders only (a model grader is refused before the first call). The trace
+a refused reservation ends `tr exp run` with exit 1 and the budget's message on one stderr line, and the trace keeps
+the items done so far. A tools arm takes code graders only (a model grader is refused before the first call). The trace
 (`data/traces/<run_id>.jsonl`) holds one `model_call` span per call, one `tool_call` span per tool call and the trial
 span last; `tool_calls_ok` scores 0 for a tool error, a repeated call or more than 6 calls, and 1.0 for an arm with no
 tool calls. `tr exp run` has no dry run; this prints a config's arms and graders with no call:
@@ -845,28 +862,33 @@ read against Sonnet on both (G15-SPIKE §2). The plumbing ships at week-8-start.
   - On OpenRouter, `tr exp run` refuses a cache arm before any call and names the arm. `load` refuses a tools arm or
     any other value.
   - The header adds `cache <ttl>` to the arm line. `cache` is not part of `input_hash`.
-  - The arm's budget reserves input at the cache-write rate (1.25x for 5m, 2x for 1h), so the arm's `spent=` reads
-    high. Each call's `cost_usd` in the trace is exact, cache writes and hits included.
+  - The arm reserves and plans input at the cache-write rate (1.25x for 5m, 2x for 1h), so its pre-flight floor and
+    upper bound are 1.25x/2x higher on input and a cap refuses it sooner. The recorded spend (`spent=`) and each
+    call's `cost_usd` in the trace are exact, cache writes and hits included.
   - Anthropic caches nothing under its minimum prompt length. If every call of the cached arm shows 0 cache-write
     tokens in `tr usage --by step`, your prompt was too short to cache.
 
 ### The plan pre-flight and exit code 2
 
-Before the first call, `tr exp run` prices each arm's whole plan ("Experiment cap: the plan pre-flight" above). That
-includes a routed arm's analyze model and a cached arm's cache-write prices. If an arm's floor is over
-`max_usd_per_arm`, the run prints the arm, the floor, the cap and the smallest whole-cent cap that clears it on stderr
-and **exits 2** with no call made. Raise the cap in the config (and in ADR-011, which states it) or cut items. A
-`WARNING arm ...` line means only the upper bound is over: the run goes on and may stop part way with
-`BudgetExceeded`. There is no dry run: the pre-flight stops a run that cannot fit, and a run that fits spends.
+Before the first call, `tr exp run` runs the conservative plan pre-flight ("Experiment cap: the plan pre-flight"
+above). That includes a routed arm's analyze model and a cached arm's cache-write prices. If an arm's floor is over
+`max_usd_per_arm`, the run prints the arm, the floor, the cap and the smallest whole-cent cap that clears the check on
+stderr and **exits 2** with no call made. The check counts the analyses at their reservations, so it can refuse a cap
+your run would fit: the cap is a ceiling, and real spend is lower. Raise the cap in the config (and in ADR-011, which
+states it) or cut items. A `WARNING arm ...` line means only the upper bound is over: the run goes on, and its thesis
+stage may be refused whole by its budget after the analyses have spent, with no thesis result (one stderr line naming
+the arm and the analysis spend, **exit 1**). There is no dry run: the pre-flight stops a run that cannot fit, and a run
+that fits spends.
 
 ### The cost table: `tr usage --by step|model`
 
 `uv run tr usage --by step` (or `--by model`; `--run RUN_ID`, `--since YYYY-MM-DD` narrow it) prints, per row:
 calls, items, tokens in, cache write, cache read, tokens out, cost, `$/item`, and the p50/p95 latency per item. The
 columns are explained in "Providers" above. It reads saved run files only. After the table, `tr usage` reads the
-OpenRouter key's lifetime spend (a free read; there is no such line for Anthropic). `tr exp run` prints each arm's
-run ids (`run=`, and `theses=` for a pipeline arm). Pass them to `--run` to see one arm, or read each run's cost
-with `tr usage --by run`.
+OpenRouter key's lifetime spend (a free read; there is no such line for Anthropic). `$/item` and p50/p95 count one
+ticker-day as one item across every arm and run in the table, so they are one arm's figures only for one arm's run.
+`tr exp run` prints each arm's run ids (`run=`, and `theses=` for a pipeline arm). Pass them to `--run` to see one
+arm, or read each run's cost with `tr usage --by run`.
 
 ### The batch judge: `tr grade --judge --batch` and `--collect`
 
