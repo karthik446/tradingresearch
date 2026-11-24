@@ -1,0 +1,7 @@
+FAIL w2l3.2 (try 1): Keep a long's target at or before the next level over the entry, plus half an ATR
+  AAPL swing is long from a limit entry at 343.41 (stop moved to 338.69). With target 366.0: the
+  next level over the entry is high_20 360.83 (levels: low_20 325.33, pivot_low 325.81, hvn
+  333.3527, pivot_low 338.7, hvn 343.40978, high_20 360.83), ATR14 is 8.0457, and the target sits
+  5.17 past the level, more than half an ATR (4.02); p4_levels_coherent returned True
+  hint 1 unlocks after 2 failed runs; hint 2 unlocks after 5 failed runs; the solution unlocks after
+  10 failed runs or when the check is green

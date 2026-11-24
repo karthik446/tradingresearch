@@ -1,4 +1,4 @@
-"""Observe for the week-2 labs: run your process checks on the author's recorded theses ($0, no network).
+"""Observe for the week-2 labs: run your process checks on the author's recorded theses ($0, under the offline guard).
 
     python labs/w2/tools/observe.py
 
@@ -9,8 +9,12 @@ a market_open entry) the chapter does not show; then synthetic copies, each brea
 should catch it and a count per check of the copies it still accepts. Once checks.py has p4_levels_coherent, a
 block runs your P4 twice on the real theses: on the prices as stored, and on the same prices rounded to cents by
 observe, naming the level that changes side when rounded. Once evals.py has built_theses (lab w2l4), a last block
-scores the author's recorded AAPL reply (tests/fixtures/thesis) with each of your graders, the network blocked so
-no grader can reach a model. Always exits 0: it shows what your code does, the exercise's check decides.
+scores the author's recorded AAPL reply (tests/fixtures/thesis) with each of your graders. The offline guard
+(offline.py beside this file) is installed before your code is imported: socket connections, DNS lookups,
+subprocesses, httpx requests and ModelJudge.grade raise, and a grader that tried one is flagged even if it caught the
+error; an attempt made while your code is imported or while observe runs your checks is named in a note at the end.
+It guards those entry points, not the whole process. Always exits 0: it shows what your code does, the
+exercise's check decides.
 """
 
 from __future__ import annotations
@@ -18,14 +22,17 @@ from __future__ import annotations
 import importlib
 import json
 import os
-import socket
 import sys
 from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
 from types import SimpleNamespace
 
-from tradingresearch.records import Claim, Level, Thesis
+import offline  # labs/w2/tools/offline.py: this script's folder is sys.path[0]
+
+offline.install()  # before any import of tradingresearch, which may import learner code
+
+from tradingresearch.records import Claim, Level, Thesis  # noqa: E402
 
 DATA = Path(os.environ.get("TR_LAB_DATA") or Path(__file__).resolve().parents[1] / "data")
 FIXTURES = Path(__file__).resolve().parents[3] / "tests" / "fixtures" / "thesis"  # the author's recorded AAPL reply
@@ -132,10 +139,6 @@ GRADED = ("p2_evidence_valid", "p3_invalidation_testable", "p4_levels_coherent",
 OPINION = "cl_ba1ecc8934034a7d"  # a claim of the AAPL analysis tagged opinion
 
 
-def no_network(*args: object, **kwargs: object) -> None:
-    raise OSError("observe blocks the network: no grader here may call a model")
-
-
 def scored(evals: object, grader_id: str, items: list, expected: dict) -> str:
     from gigai_core.graders.protocol import CannotGrade  # noqa: PLC0415  only once evals imports
 
@@ -144,11 +147,24 @@ def scored(evals: object, grader_id: str, items: list, expected: dict) -> str:
     try:
         score = evals.GRADERS[grader_id]().grade(sample, expected)
     except CannotGrade as exc:
-        return f"cannot grade ({exc})"
+        return f"cannot grade ({exc})" + tried()
     except Exception as exc:  # a learner's half-written grader: show it, keep going
-        return f"! {type(exc).__name__}: {exc}"
+        return f"! {type(exc).__name__}: {exc}" + tried()
     value, explanation = getattr(score, "value", score), getattr(score, "explanation", None)
-    return f"{value}" + (f" ({explanation})" if explanation else "")
+    return f"{value}" + (f" ({explanation})" if explanation else "") + tried()
+
+
+def tried() -> str:
+    """The guarded calls the grader tried (and the guard blocked), if any."""
+    hits = drain()
+    return f" [tried {', '.join(hits)}: blocked]" if hits else ""
+
+
+def drain() -> list[str]:
+    """The guarded calls tried since the last drain, each once; HITS starts again empty."""
+    hits = list(dict.fromkeys(offline.HITS))
+    offline.HITS.clear()
+    return hits
 
 
 def graders_block(evals: object) -> None:
@@ -161,27 +177,22 @@ def graders_block(evals: object) -> None:
     broken = {**reply, "horizon": "short", "hold_sessions": 3, "invalidation_price": 344.0,
               "evidence": [*reply["evidence"], OPINION]}
     samples = (("reply", [reply]), ("reply + broken short", [reply, broken]))
-    print("Graders on the author's recorded AAPL reply (tests/fixtures/thesis), scored as an eval run scores it; "
-          "observe blocks the network")
+    print("Graders on the author's recorded AAPL reply (tests/fixtures/thesis), scored as an eval run scores it, "
+          "under the offline guard")
     print(f"  reply: one swing thesis, limit 343.41, stop 338.7, target 360.83. reply + broken short: the same, then "
           f"a short-horizon copy that adds the opinion {OPINION} to its evidence and an invalidation of 344.0, "
           f"above the entry")
     width = max(len(grader_id) for grader_id in GRADED)
-    saved = socket.socket.connect, socket.create_connection
-    socket.socket.connect, socket.create_connection = no_network, no_network
-    try:
-        for grader_id in GRADED:
-            cls = evals.GRADERS.get(grader_id)
-            if cls is None:
-                print(f"  {grader_id:<{width}}  not registered yet")
-                continue
-            about = f"kind {getattr(cls, 'kind', None)!r}, version {getattr(cls, 'version', None)!r}"
-            if hasattr(cls, "validated"):
-                about += f", validated {cls.validated!r}"
-            results = "; ".join(f"{name}: {scored(evals, grader_id, items, expected)}" for name, items in samples)
-            print(f"  {grader_id:<{width}}  ({about})  {results}")
-    finally:
-        socket.socket.connect, socket.create_connection = saved
+    for grader_id in GRADED:
+        cls = evals.GRADERS.get(grader_id)
+        if cls is None:
+            print(f"  {grader_id:<{width}}  not registered yet")
+            continue
+        about = f"kind {getattr(cls, 'kind', None)!r}, version {getattr(cls, 'version', None)!r}"
+        if hasattr(cls, "validated"):
+            about += f", validated {cls.validated!r}"
+        results = "; ".join(f"{name}: {scored(evals, grader_id, items, expected)}" for name, items in samples)
+        print(f"  {grader_id:<{width}}  ({about})  {results}")
     print()
 
 
@@ -191,6 +202,8 @@ def main() -> int:
     notes: list[str] = []
     if isinstance(checks, str):
         notes.append(f"tradingresearch.checks did not import: {checks}")
+    if hits := drain():
+        notes.append(f"importing tradingresearch.checks tried {', '.join(hits)}: blocked")
     shown = [check for check in CHECKS
              if check[0] not in LATER or (not isinstance(checks, str) and hasattr(checks, check[1]))]
     width = max(len(row["label"]) for row in data["theses"])
@@ -233,11 +246,15 @@ def main() -> int:
         print()
     if any(column == "P4" for column, _, _ in shown):
         cents_block(checks, data, notes)
+    if hits := drain():
+        notes.append(f"your checks tried {', '.join(hits)} while observe ran them: blocked")
     try:
         evals = importlib.import_module("tradingresearch.evals")
     except Exception as exc:  # a learner's half-written file: show it, keep going
         notes.append(f"tradingresearch.evals did not import: {type(exc).__name__}: {exc}")
     else:
+        if hits := drain():
+            notes.append(f"importing tradingresearch.evals tried {', '.join(hits)}: blocked")
         if hasattr(evals, "built_theses"):  # lab w2l4's stub adds it
             graders_block(evals)
     for note in notes:

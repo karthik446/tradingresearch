@@ -105,6 +105,37 @@ def test_the_allowance_stays_exact():
     )
 
 
+def test_the_atr_is_not_rounded_either():
+    thesis, levels, _, close = case("AAPL swing")
+    moved = thesis.model_copy(update={"stop": 338.69, "target": 365.0})
+    got = p4(moved, levels, 8.3399, close)
+    assert got is False, (
+        f"AAPL swing (long, entry {thesis.entry.price}, stop 338.69, target 365.0) with ATR14 set to 8.3399: half an "
+        f"ATR is 4.16995, so the target may reach 360.83 + 4.16995 = 364.99995 and 365.0 is past it. The ATR is "
+        f"not a price: it stays exact at every digit; p4_levels_coherent returned {got!r}"
+    )
+
+
+def test_a_short_stop_is_compared_at_cents():
+    thesis, levels, atr, close = case("MSFT day, direction short")
+    got = p4(thesis.model_copy(update={"stop": 496.514}), levels, atr, close)
+    assert got is False, (
+        f"MSFT day (short, entry {thesis.entry.price}, target {thesis.target}) with its stop moved to 496.514: that "
+        f"is 496.51 at cents, on low_20 496.51, the nearest level over the entry, not beyond it. A short's stop goes "
+        f"to cents like a long's; p4_levels_coherent returned {got!r}"
+    )
+
+
+def test_a_price_goes_to_its_nearest_cent():
+    thesis, levels, atr, close = case("JPM swing")
+    got = p4(thesis.model_copy(update={"stop": 332.9949}), levels, atr, close)
+    assert got is True, (
+        f"JPM swing (long, entry {thesis.entry.price}, target {thesis.target}) with its stop moved to 332.9949: the "
+        f"nearest cent is 332.99, a cent under pivot_low 333.0, the nearest level under the entry at cents, so it "
+        f"should pass. Each price is rounded once, to its own nearest cent; p4_levels_coherent returned {got!r}"
+    )
+
+
 def test_a_short_is_compared_at_cents_too():
     thesis, levels, atr, close = case("JPM swing, direction short")
     moved = thesis.model_copy(update={"target": 327.0})

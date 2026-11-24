@@ -1,0 +1,14 @@
+why: drops levels of zero strength before finding the nearest one
+expect: hvn 335.8 of strength 0.0
+before: GREEN (Codex review G12)
+--- a/src/tradingresearch/checks.py
++++ b/src/tradingresearch/checks.py
+@@ -57,7 +57,7 @@
+     #   343.41). Write cents(price) above this function, the price rounded to 2 decimals, and use it on the entry, the
+     #   stop, the target and every level price. The allowance stays exact.
+     entry, stop, target = entry_price(thesis, reference_close), thesis.stop, thesis.target
+-    prices = [level.price for level in levels]
++    prices = [level.price for level in levels if level.strength > 0]
+     below = [price for price in prices if price < entry]
+     if thesis.direction == "long":
+         stop_ok = not below or stop < max(below)

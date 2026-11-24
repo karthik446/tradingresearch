@@ -124,6 +124,10 @@ def test_a_negative_edge_a_none_and_the_first_of_two_sources():
         (0.0, {"src_label_lab": None}, False, "None is no number (not a zero), it matches nothing, not even 0.0"),
         (1.0, {"src_one_lab": 1.0, "src_five_lab": 5.0}, True, "the first source matches exactly, and one match "
          "among the cited sources is enough, whatever the others hold"),
+        (1.0, {"src_five_lab": 5.0, "src_six_lab": 6.0, "src_one_lab": 1.0}, True, "only the third source "
+         "matches, and a match counts wherever it sits among the cited sources"),
+        (0.004, {"src_small_lab": 0.004}, True, "fact and source hold the same small number; the fact is matched "
+         "as it is written, at every digit"),
     )
     for value, sources, want, why in cases:
         got = hd_close(value, sources)

@@ -1,0 +1,11 @@
+why: lets a short's invalidation sit up to a tenth of a cent beyond the stop
+expect: with invalidation 500.601,
+before: GREEN (Codex review G11)
+--- a/src/tradingresearch/checks.py
++++ b/src/tradingresearch/checks.py
+@@ -46,4 +46,4 @@
+     entry, invalidation, stop = entry_price(thesis, reference_close), thesis.invalidation_price, thesis.stop
+     if thesis.direction == "long":
+         return stop <= invalidation < entry
+-    return entry < invalidation <= stop
++    return entry < invalidation <= stop + 0.001

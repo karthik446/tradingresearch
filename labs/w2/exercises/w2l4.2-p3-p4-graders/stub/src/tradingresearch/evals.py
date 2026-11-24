@@ -146,7 +146,7 @@ class EvidenceValid:
 
 # TODO(w2l4.3) the draft P1 judge: a @grader class P1Judge with id "p1_judge", version "1", kind "model" and
 #   validated = False. Nobody has checked a judge's verdicts against human labels yet, so its grade makes no model
-#   call: it refuses with CannotGrade and a message that says why (no call until it runs on closed trades in week 3).
+#   call: it refuses with CannotGrade, saying why: it is a draft (no model call until closed trades in week 3).
 #   Spec: evals/specs/p1_judge.md.
 
 

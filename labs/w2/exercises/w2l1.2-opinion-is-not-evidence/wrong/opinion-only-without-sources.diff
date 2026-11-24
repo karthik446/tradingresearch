@@ -1,0 +1,14 @@
+why: excludes an opinion only when it cites no source
+expect: given the source
+before: GREEN (Codex review G02)
+--- a/src/tradingresearch/checks.py
++++ b/src/tradingresearch/checks.py
+@@ -22,7 +22,7 @@
+ 
+ def evidence_ok(claim: Claim | None, values: dict[str, float | None], tolerance: float) -> bool:
+     """P2 rules 1-4 for one evidence id; an inference's numbers were checked against its parents at analyze time."""
+-    if claim is None or claim.tag == "opinion":
++    if claim is None or (claim.tag == "opinion" and not claim.source_ids):
+         return False
+     # TODO(w2l1.3) rules 3-4 judge facts only: an inference passes here. Rule 3: a fact that cites a source id
+     #   missing from `values` (the thesis-stage source table) fails.

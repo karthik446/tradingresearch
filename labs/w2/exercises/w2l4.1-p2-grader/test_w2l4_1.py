@@ -110,6 +110,15 @@ def test_every_failing_horizon_is_named_in_order():
     )
 
 
+def test_a_broken_third_thesis_fails_the_run():
+    got = grade(swing(horizon="day", hold_sessions=0), short(), with_opinion(swing()))
+    assert isinstance(got, Score) and got.value == 0.0 and got.explanation == "fails: swing", (
+        f"A run of three theses, one per horizon the item asks for: day and short copies of the real thesis, which "
+        f"pass, then the swing with {OPINION} (an opinion) added to its evidence. The third fails P2 as surely as a "
+        f"first would: expected Score(value=0.0, explanation='fails: swing'); got {shown(got)}"
+    )
+
+
 def test_an_item_that_does_not_build_is_not_graded_here():
     got = grade(swing(), "not a thesis")
     assert isinstance(got, Score) and got.value == 1.0 and got.explanation is None, (

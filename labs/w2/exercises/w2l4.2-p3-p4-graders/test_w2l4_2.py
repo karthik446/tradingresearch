@@ -38,11 +38,17 @@ def market_open(**changes) -> dict:
     return swing(entry_kind="market_open", entry_price=None, **changes)
 
 
-def grade(grader_id: str, *items, parse_status: str = "ok") -> object:
+def with_close(close: float) -> dict:
+    """The item's expected, its analysis's snapshot close moved to `close` (levels and atr_14 unchanged)."""
+    snapshot = ANALYSIS.snapshot.model_copy(update={"values": {**ANALYSIS.snapshot.values, "close": close}})
+    return {**EXPECTED, "analysis": ANALYSIS.model_copy(update={"snapshot": snapshot}).model_dump_json()}
+
+
+def grade(grader_id: str, *items, parse_status: str = "ok", expected: dict = EXPECTED) -> object:
     sample = SimpleNamespace(parse_status=parse_status, output_parsed={"theses": list(items), "no_trade": []},
                              recorded_at=datetime(2026, 11, 17, 3, 46, tzinfo=UTC), trace_id="t")
     try:
-        return evals.GRADERS[grader_id]().grade(sample, EXPECTED)
+        return evals.GRADERS[grader_id]().grade(sample, expected)
     except CannotGrade:
         raise
     except Exception as exc:  # show a crash as a result, so the message can say which sample caused it
@@ -109,6 +115,17 @@ def test_p3_passes_the_real_reply_and_names_a_broken_short():
     )
 
 
+def test_a_broken_first_thesis_fails_the_run():
+    for grader_id, broken, why in ((P3, short(invalidation_price=344.0), "invalidation 344.0, above its entry"),
+                                   (P4, short(), "stop 338.7, on pivot_low 338.7")):
+        got = grade(grader_id, broken, swing(stop=338.69))
+        assert scores(got, 0.0, "fails: short"), (
+            f"{grader_id} on a run of two theses: first a short-horizon copy with {why}, which fails {grader_id}, then "
+            f"the swing with stop 338.69, which passes. A failing thesis fails the run wherever it sits: expected "
+            f"Score(value=0.0, explanation='fails: short'); got {shown(got)}"
+        )
+
+
 def test_p3_measures_a_market_open_entry_from_the_snapshot_close():
     got = grade(P3, market_open(stop=338.69, invalidation_price=350.0))
     assert scores(got, 1.0, None), (
@@ -121,14 +138,20 @@ def test_p3_measures_a_market_open_entry_from_the_snapshot_close():
         f"The swing made market_open (entry = the close, 352.78), stop 338.69, invalidation 353.0, above the entry: "
         f"P3 fails it, 'fails: swing'; got {shown(got)}"
     )
+    got = grade(P3, market_open(stop=338.69, invalidation_price=350.0), expected=with_close(349.0))
+    assert scores(got, 0.0, "fails: swing"), (
+        f"The same market_open swing (stop 338.69, invalidation 350.0) on a copy of the analysis whose snapshot "
+        f"closed at 349.0 instead: the entry is now 349.0 and 350.0 sits above it, so P3 fails, 'fails: swing'. The "
+        f"close belongs to the sample's analysis, not to the recorded day; got {shown(got)}"
+    )
 
 
 def test_p4_fails_the_real_reply_at_cents():
     got = grade(P4, swing())
     assert scores(got, 0.0, "fails: swing"), (
         f"The recorded AAPL reply: limit 343.41, stop 338.7. At cents hvn 343.40978 is the entry, so the nearest "
-        f"level under it is pivot_low 338.7 and the stop sits on it: P4 fails, 'fails: swing'. P4 gets the "
-        f"snapshot's levels, its atr_14 and its close, in that order; got {shown(got)}"
+        f"level under it is pivot_low 338.7 and the stop sits on it: P4 fails, 'fails: swing'. Every level, ATR and "
+        f"close P4 compares comes from this sample's snapshot; got {shown(got)}"
     )
     got = grade(P4, swing(stop=338.69))
     assert scores(got, 1.0, None), (
@@ -142,6 +165,11 @@ def test_p4_allows_half_the_atr_14_past_the_next_level():
     assert scores(got, 1.0, None), (
         f"The reply with stop 338.69 and target 364.0: 3.17 past high_20 360.83, inside half of the snapshot's "
         f"atr_14 (8.0457 / 2 = 4.02), so P4 passes; got {shown(got)}"
+    )
+    got = grade(P4, swing(stop=338.69, target=364.85))
+    assert scores(got, 1.0, None), (
+        f"The reply with stop 338.69 and target 364.85: 4.02 past high_20 360.83, inside half of the snapshot's "
+        f"atr_14 as stored (8.045664 / 2 = 4.0228), so P4 passes; got {shown(got)}"
     )
     got = grade(P4, swing(stop=338.69), short(stop=338.69, target=366.0))
     assert scores(got, 0.0, "fails: short"), (

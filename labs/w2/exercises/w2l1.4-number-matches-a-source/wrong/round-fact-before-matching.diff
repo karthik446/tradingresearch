@@ -1,0 +1,14 @@
+why: rounds the fact's value to cents before matching it
+expect: cites src_small_lab holding 0.004
+before: GREEN (Codex review G06)
+--- a/src/tradingresearch/checks.py
++++ b/src/tradingresearch/checks.py
+@@ -31,7 +31,7 @@
+     if claim.value is None:
+         return True
+     numbers = [values[source] for source in claim.source_ids if values[source] is not None]
+-    return any(close_within(claim.value, number, tolerance) for number in numbers)
++    return any(close_within(round(claim.value, 2), number, tolerance) for number in numbers)
+ 
+ 
+ def p2_evidence_valid(thesis: Thesis, claims: tuple[Claim, ...], values: dict[str, float | None],

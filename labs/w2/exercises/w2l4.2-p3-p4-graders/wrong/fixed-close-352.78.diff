@@ -1,0 +1,14 @@
+why: uses the recorded day's close, 352.78, instead of the sample snapshot's close
+expect: closed at 349.0 instead
+before: GREEN (Codex review G20)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -148,7 +148,7 @@
+ 
+     def grade(self, sample, expected) -> Score:
+         analysis, theses = built_theses(sample, expected)
+-        close = analysis.snapshot.values["close"]
++        close = 352.78
+         return every_thesis(theses, lambda t: checks.p3_invalidation_testable(t, close))
+ 
+ 

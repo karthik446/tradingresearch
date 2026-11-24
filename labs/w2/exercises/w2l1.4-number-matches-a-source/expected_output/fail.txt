@@ -1,0 +1,6 @@
+FAIL w2l1.4 (try 1): Fail a fact whose number matches none of its cited sources
+  HD swing cites cl_16f17802b00c4312 ('HD closed at {value} on 2026-11-16.'). In this copy of its
+  analysis the fact says 354.46; its one source, close, holds 347.51: 2.0% away, past the 0.5%
+  tolerance, so the number is not the one code computed; p2_evidence_valid returned True
+  hint 1 unlocks after 2 failed runs; hint 2 unlocks after 5 failed runs; the solution unlocks after
+  10 failed runs or when the check is green

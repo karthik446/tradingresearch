@@ -138,3 +138,15 @@ def test_any_kind_of_level_under_the_entry_counts():
         f"kind: a pivot_high under the entry is the nearest level under it here, and the stop sits below it. Reading "
         f"only the low kinds measures the stop against hvn 335.11 instead; p4_levels_coherent returned {got!r}"
     )
+
+
+def test_a_level_of_zero_strength_still_counts():
+    thesis, levels, atr, close = case("JPM short")
+    extra = Level(price=335.8, kind="hvn", strength=0.0, distance_atr=0.0)
+    got = p4(thesis.model_copy(update={"stop": 335.5}), (*levels, extra), atr, close)
+    assert got is True, (
+        f"JPM short (long, entry {thesis.entry.price}) with stop 335.5 and one extra level, hvn 335.8 of strength "
+        f"0.0, under the entry (levels: {listed((*levels, extra))}), should pass. P4 reads a level's price, not its "
+        f"strength: hvn 335.8 is the nearest level under the entry and the stop sits below it; p4_levels_coherent "
+        f"returned {got!r}"
+    )

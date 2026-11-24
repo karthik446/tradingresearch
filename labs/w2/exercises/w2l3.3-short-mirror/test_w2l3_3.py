@@ -150,3 +150,16 @@ def test_jpm_swing_short_target_past_the_next_level_fails():
         f"that hvn is the entry). Either way the target runs more than half an ATR ({atr / 2:.2f}) past it; "
         f"pivot_low 325.07, farther down, is not the next level; p4_levels_coherent returned {got!r}"
     )
+
+
+def test_a_level_at_the_entry_is_not_under_a_short_either():
+    thesis, levels, atr, close = case("MSFT day, direction short")
+    extra = level(thesis.entry.price)
+    got = p4(thesis, (*levels, extra), atr, close)
+    assert got is True, (
+        f"MSFT day (short, entry {thesis.entry.price}, stop {thesis.stop}, target {thesis.target}, ATR14 {atr:.4f}) "
+        f"with one extra level at exactly {thesis.entry.price}, the entry. That level is not under the entry, so the "
+        f"next level under it is still pivot_low 486.0 and the target is above it; measured from a level at the "
+        f"entry instead, the target would run {thesis.entry.price - thesis.target:.2f} past it, more than half an "
+        f"ATR. p4_levels_coherent returned {got!r}"
+    )

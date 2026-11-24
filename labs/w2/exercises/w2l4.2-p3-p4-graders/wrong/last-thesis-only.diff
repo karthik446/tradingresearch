@@ -1,0 +1,32 @@
+why: grades only the last thesis of a run
+expect: on a run of two theses: first a short-horizon copy
+before: GREEN (Codex review G19)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -135,7 +135,7 @@
+     def grade(self, sample, expected) -> Score:
+         analysis, theses = built_theses(sample, expected)
+         values = {row.source_id: row.value for row in snapshot_rows(analysis.snapshot)[1]}
+-        return every_thesis(theses, lambda t: checks.p2_evidence_valid(t, analysis.claims, values))
++        return every_thesis(theses[-1:], lambda t: checks.p2_evidence_valid(t, analysis.claims, values))
+ 
+ 
+ @grader
+@@ -149,7 +149,7 @@
+     def grade(self, sample, expected) -> Score:
+         analysis, theses = built_theses(sample, expected)
+         close = analysis.snapshot.values["close"]
+-        return every_thesis(theses, lambda t: checks.p3_invalidation_testable(t, close))
++        return every_thesis(theses[-1:], lambda t: checks.p3_invalidation_testable(t, close))
+ 
+ 
+ @grader
+@@ -163,7 +163,7 @@
+     def grade(self, sample, expected) -> Score:
+         analysis, theses = built_theses(sample, expected)
+         snap = analysis.snapshot
+-        return every_thesis(theses, lambda t: checks.p4_levels_coherent(t, snap.levels, snap.values["atr_14"],
++        return every_thesis(theses[-1:], lambda t: checks.p4_levels_coherent(t, snap.levels, snap.values["atr_14"],
+                                                                        snap.values["close"]))
+ 
+ 

@@ -2,10 +2,13 @@
 
 ## Hint 1
 
-The judge is registered like the code graders, with the id the configs use (`p1_judge`), but its kind says a
-model decides, and one more class attribute, `validated`, says nobody has checked its verdicts yet.
+What does a report need to know about this grader before it reads a single score? The configs already name it, so
+it needs that id. Then ask: who decides P1, a rule or a model? And has anyone checked this judge's verdicts against
+outcomes yet? Each answer is a class attribute the registry or a report reads.
 
 ## Hint 2
 
-`grade` never looks at the sample and never builds a client: its only line raises `CannotGrade`, with a reason
-that contains the word "draft" and says when the judge will run (on closed trades, in week 3).
+What could a draft judge honestly return for the recorded AAPL reply? A 1.0 or a 0.0 would be counted in P1's
+rate, and so would a 0.5. Look at how the graders above it say "I will not grade this sample" when there is nothing
+they can read. Does the draft's answer depend on what the sample holds? A judge that refuses empty replies but scores
+full ones fails, and so does one that tries a model first and catches the error.

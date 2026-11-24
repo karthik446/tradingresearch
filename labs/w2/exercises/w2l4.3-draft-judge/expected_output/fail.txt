@@ -1,0 +1,7 @@
+FAIL w2l4.3 (try 1): Register the draft P1 judge: a model grader that refuses to score
+  No grader is registered under 'p1_judge'. The experiment configs name p1_judge beside the P2-P4
+  graders, and evals.graders() finds it in evals.GRADERS, which holds parsed, claims_valid,
+  all_claims_valid, inferences_grounded, p2_evidence_valid, p3_invalidation_testable,
+  p4_levels_coherent
+  hint 1 unlocks after 2 failed runs; hint 2 unlocks after 5 failed runs; the solution unlocks after
+  10 failed runs or when the check is green

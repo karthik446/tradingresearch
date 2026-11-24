@@ -1,0 +1,17 @@
+why: calls ModelJudge.grade and swallows the error before refusing
+expect: tried a network or model call (ModelJudge.grade)
+before: GREEN (Codex review G24)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -181,6 +181,11 @@
+     validated = False
+ 
+     def grade(self, sample, expected) -> Score:
++        from gigai_core.graders.judge import ModelJudge
++        try:
++            ModelJudge.grade(None, sample, expected)
++        except Exception:
++            pass
+         raise CannotGrade("p1_judge is a draft: no model call until it runs on closed trades in week 3")
+ 
+ 

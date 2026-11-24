@@ -1,0 +1,6 @@
+FAIL w2l3.4 (try 1): Amend P4 to compare prices at cents
+  AAPL swing is long from a limit entry at 343.41, stop 338.7. Its level hvn 343.40978 is 343.41 at
+  cents: the entry itself, not a level under it. The nearest level under the entry is then pivot_low
+  338.7, and the stop sits exactly on it; p4_levels_coherent returned True
+  hint 1 unlocks after 2 failed runs; hint 2 unlocks after 5 failed runs; the solution unlocks after
+  10 failed runs or when the check is green

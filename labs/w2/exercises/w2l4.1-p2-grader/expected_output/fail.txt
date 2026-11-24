@@ -1,0 +1,6 @@
+FAIL w2l4.1 (try 1): Score a whole thesis run with P2: every_thesis and the EvidenceValid grader
+  No grader is registered under 'p2_evidence_valid'. An experiment config names its graders by id
+  and evals.graders() finds them in evals.GRADERS, which holds parsed, claims_valid,
+  all_claims_valid, inferences_grounded; a class reaches it only through @grader
+  hint 1 unlocks after 2 failed runs; hint 2 unlocks after 5 failed runs; the solution unlocks after
+  10 failed runs or when the check is green

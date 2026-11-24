@@ -1,0 +1,7 @@
+FAIL w2l1.3 (try 1): Fail a fact that cites a source the thesis-stage table does not hold
+  XOM swing lists cl_6d08913f181543f2 ('Diluted EPS for CY2026Q3 was {value}.', value 3.72) as
+  evidence. It cites src_de1ada8a5375f15f, an EDGAR row: the thesis-stage table (31 sources, the
+  ones the thesis prompt showed) has no such id, so no reader of the thesis can trace that number;
+  p2_evidence_valid returned True
+  hint 1 unlocks after 2 failed runs; hint 2 unlocks after 5 failed runs; the solution unlocks after
+  10 failed runs or when the check is green

@@ -1,0 +1,7 @@
+FAIL w2l3.1 (try 1): Place a long's stop beyond the nearest level under the entry
+  HD swing is long from a limit entry at 335.71, stop 332.56. Its levels: pivot_low 277.15, hvn
+  291.12629, low_20 306.0, hvn 308.32787, hvn 319.07886, hvn 349.18162, pivot_high 362.44, high_20
+  362.44. The nearest one under the entry is hvn 319.08, and the stop sits above it, between the
+  level and the entry, where ordinary noise can reach it; p4_levels_coherent returned True
+  hint 1 unlocks after 2 failed runs; hint 2 unlocks after 5 failed runs; the solution unlocks after
+  10 failed runs or when the check is green

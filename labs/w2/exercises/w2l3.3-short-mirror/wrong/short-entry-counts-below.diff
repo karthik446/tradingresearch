@@ -1,0 +1,14 @@
+why: counts a level at the entry as under the entry for a short
+expect: with one extra level at exactly 496.5
+before: GREEN (Codex review G14)
+--- a/src/tradingresearch/checks.py
++++ b/src/tradingresearch/checks.py
+@@ -58,7 +58,7 @@
+     #   stop, the target and every level price. The allowance stays exact.
+     entry, stop, target = entry_price(thesis, reference_close), thesis.stop, thesis.target
+     prices = [level.price for level in levels]
+-    below = [price for price in prices if price < entry]
++    below = [price for price in prices if price < entry or (thesis.direction == 'short' and price == entry)]
+     above = [price for price in prices if price > entry]
+     allowance = TARGET_ALLOWANCE_ATR * atr14
+     if thesis.direction == "long":

@@ -5,8 +5,9 @@ Labs are optional hands-on practice for the [AI engineering track](https://scout
 | Week | Labs | Pages |
 |---|---|---|
 | 1 | w1l1 claim checks (4 exercises), w1l2 open and axial coding (4), w1l3 a code grader (6), w1l4 a paired experiment (5) | [labs/w1/pages/index.md](w1/pages/index.md) |
+| 2 | w2l1 P2 evidence (4 exercises), w2l2 P3 invalidation (2), w2l3 P4 levels (4), w2l4 graders and the draft judge (3) | [labs/w2/pages/index.md](w2/pages/index.md) |
 
-Week 1 is here; the labs for weeks 2-9 are added week by week.
+Weeks 1 and 2 are here; the labs for weeks 3-9 are added week by week.
 
 ## Start
 
@@ -100,6 +101,6 @@ The labs are an honor system: they are for you. They run on your machine against
 
 ## For authors
 
-The layout of a week and how to re-run the proof: [labs/w1/README.md](w1/README.md); the proof tool is `labs/tools/prove.py <week>`. `tr lab`'s own tests: `tests/test_lab.py` (plain `pytest`, no network). The runner: `src/tradingresearch/lab.py`, reached through `src/tradingresearch/labmain.py`.
+The layout of a week and how to re-run the proof: [labs/w1/README.md](w1/README.md) for week 1, [labs/w2/README.md](w2/README.md) for week 2; the proof tool is `labs/tools/prove.py <week>`. `tr lab`'s own tests: `tests/test_lab.py` (plain `pytest`, no network). The runner: `src/tradingresearch/lab.py`, reached through `src/tradingresearch/labmain.py`.
 
 The output the lab pages show (each exercise's first FAIL and its PASS, and a walked-through session) is captured from real `tr lab` runs by `labs/tools/capture.py <week> --write` into `labs/<week>/exercises/*/expected_output/` and `labs/<week>/session/`; `prove.py` fails when a captured file no longer matches what `tr lab` prints.

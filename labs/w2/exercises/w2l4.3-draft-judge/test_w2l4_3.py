@@ -1,41 +1,37 @@
 """w2l4.3 the draft P1 judge: registered as a model grader, marked unvalidated, and refusing to score.
 
-Every way out to a model is a tripwire here: a socket connection (connect, connect_ex, create_connection), an httpx
-request, a subprocess, the judge library's ModelJudge. A draft judge that reaches any of them fails, whether or not a
-key is set, so the check costs $0. A determined author can still get past them; the check is an honor system.
+labs/w2/conftest.py installs the offline guard (labs/w2/tools/offline.py) before this file imports evals: socket
+connect, connect_ex, sendto, sendmsg, create_connection and getaddrinfo, subprocess.Popen, os.system and the os
+exec/spawn/fork functions, httpx's send, and gigai-core's ModelJudge.grade each record the attempt and raise. The
+check reads that record after grade returns, so a judge that tries one of them fails even if it catches the error,
+and the check costs $0 with or without a key. It guards those entry points only; it is not a sandbox, and like the
+rest of the labs it is an honor system.
+
+The samples are an empty reply (parsed, and not parsed), the author's recorded AAPL reply
+(tests/fixtures/thesis/AAPL_2026-11-16.reply.json: one swing thesis and two no-trade horizons), that reply with a
+second thesis, and a reply with no-trade entries only.
 """
 
-import socket
-import subprocess
+import json
+from pathlib import Path
 from types import SimpleNamespace
 
-import httpx
 import pytest
 from gigai_core.graders.protocol import CannotGrade
 
 from tradingresearch import evals
 
 JUDGE = "p1_judge"
-
-
-class ModelCalled(Exception):
-    """Raised by every tripwire: the draft judge tried to reach a model."""
-
-
-@pytest.fixture
-def tripwires(monkeypatch):
-    def tripped(*args, **kwargs):
-        raise ModelCalled("a network or model call")
-
-    monkeypatch.setattr(socket.socket, "connect", tripped)
-    monkeypatch.setattr(socket.socket, "connect_ex", tripped)
-    monkeypatch.setattr(socket, "create_connection", tripped)
-    monkeypatch.setattr(subprocess.Popen, "__init__", tripped)
-    monkeypatch.setattr(httpx.Client, "send", tripped)
-    monkeypatch.setattr(httpx.AsyncClient, "send", tripped)
-    import gigai_core.graders.judge as judge  # noqa: PLC0415
-
-    monkeypatch.setattr(judge.ModelJudge, "grade", tripped)
+FIXTURES = Path(__file__).resolve().parents[4] / "tests" / "fixtures" / "thesis"
+REPLY = json.loads((FIXTURES / "AAPL_2026-11-16.reply.json").read_text())
+SAMPLES = {
+    "an empty reply": ("ok", {"theses": [], "no_trade": []}),
+    "an empty reply that did not parse": ("invalid_json", {"theses": [], "no_trade": []}),
+    "the recorded AAPL reply (one swing thesis)": ("ok", REPLY),
+    "the recorded reply plus a short-horizon copy of its thesis": (
+        "ok", {**REPLY, "theses": [*REPLY["theses"], {**REPLY["theses"][0], "horizon": "short", "hold_sessions": 3}]}),
+    "a reply with no-trade entries only": ("ok", {"theses": [], "no_trade": REPLY["no_trade"]}),
+}
 
 
 def judge_class() -> type:
@@ -65,25 +61,30 @@ def test_the_judge_is_registered_as_an_unvalidated_model_grader():
     )
 
 
-@pytest.mark.parametrize("parse_status", ("ok", "invalid_json"))
-def test_the_draft_refuses_to_score_without_calling_a_model(parse_status, tripwires):
+@pytest.mark.parametrize("name", SAMPLES)
+def test_the_draft_refuses_to_score_without_calling_a_model(name, offline_hits):
     cls = judge_class()
-    sample = SimpleNamespace(parse_status=parse_status, output_parsed={"theses": [], "no_trade": []},
-                             trace_id="t")
+    parse_status, parsed = SAMPLES[name]
+    sample = SimpleNamespace(parse_status=parse_status, output_parsed=parsed, trace_id="t")
     try:
         got = cls().grade(sample, {})
     except Exception as exc:  # judged below, outside the handler, so the message is the first line pytest shows
         got = exc
-    called = f"{cls.__name__}().grade(a sample with parse_status {parse_status!r}, {{}})"
-    if isinstance(got, ModelCalled):
+    called = f"{cls.__name__}().grade({name}, {{}})"
+    tried = list(dict.fromkeys(offline_hits))
+    offline_hits.clear()
+    if tried:
         pytest.fail(
-            f"{called} tried a network or model call. An unvalidated judge costs money and returns scores nobody "
-            f"may count yet: it raises CannotGrade before anything else"
+            f"{called} tried a network or model call ({', '.join(tried)}), whatever it did with the error. An "
+            f"unvalidated judge costs money and returns scores nobody may count yet, so until week 3 it has no reason "
+            f"to reach a model at all"
         )
     if isinstance(got, CannotGrade):
-        assert "draft" in str(got), (
-            f"{called} raised CannotGrade({got!s}). The judge refuses every sample for one reason, before it looks "
-            f"at the sample: it is a draft. Say so (the word 'draft'), so a report shows why P1 has no rate"
+        reason = str(got).lower()
+        assert "draft" in reason or "validat" in reason, (
+            f"{called} raised CannotGrade({got!s}). The judge refuses every sample for one reason, whatever the "
+            f"sample holds: it is a draft, not validated. Say so (the word 'draft', or 'validated'), so a report "
+            f"shows why P1 has no rate"
         )
         return
     if isinstance(got, Exception):
@@ -92,6 +93,6 @@ def test_the_draft_refuses_to_score_without_calling_a_model(parse_status, tripwi
             f"CannotGrade; any other exception stops the eval run"
         )
     pytest.fail(
-        f"{called} returned {got!r}. A draft judge has no score to give: it raises CannotGrade, so the run is left "
-        f"out of P1's rate instead of counted"
+        f"{called} returned {got!r}. A draft judge has no score to give for any reply, empty or full: a score here "
+        f"would be counted in P1's rate, and the runner leaves a run out of the rate only when its grader refuses it"
     )

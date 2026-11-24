@@ -1,0 +1,7 @@
+FAIL w2l1.2 (try 1): Fail a thesis that leans on an opinion, even beside facts
+  AAPL swing lists cl_ba1ecc8934034a7d as evidence beside two facts and an inference. That claim is
+  tagged opinion ('The setup looks constructive but somewhat extended relative '...) and derives
+  from 3 claims: a view of the setup, not evidence for it; p2_evidence_valid returned True. tr
+  thesis only refuses evidence that is all opinion; P2 is stricter.
+  hint 1 unlocks after 2 failed runs; hint 2 unlocks after 5 failed runs; the solution unlocks after
+  10 failed runs or when the check is green

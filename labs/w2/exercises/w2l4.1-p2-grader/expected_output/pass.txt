@@ -1,0 +1,31 @@
+PASS w2l4.1: Score a whole thesis run with P2: every_thesis and the EvidenceValid grader
+observe: python labs/w2/tools/observe.py
+  | The chapter's six theses (week-2.md §2)
+  |   thesis                                                           P2  P3  P4
+  |   AAPL swing                                                       1   1   0
+  |   HD swing                                                         1   1   0
+  |   JPM short                                                        1   1   1
+  |   JPM swing                                                        1   1   1
+  |   XOM short                                                        1   1   0
+  |   XOM swing                                                        1   1   0
+  |   passing: P2 6/6 (chapter: 6/6), P3 6/6 (chapter: 6/6), P4 2/6 (chapter: 2/6)
+
+  | Later real theses the chapter does not show
+  |   thesis                                                           P2  P3  P4
+  |   JPM swing, direction short                                       1   1   0
+  |   MSFT day, direction short                                        1   1   1
+  |   UNH swing, direction short                                       1   1   0
+  |   HD day, market_open entry                                        1   1   0
+
+  | Synthetic copies, each breaking one rule (should read 0 in the check named)
+  |   thesis                                                           P2  P3  P4
+  |   w2l1.1: JPM swing cites an XOM claim                             0   1   1   (P2: evidence id
+  | cl_6318fbb2dd184267 is a claim of the XOM analysis, not of JPM's)
+  |   w2l1.2: AAPL swing leans on an opinion                           0   1   0   (P2: evidence
+  | adds cl_ba1ecc8934034a7d, the AAPL analysis's opinion)
+  |   w2l1.3: XOM swing cites an EDGAR fact                            0   1   0   (P2: evidence
+  | adds cl_6d08913f181543f2 (diluted EPS), whose source is an EDGAR row, not in the thesis-stage
+  | table)
+  |   w2l1.4: HD swing's close fact is 2% off                          0   1   0   (P2: its analysis
+  | is a copy whose close fact says 354.46; the source holds 347.51)
+[... 37 more lines not shown]

@@ -117,3 +117,15 @@ def test_a_repeated_id_is_still_a_real_claim():
         f"of its {len(claims)}-claim analysis, so it cites nothing that does not exist; p2_evidence_valid returned "
         f"{got!r}. Listing a real claim twice is untidy, not unknown evidence."
     )
+
+
+def test_an_id_that_only_starts_like_a_real_one_fails():
+    thesis, claims, values = case("AAPL swing")
+    near = thesis.evidence[0][:11] + "00000000"
+    assert near not in {claim.claim_id for claim in claims}
+    got = p2(thesis.model_copy(update={"evidence": (*thesis.evidence, near)}), claims, values)
+    assert got is False, (
+        f"AAPL swing with {near} added to its evidence: it shares its first 11 characters with the real claim "
+        f"{thesis.evidence[0]}, but no claim of the analysis has this id. An id names a claim only when every "
+        f"character matches; p2_evidence_valid returned {got!r}"
+    )

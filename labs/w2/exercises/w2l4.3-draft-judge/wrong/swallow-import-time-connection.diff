@@ -1,0 +1,14 @@
+why: opens a socket connection in the class body, so the attempt happens while evals is imported, and swallows the error
+expect: The code under test tried socket.create_connection and caught the error
+before: GREEN (reader F4: the guard record was cleared before each test)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -180,4 +180,8 @@
+     kind = "model"
+     validated = False
++    try:  # warm the judge's connection once, when evals is imported
++        __import__("socket").create_connection(("127.0.0.1", 9))
++    except Exception:
++        pass
+ 
+     def grade(self, sample, expected) -> Score:

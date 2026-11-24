@@ -1,0 +1,14 @@
+why: matches the fact against its first two sources only
+expect: src_six_lab holding 6.0, src_one_lab holding 1.0
+before: GREEN (Codex review G07)
+--- a/src/tradingresearch/checks.py
++++ b/src/tradingresearch/checks.py
+@@ -31,7 +31,7 @@
+     if claim.value is None:
+         return True
+     numbers = [values[source] for source in claim.source_ids if values[source] is not None]
+-    return any(close_within(claim.value, number, tolerance) for number in numbers)
++    return any(close_within(claim.value, number, tolerance) for number in numbers[:2])
+ 
+ 
+ def p2_evidence_valid(thesis: Thesis, claims: tuple[Claim, ...], values: dict[str, float | None],

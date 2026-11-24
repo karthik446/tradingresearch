@@ -1,0 +1,14 @@
+why: hands P4 the ATR rounded to a whole number
+expect: target 364.85: 4.02 past
+before: GREEN (Codex review G21)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -163,7 +163,7 @@
+     def grade(self, sample, expected) -> Score:
+         analysis, theses = built_theses(sample, expected)
+         snap = analysis.snapshot
+-        return every_thesis(theses, lambda t: checks.p4_levels_coherent(t, snap.levels, snap.values["atr_14"],
++        return every_thesis(theses, lambda t: checks.p4_levels_coherent(t, snap.levels, round(snap.values["atr_14"]),
+                                                                        snap.values["close"]))
+ 
+ 

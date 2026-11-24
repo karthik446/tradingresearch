@@ -1,0 +1,14 @@
+why: checks only a fact's first two sources against the table
+expect: given here a third source
+before: GREEN (Codex review G04)
+--- a/src/tradingresearch/checks.py
++++ b/src/tradingresearch/checks.py
+@@ -26,7 +26,7 @@
+         return False
+     if claim.tag == "inference":
+         return True
+-    if any(source not in values for source in claim.source_ids):
++    if any(source not in values for source in claim.source_ids[:2]):
+         return False
+     # TODO(w2l1.4) rule 4: a fact with a value must match at least one cited source within `tolerance` (close_within).
+     #   A fact without a value passes; a source holding None matches nothing.

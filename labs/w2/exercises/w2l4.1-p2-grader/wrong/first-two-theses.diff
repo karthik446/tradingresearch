@@ -1,0 +1,14 @@
+why: checks only the first two theses of a run
+expect: A run of three theses
+before: GREEN (Codex review G18)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -117,7 +117,7 @@
+ 
+ def every_thesis(theses: list[Thesis], passes: Callable[[Thesis], bool]) -> Score:
+     """1 if every thesis passes, else 0 (binary, so compare uses McNemar); the explanation names the failing horizons."""
+-    failed = [t.horizon for t in theses if not passes(t)]
++    failed = [t.horizon for t in theses[:2] if not passes(t)]
+     return Score(value=0.0 if failed else 1.0, explanation=f"fails: {', '.join(failed)}" if failed else None)
+ 
+ 

@@ -109,3 +109,16 @@ def test_an_inference_is_not_held_to_rules_3_and_4():
         f"value 1.0, it must still pass: rules 3 and 4 judge facts; an inference's numbers were checked against its "
         f"parents at analyze time. p2_evidence_valid returned {got!r}"
     )
+
+
+def test_the_last_of_three_sources_missing_fails():
+    thesis, claims, values = case("MSFT day, direction short")
+    low = next(claim for claim in claims if claim.claim_id == "cl_d84905e6fe69421b")
+    three = low.model_copy(update={"source_ids": (*low.source_ids, "src_not_in_the_table")})
+    claims = tuple(three if claim.claim_id == three.claim_id else claim for claim in claims)
+    got = p2(thesis, claims, values)
+    assert got is False, (
+        f"MSFT day cites cl_d84905e6fe69421b, given here a third source, src_not_in_the_table, after its two real "
+        f"ones {low.source_ids}: the first two are in the table, the third is not, and one missing id fails rule 3 "
+        f"wherever it sits; p2_evidence_valid returned {got!r}"
+    )

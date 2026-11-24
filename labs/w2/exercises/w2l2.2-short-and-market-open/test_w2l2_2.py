@@ -60,7 +60,10 @@ def test_the_short_boundaries():
     thesis, close = case("MSFT day, direction short")
     for invalidation, want, why in ((500.6, True, "equal to the stop"), (500.61, False, "a cent beyond the stop"),
                                     (496.5, False, "equal to the entry: it would trigger on the fill"),
-                                    (496.51, True, "a cent above the entry")):
+                                    (496.51, True, "a cent above the entry"),
+                                    (500.601, False, "a tenth of a cent beyond the stop (P3 compares prices as "
+                                     "written; no rule here rounds them)"),
+                                    (500.6005, False, "half a tenth of a cent beyond the stop")):
         got = p3(thesis.model_copy(update={"invalidation_price": invalidation}), close)
         assert got is want, (
             f"MSFT day (short, entry {thesis.entry.price}, stop {thesis.stop}) with invalidation {invalidation}, "

@@ -2,11 +2,13 @@
 
 ## Hint 1
 
-`claims` is a tuple, and `thesis.evidence` holds ids. Build a dict from `claim_id` to claim once, then look each
-evidence id up with `.get`, which gives None for an id no claim has. `evidence_ok` gets that claim (or None) and
-decides.
+When does an evidence id "name a claim"? Only when some claim of this analysis carries exactly that id, every
+character of it. An id from another ticker's analysis, an id that starts like a real one and ends differently, and
+any id at all against an analysis with no claims: none of them names anything here.
 
 ## Hint 2
 
-Two places change. In `p2_evidence_valid`: every id must pass (`all(...)` over the ids, not over the claims). In
-`evidence_ok`: rule 1 is the first test, a None claim fails before anything reads its fields.
+How many ids does a thesis need to get wrong before it fails? Picture JPM swing citing three real JPM claims and
+one id from XOM's analysis: three out of four is still a thesis that cites evidence that does not exist. And when an
+id names nothing, what should `evidence_ok` be asked to judge, and what must it decide before it looks at any of a
+claim's fields?

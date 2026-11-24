@@ -1,0 +1,6 @@
+FAIL w2l2.2 (try 1): Mirror the rule for a short and take the close as a market_open entry
+  MSFT day is short from a stop entry at 496.5, stop 500.6, target 487.0. In this copy its
+  invalidation is 495.0: below the entry, which for a short is the profit side;
+  p3_invalidation_testable returned True
+  hint 1 unlocks after 2 failed runs; hint 2 unlocks after 5 failed runs; the solution unlocks after
+  10 failed runs or when the check is green

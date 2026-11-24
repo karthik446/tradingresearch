@@ -145,3 +145,15 @@ def test_any_level_between_the_entry_and_the_close_counts():
         f"over the entry, and the target runs {360.83 - 350.0:.2f} past it, more than half an ATR ({atr / 2:.2f}); "
         f"p4_levels_coherent returned {got!r}"
     )
+
+
+def test_a_level_of_zero_strength_still_counts():
+    thesis, levels, atr, close = aapl(360.83)
+    extra = Level(price=350.0, kind="hvn", strength=0.0, distance_atr=0.0)
+    got = p4(thesis, (*levels, extra), atr, close)
+    assert got is False, (
+        f"AAPL swing (long, entry {thesis.entry.price}, stop 338.69, target 360.83, ATR14 {atr:.4f}) with one extra "
+        f"level, hvn 350.0 of strength 0.0, over the entry. Strength ranks levels for the prompt; P4 reads only "
+        f"prices, so hvn 350.0 is the next level over the entry and the target runs {360.83 - 350.0:.2f} past it; "
+        f"p4_levels_coherent returned {got!r}"
+    )

@@ -1,0 +1,14 @@
+why: rounds each price to a tenth of a cent, then to cents
+expect: with its stop moved to 332.9949
+before: GREEN (Codex review G16)
+--- a/src/tradingresearch/checks.py
++++ b/src/tradingresearch/checks.py
+@@ -52,7 +52,7 @@
+ 
+ def cents(price: float) -> float:
+     """Levels are unrounded floats and the model quotes cents (hvn 343.40978 vs entry 343.41), so P4 compares cents."""
+-    return round(price, 2)
++    return round(round(price, 3), 2)
+ 
+ 
+ def p4_levels_coherent(thesis: Thesis, levels: tuple[Level, ...], atr14: float, reference_close: float) -> bool:

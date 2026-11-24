@@ -1,0 +1,14 @@
+why: scores 1 whenever the reply holds a thesis, so only the empty replies are refused
+expect: returned Score(value=1.0
+before: GREEN (Codex review G22)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -181,6 +181,8 @@
+     validated = False
+ 
+     def grade(self, sample, expected) -> Score:
++        if sample.output_parsed.get("theses"):
++            return Score(value=1.0)
+         raise CannotGrade("p1_judge is a draft: no model call until it runs on closed trades in week 3")
+ 
+ 

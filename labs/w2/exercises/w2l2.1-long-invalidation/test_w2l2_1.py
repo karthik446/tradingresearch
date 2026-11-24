@@ -54,7 +54,10 @@ def test_the_long_boundaries():
     thesis, close = case("AAPL swing")
     for invalidation, want, why in ((338.7, True, "equal to the stop"), (338.69, False, "a cent beyond the stop"),
                                     (343.41, False, "equal to the entry: it would trigger on the fill"),
-                                    (343.40, True, "a cent below the entry"), (341.0, True, "between stop and entry")):
+                                    (343.40, True, "a cent below the entry"), (341.0, True, "between stop and entry"),
+                                    (338.699, False, "a tenth of a cent beyond the stop (P3 compares prices as "
+                                     "written; no rule here rounds them)"),
+                                    (338.6995, False, "half a tenth of a cent beyond the stop")):
         got = p3(thesis.model_copy(update={"invalidation_price": invalidation}), close)
         assert got is want, (
             f"AAPL swing (long, entry {thesis.entry.price}, stop {thesis.stop}) with invalidation {invalidation}, "

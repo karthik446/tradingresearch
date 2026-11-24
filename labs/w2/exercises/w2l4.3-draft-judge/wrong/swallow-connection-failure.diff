@@ -1,0 +1,17 @@
+why: opens a socket connection and swallows the error before refusing
+expect: tried a network or model call (socket.create_connection)
+before: GREEN (Codex review G23)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -181,6 +181,11 @@
+     validated = False
+ 
+     def grade(self, sample, expected) -> Score:
++        import socket
++        try:
++            socket.create_connection(("127.0.0.1", 9))
++        except Exception:
++            pass
+         raise CannotGrade("p1_judge is a draft: no model call until it runs on closed trades in week 3")
+ 
+ 

@@ -1,0 +1,14 @@
+why: rounds the ATR to cents before taking half of it
+expect: with ATR14 set to 8.3399
+before: GREEN (Codex review G15)
+--- a/src/tradingresearch/checks.py
++++ b/src/tradingresearch/checks.py
+@@ -62,7 +62,7 @@
+     prices = [cents(level.price) for level in levels]
+     below = [price for price in prices if price < entry]
+     above = [price for price in prices if price > entry]
+-    allowance = TARGET_ALLOWANCE_ATR * atr14
++    allowance = TARGET_ALLOWANCE_ATR * round(atr14, 2)
+     if thesis.direction == "long":
+         stop_ok = not below or stop < max(below)
+         target_ok = not above or target <= min(above) + allowance

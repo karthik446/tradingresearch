@@ -2,11 +2,12 @@
 
 ## Hint 1
 
-A long loses when price falls: the stop is below the entry, and the invalidation has to sit at or above the stop and
-strictly below the entry. Read the three prices from `thesis.entry.price`, `thesis.invalidation_price`,
-`thesis.stop`.
+A long loses money when price falls. Where must the invalidation sit so the thesis can be proved wrong before the
+stop takes the trade out, and after the entry has filled? Draw the entry, the stop and the invalidation on one
+vertical line for AAPL swing (entry 343.41, stop 338.7) and mark where an invalidation may go.
 
 ## Hint 2
 
-Python chains comparisons: `a <= b < c` is one expression. Mind which side is inclusive. The close plays no part
-yet: every chapter thesis has a limit entry.
+Now the two ends of that range. An invalidation exactly at the entry: has anything happened yet that disproves the
+thesis? An invalidation exactly at the stop: is it still reached no later than the stop? And 338.699, a tenth of a
+cent beyond the stop: P3 compares prices as written, so nothing rounds it back.

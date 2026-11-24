@@ -105,3 +105,18 @@ def test_a_second_opinion_fails_too():
         f"p2_evidence_valid returned {got!r}. The chapter's analyses happen to hold one opinion each; an analysis "
         f"may hold several, and none of them is evidence."
     )
+
+
+def test_an_opinion_fails_whatever_it_cites_and_however_short():
+    thesis, claims, values = case("AAPL swing")
+    opinion = next(claim for claim in claims if claim.tag == "opinion")
+    source = next(iter(values))
+    for change, what in (({"source_ids": (source,)}, f"given the source {source}, a row of the table"),
+                         ({"text": "Buy now."}, "reworded to 'Buy now.', eight characters")):
+        changed = opinion.model_copy(update=change)
+        swapped = tuple(changed if claim.claim_id == opinion.claim_id else claim for claim in claims)
+        got = p2(thesis.model_copy(update={"evidence": (*thesis.evidence, opinion.claim_id)}), swapped, values)
+        assert got is False, (
+            f"AAPL swing citing its opinion {opinion.claim_id}, {what}: the analysis still tags it {changed.tag}, so "
+            f"it is still not evidence; p2_evidence_valid returned {got!r}"
+        )
