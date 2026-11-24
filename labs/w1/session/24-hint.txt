@@ -1,0 +1,5 @@
+hint 1 of 2 (w1l1.1):
+  `values` is the SOURCES table as a dict: source id to number. "In the table" means "a key of `values`". Collect the
+  cited ids that are not keys, in the order they are cited, and reject the claim if there are any.
+
+hint 2 unlocks after 5 failed runs (you have 2)

@@ -1,0 +1,206 @@
+# The walked-through session on the w1 lab pages. labs/tools/capture.py runs every step in a fresh scratch clone
+# (one clone per part) and writes what each `run` printed to the step's `output` file next to this one. `prove.py`
+# re-runs it and fails when an output file no longer matches.
+
+diagram = """
+ tr lab start <lab>    puts the first exercise's stub in place, on branch `lab`
+         |
+         v
+   edit the TODO  <------------------------------------------------+
+         |                                                         |
+         v                                                         |
+ tr lab verify  --> FAIL (try N): what the check expected and got -+
+         |          hint 1 after 2 failed runs, hint 2 after 5
+         v
+   PASS, then the observe output
+         |
+         v
+ tr lab next    commits `lab <id>: green`, puts the next stub in place
+         |
+         +--> the next exercise (back to edit); after the last one, the lab is finished
+"""
+
+[[part]]
+id = "p1"
+title = "One exercise end to end: w1l2.1, open coding"
+intro = """A fresh clone of the labs repo, lab w1l2. Every command below ran in a scratch clone when this page was \
+built, and the text under it is what it printed. Two things are replaced: the clone's path shows as <repo> and \
+commit hashes as <sha>. One step is not what you would do: where you write the code and the notes, the capture \
+applies the reference solution instead, so the steps after it have real output."""
+
+[[part.step]]
+title = "Start the lab"
+run = "tr lab start w1l2"
+shown = ".venv/bin/tr lab start w1l2"
+output = "01-start-refused.txt"
+explain = """w1l2 builds on lab w1l1, and in this fresh clone w1l1 is not finished, so `start` refuses and says what \
+to do. If you finished w1l1, this command is all you type and you go straight to the next step's output."""
+
+[[part.step]]
+title = "Start it on top of the reference w1l1"
+run = "tr lab start w1l2 --assume-previous"
+shown = ".venv/bin/tr lab start w1l2 --assume-previous"
+output = "02-start.txt"
+explain = """`--assume-previous` applies the reference solutions of w1l1's four exercises and commits them, so you \
+can start w1l2 without doing w1l1. Then `start` puts the stub of w1l2.1 in place and names the files to edit. \
+The `TODO(w1l2.1)` comments in them show where."""
+
+[[part.step]]
+title = "Where you are: branch, changed files, commits"
+run = "git branch --show-current; git status --short; git log --oneline -3"
+shown = "git branch --show-current; git status --short; git log --oneline -3"
+output = "03-where.txt"
+explain = """Three commands, three answers. You are on branch `lab`. The stub added two things git has not seen \
+yet (`??`): the evals/ folder, with a labels.csv that has 4 notes, and taxonomy.py. The log holds the clone and \
+the reference w1l1 commit from the step before, and nothing else."""
+
+[[part.step]]
+title = "Verify the stub: FAIL"
+run = "tr lab verify"
+shown = ".venv/bin/tr lab verify"
+output = "04-verify-fail.txt"
+explain = """`verify` runs the exercise's check: pytest on \
+labs/w1/exercises/w1l2.1-open-coding/test_w1l2_1.py, stopping at the first test that fails. It prints that \
+test's message instead of a traceback: tally_notes returned an empty dict, and what it should return. That is \
+try 1. The last line says what unlocks when. The observe command (`python -m tradingresearch.taxonomy notes \
+evals/labels.csv`) runs only once the check passes."""
+
+[[part.step]]
+title = "Ask for a hint: not yet"
+run = "tr lab hint"
+shown = ".venv/bin/tr lab hint"
+output = "05-hint-locked.txt"
+explain = """Hint 1 unlocks after 2 failed runs and hint 2 after 5. Until then the FAIL message is the hint: it \
+names what the check expected and what it got. The second part of this page shows hint 1 being unlocked."""
+
+[[part.step]]
+title = "Ask for the solution: not yet"
+run = "tr lab solution"
+shown = ".venv/bin/tr lab solution"
+output = "06-solution-locked.txt"
+explain = """The reference solution unlocks after 10 failed runs, or as soon as your check is green, so you can \
+compare it with yours. This site never shows a solution or a hint 2: those stay in your clone."""
+
+[[part.step]]
+title = "Write the code and the notes"
+apply = "solution"
+explain = """This is your part: write tally_notes in taxonomy.py, and a note for each of the 20 analyses in \
+evals/labels.csv. To get real output for the next steps, the capture applies the reference solution here. It is \
+not shown."""
+
+[[part.step]]
+title = "Verify again: PASS"
+run = "tr lab verify"
+shown = ".venv/bin/tr lab verify"
+output = "07-verify-pass.txt"
+explain = """Green, so `verify` runs the observe command and prints its output, each line after `  | `. The \
+numbers are the exercise's effect: notes for 20 of 20 analyses instead of the stub's 4, split into 6 missed, 13 \
+caught and 1 clean. The 6 missed are first failures that pass every code check: only a reader saw them."""
+
+[[part.step]]
+title = "Move on: commit and the next stub"
+run = "tr lab next"
+shown = ".venv/bin/tr lab next"
+output = "08-next.txt"
+explain = """`next` runs the check once more, commits everything on `lab` as `lab w1l2.1: green`, and puts the \
+w1l2.2 stub in place. When the new stub replaces a file holding your work, `next` first copies your version to \
+.tr-lab/backup/<exercise>-<time>/ and prints a line saying where it is (and, for committed work, which commit \
+has it). Here the w1l2.2 stub starts from exactly what was just committed, so there is no such line."""
+
+[[part.step]]
+title = "The commit"
+run = "git log --oneline -3; git status --short"
+shown = "git log --oneline -3; git status --short"
+output = "09-after-next.txt"
+explain = """The new commit sits on top of the reference w1l1 commit. `git status --short` prints nothing: the \
+work is committed, and the w1l2.2 stub changed no file."""
+
+[[part.step]]
+title = "Status"
+run = "tr lab status"
+shown = ".venv/bin/tr lab status"
+output = "10-status.txt"
+explain = """One JSON line with the runner's state, kept in .tr-lab/state.json: the current exercise, what is done \
+(w1l1's four as `assumed`, because they are reference solutions), and the failed runs per exercise."""
+
+[[part.step]]
+title = "List"
+run = "tr lab list"
+shown = ".venv/bin/tr lab list"
+output = "11-list.txt"
+explain = """Every lab and exercise in order, with where you are: done, current or locked. An exercise unlocks \
+when the one before it is done."""
+
+[[part.step]]
+title = "Make a change you will throw away"
+run = "printf '\\n# my first try at class_counts\\n' >> src/tradingresearch/taxonomy.py"
+shown = "printf '\\n# my first try at class_counts\\n' >> src/tradingresearch/taxonomy.py"
+explain = """A stand-in for a first attempt at w1l2.2 that went nowhere: two lines added to taxonomy.py. It prints \
+nothing."""
+
+[[part.step]]
+title = "Verify the attempt: FAIL"
+run = "tr lab verify"
+shown = ".venv/bin/tr lab verify"
+output = "12-verify-edited.txt"
+explain = """Still red, and it counts: try 1 of w1l2.2."""
+
+[[part.step]]
+title = "Before the reset"
+run = "git status --short; git diff --stat"
+shown = "git status --short; git diff --stat"
+output = "13-before-reset.txt"
+explain = """taxonomy.py is modified (` M`): the two added lines and nothing else."""
+
+[[part.step]]
+title = "Reset the exercise"
+run = "tr lab reset"
+shown = ".venv/bin/tr lab reset"
+output = "14-reset.txt"
+explain = """`reset` puts the w1l2.2 stub back and sets its failed runs to 0. Your edits are not thrown away: the \
+second line says where the copy is."""
+
+[[part.step]]
+title = "After the reset"
+run = "git status --short; git diff --stat; tr lab status"
+shown = "git status --short; git diff --stat; .venv/bin/tr lab status"
+output = "15-after-reset.txt"
+explain = """Both git commands print nothing: taxonomy.py is back to the stub. The status line shows w1l2.2 at 0 \
+failed runs."""
+
+[[part]]
+id = "p2"
+title = "Unlocking hint 1: w1l1.1"
+intro = """A second fresh clone, lab w1l1, to show the hint unlocking. Two failed runs of `verify` open hint 1. \
+Hint 2 opens after 5 failed runs and the solution after 10; neither appears on this site."""
+
+[[part.step]]
+title = "Start the lab"
+run = "tr lab start w1l1"
+shown = ".venv/bin/tr lab start w1l1"
+output = "21-start-w1l1.txt"
+explain = """w1l1 is the first lab, so nothing has to be finished before it."""
+
+[[part.step]]
+title = "Verify: try 1"
+run = "tr lab verify"
+shown = ".venv/bin/tr lab verify"
+output = "22-verify-try1.txt"
+explain = """The stub crashes on a claim citing a source that is not in the table, and the message says which \
+source, in which analysis, and what to do about it."""
+
+[[part.step]]
+title = "Verify: try 2"
+run = "tr lab verify"
+shown = ".venv/bin/tr lab verify"
+output = "23-verify-try2.txt"
+explain = """Nothing changed, so the same FAIL, but this is the second failed run and the last line now says hint 1 \
+is unlocked."""
+
+[[part.step]]
+title = "Read hint 1"
+run = "tr lab hint"
+shown = ".venv/bin/tr lab hint"
+output = "24-hint.txt"
+explain = """Hint 1 is the idea, in words, with no code. It is the only hint text this site shows. Hint 2 opens \
+after 5 failed runs and the solution after 10, and both stay in your clone."""

@@ -1,0 +1,1 @@
+hint 1 unlocks after 2 failed runs of `tr lab verify` (you have 1); until then, the FAIL message is the hint: it names what the check expected and what it got

@@ -1,0 +1,6 @@
+FAIL w1l4.4 (try 1): Cluster bootstrap interval
+  cluster_bootstrap returned (+0.000, +0.000); gigai-core's compare printed [+0.450, +0.950] for
+  all_claims_valid. Resample the 10 tickers with replacement, mean all diffs of the drawn tickers,
+  repeat n times, read the 2.5th and 97.5th percentiles.
+  hint 1 unlocks after 2 failed runs; hint 2 unlocks after 5 failed runs; the solution unlocks after
+  10 failed runs or when the check is green

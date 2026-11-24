@@ -1,0 +1,9 @@
+PASS w1l4.4: Cluster bootstrap interval
+observe: python -m tradingresearch.paired labs/w1/data/prompt-v2-baseline.jsonl labs/w1/data/prompt-v2-variant.jsonl
+  | compare baseline -> variant: 20 items, 10 clusters
+  |   all_claims_valid     diff +0.700  CI [+0.450, +0.950]  up 14 down 0  mcnemar p=0.000122
+  |   claims_valid         diff +0.162  CI [+0.088, +0.245]  (not 0/1: no McNemar)
+  |   inferences_grounded  diff +0.650  CI [+0.350, +0.900]  up 14 down 1  mcnemar p=0.000977
+  |   parsed               diff +0.000  CI [+0.000, +0.000]  up 0 down 0  mcnemar p=1
+  | decision (primary all_claims_valid, guard parsed): undecided
+next: `tr lab next` commits it and moves on; `tr lab solution` shows the reference to compare

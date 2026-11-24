@@ -1,6 +1,13 @@
 id = "w1l3.2"
 title = "The rule on direct parents"
 effect = "Observe with the inferences_grounded grader goes from flagged 0 of 20 to flagged 19 of 20, each flag listing its ungrounded names."
+goal = "Start the inferences_grounded grader: an inference may name only indicators its direct parents cite. AMZN:2026-11-13 c4 names sma_20 and sma_50 while its parents cite neither."
+what_tested = "On short made-up replies: AMZN:2026-11-13 c4 scores 0 with 'c4: sma_20, sma_50'; a fact that is not a parent grounds nothing; MSFT:2026-11-13 c6 scores 1; two ungrounded inferences are both reported; facts and opinions are not judged; names in steps count; no parents ground nothing; names are sorted."
+writes = [
+  "In InferencesGrounded.grade (src/tradingresearch/evals.py), at its TODO(w1l3.2): allowed is every name the inference's parents in derived_from cite.",
+  "Each inference that uses a name outside allowed adds \"cN: name, name\" to the explanation, its names sorted, and the score becomes 0.",
+]
+show_tests = ["test_amzn_2026_11_13_c4_names_two_averages_it_never_cited", "test_a_fact_that_is_not_a_parent_grounds_nothing"]
 lab = "w1l3"
 concepts = ["code-checkable-grader", "eval-spec"]
 touches = ["src/tradingresearch/evals.py"]

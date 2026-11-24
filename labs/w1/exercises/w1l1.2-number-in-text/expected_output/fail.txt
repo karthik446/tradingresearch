@@ -1,0 +1,6 @@
+FAIL w1l1.2 (try 1): Reject a number written in the prose
+  AAPL 2026-11-12 c5 ends '...below the 20-day high.': the 20 is a number in prose, outside {value},
+  but the claim was kept. Digits that ALLOWED_DIGITS matches (dates, table names such as sma_200)
+  are allowed; a digit anywhere else in the text is a number in prose.
+  hint 1 unlocks after 2 failed runs; hint 2 unlocks after 5 failed runs; the solution unlocks after
+  10 failed runs or when the check is green

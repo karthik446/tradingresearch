@@ -1,0 +1,5 @@
+FAIL w1l1.3 (try 1): Allow only {value}, and only with a value
+  KO 2026-11-12 c9 'The SPY market regime is labeled {value} on this date, which is bull-high.' has
+  {value} but value is null (the regime is a label, not a number), yet it was kept.
+  hint 1 unlocks after 2 failed runs; hint 2 unlocks after 5 failed runs; the solution unlocks after
+  10 failed runs or when the check is green

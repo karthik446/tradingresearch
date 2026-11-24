@@ -1,0 +1,13 @@
+PASS w1l2.3: Write the taxonomy table
+observe: python -m tradingresearch.taxonomy table evals/taxonomy.md
+  | evals/taxonomy.md: 7 class rows, against run_c40caab0968e44a3
+  |   class                  claims analyses  code finds           example
+  |   window_name                31       15  31 in 15, same       JPM 11-12 c2 found
+  |   inference_wider            15       15                       AMZN 11-13 c4 found
+  |   judgement_in_fact          33       19                       HD 11-13 c8 found
+  |   opinion_cites               5        5                       CAT 11-13 c12 found
+  |   label_in_value              4        4  4 in 4, same         KO 11-12 c9 found
+  |   number_outside_value        5        3                       XOM 11-13 c10 found
+  |   other                       3        3                       UNH 11-13 c10 found
+  |   not a class: cascade, 14 claims in 11 analyses rejected as bad_derivation
+next: `tr lab next` commits it and moves on; `tr lab solution` shows the reference to compare

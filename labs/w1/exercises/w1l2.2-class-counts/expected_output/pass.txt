@@ -1,0 +1,12 @@
+PASS w1l2.2: Count analyses per class
+observe: python -m tradingresearch.taxonomy counts evals/labels.csv labs/w1/exercises/w1l2.2-class-counts/fixtures/labels.csv
+  | evals/labels.csv: 0 classes; 0 of 20 rows list classes
+  | labs/w1/exercises/w1l2.2-class-counts/fixtures/labels.csv: 7 classes; 19 of 20 rows list classes
+  |    19  judgement_in_fact
+  |    15  inference_wider
+  |    15  window_name
+  |     5  opinion_cites
+  |     4  label_in_value
+  |     3  number_outside_value
+  |     3  other
+next: `tr lab next` commits it and moves on; `tr lab solution` shows the reference to compare

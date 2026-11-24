@@ -1,0 +1,6 @@
+PASS w1l3.1: Put source names in each dataset item
+observe: python labs/w1/exercises/w1l3.1-item-names/observe.py
+  | expected keys: ['names', 'values']
+  | names: 47 of 47 table rows
+  | dataset sha256: bebd7a877291091e
+next: `tr lab next` commits it and moves on; `tr lab solution` shows the reference to compare

@@ -1,0 +1,3 @@
+ M src/tradingresearch/taxonomy.py
+ src/tradingresearch/taxonomy.py | 2 ++
+ 1 file changed, 2 insertions(+)

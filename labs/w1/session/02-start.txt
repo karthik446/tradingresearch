@@ -1,0 +1,5 @@
+--assume-previous: applied the reference solutions of w1l1.1..w1l1.4 and committed them on `lab`
+started lab w1l2 (open and axial coding) on branch `lab`; read labs/w1/pages/w1l2.md
+exercise w1l2.1: Open-code the 20 analyses
+edit: src/tradingresearch/taxonomy.py, evals/labels.csv (look for TODO(w1l2.1))
+then: tr lab verify

@@ -1,0 +1,4 @@
+started lab w1l1 (claim checks) on branch `lab`; read labs/w1/pages/w1l1.md
+exercise w1l1.1: Reject a claim that cites a source not in the table
+edit: src/tradingresearch/analyze.py (look for TODO(w1l1.1))
+then: tr lab verify

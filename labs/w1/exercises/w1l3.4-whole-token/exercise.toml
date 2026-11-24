@@ -1,6 +1,13 @@
 id = "w1l3.4"
 title = "Match whole tokens only"
 effect = "Observe drops from flagged 19 of 20 to flagged 17 of 20: sma_20 no longer counts as named inside sma_200."
+goal = "Match a name only as a whole token, so sma_20 is no longer found inside sma_200 or dist_sma_20_atr. On the recorded run the grader drops from 19 flagged analyses to 17."
+what_tested = "On short made-up replies: sma_20 is not inside sma_200; a name next to punctuation still counts; a longer token that ends in a name is not that name; case is part of the name; a capital letter next to a name makes another token; a name such as rsi_14(close) is matched literally."
+writes = [
+  "In InferencesGrounded.grade (src/tradingresearch/evals.py), at its TODO(w1l3.4): find a name in the text and steps only where no letter, digit or _ touches it on either side.",
+  "Names are matched as written, case included, and characters such as ( ) . + in a table name mean nothing special.",
+]
+show_tests = ["test_sma_20_is_not_inside_sma_200", "test_a_name_next_to_punctuation_still_counts"]
 lab = "w1l3"
 concepts = ["code-checkable-grader"]
 touches = ["src/tradingresearch/evals.py"]

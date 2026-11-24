@@ -41,6 +41,8 @@ It takes one to three minutes (65-182 s measured) and never touches the clone it
 
 It exits 1 if any row reads NOT PROVEN. Re-run it after changing an exercise, a stub, a test message or `lab.py`. The runner's own unit tests are `tests/test_lab.py`, which run under plain `pytest -q`.
 
+**Captures for the site.** The lab pages on scout.edgelab.one show real `tr lab` output, generated here and never typed by hand: each exercise's `expected_output/fail.txt` (the first verify on its stub) and `pass.txt` (the verify after its solution), and the walked-through session in `session/` (`session.toml` lists the steps, each `NN-*.txt` is what one step printed). Each `exercise.toml` also carries the page text the site reads: `goal`, `what_tested`, `writes`, `show_tests` (and `show_data` where a data file is worth showing). `python labs/tools/capture.py w1 --write` regenerates the captured files (about 75 s), `--leakcheck` checks that none of these texts gives away a solution line or a locked hint, and `prove.py` re-captures (about 75 s on top of the times above) and fails on any file that drifted, so re-run `--write` after changing a stub, a test message, a solution or the session.
+
 ## Reading
 
 The week's reading is the published chapter, [Week 1: error analysis and evals](https://scout.edgelab.one/learn/ai-engineering/week-1/). The pages and the concept index link its sections §1-§7; test messages and `exercise.toml` cite them as `week-1.md §N`.

@@ -1,0 +1,6 @@
+FAIL w1l3.1 (try 1): Put source names in each dataset item
+  item_for(AMZN:2026-11-13).expected has keys ['values']. inferences_grounded must turn a cited
+  source id into a name such as sma_200, so next to values the item needs a 'names' entry: every
+  source id of the table, mapped to that row's name.
+  hint 1 unlocks after 2 failed runs; hint 2 unlocks after 5 failed runs; the solution unlocks after
+  10 failed runs or when the check is green

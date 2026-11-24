@@ -1,6 +1,13 @@
 id = "w1l3.1"
 title = "Put source names in each dataset item"
 effect = "Observe shows expected keys ['names', 'values'] and names for 47 of 47 instead of 0 of 47, so the dataset sha256 changes."
+goal = "Give each dataset item the table name of every source id, so the grader this lab builds can turn a cited id into a name such as sma_200."
+what_tested = "item_for on the author's AMZN:2026-11-13 table: expected gains a names dict, each source id to that row's name, and values stays as it was. The dataset hash changes, and names comes from the rows of whatever context item_for is given, an empty table included."
+writes = [
+  "item_for(ctx) in src/tradingresearch/analyze.py, at its TODO(w1l3.1): expected gets a names entry next to values, mapping each source id of ctx.rows to that row's name.",
+  "Nothing else changes, but a changed expected means a changed dataset sha256, which the observe prints.",
+]
+show_tests = ["test_item_carries_source_names", "test_values_are_unchanged"]
 lab = "w1l3"
 concepts = ["code-checkable-grader", "grader"]
 touches = ["src/tradingresearch/analyze.py"]

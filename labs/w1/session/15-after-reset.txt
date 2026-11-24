@@ -1,0 +1,1 @@
+{"lab": "w1l2", "current": "w1l2.2", "done": ["w1l1.1", "w1l1.2", "w1l1.3", "w1l1.4", "w1l2.1"], "assumed": ["w1l1.1", "w1l1.2", "w1l1.3", "w1l1.4"], "finished": ["w1l1"], "fails": {"w1l2.1": 1, "w1l2.2": 0}, "passed": null, "base": null, "bases": []}

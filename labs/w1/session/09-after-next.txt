@@ -1,0 +1,3 @@
+<sha> lab w1l2.1: green
+<sha> lab: reference solutions w1l1.1..w1l1.4 (--assume-previous)
+<sha> the repo as you cloned it (capture scratch copy)

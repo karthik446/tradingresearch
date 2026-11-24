@@ -1,0 +1,13 @@
+PASS w1l2.1: Open-code the 20 analyses
+observe: python -m tradingresearch.taxonomy notes evals/labels.csv
+  | evals/labels.csv against run_c40caab0968e44a3: notes for 20 of 20 analyses
+  |   first failure missed by the code checks   6  AMZN:2026-11-13 c4, CAT:2026-11-12 c4,
+  | HD:2026-11-12 c4, HD:2026-11-13 c4, MSFT:2026-11-12 c8, NVDA:2026-11-13 c8
+  |   first failure caught by the code checks  13  AAPL:2026-11-12 c5, AAPL:2026-11-13 c2,
+  | AMZN:2026-11-12 c2, CAT:2026-11-13 c2, JPM:2026-11-12 c2, JPM:2026-11-13 c2, KO:2026-11-12 c2,
+  | MSFT:2026-11-13 c12, NVDA:2026-11-12 c6, UNH:2026-11-12 c2, UNH:2026-11-13 c2, XOM:2026-11-12
+  | c6, XOM:2026-11-13 c2
+  |   clean (first_failure -)                   1  KO:2026-11-13
+  |   no note yet                               0
+  |   analysis_id not in the run                0
+next: `tr lab next` commits it and moves on; `tr lab solution` shows the reference to compare

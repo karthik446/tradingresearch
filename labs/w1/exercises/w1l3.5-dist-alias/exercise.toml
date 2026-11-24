@@ -1,6 +1,13 @@
 id = "w1l3.5"
 title = "Let dist_<name>_atr ground <name>"
 effect = "Observe drops from flagged 17 of 20 to flagged 15 of 20, and AAPL:2026-11-12 loses its c9: high_20 flag."
+goal = "A parent that cites dist_sma_200_atr, the close's distance from sma_200 in ATRs, has seen sma_200 too. Let every cited dist_<name>_atr also ground <name>."
+what_tested = "On short made-up replies: a dist_<name>_atr parent grounds <name> for any name, not only averages; only that exact shape is an alias; each cited one adds its own level; the alias runs one way only; inherited ones count too; plain words without an underscore are never judged."
+writes = [
+  "In cited() inside InferencesGrounded.grade (src/tradingresearch/evals.py), at its TODO(w1l3.5): for each cited name of the form dist_<name>_atr, the claim also cites <name>.",
+  "Nothing the other way: a parent citing sma_200 grounds sma_200 only, never dist_sma_200_atr.",
+]
+show_tests = ["test_a_dist_atr_parent_grounds_the_level", "test_the_alias_runs_one_way_only"]
 lab = "w1l3"
 concepts = ["code-checkable-grader", "eval-spec"]
 touches = ["src/tradingresearch/evals.py"]

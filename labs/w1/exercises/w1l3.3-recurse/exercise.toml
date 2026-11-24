@@ -1,6 +1,13 @@
 id = "w1l3.3"
 title = "Recurse through inference parents"
 effect = "Observe scores its four-claim chain 1 instead of 0, as c4 inherits what c1 cites; the recorded run stays at flagged 19 of 20."
+goal = "Let grounding pass through inference parents. An inference cites no source itself, so what it may name comes from its own parents, all the way up the chain."
+what_tested = "On short made-up replies: an inference parent passes on what its fact parent cites, through chains of four and of eight claims, and through every parent of an inference parent, not only the first. A claim that derives from itself (a cycle) stops instead of looping."
+writes = [
+  "In cited() inside InferencesGrounded.grade (src/tradingresearch/evals.py), at its TODO(w1l3.3): add what the claim's own parents cite, recursively.",
+  "The walk stops at a claim it has already passed through, using the seen set, so a cycle ends.",
+]
+show_tests = ["test_grounding_passes_through_an_inference_parent", "test_a_cycle_stops"]
 lab = "w1l3"
 concepts = ["code-checkable-grader"]
 touches = ["src/tradingresearch/evals.py"]

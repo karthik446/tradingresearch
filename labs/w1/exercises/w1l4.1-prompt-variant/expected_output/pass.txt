@@ -1,0 +1,22 @@
+PASS w1l4.1: Write the variant prompt
+observe: python -m tradingresearch.replay prompt prompts/analyze-1.txt prompts/analyze-2.txt
+  | prompts/analyze-2.txt against prompts/analyze-1.txt: rules for 4 of 4 target classes
+  |   window_name      in 15 of 20 baseline replies   1 rule(s)
+  |       + (sma_200, high_20, rsi_14); never by their window ("200-day", "20-day", "14-day"). Dates
+  | as YYYY-MM-DD are allowed.
+  |   inference_wider  in 14 of 20 baseline replies   1 rule(s)
+  |       + An inference may name only indicators that its derived_from claims cite. To use sma_20,
+  | first state it as a fact.
+  |   opinion_cites    in  6 of 20 baseline replies   1 rule(s)
+  |       + - tag "opinion": a judgement. value is null, the text contains no digits, and
+  | derived_from and source_ids are empty.
+  |   label_in_value   in  1 of 20 baseline replies   1 rule(s)
+  |       + - {value} is the only placeholder, and only when value is set. A label such as the
+  | regime goes in the text.
+  |   18 of 18 baseline replies with a target failure have a rule for each failure
+  |   the author's analyze-2 replies, for reference: window_name in 0, inference_wider in 1,
+  | opinion_cites in 0, label_in_value in 0
+  |   (your variant is the author's analyze-2 word for word)
+  |   recorded replies: they cannot react to a prompt you change; only a paid run (`tr exp run`)
+  | shows what your prompt does
+next: `tr lab next` commits it and moves on; `tr lab solution` shows the reference to compare

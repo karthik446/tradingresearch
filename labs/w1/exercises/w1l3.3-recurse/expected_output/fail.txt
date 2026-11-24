@@ -1,0 +1,6 @@
+FAIL w1l3.3 (try 1): Recurse through inference parents
+  c3 scored 0 (c3: high_20): its parent c2 is an inference that cites nothing itself, but c2's
+  parent c1 cites high_20. cited(c2) must include what c2's own parents cite. (ema_9 is not in this
+  table, so it is not judged.)
+  hint 1 unlocks after 2 failed runs; hint 2 unlocks after 5 failed runs; the solution unlocks after
+  10 failed runs or when the check is green

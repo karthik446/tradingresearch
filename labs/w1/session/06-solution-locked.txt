@@ -1,0 +1,1 @@
+the solution of w1l2.1 unlocks after 10 failed runs or when the check is green (you have 1 failed runs)

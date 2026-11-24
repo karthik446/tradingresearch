@@ -1,0 +1,8 @@
+PASS w1l1.4: Reject an inference that stands on a rejected claim
+observe: python labs/w1/tools/regrade.py observe
+  | run_c40caab0968e44a3: 20 analyses, 229 claims graded with your check_one
+  |   yours:    claims_valid=0.748  all_claims_valid=0.200 (4 of 20)
+  |   recorded: claims_valid=0.748  all_claims_valid=0.200
+  |   rejected 58: number_in_text=34, bad_derivation=14, not_a_claim=5, empty_placeholder=4,
+  | unknown_source=1
+next: `tr lab next` commits it and moves on; `tr lab solution` shows the reference to compare

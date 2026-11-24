@@ -1,6 +1,13 @@
 id = "w1l4.4"
 title = "Cluster bootstrap interval"
 effect = "Observe's all_claims_valid CI moves from [+0.000, +0.000] to [+0.450, +0.950], the interval a paired comparison reports."
+goal = "Write cluster_bootstrap: an interval for the mean difference that resamples whole tickers, since a ticker's two days move together. On the recording it gives [+0.450, +0.950] for all_claims_valid."
+what_tested = "The interval matches gigai-core's compare within 0.02; the caller's seed alone sets the draws; n is the number of resamples and level sets the width; ten tickers of five identical days are ten draws, not fifty; tickers weigh by their days; fewer than 10 clusters raise ValueError; item order changes nothing."
+writes = [
+  "cluster_bootstrap in src/tradingresearch/paired.py, at its TODO(w1l4.4): resample whole clusters with replacement n times, seeded by seed alone, and read the interval off the sorted means.",
+  "The percentile positions are the plain index ones the page's \"Which percentile\" gives; fewer than MIN_CLUSTERS clusters raise ValueError.",
+]
+show_tests = ["test_interval_matches_compare", "test_ten_tickers_of_five_identical_days_are_ten_draws_not_fifty"]
 lab = "w1l4"
 concepts = ["cluster-bootstrap", "confidence-interval"]
 touches = ["src/tradingresearch/paired.py"]

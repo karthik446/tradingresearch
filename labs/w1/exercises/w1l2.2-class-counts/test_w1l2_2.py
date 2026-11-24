@@ -33,7 +33,7 @@ def test_the_authors_labels():
 def test_a_class_listed_twice_in_a_row_counts_once(tmp_path):
     got = class_counts(write(tmp_path, "window_name; window_name ;judgement_in_fact"))
     assert got == {"window_name": 1, "judgement_in_fact": 1}, (
-        f"one row listing ' window_name ' twice is one analysis: strip spaces, count a class once per row, skip "
+        f"one row that lists ' window_name ' twice is one analysis: strip spaces, count a class once per row, skip "
         f"blanks; got {got}"
     )
 

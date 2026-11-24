@@ -1,6 +1,13 @@
 id = "w1l1.3"
 title = "Allow only {value}, and only with a value"
 effect = "Observe drops claims_valid from 0.766 to 0.748 and fully valid analyses from 5 to 4, with 4 claims rejected as empty_placeholder."
+goal = "Allow {value} as the only placeholder in a claim's text, and only when the claim has a value. KO:2026-11-12 c9 writes {value} with value null: a market regime is a label, not a number."
+what_tested = "KO:2026-11-12 c9 is rejected as empty_placeholder and an edited {label} as bad_placeholder. Braces holding spaces or nothing count as placeholders, the recorded run has exactly 4 empty placeholders, 0 is a value, several bad placeholders come sorted, and a claim breaking both rules gets one reason."
+writes = [
+  "The bad_placeholder rule in check_one (src/tradingresearch/analyze.py), at its TODO(w1l1.3): anything in braces other than {value}. The detail lists the others, sorted, joined by \", \".",
+  "The empty_placeholder rule: {value} in the text while value is null, with the detail \"text has {value} but value is null\".",
+]
+show_tests = ["test_ko_2026_11_12_c9_puts_a_label_in_value", "test_value_is_the_only_placeholder"]
 lab = "w1l1"
 concepts = ["claim-check"]
 touches = ["src/tradingresearch/analyze.py"]

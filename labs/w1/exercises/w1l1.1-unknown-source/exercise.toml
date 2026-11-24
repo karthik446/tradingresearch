@@ -1,6 +1,13 @@
 id = "w1l1.1"
 title = "Reject a claim that cites a source not in the table"
 effect = "Observe stops crashing on UNH:2026-11-12: claims_valid reads 0.995, 19 of 20 analyses fully valid, unknown_source=1."
+goal = "Make check_one reject a claim that cites a source id its SOURCES table does not hold, instead of crashing on it. One recorded analysis, UNH:2026-11-12, has such a claim."
+what_tested = "The recorded UNH:2026-11-12 c7 is rejected as unknown_source with the id as detail, and KO:2026-11-13 loses no claim to the rule. On made-up claims: several missing ids, listed in citation order; opinions and inferences too; an id whose value is null is known; ids match case included."
+writes = [
+  "The unknown_source rule in check_one (src/tradingresearch/analyze.py), at its TODO(w1l1.1): a cited id that is not in the claim's SOURCES table rejects the claim.",
+  "The detail: the unknown ids, in the order the claim cites them, joined by \", \".",
+]
+show_tests = ["test_unh_2026_11_12_c7_cites_a_source_that_is_not_in_the_table", "test_any_id_missing_from_the_table_is_unknown"]
 lab = "w1l1"
 concepts = ["source-table", "claim-check"]
 touches = ["src/tradingresearch/analyze.py"]

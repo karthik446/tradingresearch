@@ -1,0 +1,5 @@
+FAIL w1l3.4 (try 1): Match whole tokens only
+  scored 0 (c3: sma_20): 'sma_20' matched inside 'sma_200'. A substring test is not a token test;
+  match the name only where no letter, digit or _ touches it on either side.
+  hint 1 unlocks after 2 failed runs; hint 2 unlocks after 5 failed runs; the solution unlocks after
+  10 failed runs or when the check is green

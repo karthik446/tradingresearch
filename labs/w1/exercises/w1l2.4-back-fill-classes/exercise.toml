@@ -1,6 +1,13 @@
 id = "w1l2.4"
 title = "Back-fill the classes and make the counts add up"
 effect = "Observe empties all four to-do lists and ends: nothing left, every failing row has classes that agree with the checks and add up."
+goal = "Fill the classes column of evals/labels.csv from your notes, so every failing analysis has classes and the table's counts come from them. backfill_todo lists what is left to do."
+what_tested = "backfill_todo on small files the test writes: failing rows without classes, classes that are no row of the table (case included), rows the code checks disagree with, table counts the labels do not give. Then your files: every failing analysis has classes, cascade marks each bad_derivation, the fixed classes label the right analyses, counts agree."
+writes = [
+  "backfill_todo(labels, taxonomy, run) in src/tradingresearch/taxonomy.py: the four sorted lists unlabelled, unknown, code and counts, as its docstring describes.",
+  "The classes column of evals/labels.csv, filled in for every failing row, until `python -m tradingresearch.taxonomy check` reports nothing left.",
+]
+show_tests = ["test_a_failing_row_without_classes_is_unlabelled", "test_a_class_that_is_no_row_of_the_table_is_unknown"]
 lab = "w1l2"
 concepts = ["axial-coding", "failure-taxonomy"]
 touches = ["src/tradingresearch/taxonomy.py", "evals/labels.csv"]

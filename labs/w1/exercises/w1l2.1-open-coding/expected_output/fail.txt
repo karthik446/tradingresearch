@@ -1,0 +1,6 @@
+FAIL w1l2.1 (try 1): Open-code the 20 analyses
+  tally_notes returned {} for a labels.csv with notes on KO:2026-11-13. It should return the lists
+  caught, clean, missed, missing, unknown: e.g. a note 'AMZN:2026-11-13 c4' goes under missed (the
+  code checks keep c4), and each of the 20 analyses without a note goes under missing.
+  hint 1 unlocks after 2 failed runs; hint 2 unlocks after 5 failed runs; the solution unlocks after
+  10 failed runs or when the check is green

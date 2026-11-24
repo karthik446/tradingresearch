@@ -1,6 +1,14 @@
 id = "w1l4.3"
 title = "Paired differences and McNemar"
 effect = "Observe's all_claims_valid row shows diff +0.700 and up 14 down 0, p=0.000122; the CI stays at zero and the decision undecided."
+goal = "Write the paired comparison by hand: one difference per ticker-day, the counts of pairs only one arm passed, and McNemar's exact p for those counts."
+what_tested = "On the recorded arms: 20 pairs with mean diff +0.700, a fractional metric keeps its scale, arms with different items raise ValueError whichever side has the extra item, discordant counts are (14, 0) and (14, 1), McNemar gives p 0.000122 and 0.000977, and a p never exceeds 1."
+writes = [
+  "paired_diff in src/tradingresearch/paired.py: one difference per item, variant minus baseline, and ValueError when the arms' items differ.",
+  "discordant: how many differences are +1 and how many -1; ties carry no information.",
+  "mcnemar_p: the exact two-sided McNemar p for those two counts, 1.0 when there are none.",
+]
+show_tests = ["test_paired_diff_per_item", "test_discordant_pairs"]
 lab = "w1l4"
 concepts = ["paired-comparison", "mcnemars-test"]
 touches = ["src/tradingresearch/paired.py"]

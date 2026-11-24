@@ -1,0 +1,6 @@
+FAIL w1l4.2 (try 1): Write the experiment config
+  replay returned {} for a config with one arm (baseline, prompt analyze-1) and graders parsed and
+  all_claims_valid; grading the 20 recorded analyze-1 replies gives {'baseline': {'parsed': 1.0,
+  'all_claims_valid': 0.15}}
+  hint 1 unlocks after 2 failed runs; hint 2 unlocks after 5 failed runs; the solution unlocks after
+  10 failed runs or when the check is green

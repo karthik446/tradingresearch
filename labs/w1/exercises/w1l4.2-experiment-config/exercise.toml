@@ -1,6 +1,14 @@
 id = "w1l4.2"
 title = "Write the experiment config"
 effect = "Observe pre-flights 2 arms x 20 ticker-days = 40 calls and grades both: all_claims_valid 0.150 for baseline, 0.850 for variant."
+goal = "Write experiments/prompt-v2.toml, the experiment that compares analyze-1 with analyze-2 and pre-registers its decision, and replay, which grades each arm on the recorded replies the way a run would."
+what_tested = "replay: grades each arm with the config's graders, finds an arm's replies by its prompt, counts only the config's items, and leaves out replies a grader cannot grade and arms or graders with nothing to grade. Your config: two arms that differ only in the prompt, the observe run's items, and the rule written at the top."
+writes = [
+  "replay(config, recorded) in src/tradingresearch/replay.py, at its TODO(w1l4.2): for each arm, the mean score of each of the config's graders over that arm's recorded replies.",
+  "experiments/prompt-v2.toml: a baseline arm on analyze-1 and a variant arm on analyze-2, run on the same ticker-days.",
+  "Its top comment, at TODO(w1l4.2), pre-registers the decision before any run: the primary metric that decides and parsed as the guard, each named by its grader id.",
+]
+show_tests = ["test_replay_grades_each_arm", "test_two_arms_that_differ_only_in_the_prompt"]
 lab = "w1l4"
 concepts = ["paired-comparison", "pre-registration"]
 touches = ["src/tradingresearch/replay.py", "experiments/prompt-v2.toml"]

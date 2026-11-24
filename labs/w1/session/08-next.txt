@@ -1,0 +1,4 @@
+committed `lab w1l2.1: green`: evals/labels.csv, src/tradingresearch/taxonomy.py
+exercise w1l2.2: Count analyses per class
+edit: src/tradingresearch/taxonomy.py (look for TODO(w1l2.2))
+then: tr lab verify

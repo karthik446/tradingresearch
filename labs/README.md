@@ -101,3 +101,5 @@ The labs are an honor system: they are for you. They run on your machine against
 ## For authors
 
 The layout of a week and how to re-run the proof: [labs/w1/README.md](w1/README.md); the proof tool is `labs/tools/prove.py <week>`. `tr lab`'s own tests: `tests/test_lab.py` (plain `pytest`, no network). The runner: `src/tradingresearch/lab.py`, reached through `src/tradingresearch/labmain.py`.
+
+The output the lab pages show (each exercise's first FAIL and its PASS, and a walked-through session) is captured from real `tr lab` runs by `labs/tools/capture.py <week> --write` into `labs/<week>/exercises/*/expected_output/` and `labs/<week>/session/`; `prove.py` fails when a captured file no longer matches what `tr lab` prints.

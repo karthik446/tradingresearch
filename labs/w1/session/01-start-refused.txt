@@ -1,0 +1,1 @@
+lab w1l2 builds on w1l1, which is not finished. Finish it first (`tr lab start w1l1`), or pass --assume-previous to apply the reference solutions of the earlier exercises it builds on and start w1l2 on top of them

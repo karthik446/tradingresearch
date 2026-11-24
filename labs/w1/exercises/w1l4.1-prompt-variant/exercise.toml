@@ -1,6 +1,13 @@
 id = "w1l4.1"
 title = "Write the variant prompt"
 effect = "Observe reports rules for 4 of 4 target classes instead of NO RULE, and 18 of 18 baseline replies with a target failure covered."
+goal = "Write analyze-2, a variant prompt that adds one rule for each of the four target classes, and rule_targets, which finds the lines a variant adds and the class each one aims at."
+what_tested = "rule_targets: every target class is a key; a line in both prompts is no rule; a rule counts whatever its case and needs every word of an option; rules keep the variant's order; one rule may name two classes. Your analyze-2.txt: it changes something, only rules moved, each target class has a rule that reads the right way round."
+writes = [
+  "rule_targets(base, variant) in src/tradingresearch/replay.py, at its TODO(w1l4.1): the lines the variant adds to the base, each filed under every target class whose words it contains.",
+  "prompts/analyze-2.txt: the base prompt plus one rule for each target class (window_name, inference_wider, opinion_cites, label_in_value), and nothing else changed.",
+]
+show_tests = ["test_rule_targets_lists_every_class", "test_a_line_in_both_prompts_is_no_rule"]
 lab = "w1l4"
 concepts = ["prompt-version", "failure-taxonomy"]
 touches = ["src/tradingresearch/replay.py", "prompts/analyze-2.txt"]

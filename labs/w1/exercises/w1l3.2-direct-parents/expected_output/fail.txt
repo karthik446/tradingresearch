@@ -1,0 +1,6 @@
+FAIL w1l3.2 (try 1): The rule on direct parents
+  AMZN 2026-11-13 c4 scored 1: it names sma_20 and sma_50, but its parents c1, c2, c3 cite only
+  close, sma_200 and dist_sma_200_atr. This is the claim in the inference_wider row of your
+  taxonomy.
+  hint 1 unlocks after 2 failed runs; hint 2 unlocks after 5 failed runs; the solution unlocks after
+  10 failed runs or when the check is green

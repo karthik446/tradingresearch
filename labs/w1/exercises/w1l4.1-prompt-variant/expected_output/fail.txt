@@ -1,0 +1,6 @@
+FAIL w1l4.1 (try 1): Write the variant prompt
+  rule_targets returned {} for two identical prompts. Two identical prompts add no rule, and every
+  target class is still a key: {'window_name': [], 'inference_wider': [], 'opinion_cites': [],
+  'label_in_value': []}. The observe prints one line per class, rule or not.
+  hint 1 unlocks after 2 failed runs; hint 2 unlocks after 5 failed runs; the solution unlocks after
+  10 failed runs or when the check is green

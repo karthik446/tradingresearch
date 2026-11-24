@@ -1,0 +1,6 @@
+PASS w1l3.3: Recurse through inference parents
+observe: python labs/w1/exercises/w1l3.3-recurse/observe.py
+  | chain c1 fact (cites high_20) <- c2 inference <- c3 inference <- c4 inference naming high_20
+  |   score 1  grounded: c4 inherits what c1 cites, through c3 and c2
+  | recorded observe run: flagged 19 of 20
+next: `tr lab next` commits it and moves on; `tr lab solution` shows the reference to compare

@@ -1,6 +1,13 @@
 id = "w1l2.3"
 title = "Write the taxonomy table"
 effect = "Observe prints your class rows, the code's own counts for window_name (31 in 15) and label_in_value (4 in 4), and each example found or not."
+goal = "Group your 20 notes into 5 to 8 failure classes and write them up as a table in evals/taxonomy.md. Write code_classes, the classes the code checks find on their own, so the table can be compared with them."
+what_tested = "code_classes on the recorded run and on small runs the test writes: three keys, a number in prose without a window is no window_name, a window in any case. Then your evals/taxonomy.md: 5 to 8 rows of six cells, classes that are failures and not validator reasons, the names later exercises read, counts that match the code, and real examples."
+writes = [
+  "code_classes(run) in src/tradingresearch/taxonomy.py: window_name, label_in_value and cascade, each mapping item to claim ids, as its docstring describes.",
+  "5 to 8 rows in evals/taxonomy.md, one per class: `name: definition`, failing claims, analyses, what catches it today, and one real example as TICKER MM-DD cN \"quote\".",
+]
+show_tests = ["test_code_classes_lists_three_classes", "test_a_number_in_text_without_a_window_is_not_window_name"]
 lab = "w1l2"
 concepts = ["axial-coding", "failure-taxonomy"]
 touches = ["src/tradingresearch/taxonomy.py", "evals/taxonomy.md"]

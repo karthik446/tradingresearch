@@ -1,0 +1,7 @@
+PASS w1l1.1: Reject a claim that cites a source not in the table
+observe: python labs/w1/tools/regrade.py observe
+  | run_c40caab0968e44a3: 20 analyses, 229 claims graded with your check_one
+  |   yours:    claims_valid=0.995  all_claims_valid=0.950 (19 of 20)
+  |   recorded: claims_valid=0.748  all_claims_valid=0.200
+  |   rejected 1: unknown_source=1
+next: `tr lab next` commits it and moves on; `tr lab solution` shows the reference to compare

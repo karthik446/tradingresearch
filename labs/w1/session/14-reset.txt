@@ -1,0 +1,2 @@
+reset w1l2.2: stub restored, failed runs back to 0
+saved your uncommitted edits to src/tradingresearch/taxonomy.py in .tr-lab/backup/w1l2.2-<time>/src/tradingresearch/taxonomy.py before w1l2.2 replaced it

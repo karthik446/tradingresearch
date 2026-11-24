@@ -1,0 +1,6 @@
+FAIL w1l3.6 (try 1): Register the grader and meet the spec
+  graders(['inferences_grounded']) exited: unknown grader(s) ['inferences_grounded']; registered:
+  ['all_claims_valid', 'claims_valid', 'parsed']. A config's `graders = [...]` list goes through
+  this registry, so a grader that is not in GRADERS cannot be used in any experiment.
+  hint 1 unlocks after 2 failed runs; hint 2 unlocks after 5 failed runs; the solution unlocks after
+  10 failed runs or when the check is green

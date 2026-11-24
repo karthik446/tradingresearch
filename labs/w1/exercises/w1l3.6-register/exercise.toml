@@ -1,6 +1,13 @@
 id = "w1l3.6"
 title = "Register the grader and meet the spec"
 effect = "Observe no longer says inferences_grounded is not in GRADERS; its list ends flagged 15 of 20, the 15 rows labelled inference_wider."
+goal = "Register InferencesGrounded so experiment configs can name it, then meet the spec's acceptance on real data: the analyses it flags on the recorded run are the ones you labelled inference_wider."
+what_tested = "graders() finds inferences_grounded and the three graders registered before, in the order asked, and GRADERS holds the class itself. On the recorded run AMZN:2026-11-13 gives 'c4: sma_20, sma_50', and the flagged analyses equal your labels.csv rows with inference_wider."
+writes = [
+  "The GRADERS registry in src/tradingresearch/evals.py, at its TODO(w1l3.6): InferencesGrounded joins it, so a config's graders list can name inferences_grounded.",
+  "Where the flags and your labels disagree, read those analyses and fix whichever is wrong: the grader or evals/labels.csv.",
+]
+show_tests = ["test_registered", "test_flags_match_your_inference_wider_labels"]
 lab = "w1l3"
 concepts = ["grader", "eval-spec", "error-analysis"]
 touches = ["src/tradingresearch/evals.py"]

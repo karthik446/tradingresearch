@@ -1,6 +1,14 @@
 id = "w1l2.1"
 title = "Open-code the 20 analyses"
 effect = "Observe reports notes for 20 of 20 analyses instead of 4, split into missed, caught and clean (author's notes: missed 6)."
+goal = "Read the 20 analyses of the recorded run and note, for each, the first claim a reader would object to and why. Then write tally_notes, which sets your notes against what the code checks already catch."
+what_tested = "tally_notes on small labels files the test writes: clean, caught and missed notes, analyses with no note, rows for no analysis of the run, and the order of each list. Then your evals/labels.csv: one row per analysis, each first_failure a real claim and no cascade, notes that quote claim ids, and at least one failure the code checks miss."
+writes = [
+  "tally_notes(labels, run) in src/tradingresearch/taxonomy.py: the five lists missed, caught, clean, missing and unknown, as its docstring describes.",
+  "One row in evals/labels.csv for each of the 20 analyses: analysis_id, item, first_failure (the claim id a reader objects to first, or - when nothing is wrong) and a note that quotes claim ids.",
+]
+show_tests = ["test_a_clean_note_is_clean", "test_caught_is_about_the_first_failure_itself"]
+show_data = ["evals/labels.csv"]
 lab = "w1l2"
 concepts = ["error-analysis", "open-coding", "trace"]
 touches = ["src/tradingresearch/taxonomy.py", "evals/labels.csv"]

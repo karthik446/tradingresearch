@@ -1,0 +1,25 @@
+PASS w1l3.4: Match whole tokens only
+observe: python labs/w1/tools/regrade.py observe --grader inferences_grounded
+  | (inferences_grounded is not in GRADERS yet: experiment configs cannot name it)
+  | AAPL:2026-11-12  0  c8: sma_20, sma_50; c9: high_20
+  | AAPL:2026-11-13  0  c4: sma_20, sma_50
+  | AMZN:2026-11-12  0  c4: sma_20, sma_50
+  | AMZN:2026-11-13  0  c4: sma_20, sma_50; c9: high_20
+  | CAT:2026-11-12   0  c4: sma_20, sma_50
+  | CAT:2026-11-13   1
+  | HD:2026-11-12    0  c4: sma_20; c11: high_20
+  | HD:2026-11-13    0  c4: sma_20
+  | JPM:2026-11-12   0  c4: sma_20, sma_50
+  | JPM:2026-11-13   0  c4: ema_21, ema_9, sma_20, sma_50; c10: high_20
+  | KO:2026-11-12    0  c8: ema_21, ema_9, sma_20, sma_50
+  | KO:2026-11-13    1
+  | MSFT:2026-11-12  0  c8: ema_9, sma_20
+  | MSFT:2026-11-13  1
+  | NVDA:2026-11-12  0  c8: low_20
+  | NVDA:2026-11-13  0  c8: ema_21, ema_9, sma_20, sma_50
+  | UNH:2026-11-12   0  c9: sma_20, sma_50
+  | UNH:2026-11-13   0  c9: ema_21, ema_9, sma_20, sma_50
+  | XOM:2026-11-12   0  c7: sma_20
+  | XOM:2026-11-13   0  c5: sma_50
+  | flagged 17 of 20  (inferences_grounded on run_c40caab0968e44a3)
+next: `tr lab next` commits it and moves on; `tr lab solution` shows the reference to compare

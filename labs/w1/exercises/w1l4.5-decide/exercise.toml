@@ -1,6 +1,13 @@
 id = "w1l4.5"
 title = "Apply the pre-registered rule"
 effect = "Observe's last line changes from undecided to: decision (primary all_claims_valid, guard parsed): ship."
+goal = "Write decide: apply the rule the config pre-registered, so the recorded comparison ends in ship or keep baseline instead of undecided."
+what_tested = "The recorded result, primary CI [+0.450, +0.950] with guard diff +0.000, ships. An interval that includes or touches 0 keeps the baseline however large its mean, any low end above 0 ships, and a guard that drops vetoes."
+writes = [
+  "decide(primary_ci, guard_diff) in src/tradingresearch/paired.py, at its TODO(w1l4.5): \"ship\" when the primary interval is above 0 and the guard did not drop, else \"keep baseline\".",
+  "Nothing else: the observe then prints the decision the recorded comparison reaches.",
+]
+show_tests = ["test_the_recorded_result_ships", "test_an_interval_that_includes_zero_does_not_ship"]
 lab = "w1l4"
 concepts = ["pre-registration", "confidence-interval"]
 touches = ["src/tradingresearch/paired.py"]

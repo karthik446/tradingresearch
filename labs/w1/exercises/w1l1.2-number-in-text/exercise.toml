@@ -1,6 +1,13 @@
 id = "w1l1.2"
 title = "Reject a number written in the prose"
 effect = "Observe drops claims_valid from 0.995 to 0.766 and fully valid analyses from 19 to 5, with 34 claims rejected as number_in_text."
+goal = "Reject a claim that writes a number in its prose instead of in {value}, such as the '20-day high' in AAPL:2026-11-12 c5. Dates and table names such as sma_200 stay allowed."
+what_tested = "AAPL:2026-11-12 c5 is rejected as number_in_text, and its c1 (a date) and c2 (sma_200) are not. The recorded run has exactly 34 such claims. Digits from other scripts count too, and the detail is exactly the first 120 characters of the text."
+writes = [
+  "The number_in_text rule in check_one (src/tradingresearch/analyze.py), at its TODO(w1l1.2): a digit outside {value}, a YYYY-MM-DD date or a name such as sma_200 rejects the claim.",
+  "The detail: the first 120 characters of the claim's text.",
+]
+show_tests = ["test_aapl_2026_11_12_c5_names_a_window_in_prose", "test_dates_and_table_names_are_not_numbers_in_text"]
 lab = "w1l1"
 concepts = ["claim-check"]
 touches = ["src/tradingresearch/analyze.py"]

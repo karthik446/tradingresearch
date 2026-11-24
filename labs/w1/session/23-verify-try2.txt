@@ -1,0 +1,6 @@
+FAIL w1l1.1 (try 2): Reject a claim that cites a source not in the table
+  validate_claims crashed with KeyError 'src_aa2421e8c7298ffd' on UNH:2026-11-12: a claim cites a
+  source id that is not in the table and check_one looked it up in `values`. Reject it as
+  unknown_source before any lookup.
+  hint 1 is unlocked (`tr lab hint`); hint 2 unlocks after 5 failed runs; the solution unlocks after
+  10 failed runs or when the check is green

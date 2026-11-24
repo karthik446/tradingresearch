@@ -1,0 +1,5 @@
+FAIL w1l4.5 (try 1): Apply the pre-registered rule
+  decide returned 'undecided' for primary CI [+0.450, +0.950] and guard diff +0.000. The rule: ship
+  if the interval's low end is above 0 and parsed did not drop.
+  hint 1 unlocks after 2 failed runs; hint 2 unlocks after 5 failed runs; the solution unlocks after
+  10 failed runs or when the check is green
