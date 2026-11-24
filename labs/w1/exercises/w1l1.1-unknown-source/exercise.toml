@@ -1,5 +1,6 @@
 id = "w1l1.1"
 title = "Reject a claim that cites a source not in the table"
+effect = "Observe stops crashing on UNH:2026-11-12: claims_valid reads 0.995, 19 of 20 analyses fully valid, unknown_source=1."
 lab = "w1l1"
 concepts = ["source-table", "claim-check"]
 touches = ["src/tradingresearch/analyze.py"]

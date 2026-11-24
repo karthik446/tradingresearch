@@ -1,5 +1,6 @@
 id = "w1l4.2"
 title = "Write the experiment config"
+effect = "Observe pre-flights 2 arms x 20 ticker-days = 40 calls and grades both: all_claims_valid 0.150 for baseline, 0.850 for variant."
 lab = "w1l4"
 concepts = ["paired-comparison", "pre-registration"]
 touches = ["src/tradingresearch/replay.py", "experiments/prompt-v2.toml"]

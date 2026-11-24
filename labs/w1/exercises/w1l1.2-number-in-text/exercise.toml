@@ -1,5 +1,6 @@
 id = "w1l1.2"
 title = "Reject a number written in the prose"
+effect = "Observe drops claims_valid from 0.995 to 0.766 and fully valid analyses from 19 to 5, with 34 claims rejected as number_in_text."
 lab = "w1l1"
 concepts = ["claim-check"]
 touches = ["src/tradingresearch/analyze.py"]

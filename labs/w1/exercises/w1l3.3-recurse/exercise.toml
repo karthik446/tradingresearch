@@ -1,5 +1,6 @@
 id = "w1l3.3"
 title = "Recurse through inference parents"
+effect = "Observe scores its four-claim chain 1 instead of 0, as c4 inherits what c1 cites; the recorded run stays at flagged 19 of 20."
 lab = "w1l3"
 concepts = ["code-checkable-grader"]
 touches = ["src/tradingresearch/evals.py"]

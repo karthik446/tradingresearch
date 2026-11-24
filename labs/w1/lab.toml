@@ -16,18 +16,26 @@ solution = 10
 [labs.w1l1]
 title = "claim checks"
 page = "pages/w1l1.md"
+goal = "Put back, one at a time, the four code checks that reject a bad claim in a model reply and say why, tested on the author's recorded replies. These checks are the floor every later eval in the track stands on."
+section = [1, 2]
 
 [labs.w1l2]
 title = "open and axial coding"
 page = "pages/w1l2.md"
+goal = "Read 20 recorded analyses, write one note per analysis on its first failure, then group the notes into failure classes with counts. This taxonomy decides which evals the track builds next."
+section = [3, 4]
 
 [labs.w1l3]
 title = "a code grader for the largest class suitable for a code grader"
 page = "pages/w1l3.md"
+goal = "Build a code grader for the largest failure class code can catch: inferences that name indicators their parent claims never cited. It is the first new eval of the track, built to a written spec."
+section = [5]
 
 [labs.w1l4]
 title = "a variant prompt, a paired experiment, a decision"
 page = "pages/w1l4.md"
+goal = "Write a variant prompt with one rule per failure class, pre-register a paired experiment against the baseline, and compute the paired test, interval and ship decision by hand. This is how the track decides a change."
+section = [6, 7]
 
 # What labs/tools/prove.py checks after the last exercise: these files must equal the tag byte for byte (the runner
 # ignores this table).

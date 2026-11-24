@@ -1,5 +1,6 @@
 id = "w1l2.4"
 title = "Back-fill the classes and make the counts add up"
+effect = "Observe empties all four to-do lists and ends: nothing left, every failing row has classes that agree with the checks and add up."
 lab = "w1l2"
 concepts = ["axial-coding", "failure-taxonomy"]
 touches = ["src/tradingresearch/taxonomy.py", "evals/labels.csv"]

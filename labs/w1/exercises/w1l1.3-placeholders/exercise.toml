@@ -1,5 +1,6 @@
 id = "w1l1.3"
 title = "Allow only {value}, and only with a value"
+effect = "Observe drops claims_valid from 0.766 to 0.748 and fully valid analyses from 5 to 4, with 4 claims rejected as empty_placeholder."
 lab = "w1l1"
 concepts = ["claim-check"]
 touches = ["src/tradingresearch/analyze.py"]

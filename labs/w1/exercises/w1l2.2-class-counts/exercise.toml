@@ -1,5 +1,6 @@
 id = "w1l2.2"
 title = "Count analyses per class"
+effect = "Observe counts 7 classes in the author's labels, judgement_in_fact 19 first; your own labels show 0 classes until w1l2.4."
 lab = "w1l2"
 concepts = ["axial-coding", "failure-taxonomy"]
 touches = ["src/tradingresearch/taxonomy.py"]

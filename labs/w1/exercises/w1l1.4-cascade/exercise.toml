@@ -1,5 +1,6 @@
 id = "w1l1.4"
 title = "Reject an inference that stands on a rejected claim"
+effect = "Observe keeps claims_valid at the author's 0.748, but 14 of the 19 not_a_claim rejections now show as bad_derivation."
 lab = "w1l1"
 concepts = ["claim-check", "failure-taxonomy"]
 touches = ["src/tradingresearch/analyze.py"]

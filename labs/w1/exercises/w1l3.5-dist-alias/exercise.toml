@@ -1,5 +1,6 @@
 id = "w1l3.5"
 title = "Let dist_<name>_atr ground <name>"
+effect = "Observe drops from flagged 17 of 20 to flagged 15 of 20, and AAPL:2026-11-12 loses its c9: high_20 flag."
 lab = "w1l3"
 concepts = ["code-checkable-grader", "eval-spec"]
 touches = ["src/tradingresearch/evals.py"]

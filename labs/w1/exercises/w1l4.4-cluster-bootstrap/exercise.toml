@@ -1,5 +1,6 @@
 id = "w1l4.4"
 title = "Cluster bootstrap interval"
+effect = "Observe's all_claims_valid CI moves from [+0.000, +0.000] to [+0.450, +0.950], the interval a paired comparison reports."
 lab = "w1l4"
 concepts = ["cluster-bootstrap", "confidence-interval"]
 touches = ["src/tradingresearch/paired.py"]

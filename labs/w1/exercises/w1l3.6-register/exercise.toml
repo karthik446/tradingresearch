@@ -1,5 +1,6 @@
 id = "w1l3.6"
 title = "Register the grader and meet the spec"
+effect = "Observe no longer says inferences_grounded is not in GRADERS; its list ends flagged 15 of 20, the 15 rows labelled inference_wider."
 lab = "w1l3"
 concepts = ["grader", "eval-spec", "error-analysis"]
 touches = ["src/tradingresearch/evals.py"]

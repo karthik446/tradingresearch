@@ -1,5 +1,6 @@
 id = "w1l3.4"
 title = "Match whole tokens only"
+effect = "Observe drops from flagged 19 of 20 to flagged 17 of 20: sma_20 no longer counts as named inside sma_200."
 lab = "w1l3"
 concepts = ["code-checkable-grader"]
 touches = ["src/tradingresearch/evals.py"]

@@ -1,5 +1,6 @@
 id = "w1l4.1"
 title = "Write the variant prompt"
+effect = "Observe reports rules for 4 of 4 target classes instead of NO RULE, and 18 of 18 baseline replies with a target failure covered."
 lab = "w1l4"
 concepts = ["prompt-version", "failure-taxonomy"]
 touches = ["src/tradingresearch/replay.py", "prompts/analyze-2.txt"]

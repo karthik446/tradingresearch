@@ -1,5 +1,6 @@
 id = "w1l4.5"
 title = "Apply the pre-registered rule"
+effect = "Observe's last line changes from undecided to: decision (primary all_claims_valid, guard parsed): ship."
 lab = "w1l4"
 concepts = ["pre-registration", "confidence-interval"]
 touches = ["src/tradingresearch/paired.py"]

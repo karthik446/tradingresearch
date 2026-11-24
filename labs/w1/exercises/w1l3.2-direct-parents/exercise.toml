@@ -1,5 +1,6 @@
 id = "w1l3.2"
 title = "The rule on direct parents"
+effect = "Observe with the inferences_grounded grader goes from flagged 0 of 20 to flagged 19 of 20, each flag listing its ungrounded names."
 lab = "w1l3"
 concepts = ["code-checkable-grader", "eval-spec"]
 touches = ["src/tradingresearch/evals.py"]

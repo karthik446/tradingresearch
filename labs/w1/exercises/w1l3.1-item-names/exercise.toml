@@ -1,5 +1,6 @@
 id = "w1l3.1"
 title = "Put source names in each dataset item"
+effect = "Observe shows expected keys ['names', 'values'] and names for 47 of 47 instead of 0 of 47, so the dataset sha256 changes."
 lab = "w1l3"
 concepts = ["code-checkable-grader", "grader"]
 touches = ["src/tradingresearch/analyze.py"]

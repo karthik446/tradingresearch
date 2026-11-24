@@ -1,5 +1,6 @@
 id = "w1l2.1"
 title = "Open-code the 20 analyses"
+effect = "Observe reports notes for 20 of 20 analyses instead of 4, split into missed, caught and clean (author's notes: missed 6)."
 lab = "w1l2"
 concepts = ["error-analysis", "open-coding", "trace"]
 touches = ["src/tradingresearch/taxonomy.py", "evals/labels.csv"]

@@ -1,5 +1,6 @@
 id = "w1l4.3"
 title = "Paired differences and McNemar"
+effect = "Observe's all_claims_valid row shows diff +0.700 and up 14 down 0, p=0.000122; the CI stays at zero and the decision undecided."
 lab = "w1l4"
 concepts = ["paired-comparison", "mcnemars-test"]
 touches = ["src/tradingresearch/paired.py"]

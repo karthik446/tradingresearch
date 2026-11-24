@@ -1,5 +1,6 @@
 id = "w1l2.3"
 title = "Write the taxonomy table"
+effect = "Observe prints your class rows, the code's own counts for window_name (31 in 15) and label_in_value (4 in 4), and each example found or not."
 lab = "w1l2"
 concepts = ["axial-coding", "failure-taxonomy"]
 touches = ["src/tradingresearch/taxonomy.py", "evals/taxonomy.md"]
