@@ -15,7 +15,7 @@ One entry per term: what it means, where to read it in the [week 2 chapter](http
 | [ATR allowance](#atr-allowance) | how far past the next level a target may sit: half the 14-day ATR | w2l3.2 to w2l3.4 |
 | [Cents](#cents) | comparing prices rounded to 2 decimals, as the model quotes them | w2l3.4 |
 | [Grader](#grader) | a class that scores one whole run of the model, for an experiment to name by id | w2l4.1 to w2l4.3 |
-| [Registry](#registry) | `evals.GRADERS`, the id → class table that `@grader` fills and configs read | w2l4.1 to w2l4.3 |
+| [Registry](#registry) | `evals.GRADERS`, the table from id to class that `@grader` fills and configs read | w2l4.1 to w2l4.3 |
 | [Thesis sample](#thesis-sample) | one recorded reply of the thesis model: its parse status and its parsed theses | w2l4.1, w2l4.2 |
 | [Draft judge](#draft-judge) | a model grader that is registered but refuses to score until it is validated | w2l4.3 |
 
