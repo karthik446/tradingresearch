@@ -1,0 +1,18 @@
+why: checks empty_placeholder before bad_placeholder; '{value} and {foo}' with value null reports empty_placeholder
+expect: and {foo}.' with value null gave
+before: GREEN (round-2 reader)
+--- a/src/tradingresearch/analyze.py
++++ b/src/tradingresearch/analyze.py
+@@ -254,10 +254,10 @@ def check_one(item: object, values: dict[str, float | None], kept: dict[str, Cla
+     if re.search(r"\d", ALLOWED_DIGITS.sub("", text)):
+         return "number_in_text", text[:120]
+     placeholders = set(re.findall(r"\{[^}]*\}", text))
+-    if placeholders - {"{value}"}:
+-        return "bad_placeholder", ", ".join(sorted(placeholders - {"{value}"}))
+     if "{value}" in placeholders and value is None:
+         return "empty_placeholder", "text has {value} but value is null"
++    if placeholders - {"{value}"}:
++        return "bad_placeholder", ", ".join(sorted(placeholders - {"{value}"}))
+     cited = list(item.get("source_ids") or [])
+     unknown = [s for s in cited if s not in values]
+     if unknown:

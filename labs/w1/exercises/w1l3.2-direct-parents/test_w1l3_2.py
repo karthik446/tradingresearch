@@ -96,3 +96,11 @@ def test_every_ungrounded_name_is_listed():
         f"c2 names sma_20, sma_50 and high_20, its parent c1 cites only close; explanation is {score.explanation!r}. "
         "List all three, sorted: 'c2: high_20, sma_20, sma_50'"
     )
+
+
+def test_ungrounded_names_are_sorted_by_name_not_by_length():
+    score = grade(fact("c1", "s1"), inference("c2", "Above sma_200 and sma_20.", "c1"))
+    assert score.explanation == "c2: sma_20, sma_200", (
+        f"c2 names sma_200 and sma_20, its parent c1 cites only close; explanation is {score.explanation!r}. Write "
+        "the ungrounded names, sorted as strings: 'c2: sma_20, sma_200', whatever order the vocabulary is searched in."
+    )

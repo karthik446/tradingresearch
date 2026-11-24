@@ -1,0 +1,19 @@
+why: runs the unknown-source check after the number_in_opinion check, so an opinion with a value and a made-up id is reported as number_in_opinion
+expect: has value 3.0 and cites src_zz_new
+before: GREEN (round-2 reader)
+--- a/src/tradingresearch/analyze.py
++++ b/src/tradingresearch/analyze.py
+@@ -258,11 +258,11 @@ def check_one(item: object, values: dict[str, float | None], kept: dict[str, Cla
+     #   detail: the others, sorted, joined by ", "), and it needs a value (empty_placeholder,
+     #   detail: "text has {value} but value is null").
+     cited = list(item.get("source_ids") or [])
++    if tag == "opinion" and value is not None:
++        return "number_in_opinion", f"value={value}"
+     unknown = [s for s in cited if s not in values]
+     if unknown:
+         return "unknown_source", ", ".join(unknown)
+-    if tag == "opinion" and value is not None:
+-        return "number_in_opinion", f"value={value}"
+     if tag == "fact" and value is not None:
+         if not any(values[s] is not None and close_to(float(value), values[s]) for s in cited):
+             got = ", ".join(f"{values[s]}" for s in cited)

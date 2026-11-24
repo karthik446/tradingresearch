@@ -1,0 +1,14 @@
+why: compares variant lines (stripped) with base lines not stripped, so indented base lines come back as rules
+expect: Lines are compared stripped on both sides
+before: GREEN (round-2 reader)
+--- a/src/tradingresearch/replay.py
++++ b/src/tradingresearch/replay.py
+@@ -76,7 +76,7 @@ def rule_targets(base: str, variant: str) -> dict[str, list[str]]:
+     CLASS_WORDS is a key, with [] when no rule names it; a rule that names two classes is under both. Rules keep the
+     variant's order.
+     """
+-    old = {line.strip() for line in base.splitlines()}
++    old = set(base.splitlines())
+     rules = [line.strip() for line in variant.splitlines() if line.strip() and line.strip() not in old]
+     return {name: [rule for rule in rules if any(all(word in rule.lower() for word in words) for words in options)]
+             for name, options in CLASS_WORDS.items()}

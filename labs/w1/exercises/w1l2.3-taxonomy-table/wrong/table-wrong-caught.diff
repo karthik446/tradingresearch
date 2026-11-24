@@ -1,0 +1,14 @@
+why: taxonomy.md: window_name said to be caught by nothing
+expect: window_name: Caught today by says 'nothing'
+before: GREEN (round-2 reader)
+--- a/evals/taxonomy.md
++++ b/evals/taxonomy.md
+@@ -6,7 +6,7 @@ and 2026-11-13), 229 claims. Open-coded notes are in `labels.csv`; each class be
+ 
+ | # | Class | Claims | Analyses | Caught today by | Example |
+ |---|---|---|---|---|---|
+-| 1 | window_name: an indicator named by its window ("200-day", "20-day", "14-day RSI") | 31 | 15 | code (`number_in_text`) | JPM 11-12 c2 "The 200-day average, sma_200, stood at {value}" |
++| 1 | window_name: an indicator named by its window ("200-day", "20-day", "14-day RSI") | 31 | 15 | nothing | JPM 11-12 c2 "The 200-day average, sma_200, stood at {value}" |
+ | 2 | inference_wider: an inference names indicators its parents never cite | 15 | 15 | nothing directly; 9 are rejected only because a parent failed | AMZN 11-13 c4 "above sma_20, sma_50 and sma_200" from close and sma_200 |
+ | 3 | judgement_in_fact: a fact carries a verdict the source does not state | 33 | 19 | nothing (judge later, ADR-001) | HD 11-13 c8 "buyers finished the day in control" |
+ | 4 | opinion_cites: an opinion lists derived_from | 5 | 5 | code (`not_a_claim`, record rules) | CAT 11-13 c12 |

@@ -118,6 +118,21 @@ def test_code_classes_reads_the_run_it_is_given(tmp_path):
     )
 
 
+def test_a_window_is_digits_then_day_whatever_its_case(tmp_path):
+    failing = trace("ZZZ:2030-01-02", {"src_a": 61.0, "src_b": 412.0},
+                    claim("c1", "fact", "The 14-Day RSI stood at {value}.", 61.0, ["src_a"], []),
+                    claim("c2", "fact", "The close stood 5 USD above its mid-day level.", None, ["src_b"], []))
+    run = tmp_path / "run.jsonl"
+    run.write_text(json.dumps(failing) + "\n")
+    got = code_classes(run)["window_name"]
+    assert got == {"ZZZ:2030-01-02": ["c1"]}, (
+        f"on a one-trace run written for this test (c1 '14-Day RSI' in prose, c2 '5 USD' and 'mid-day' in prose; "
+        f"both rejected as number_in_text) window_name is {got}; expected {{'ZZZ:2030-01-02': ['c1']}}. A window is "
+        "a number of days, digits then '-day', in any case ('14-Day' too); a '-day' word with no digits ('mid-day') "
+        "names no window. WINDOW in taxonomy.py says exactly that."
+    )
+
+
 def table() -> list[list[str]]:
     path = REPO / "evals" / "taxonomy.md"
     assert path.exists(), f"{path} does not exist"
@@ -191,6 +206,15 @@ def test_the_classes_code_finds_match_the_recording():
             f"{name}: the table says {rows[name][0]} claims in {rows[name][1]} analyses, but the observe run has "
             f"{claims} claims {HOW[name]}, in {analyses} analyses. These two counts come straight from the code "
             "checks: `uv run python -m tradingresearch.taxonomy table` puts your code_classes next to the table."
+        )
+
+
+def test_the_classes_code_finds_say_code_catches_them():
+    rows = {row[1].partition(":")[0].strip(): row[4] for row in table()}
+    for name, reason in (("window_name", "number_in_text"), ("label_in_value", "empty_placeholder")):
+        assert rows[name].lower().startswith("code"), (
+            f"{name}: Caught today by says {rows[name]!r}, but the code checks reject every {name} claim "
+            f"({HOW[name]}). Write what catches it as the TODO asks, code and the reason, here {reason}."
         )
 
 

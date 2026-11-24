@@ -178,3 +178,14 @@ def test_the_new_grader_runs_and_the_rule_is_written():
         "decision does not read vetoes nothing."
     )
     assert cfg.max_usd_per_arm <= 1.0, f"max_usd_per_arm is {cfg.max_usd_per_arm}: the author's cap is $1.00 per arm"
+
+
+def test_an_arm_without_a_recording_is_left_out(tmp_path):
+    cfg = a_config(tmp_path, [("baseline", "analyze-1"), ("variant", "analyze-2")], ["all_claims_valid"])
+    got = replay(cfg, {"analyze-1": RECORDED["analyze-1"]})
+    want = {"baseline": {"all_claims_valid": regraded(RECORDED["analyze-1"], "all_claims_valid")}}
+    assert same(got, want), (
+        f"replay returned {got!r} for arms baseline (analyze-1) and variant (analyze-2) with only analyze-1 recorded; "
+        f"expected {want!r}. An arm whose prompt has no recording is left out, as the docstring says: an empty {{}} "
+        "under its name would read as 'ran, and no grader scored it'."
+    )

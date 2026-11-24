@@ -1,0 +1,14 @@
+why: splits classes on ',' as well as ';' (a class list 'a,b' would count a and b)
+expect: whose classes cell is 'window_name,judgement_in_fact'
+before: GREEN (round-2 reader)
+--- a/src/tradingresearch/taxonomy.py
++++ b/src/tradingresearch/taxonomy.py
+@@ -99,7 +99,7 @@ def class_counts(path: Path) -> dict[str, int]:
+     counts: Counter[str] = Counter()
+     with Path(path).open(newline="") as fh:
+         for row in csv.DictReader(fh):
+-            counts.update({name.strip() for name in (row["classes"] or "").split(";")} - TAGS - {""})
++            counts.update({name.strip() for name in re.split(r"[;,]", row["classes"] or "")} - TAGS - {""})
+     return dict(counts)
+ 
+ 

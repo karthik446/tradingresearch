@@ -3,8 +3,9 @@
 ## Hint 1
 
 `"sma_20" in "sma_200"` is True. Match the name only where the character before and after it cannot be part of a
-name: a letter, a digit or `_`. (`\b` gives the same here because `_` is a word character; the author spells the
-class out so the rule reads like the spec.)
+name: a letter, a digit or `_`. `\b` is not the same: it needs a word character on one side of it, so after a name
+that ends in a `)`, such as `rsi_14(close)`, followed by a space or a full stop, it never matches. Test the characters
+around the name, not a word boundary.
 
 ## Hint 2
 

@@ -1,0 +1,14 @@
+why: compares the table's Claims column, not Analyses, with class_counts
+expect: (its Claims column says 18)
+before: GREEN (round-2 reader)
+--- a/src/tradingresearch/taxonomy.py
++++ b/src/tradingresearch/taxonomy.py
+@@ -136,7 +136,7 @@ def backfill_todo(labels: Path, taxonomy: Path, run: Path) -> dict[str, list[str
+     """
+     with Path(labels).open(newline="") as fh:
+         rows = list(csv.DictReader(fh))
+-    table = {row["name"]: row["analyses"] for row in table_rows(taxonomy)}
++    table = {row["name"]: row["claims"] for row in table_rows(taxonomy)}
+     found, counts = code_classes(run), class_counts(labels)
+     out: dict[str, list[str]] = {"unlabelled": [], "unknown": [], "code": [], "counts": []}
+     for row in rows:

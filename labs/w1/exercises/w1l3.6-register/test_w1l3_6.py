@@ -71,3 +71,14 @@ def test_every_grader_is_registered_in_the_order_asked():
         assert got == names, (
             f"graders({names}) returned graders {got}: one grader per name, in the order the config lists them"
         )
+
+
+def test_the_grader_is_an_entry_of_GRADERS():
+    from tradingresearch.evals import GRADERS, InferencesGrounded
+
+    got = GRADERS.get("inferences_grounded")
+    assert got is InferencesGrounded, (
+        f"GRADERS['inferences_grounded'] is {got!r}; expected the class InferencesGrounded. GRADERS is the registry "
+        "itself: graders() and labs/w1/tools/regrade.py both read it, so a name special-cased inside graders() is "
+        "still missing for every other reader. Add the class to GRADERS."
+    )

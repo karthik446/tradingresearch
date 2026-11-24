@@ -1,0 +1,14 @@
+why: takes the cluster from the item id's ticker, ignoring the clusters argument
+expect: with clusters that are the 2 sessions
+before: RED (round-2 reader) with only 'DID NOT RAISE ValueError' (R2-F06)
+--- a/src/tradingresearch/paired.py
++++ b/src/tradingresearch/paired.py
+@@ -47,7 +47,7 @@ def cluster_bootstrap(diffs: dict[str, float], clusters: dict[str, str], *, n: i
+     """Interval for the mean diff: resample whole clusters (tickers) with replacement, n times."""
+     by: dict[str, list[float]] = {}
+     for item, d in diffs.items():
+-        by.setdefault(clusters[item], []).append(d)
++        by.setdefault(item.split(":")[0], []).append(d)
+     if len(by) < MIN_CLUSTERS:
+         raise ValueError(f"{len(by)} clusters; a paired interval needs at least {MIN_CLUSTERS}")
+     rng, keys = random.Random(seed), sorted(by)

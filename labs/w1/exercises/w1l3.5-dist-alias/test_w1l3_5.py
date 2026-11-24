@@ -62,3 +62,22 @@ def test_every_cited_dist_atr_name_adds_its_level():
         "dist_sma_200_atr and dist_high_20_atr, so both sma_200 and high_20 are grounded. Each cited "
         "dist_<name>_atr adds its own <name>."
     )
+
+
+def test_the_alias_runs_one_way_only():
+    score = grade(fact("c1", "s2"), inference("c2", "Far from dist_sma_200_atr.", "c1"))
+    assert score.explanation == "c2: dist_sma_200_atr", (
+        f"c2 'Far from dist_sma_200_atr.' derives from a fact citing only sma_200, yet scored {score.value:g} "
+        f"({score.explanation}); expected 'c2: dist_sma_200_atr'. A cited dist_<name>_atr grounds <name>, not the "
+        "other way: a parent citing the level never measured the distance in ATRs."
+    )
+
+
+def test_an_inherited_dist_atr_source_grounds_its_level_too():
+    score = grade(fact("c1", "s3"), inference("c2", "Far from the long average.", "c1"),
+                  inference("c3", "Above sma_200.", "c2"))
+    assert score.value == 1.0, (
+        f"c3 'Above sma_200.' derives from c2, which derives from c1 citing dist_sma_200_atr; it scored 0 "
+        f"({score.explanation}). What a grandparent cites counts as cited (w1l3.3), and the alias applies to every "
+        "cited dist_<name>_atr, inherited ones included, so sma_200 is grounded."
+    )

@@ -1,0 +1,13 @@
+why: an arm with no recording is returned with {} instead of being left out
+expect: with only analyze-1 recorded
+before: GREEN (round-2 reader)
+--- a/src/tradingresearch/replay.py
++++ b/src/tradingresearch/replay.py
+@@ -96,6 +96,7 @@ def replay(config: Path, recorded: dict[str, Path]) -> dict[str, dict[str, float
+     out: dict[str, dict[str, float]] = {}
+     for arm in cfg.arms:
+         if arm.prompt not in recorded:
++            out[arm.name] = {}
+             continue
+         rows = [row for row in load_rows(recorded[arm.prompt]) if row["item"] in items]
+         means = {}

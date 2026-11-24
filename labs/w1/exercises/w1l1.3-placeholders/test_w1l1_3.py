@@ -85,3 +85,15 @@ def test_several_bad_placeholders_are_sorted():
         f"a fact {text!r} gave {got}; expected ('bad_placeholder', '{{alpha}}, {{zeta}}'). With more than one bad "
         "placeholder the detail lists them sorted, whatever order the text has them in."
     )
+
+
+def test_a_bad_placeholder_is_reported_before_an_empty_value():
+    text = "The close is {value} and {foo}."
+    claim = {"id": "c1", "tag": "fact", "text": text, "value": None, "unit": None, "source_ids": ["src_close"],
+             "derived_from": [], "steps": None}
+    got = reasons({"claims": [claim]}, {"src_close": 1.0}).get("c1")
+    assert got == ("bad_placeholder", "{foo}"), (
+        f"a fact {text!r} with value null gave {got}; expected ('bad_placeholder', '{{foo}}'). Both rules are broken; "
+        "check_one reports the first one in the order the TODO lists them: a placeholder other than {value} first, "
+        "then {value} with no value."
+    )

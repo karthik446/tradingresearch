@@ -1,0 +1,14 @@
+why: a row whose first_failure is left blank is filed as clean
+expect: with first_failure left blank was listed under clean
+before: GREEN (round-2 reader)
+--- a/src/tradingresearch/taxonomy.py
++++ b/src/tradingresearch/taxonomy.py
+@@ -81,7 +81,7 @@ def tally_notes(labels: Path, run: Path) -> dict[str, list[str]]:
+         row = notes.get(trace["analysis_id"])
+         if row is None:
+             out["missing"].append(trace["item"])
+-        elif row["first_failure"] == "-":
++        elif row["first_failure"].strip() in ("-", ""):
+             out["clean"].append(trace["item"])
+         else:
+             kind = "caught" if row["first_failure"] in dict(rejected(trace)) else "missed"

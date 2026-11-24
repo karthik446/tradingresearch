@@ -1,0 +1,14 @@
+why: only checks a's items are in b; extra items in b pass
+expect: plus ZZ:2026-11-13, which a never answered
+before: GREEN (round-2 reader)
+--- a/src/tradingresearch/paired.py
++++ b/src/tradingresearch/paired.py
+@@ -23,7 +23,7 @@ def load(path: Path) -> dict[str, dict]:
+ 
+ def paired_diff(a: dict[str, dict], b: dict[str, dict], metric: str) -> dict[str, float]:
+     """Per item, b's score minus a's. Both arms must have the same items, or the pairs mean nothing."""
+-    if a.keys() != b.keys():
++    if not a.keys() <= b.keys():
+         raise ValueError(f"arms differ in items: {sorted(a.keys() ^ b.keys())}")
+     return {item: b[item]["scores"][metric] - a[item]["scores"][metric] for item in sorted(a)}
+ 

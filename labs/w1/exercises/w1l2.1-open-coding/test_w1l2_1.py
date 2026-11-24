@@ -127,6 +127,26 @@ def test_every_unknown_row_is_listed_in_the_files_order(tmp_path):
     )
 
 
+def test_the_lists_name_the_traces_item(tmp_path):
+    path = notes(tmp_path, ("AMZN:2026-11-13", "c4"), ("KO:2026-11-13", "-"))
+    path.write_text(path.read_text().replace("AMZN:2026-11-13", "AMZN:2026-11-31").replace("KO:2026", "K0:2026"))
+    got = tally_notes(path, RUN)
+    assert got.get("missed") == ["AMZN:2026-11-13 c4"] and got.get("clean") == ["KO:2026-11-13"], (
+        f"two rows carry the real analysis_ids of AMZN:2026-11-13 and KO:2026-11-13 but miswritten items "
+        f"('AMZN:2026-11-31', 'K0:2026-11-13'); got missed={got.get('missed')}, clean={got.get('clean')}. Expected "
+        "missed=['AMZN:2026-11-13 c4'], clean=['KO:2026-11-13']: the id says which trace a note is about, and the "
+        "lists name that trace's item, as the run has it."
+    )
+
+
+def test_a_blank_first_failure_is_not_clean(tmp_path):
+    got = tally(tmp_path, ("KO:2026-11-13", ""))
+    assert "KO:2026-11-13" not in got["clean"], (
+        f"a note on KO:2026-11-13 with first_failure left blank was listed under clean (clean={got['clean']}). Only "
+        "'-' says 'nothing wrong'; a blank cell is a note not finished yet, not a verdict."
+    )
+
+
 def labels() -> list[dict]:
     path = REPO / "evals" / "labels.csv"
     assert path.exists(), f"{path} does not exist; start it with the header {','.join(HEADER)}"

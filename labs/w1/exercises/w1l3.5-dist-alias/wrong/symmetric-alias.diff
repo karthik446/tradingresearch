@@ -1,0 +1,13 @@
+why: alias both ways: a cited sma_200 also grounds dist_sma_200_atr
+expect: A cited dist_<name>_atr grounds <name>, not the other way
+before: GREEN (round-2 reader)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -59,6 +59,7 @@ class InferencesGrounded:
+                 return set()
+             found = {names.get(source, "") for source in claim.get("source_ids") or []}
+             found |= {name[5:-4] for name in found if name.startswith("dist_") and name.endswith("_atr")}
++            found |= {f"dist_{name}_atr" for name in found if name}
+             for parent in claim.get("derived_from") or []:
+                 found |= cited(parent, seen | {claim_id})
+             return found

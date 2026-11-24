@@ -24,7 +24,8 @@ KEYS = {"unlabelled", "unknown", "code", "counts"}
 
 
 def files(tmp_path: Path, rows: dict[str, str], table: dict[str, int]) -> tuple[Path, Path]:
-    """labels.csv with one row per item -> classes (first_failure c1, or - when classes is '-'), and a table."""
+    """labels.csv with one row per item -> classes (first_failure c1, or - when classes is '-'), and a table whose
+    Claims column (count + 3) differs from its Analyses column (count)."""
     ids = {r["item"]: r["analysis_id"] for r in map(json.loads, RUN.open())}
     labels, md = tmp_path / "labels.csv", tmp_path / "taxonomy.md"
     with labels.open("w", newline="") as fh:
@@ -34,7 +35,7 @@ def files(tmp_path: Path, rows: dict[str, str], table: dict[str, int]) -> tuple[
             out.writerow([ids[item], item, "-" if listed == "-" else "c1", "c1 is a note long enough to keep",
                           "" if listed == "-" else listed])
     md.write_text("| # | Class | Claims | Analyses | Caught today by | Example |\n|---|---|---|---|---|---|\n" + "".join(
-        f"| {n} | {name}: a class | {count} | {count} | nothing | JPM 11-12 c2 |\n"
+        f"| {n} | {name}: a class | {count + 3} | {count} | nothing | JPM 11-12 c2 |\n"
         for n, (name, count) in enumerate(table.items(), 1)))
     return labels, md
 
@@ -66,6 +67,15 @@ def test_a_class_that_is_no_row_of_the_table_is_unknown(tmp_path):
     )
 
 
+def test_a_class_matches_a_row_only_as_written(tmp_path):
+    got = todo(tmp_path, {"AMZN:2026-11-13": "Window_Name;inference_wider"}, {"window_name": 1, "inference_wider": 1})
+    assert got["unknown"] == ["AMZN:2026-11-13: Window_Name"], (
+        "AMZN:2026-11-13 lists Window_Name; the table's row is window_name. unknown should be "
+        f"['AMZN:2026-11-13: Window_Name']; got {got['unknown']}. A class matches a row only as written, case "
+        "included: class_counts counts Window_Name as a class of its own, so this list is where the typo shows."
+    )
+
+
 def test_rows_are_checked_against_what_the_code_finds(tmp_path):
     rows = {"AAPL:2026-11-12": "inference_wider", "AMZN:2026-11-13": "window_name;inference_wider",
             "NVDA:2026-11-12": "window_name;label_in_value;cascade"}
@@ -83,8 +93,9 @@ def test_counts_cover_every_row_of_the_table(tmp_path):
     got = todo(tmp_path, {"AAPL:2026-11-12": "window_name;other;cascade"},
                {"window_name": 1, "inference_wider": 15, "other": 1})
     assert got["counts"] == ["inference_wider: table 15, labels 0"], (
-        "the table says inference_wider is in 15 analyses and no row lists it, so counts should be "
-        f"['inference_wider: table 15, labels 0'] (window_name and other agree at 1); got {got['counts']}"
+        "the table says inference_wider is in 15 analyses and no row lists it (its Claims column says 18), so counts "
+        f"should be ['inference_wider: table 15, labels 0'] (window_name and other agree at 1); got {got['counts']}. "
+        "counts compares the Analyses column with class_counts, which counts analyses."
     )
 
 

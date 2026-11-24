@@ -77,3 +77,39 @@ def test_opinions_and_inferences_cite_known_ids_too():
             f"{got.get(cid)}. An id outside the table is unknown whatever the claim's tag: an opinion or an inference "
             "that cites a made-up source is as unsupported as a fact that does."
         )
+
+
+def made_up(tag: str, value: float | None, *sources: str) -> dict:
+    return {"id": "c1", "tag": tag, "text": "The trend looks calm.", "value": value, "unit": None,
+            "source_ids": list(sources), "derived_from": [], "steps": None}
+
+
+def test_an_id_whose_value_is_null_is_known():
+    values = {"src_known": 1.0, "src_regime": None}
+    got = reasons({"item": "a made-up reply", "output_parsed": {"claims": [made_up("fact", None, "src_regime")]},
+                   "values": values})
+    assert got.get("c1") is None, (
+        f"a made-up fact c1 cites src_regime, which is in its table with value null (a label row, such as the regime), "
+        f"and was rejected as {got.get('c1')}. The id is a key of the table, so it is known: unknown means the id is "
+        "missing from the table, not that its value is null."
+    )
+
+
+def test_ids_match_exactly_case_included():
+    got = reasons({"item": "a made-up reply", "output_parsed": {"claims": [made_up("fact", None, "SRC_KNOWN")]},
+                   "values": {"src_known": 1.0}})
+    assert got.get("c1") == ("unknown_source", "SRC_KNOWN"), (
+        f"a made-up fact c1 cites SRC_KNOWN; its table has src_known. Expected ('unknown_source', 'SRC_KNOWN'), got "
+        f"{got.get('c1')}. A source id is matched exactly, case included: SRC_KNOWN is no id in the table, and a "
+        "model that miscopies an id has not cited the source."
+    )
+
+
+def test_a_made_up_id_is_reported_before_the_opinion_rule():
+    got = reasons({"item": "a made-up reply", "output_parsed": {"claims": [made_up("opinion", 3.0, "src_zz_new")]},
+                   "values": {"src_known": 1.0}})
+    assert got.get("c1") == ("unknown_source", "src_zz_new"), (
+        f"a made-up opinion c1 has value 3.0 and cites src_zz_new, which is not in its table. Expected "
+        f"('unknown_source', 'src_zz_new'), got {got.get('c1')}. Both rules are broken; check_one reports the first "
+        "one in its order, and the unknown_source check sits before the number_in_opinion check."
+    )

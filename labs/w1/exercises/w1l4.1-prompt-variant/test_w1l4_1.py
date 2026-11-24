@@ -2,8 +2,9 @@
 
 The first tests call rule_targets on short prompts written here. The rest read prompts/analyze-2.txt. That check is
 structural: it reads your words. It cannot tell whether a rule works (only a paid run can), only that each of the
-four target classes has a rule, that the window, inference, opinion and label rules do not point the wrong way, and
-that no line of analyze-1 outside its rule lines moved. Read your rules for meaning yourself.
+four target classes has a rule, that the window, inference, opinion and label rules do not point the wrong way, that
+every added line is such a rule, and that no line of analyze-1 outside its rule lines moved. Read your rules for
+meaning yourself.
 """
 
 import difflib
@@ -97,6 +98,17 @@ def test_one_rule_can_name_two_classes():
     )
 
 
+def test_indented_lines_of_the_base_are_no_rules_either():
+    base = "Rules:\n  Never name a window such as 200-day.\n"
+    got = rule_targets(base, base + "  {value} is the only placeholder.\n")
+    want = none_but(label_in_value=["{value} is the only placeholder."])
+    assert got == want, (
+        f"rule_targets returned {got!r} for a base with the indented line '  Never name a window such as 200-day.' and "
+        f"a variant that adds only '  {{value}} is the only placeholder.'; expected {want!r}. Lines are compared "
+        "stripped on both sides, so an indented line the base already has is no rule."
+    )
+
+
 def texts() -> tuple[list[str], list[str]]:
     old = (REPO / "prompts" / "analyze-1.txt").read_text().splitlines()
     path = REPO / "prompts" / "analyze-2.txt"
@@ -182,4 +194,17 @@ def test_the_label_rule_keeps_labels_out_of_value():
         "label such as the regime written as {value} while value is null, which the placeholder check rejects as "
         "empty_placeholder. The rule has to keep labels out of value. This check only reads words, so read the rule "
         "once more for what it tells the model to do."
+    )
+
+
+def test_every_added_line_is_a_rule_for_a_target_class():
+    old, new = texts()
+    extra = [line.strip() for line in new
+             if line.strip() and line not in old and not line.startswith(RULE_LINES)
+             and not any(all(word in line.lower() for word in words) for options in CLASSES.values() for words in options)]
+    assert not extra, (
+        f"analyze-2.txt adds the line {extra[0]!r}, which names none of the four target classes. One change per "
+        "experiment: every added line is a rule for window_name, inference_wider, opinion_cites or label_in_value (or "
+        "a rewrite of one of analyze-1's rule lines); a line about anything else is a second change, and a difference "
+        "could not be traced to the rules."
     )

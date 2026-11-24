@@ -113,5 +113,23 @@ def test_unequal_tickers_weigh_by_their_days():
 
 def test_too_few_clusters():
     by_session = {item: item.split(":")[1] for item in CLUSTERS}
-    with pytest.raises(ValueError):
-        cluster_bootstrap(paired_diff(A, B, "all_claims_valid"), by_session)
+    try:
+        got = cluster_bootstrap(paired_diff(A, B, "all_claims_valid"), by_session)
+    except ValueError:
+        return
+    pytest.fail(
+        f"cluster_bootstrap returned {got} with clusters that are the 2 sessions (2026-11-12, 2026-11-13); fewer than "
+        "10 clusters must raise ValueError. Count the distinct values of `clusters`, the grouping the caller passes, "
+        "not tickers read off the item ids: with 2 clusters there are too few draws for an interval."
+    )
+
+
+def test_the_order_items_come_in_does_not_change_the_draws():
+    diffs = paired_diff(A, B, "inferences_grounded")
+    backwards = dict(reversed(list(diffs.items())))
+    first, second = cluster_bootstrap(diffs, CLUSTERS, n=50, seed=7), cluster_bootstrap(backwards, CLUSTERS, n=50, seed=7)
+    assert first == second, (
+        f"seed=7 gave {first} for the 20 diffs in file order and {second} for the same diffs listed backwards. The "
+        "draws must depend on the seed and the data alone: number the clusters in an order that does not depend on how "
+        "the items arrive (sorted by name), or the same seed reruns to another interval."
+    )

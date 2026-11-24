@@ -1,0 +1,22 @@
+why: special-cases the name in graders() instead of registering it in GRADERS
+expect: GRADERS['inferences_grounded'] is None
+before: GREEN (round-2 reader)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -75,11 +75,12 @@ class InferencesGrounded:
+         return Score(value=0.0 if ungrounded else 1.0, explanation="; ".join(ungrounded) or None)
+ 
+ 
+-GRADERS = {grader.id: grader for grader in (Parsed, ClaimsValid, AllClaimsValid, InferencesGrounded)}
++GRADERS = {grader.id: grader for grader in (Parsed, ClaimsValid, AllClaimsValid)}
+ 
+ 
+ def graders(names: list[str]) -> list:
+-    unknown = [name for name in names if name not in GRADERS]
++    known = {**GRADERS, "inferences_grounded": InferencesGrounded}
++    unknown = [name for name in names if name not in known]
+     if unknown:
+-        raise SystemExit(f"unknown grader(s) {unknown}; registered: {sorted(GRADERS)}")
+-    return [GRADERS[name]() for name in names]
++        raise SystemExit(f"unknown grader(s) {unknown}; registered: {sorted(known)}")
++    return [known[name]() for name in names]

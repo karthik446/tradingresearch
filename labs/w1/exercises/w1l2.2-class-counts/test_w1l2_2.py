@@ -3,6 +3,7 @@
 fixtures/labels.csv is the author's evals/labels.csv at week-1-end, classes filled.
 """
 
+import csv
 from pathlib import Path
 
 from tradingresearch.taxonomy import class_counts
@@ -57,4 +58,18 @@ def test_class_names_are_case_sensitive(tmp_path):
         f"a row listing 'Window_Name; window_name' gave {got}; expected {{'Window_Name': 1, 'window_name': 1}}. "
         "Class names are counted as written: a miscased name is another class, which w1l2.4 then reports as no row "
         "of the table, instead of being merged silently."
+    )
+
+
+def test_only_a_semicolon_separates_classes(tmp_path):
+    path = tmp_path / "labels.csv"
+    with path.open("w", newline="") as fh:
+        out = csv.writer(fh)
+        out.writerow(["analysis_id", "item", "first_failure", "note", "classes"])
+        out.writerow(["an_0000000000000000", "T:2026-11-10", "c1", "note", "window_name,judgement_in_fact"])
+    got = class_counts(path)
+    assert got == {"window_name,judgement_in_fact": 1}, (
+        f"a row whose classes cell is 'window_name,judgement_in_fact' gave {got}; expected "
+        "{'window_name,judgement_in_fact': 1}. Only ';' separates classes, so that cell names one (misspelt) class, "
+        "which w1l2.4 then reports as no row of the table, instead of being split into two by a guess."
     )

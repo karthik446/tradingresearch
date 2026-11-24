@@ -1,0 +1,14 @@
+why: lists ungrounded names longest first (vocab order), not sorted
+expect: the ungrounded names, sorted
+before: GREEN (round-2 reader)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -70,7 +70,7 @@ class InferencesGrounded:
+             words = f"{claim.get('text') or ''} {claim.get('steps') or ''}"
+             # TODO(w1l3.4) whole tokens, matched literally, case included: sma_20 not inside sma_200 or dist_sma_20_atr.
+             used = {name for name in vocab if name in words}
+-            if extra := sorted(used - allowed):
++            if extra := [n for n in vocab if n in used - allowed]:
+                 ungrounded.append(f"{claim_id}: {', '.join(extra)}")
+         return Score(value=0.0 if ungrounded else 1.0, explanation="; ".join(ungrounded) or None)
+ 

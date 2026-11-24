@@ -1,0 +1,14 @@
+why: matches label names to table rows case-insensitively, so Window_Name is not reported
+expect: AMZN:2026-11-13 lists Window_Name
+before: GREEN (round-2 reader)
+--- a/src/tradingresearch/taxonomy.py
++++ b/src/tradingresearch/taxonomy.py
+@@ -143,7 +143,7 @@ def backfill_todo(labels: Path, taxonomy: Path, run: Path) -> dict[str, list[str
+         listed = {name.strip() for name in (row["classes"] or "").split(";")} - {""}
+         if row["first_failure"] != "-" and not listed - TAGS:
+             out["unlabelled"].append(row["item"])
+-        out["unknown"] += [f"{row['item']}: {name}" for name in listed - TAGS - set(table)]
++        out["unknown"] += [f"{row['item']}: {name}" for name in listed - TAGS if name.lower() not in {t.lower() for t in table}]
+         for name in CODE_FINDS:
+             if row["item"] in found[name] and name not in listed:
+                 out["code"].append(f"{row['item']}: +{name}")

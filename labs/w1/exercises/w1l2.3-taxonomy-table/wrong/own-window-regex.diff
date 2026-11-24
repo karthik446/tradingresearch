@@ -1,0 +1,14 @@
+why: own window test '-day' in text: case-sensitive and matches any '-day' word
+expect: on a one-trace run written for this test (c1 '14-Day RSI'
+before: GREEN (round-2 reader)
+--- a/src/tradingresearch/taxonomy.py
++++ b/src/tradingresearch/taxonomy.py
+@@ -115,7 +115,7 @@ def code_classes(run: Path) -> dict[str, dict[str, list[str]]]:
+     for trace in load_run(run):
+         texts = claim_texts(trace)
+         for claim, reason in rejected(trace):
+-            if reason == "number_in_text" and WINDOW.search(texts.get(claim, "")):
++            if reason == "number_in_text" and "-day" in texts.get(claim, ""):
+                 name = "window_name"
+             else:
+                 name = {"empty_placeholder": "label_in_value", "bad_derivation": "cascade"}.get(reason)

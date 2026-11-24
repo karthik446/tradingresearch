@@ -1,0 +1,18 @@
+why: writes the row's own item (what the note says) instead of the run's item for caught/missed/clean
+expect: but miswritten items
+before: GREEN (round-2 reader)
+--- a/src/tradingresearch/taxonomy.py
++++ b/src/tradingresearch/taxonomy.py
+@@ -82,10 +82,10 @@ def tally_notes(labels: Path, run: Path) -> dict[str, list[str]]:
+         if row is None:
+             out["missing"].append(trace["item"])
+         elif row["first_failure"] == "-":
+-            out["clean"].append(trace["item"])
++            out["clean"].append(row["item"])
+         else:
+             kind = "caught" if row["first_failure"] in dict(rejected(trace)) else "missed"
+-            out[kind].append(f"{trace['item']} {row['first_failure']}")
++            out[kind].append(f"{row['item']} {row['first_failure']}")
+     ids = {trace["analysis_id"] for trace in traces}
+     out["unknown"] = [row["item"] for row in rows if row["analysis_id"] not in ids]
+     return out

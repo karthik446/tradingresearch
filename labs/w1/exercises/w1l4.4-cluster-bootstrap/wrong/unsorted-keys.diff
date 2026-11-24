@@ -1,0 +1,14 @@
+why: draws from clusters in first-seen order, not sorted, so the same seed gives other draws when items come in another order
+expect: for the same diffs listed backwards
+before: GREEN (round-2 reader)
+--- a/src/tradingresearch/paired.py
++++ b/src/tradingresearch/paired.py
+@@ -50,7 +50,7 @@ def cluster_bootstrap(diffs: dict[str, float], clusters: dict[str, str], *, n: i
+         by.setdefault(clusters[item], []).append(d)
+     if len(by) < MIN_CLUSTERS:
+         raise ValueError(f"{len(by)} clusters; a paired interval needs at least {MIN_CLUSTERS}")
+-    rng, keys = random.Random(seed), sorted(by)
++    rng, keys = random.Random(seed), list(by)
+     means = []
+     for _ in range(n):
+         picked = [d for key in rng.choices(keys, k=len(keys)) for d in by[key]]

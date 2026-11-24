@@ -65,3 +65,16 @@ def test_a_p_value_never_exceeds_1():
     )
     over = [(up, down) for up in range(8) for down in range(8) if mcnemar_p(up, down) > 1.0]
     assert not over, f"mcnemar_p is above 1 for (up, down) = {over[:4]}: a probability is at most 1"
+
+
+def test_an_extra_item_in_b_cannot_be_paired_either():
+    extra = B | {"ZZ:2026-11-13": B["KO:2026-11-13"]}
+    try:
+        got = paired_diff(A, extra, "all_claims_valid")
+    except ValueError:
+        return
+    pytest.fail(
+        f"paired_diff returned {len(got)} pairs for b with every item of a plus ZZ:2026-11-13, which a never answered; "
+        "it must raise ValueError. Same items means the same set both ways: an item only one arm answered has no pair, "
+        "whichever arm it is in."
+    )
