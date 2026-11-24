@@ -11,7 +11,7 @@ Labs spike v3, not published. Each week of the AI engineering track comes as lab
 From the root of your clone at `week-1-start`, after `uv sync`:
 
 ```bash
-uv run tr lab list          # every lab and exercise: done, current or locked
+uv run tr lab list          # every lab and exercise: done, current, start here or locked
 uv run tr lab start w1l1    # switch to branch `lab`, install the first exercise's stub
 ```
 
@@ -26,16 +26,16 @@ With the virtualenv active (`source .venv/bin/activate`), `tr lab ...` is enough
 
 | Command | Does | Exit |
 |---|---|---|
-| `tr lab list` | every lab and exercise: done, done (reference), current or locked | 0 |
+| `tr lab list` | every lab and exercise: done, done (reference), current, start here (the first exercise of the lab to start next) or locked | 0 |
 | `tr lab start <lab>` | switch to branch `lab` (`git checkout -B lab`) and install the lab's first stub. Refuses while another lab is in progress (`--force` restarts), while an earlier lab is unfinished (`--assume-previous`, below), or when a branch `lab` exists and you are not on it (`--force` recreates it from your current commit) | 0, 2 refused |
-| `tr lab verify` | run the current exercise's check; counts a failed run | 0 green, 1 red, 2 refused |
-| `tr lab verify <exercise>` | run one exercise you have reached, e.g. `w1l1.2`; counts only if it is the current one | 0, 1, 2 not reached |
-| `tr lab verify <lab>` | run every reached exercise of a lab, one line each; counts nothing | 0 all green, 1 |
+| `tr lab verify` | run the current exercise's check; counts a failed run | 0 green, 1 red, 2 refused, 3 the check could not run |
+| `tr lab verify <exercise>` | run one exercise you have reached, e.g. `w1l1.2`; counts only if it is the current one | 0, 1, 2 not reached, 3 |
+| `tr lab verify <lab>` | run every reached exercise of a lab, one line each; counts nothing | 0 all green, 1 any red or ERROR line |
 | `tr lab verify -v` | also print pytest's full output | |
 | `tr lab hint` | print the hints unlocked so far, and when the next one unlocks | 0, 2 while locked |
 | `tr lab solution [--apply]` | print the reference `solution.diff` once unlocked; `--apply` installs the stub (after a backup) and applies the diff | 0, 2 while locked |
 | `tr lab reset` | put the current stub back (after a backup) and zero its failed runs | 0 |
-| `tr lab next` | re-run the check; on green commit and install the next stub | 0, 2 if red or git refused |
+| `tr lab next` | re-run the check; on green commit, print the files the commit holds, and install the next stub | 0, 2 if red or git refused |
 | `tr lab status` | the state as one JSON line | 0 |
 
 `--assume-previous` on `start` (for example `tr lab start w1l3 --assume-previous`) applies the reference solutions of every exercise in the earlier, unfinished labs, commits them as `lab: reference solutions <first>..<last> (--assume-previous)`, and marks those exercises "done (reference)". Use it to enter the week at a later lab; the later labs read files the earlier ones produce.
@@ -44,7 +44,7 @@ What `verify` runs is the `check` line of the exercise's `exercise.toml`, a plai
 
 ## Hints and the solution
 
-A failed run is a red `tr lab verify` of the current exercise. A check that cannot run at all (pytest stops with a collection error, for example) prints ERROR and does not count.
+A failed run is a red `tr lab verify` of the current exercise. A check that cannot run at all (pytest stops with a collection error, for example) prints ERROR, exits 3 and does not count.
 
 | Unlocks | Default |
 |---|---|
@@ -57,10 +57,15 @@ The numbers live in one place, the week's `lab.toml` ([labs/w1/lab.toml](w1/lab.
 
 ## Your work and git
 
-- `start` works on a branch `lab`, so your `main` is untouched. `next` commits everything (`git add -A`) on that branch.
-- State is in `.tr-lab/state.json` at the repo root; `.tr-lab/` is in `.gitignore`.
-- `reset` and `solution --apply` overwrite the files the exercise touches. Before they do, every touched file that differs from the stub and has uncommitted changes is copied to `.tr-lab/backup/<exercise>-<time>/`, and the command lists the copies. Committed or untouched files are not copied.
-- `tr lab` imports nothing a stub overwrites, so it still runs when your edit leaves `analyze.py` or `evals.py` broken. The other `tr` commands show that import error.
+- `start` works on a branch `lab`, so your `main` is untouched.
+- `next` commits every change in the repo (`git add -A`) as `lab <id>: green` and prints the files that commit holds. A changed file outside the exercise's `touches` (a stray edit) gets a `note:` line that names it; new files are listed but not flagged. `git show --stat HEAD` shows the commit.
+- A stub is the reference state of the earlier exercises plus one new TODO, not your own file. Before `start`, `next`, `reset` or `solution --apply` overwrite a file that holds your work, they copy it to `.tr-lab/backup/<exercise>-<time>/` and print one line per file:
+  - a version a `lab <id>: green` commit holds: ``w1l3.4 starts from the reference version of w1l3.3 in src/tradingresearch/evals.py; your version is in commit <sha> (`lab w1l3.3: green`) and in .tr-lab/backup/...``. `start w1l3` prints this for `analyze.py`, which lab w1l1 committed and the w1l3.1 stub replaces.
+  - uncommitted edits: `saved your uncommitted edits to <file> in .tr-lab/backup/... before <id> replaced it`.
+
+  Not copied: a file equal to the new stub or to the current exercise's stub (the runner put it there), a file as the repo shipped it, and the reference solutions `--assume-previous` committed.
+- State is in `.tr-lab/state.json` at the repo root; `.tr-lab/` is in `.gitignore`. Restarting a lab (`start --force`) clears that lab's done marks, failed runs and "done (reference)" marks.
+- `tr lab` imports nothing a stub overwrites, so it still runs when your edit leaves `analyze.py` or `evals.py` broken. The other `tr` commands show that import error; `tr -h` still prints the command list.
 
 ## When something goes wrong
 
@@ -70,7 +75,7 @@ The numbers live in one place, the week's `lab.toml` ([labs/w1/lab.toml](w1/lab.
 | You break the repo's own tests | `verify` runs only the exercise's check, so it can be green. At a lab's last exercise `next` runs the repo suite (`python -m pytest -q`) and refuses (exit 2), listing the failing tests. During lab w1l1 the suite is red by design until w1l1.4 is green (4, 3, 2, 1 failing tests on the four stubs); the gate runs after w1l1.4. |
 | You pass, then change the file (or reset) and run `next` | `next` re-runs the check on the current files and refuses on red (exit 2). Any red counted run clears the saved pass. |
 | `git commit` fails (hook, identity, lock) | `next` stops (exit 2) with git's message, or "a hook or config refused it, no message"; the state is unchanged and nothing advances. `tests/test_lab.py` proves this with a failing pre-commit hook. |
-| The check cannot run (syntax error in a test, a missing module, pytest exits with a code other than 0 or 1) | ERROR with the last lines of pytest's output; not counted as a failed run. |
+| The check cannot run (syntax error in a test, a missing module, pytest exits with a code other than 0 or 1) | ERROR with the last lines of pytest's output, exit 3; not counted as a failed run. When pytest collected no tests (exit 5) it says so: the exercise's check command points at no test. |
 | Your edit breaks an import `tr` needs | `tr lab` still runs (see above). |
 | An exercise has no stub (w1l2.4 back-fills your own `labels.csv`) | `next` installs nothing, `reset` keeps your file, `solution --apply` explains that the diff expects the reference files. |
 | You start a later lab first | `start` refuses and names the unfinished lab; `--assume-previous` applies its reference solutions. |

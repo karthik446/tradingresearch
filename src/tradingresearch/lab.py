@@ -3,7 +3,9 @@
 A lab is a short run of exercises (labs/<week>/exercises/<id>-<slug>/). Each exercise ships a stub (the repo files with a
 TODO cut out), a check (a pytest file), hints, a reference solution diff and an observe command. `tr lab` installs the
 stub, runs the check, counts failed runs to unlock hints and the solution, and commits each green exercise on the branch
-`lab`. State lives in .tr-lab/state.json (gitignored); edits it would overwrite are copied to .tr-lab/backup/ first.
+`lab`. State lives in .tr-lab/state.json (gitignored). A stub is the reference state of the earlier exercises plus one
+TODO, not your own file: before it overwrites a file that holds your work (uncommitted edits, or the version a
+`lab <id>: green` commit holds) the file is copied to .tr-lab/backup/, and a committed version also stays in git.
 How to use it: labs/README.md. The unlock numbers: labs/<week>/lab.toml.
 """
 
@@ -25,6 +27,7 @@ from pathlib import Path
 
 LAB_ID = re.compile(r"w(\d+)l(\d+)")
 EXERCISE_ID = re.compile(r"w(\d+)l(\d+)\.(\d+)")
+LAB_COMMIT = re.compile(r"lab (w\d+l\d+\.\d+): green")
 WIDTH = 100
 
 
@@ -41,6 +44,7 @@ class Exercise:
     touches: tuple[str, ...]
     check: str
     observe: str
+    observe_ok_exit: tuple[int, ...] = (0,)  # observe exit codes that are no news (`git diff --no-index` exits 1)
 
     @property
     def stub(self) -> Path:
@@ -82,7 +86,7 @@ class Labs:
             for meta_file in sorted((toml.parent / "exercises").glob("*/exercise.toml")):
                 m = tomllib.loads(meta_file.read_text())
                 ex = Exercise(m["id"], m["lab"], m["title"], meta_file.parent, tuple(m.get("touches", ())),
-                              m["check"], m.get("observe", ""))
+                              m["check"], m.get("observe", ""), tuple(m.get("observe_ok_exit", (0,))))
                 found.setdefault(ex.lab, []).append(ex)
             for lab_id in sorted(found, key=_key):
                 lab_config = config.get("labs", {}).get(lab_id, {})
@@ -124,28 +128,52 @@ class Labs:
             raise LabError(f"git {cmd[0]} failed (exit {r.returncode}): {why}; nothing advanced")
         return r.stdout
 
-    def install_stub(self, ex: Exercise) -> list[str]:
-        """Copy the exercise's stub over the repo. Returns the files backed up first: only ones you edited."""
+    def install_stub(self, ex: Exercise, current: Exercise | None, written: set[str] | None = None) -> list[str]:
+        """Copy the exercise's stub over the repo. Returns one line per file copied to .tr-lab/backup/ first.
+
+        A file is backed up when it differs from the new stub and holds your work: uncommitted edits, or the version a
+        `lab <id>: green` commit holds. Not backed up: a file byte-equal to `current`'s stub (the runner put it there)
+        or one this same command already wrote (`written`, e.g. the reference solutions of --assume-previous).
+        """
         if not ex.stub.is_dir():
             return []
-        stamp = time.strftime("%Y%m%d-%H%M%S")
-        saved = []
+        folder = self.backup_dir / f"{ex.id}-{time.strftime('%Y%m%d-%H%M%S')}"
+        said = []
         for src in sorted(p for p in ex.stub.rglob("*") if p.is_file()):
             rel = src.relative_to(ex.stub)
             dest = self.repo / rel
-            if dest.exists() and not filecmp.cmp(src, dest, shallow=False) and self.git("status", "--porcelain", "--", str(rel)):
-                backup = self.backup_dir / f"{ex.id}-{stamp}" / rel
-                backup.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(dest, backup)
-                saved.append(str(backup.relative_to(self.repo)))
+            ours = written is not None and str(rel) in written or current is not None and _same(current.stub / rel, dest)
+            if dest.exists() and not _same(src, dest) and not ours:
+                line = self._yours(ex, str(rel), folder / rel)
+                if line:
+                    (folder / rel).parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(dest, folder / rel)
+                    said.append(line)
             dest.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(src, dest)
-        return saved
+            if written is not None:
+                written.add(str(rel))
+        return said
 
-    def apply_solution(self, ex: Exercise) -> list[str]:
-        saved = self.install_stub(ex)
-        self.git("apply", "--whitespace=nowarn", str(ex.dir / "solution.diff"))
-        return saved
+    def _yours(self, ex: Exercise, rel: str, backup: Path) -> str | None:
+        """What the learner would lose if the stub of `ex` overwrote `rel`, or None when it is not their work."""
+        where = backup.relative_to(self.repo)
+        if self.git("status", "--porcelain", "--", rel):
+            return f"saved your uncommitted edits to {rel} in {where} before {ex.id} replaced it"
+        sha, _, subject = self.git("log", "-1", "--format=%h %s", "--", rel).strip().partition(" ")
+        done = LAB_COMMIT.fullmatch(subject)
+        if done is None:  # the file as the repo shipped it, or a reference solution from --assume-previous
+            return None
+        return (f"{ex.id} starts from the reference version of {done[1]} in {rel}; your version is in commit {sha} "
+                f"(`{subject}`) and in {where}")
+
+    def apply_solution(self, ex: Exercise, current: Exercise | None, written: set[str] | None = None) -> list[str]:
+        said = self.install_stub(ex, current, written)
+        diff = ex.dir / "solution.diff"
+        self.git("apply", "--whitespace=nowarn", str(diff))
+        if written is not None:
+            written.update(re.findall(r"^\+\+\+ b/(\S+)", diff.read_text(), flags=re.M))
+        return said
 
     def run(self, command: str) -> subprocess.CompletedProcess:
         argv = shlex.split(command)
@@ -159,6 +187,10 @@ class Labs:
         # pytest: 0 green, 1 a test failed; 2-5 (interrupted, internal, usage, no tests) mean it never judged your code
         kind = "pass" if r.returncode == 0 else "fail" if r.returncode == 1 else "error"
         return Result(kind, r.returncode, output)
+
+
+def _same(a: Path, b: Path) -> bool:
+    return a.is_file() and b.is_file() and filecmp.cmp(a, b, shallow=False)
 
 
 def _key(ident: str) -> tuple[int, ...]:
@@ -223,9 +255,15 @@ def _intro(labs: Labs, ex: Exercise) -> None:
     _say(f"exercise {ex.id}: {ex.title}", _edit_line(labs, ex), "then: tr lab verify")
 
 
-def _backups(saved: list[str]) -> None:
-    if saved:
-        _say(f"your edits were saved first: {', '.join(saved)}")
+def _committed(labs: Labs, ex: Exercise) -> list[str]:
+    """The files the `lab <id>: green` commit at HEAD holds, and a note on changed files outside the exercise's."""
+    changes = [ln.split("\t") for ln in labs.git("show", "--name-status", "--format=", "HEAD").splitlines() if ln]
+    lines = [f"committed `lab {ex.id}: green`: {', '.join(c[-1] for c in changes) or 'no file changes'}"]
+    outside = [c[-1] for c in changes if c[0] != "A" and c[-1] not in ex.touches]
+    if outside:
+        lines.append(f"note: {', '.join(outside)} changed too, outside {ex.id}'s files ({', '.join(ex.touches)}); "
+                     "`tr lab next` commits every change, `git show --stat HEAD` shows this commit")
+    return lines
 
 
 # commands -------------------------------------------------------------------------------------------------------
@@ -233,16 +271,18 @@ def _backups(saved: list[str]) -> None:
 
 def cmd_list(labs: Labs, args: argparse.Namespace) -> int:
     st = labs.load()
+    up_next = None if st["current"] else next((lab for lab in labs.labs if lab.id not in st["finished"]), None)
     for lab in labs.labs:
         page = f"  ({lab.page.relative_to(labs.repo)})" if lab.page else ""
-        mark = " finished" if lab.id in st["finished"] else ""
+        mark = ": finished" if lab.id in st["finished"] else ""
         _say(f"{lab.id}  {lab.title}{mark}{page}")
         for ex in lab.exercises:
             status = ("done (reference)" if ex.id in st["assumed"] else "done") if ex.id in st["done"] \
-                else "current" if ex.id == st["current"] else "locked"
+                else "current" if ex.id == st["current"] \
+                else "start here" if up_next is lab and ex is lab.exercises[0] else "locked"
             _say(f"  {status:<16} {ex.id:<8} {ex.title}")
-    if not st["lab"]:
-        _say(f"start with: tr lab start {labs.labs[0].id}")
+    if up_next is not None:
+        _say(f"start with: tr lab start {up_next.id}")
     return 0
 
 
@@ -266,11 +306,13 @@ def cmd_start(labs: Labs, args: argparse.Namespace) -> int:
             raise LabError("a branch `lab` already exists and you are not on it; `git checkout lab` to continue there, "
                            "or pass --force to recreate it from your current commit")
         labs.git("checkout", "-q", "-B", "lab")
-    saved: list[str] = []
+    said: list[str] = []
+    current = labs.exercises.get(st["current"])
+    written: set[str] = set()
     if missing:
         applied = [ex for p in missing for ex in p.exercises]
         for ex in applied:
-            saved += labs.apply_solution(ex)
+            said += labs.apply_solution(ex, current, written)
         labs.git("add", "-A")
         labs.git("commit", "-q", "--allow-empty", "-m", f"lab: reference solutions {applied[0].id}..{applied[-1].id} (--assume-previous)")
         st["done"] = [e for e in st["done"] if e not in {ex.id for ex in applied}] + [ex.id for ex in applied]
@@ -283,13 +325,14 @@ def cmd_start(labs: Labs, args: argparse.Namespace) -> int:
     st["done"] = [e for e in st["done"] if e not in restart]
     st["finished"] = [p for p in st["finished"] if p != lab.id]
     st["fails"] = {k: v for k, v in st["fails"].items() if k not in restart}
+    st["assumed"] = [e for e in st["assumed"] if e not in restart]
     st.pop("passed", None)
     st.update(lab=lab.id, current=first.id)
-    saved += labs.install_stub(first)
+    said += labs.install_stub(first, current, written)
     labs.save(st)
     page = f"; read {lab.page.relative_to(labs.repo)}" if lab.page else ""
     _say(f"started lab {lab.id} ({lab.title}) on branch `lab`{page}")
-    _backups(saved)
+    _say(*said)
     _intro(labs, first)
     return 0
 
@@ -303,10 +346,11 @@ def _verify_one(labs: Labs, st: dict, ex: Exercise, verbose: bool, counted: bool
         if counted:
             st.pop("passed", None)
             labs.save(st)
+        hint = ("  pytest collected no tests: check the exercise's check command" if res.code == 5 else
+                "  a syntax or import error in the files you edited is the usual cause; `tr lab verify -v` shows everything")
         _say(f"ERROR {ex.id}: the check could not run (pytest exit {res.code}), so this is not counted as a try:",
-             *(_wrap(ln) for ln in _tail(res.output)),
-             "  a syntax or import error in the files you edited is the usual cause; `tr lab verify -v` shows everything")
-        return 1
+             *(_wrap(ln) for ln in _tail(res.output)), hint)
+        return 3
     if res.kind == "fail":
         if counted:
             fails = st["fails"].get(ex.id, 0) + 1
@@ -327,7 +371,7 @@ def _verify_one(labs: Labs, st: dict, ex: Exercise, verbose: bool, counted: bool
     if ex.observe:
         obs = labs.run(ex.observe)
         _say(f"observe: {ex.observe}", *(_wrap(ln, "  | ") for ln in (obs.stdout + obs.stderr).rstrip().splitlines()))
-        if obs.returncode:
+        if obs.returncode not in ex.observe_ok_exit:
             _say(f"  (observe exited {obs.returncode}; it never decides the exercise)")
     if counted:
         _say("next: `tr lab next` commits it and moves on; `tr lab solution` shows the reference to compare")
@@ -395,16 +439,15 @@ def cmd_next(labs: Labs, args: argparse.Namespace) -> int:
         st["finished"].append(lab.id)
         labs.save(st)
         after = labs.labs.index(lab) + 1
-        _say(f"committed `lab {ex.id}: green`",
+        _say(*_committed(labs, ex),
              f"lab {lab.id} finished; tr lab start {labs.labs[after].id}" if after < len(labs.labs)
              else f"lab {lab.id} finished; that was the last lab")
         return 0
     nxt = lab.exercises[lab.exercises.index(ex) + 1]
     st["current"] = nxt.id
     labs.save(st)
-    saved = labs.install_stub(nxt)
-    _say(f"committed `lab {ex.id}: green`")
-    _backups(saved)
+    said = labs.install_stub(nxt, ex)
+    _say(*_committed(labs, ex), *said)
     _intro(labs, nxt)
     return 0
 
@@ -420,7 +463,7 @@ def cmd_hint(labs: Labs, args: argparse.Namespace) -> int:
         raise LabError(f"{ex.id} has no hints")
     if not open_:
         raise LabError(f"hint 1 unlocks after {lab.hint_after(1)} failed runs of `tr lab verify` (you have {fails}); "
-                       "read the FAIL message once more first")
+                       "until then, the FAIL message is the hint: it names what the check expected and what it got")
     for k, h in enumerate(open_, 1):
         _say(f"hint {k} of {len(hints)} ({ex.id}):", textwrap.indent(h, "  "), "")
     if len(open_) < len(hints):
@@ -442,12 +485,12 @@ def cmd_solution(labs: Labs, args: argparse.Namespace) -> int:
              "", "`tr lab solution --apply` puts it in your files (your edits are backed up first)")
         return 0
     try:
-        saved = labs.apply_solution(ex)
+        said = labs.apply_solution(ex, ex)
     except LabError as err:
         raise LabError(f"{err}. The reference diff did not fit your files"
                        + ("" if ex.stub.is_dir() else " (this exercise has no stub: the diff expects the reference "
                           "versions of the earlier exercises' files)")) from None
-    _backups(saved)
+    _say(*said)
     _say(f"applied the reference solution of {ex.id}; run `tr lab verify`")
     return 0
 
@@ -455,7 +498,7 @@ def cmd_solution(labs: Labs, args: argparse.Namespace) -> int:
 def cmd_reset(labs: Labs, args: argparse.Namespace) -> int:
     st = labs.load()
     ex = labs.current(st)
-    saved = labs.install_stub(ex)
+    said = labs.install_stub(ex, ex)
     st["fails"][ex.id] = 0
     st.pop("passed", None)
     labs.save(st)
@@ -463,7 +506,7 @@ def cmd_reset(labs: Labs, args: argparse.Namespace) -> int:
         _say(f"reset {ex.id}: stub restored, failed runs back to 0")
     else:
         _say(f"{ex.id} has no stub (you work on your own {', '.join(ex.touches)}); nothing restored, failed runs back to 0")
-    _backups(saved)
+    _say(*said)
     return 0
 
 
@@ -483,7 +526,7 @@ HELP = "the week labs, checked locally (no keys, no model calls); see labs/READM
 def parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="tr lab", description=HELP)
     cmds = p.add_subparsers(dest="lab_command", required=True)
-    cmds.add_parser("list", help="every lab and exercise: done, current or locked")
+    cmds.add_parser("list", help="every lab and exercise: done, current, start here or locked")
     q = cmds.add_parser("start", help="begin a lab on branch `lab` and install its first stub")
     q.add_argument("lab", help="lab id, e.g. w1l1")
     q.add_argument("--force", action="store_true", help="start even though another lab is in progress")

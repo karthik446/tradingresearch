@@ -21,8 +21,13 @@ def test_paired_diff_per_item():
 
 
 def test_different_items_cannot_be_paired():
-    with pytest.raises(ValueError):
+    try:
         paired_diff(A, {k: v for k, v in B.items() if k != "KO:2026-11-13"}, "all_claims_valid")
+    except ValueError:
+        return
+    except KeyError as err:
+        pytest.fail(f"arms with different items must raise ValueError before any lookup; got KeyError {err}")
+    pytest.fail("paired_diff paired two arms with different items (b has no KO:2026-11-13); it must raise ValueError")
 
 
 def test_discordant_pairs():

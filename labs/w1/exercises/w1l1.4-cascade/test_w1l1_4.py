@@ -44,6 +44,17 @@ def test_an_id_that_is_not_in_the_reply_is_unknown():
     )
 
 
+def test_one_id_that_is_not_a_claim_makes_the_detail_unknown():
+    claims = {c["id"]: c for c in aapl()["output_parsed"]["claims"]}
+    edited = {**claims["c8"], "derived_from": ["c5", "c99"]}
+    got = reasons({"claims": [claims["c5"], edited]}, aapl()["values"]).get("c8")
+    assert got == ("bad_derivation", "unknown claim id: c5, c99"), (
+        f"c8 derives from c5 (a claim of this reply, rejected) and c99 (not a claim at all). 'derives from a rejected "
+        f"or later claim' holds only when every missing id is a claim of this reply; one is not, so the detail is "
+        f"'unknown claim id: c5, c99'; got {got}"
+    )
+
+
 def test_the_recorded_run_matches_the_author():
     shares, whole, cascades = [], 0, 0
     for row in rows():

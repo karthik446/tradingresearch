@@ -23,7 +23,8 @@ A wrong diff starts with header lines before its `---` line (git apply skips the
 End state: after the last exercise, the six files week 1 ends with must equal the source clone's `week-1-end` tag
 byte for byte.
 Runner smoke: `tr lab` itself (start, a red verify, next refused, hint locked then unlocked, the solution applied,
-verify, next) through lab w1l1, then `start w1l3 --assume-previous`. Exits 1 if any row is NOT PROVEN.
+verify, next) through lab w1l1, then `start w1l3 --assume-previous`, whose w1l3.1 stub overwrites the analyze.py lab
+w1l1 committed (it must say so and back it up). Exits 1 if any row is NOT PROVEN.
 """
 
 from __future__ import annotations
@@ -185,8 +186,8 @@ def end_state(copy: Copy) -> tuple[list[tuple], int]:
 
 
 SMOKE_W1L1 = [
-    # (tr lab arguments or a git command, expected exit code, text the output must contain)
-    (["list"], 0, "locked           w1l1.1"),
+    # (tr lab arguments or a git command, expected exit code, text (or tuple of texts) the output must contain)
+    (["list"], 0, "start here       w1l1.1"),
     (["start", "w1l2"], 2, "builds on w1l1, which is not finished"),
     (["start", "w1l1"], 0, "edit: src/tradingresearch/analyze.py (look for TODO(w1l1.1))"),
     (["verify"], 1, "FAIL w1l1.1 (try 1)"),
@@ -209,7 +210,9 @@ SMOKE_W1L1 = [
     (["next"], 0, "lab w1l1 finished; tr lab start w1l2"),
     (["verify", "w1l1"], 0, "w1l1: 4 of 4 reached exercises green"),
     ("git log", 0, "lab w1l1.4: green"),
-    (["start", "w1l3", "--assume-previous"], 0, "applied the reference solutions of w1l2.1..w1l2.4"),
+    (["start", "w1l3", "--assume-previous"], 0, ("applied the reference solutions of w1l2.1..w1l2.4",
+                                                 "w1l3.1 starts from the reference version of w1l1.4 in "
+                                                 "src/tradingresearch/analyze.py; your version is in commit")),
     (["verify"], 1, "FAIL w1l3.1 (try 1)"),
     (["list"], 0, "done (reference) w1l2.4"),
 ]
@@ -227,8 +230,11 @@ def smoke(copy: Copy) -> tuple[list[tuple], int]:
             ex_id = step.split()[1]
             proc, label = copy.run(["git", "apply", str(by_id[ex_id] / "solution.diff")]), f"git apply {ex_id} solution.diff"
         out = proc.stdout + proc.stderr
-        ok = proc.returncode == want_code and want_text in out
-        shown = next((ln.strip() for ln in out.splitlines() if want_text and want_text in ln), out.strip().splitlines()[0] if out.strip() else "")
+        texts = want_text if isinstance(want_text, tuple) else (want_text,)
+        ok = proc.returncode == want_code and all(t in out for t in texts)
+        found = [next((ln.strip() for ln in out.splitlines() if t in ln), "") for t in texts if t]
+        shown = " / ".join(found) if any(found) else out.strip().splitlines()[0] if out.strip() else ""
+        shown = re.sub(r"-\d{8}-\d{6}/", "-<time>/", re.sub(r"commit [0-9a-f]{7,}", "commit <sha>", shown))
         rows.append((label, want_code, proc.returncode, shown, "ok" if ok else "**NOT PROVEN**"))
         bad += not ok
     return rows, bad

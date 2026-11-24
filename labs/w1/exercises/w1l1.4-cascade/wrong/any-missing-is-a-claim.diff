@@ -1,0 +1,14 @@
+why: says "rejected or later" when any missing id is a claim of the reply, though another is not a claim at all
+expect: got ('bad_derivation', 'derives from a rejected or later claim: c5, c99')
+before: GREEN (read of the runner, R1)
+--- a/src/tradingresearch/analyze.py
++++ b/src/tradingresearch/analyze.py
+@@ -271,7 +271,7 @@
+     if tag == "inference":
+         missing = [d for d in item.get("derived_from") or [] if d not in kept]
+         if missing:
+-            why = "derives from a rejected or later claim" if all(d in ids for d in missing) else "unknown claim id"
++            why = "derives from a rejected or later claim" if any(d in ids for d in missing) else "unknown claim id"
+             return "bad_derivation", f"{why}: {', '.join(missing)}"
+         if value is not None:
+             parents = [kept[d].value for d in item["derived_from"]]

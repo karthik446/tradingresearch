@@ -18,7 +18,7 @@ try:  # a lab stub rewrites analyze.py and friends: `tr lab` must still run whil
     from .config import require, settings
     from .edgar import Edgar, latest_frames
     from .records import Analysis
-except Exception as err:  # noqa: BLE001  re-raised by main() for every command but `lab`
+except Exception as err:  # noqa: BLE001  re-raised by main() for every command but `lab` (and after `-h` prints help)
     _IMPORT_ERROR: Exception | None = err
 else:
     _IMPORT_ERROR = None
@@ -187,8 +187,7 @@ def main(argv: list[str] | None = None) -> None:
     argv = sys.argv[1:] if argv is None else argv
     if argv[:1] == ["lab"]:  # local only: before the .env read and the data dir, and without the modules above
         raise SystemExit(lab.main(argv[1:]))
-    if _IMPORT_ERROR is not None:
-        raise _IMPORT_ERROR
+    broken = _IMPORT_ERROR is not None  # `tr -h` still prints; the analyze defaults show as None until it imports
     parser = argparse.ArgumentParser(prog="tr", description="tradingresearch: educational, not investment advice")
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("lab", help=lab.HELP + " (`tr lab -h`)")
@@ -221,8 +220,8 @@ def main(argv: list[str] | None = None) -> None:
     p = sub.add_parser("analyze", help="write a checked Analysis for one ticker-day (paid call)")
     p.add_argument("ticker")
     p.add_argument("--session")
-    p.add_argument("--prompt", default=an.DEFAULT_PROMPT, help="prompt version: prompts/<version>.txt")
-    p.add_argument("--model", default=an.DEFAULT_MODEL)
+    p.add_argument("--prompt", default=None if broken else an.DEFAULT_PROMPT, help="prompt version: prompts/<version>.txt")
+    p.add_argument("--model", default=None if broken else an.DEFAULT_MODEL)
     p.add_argument("--max-usd", type=float, default=0.25)
     p.set_defaults(func=cmd_analyze)
 
@@ -240,6 +239,8 @@ def main(argv: list[str] | None = None) -> None:
     p.set_defaults(func=cmd_usage)
 
     args = parser.parse_args(argv)
+    if broken:
+        raise _IMPORT_ERROR
     cfg = settings()
     cfg.data_dir.mkdir(parents=True, exist_ok=True)
     args.func(args, cfg)

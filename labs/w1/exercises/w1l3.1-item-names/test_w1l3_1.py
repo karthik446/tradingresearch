@@ -9,6 +9,7 @@ from datetime import date
 from pathlib import Path
 
 from gigai_core import Dataset
+import pytest
 
 from tradingresearch.analyze import Context, Row, item_for
 
@@ -31,10 +32,15 @@ def test_item_carries_source_names():
         "id into a name such as sma_200, so next to values the item needs a 'names' entry: every source id of the "
         "table, mapped to that row's name."
     )
-    assert expected["names"] == row["names"], (
-        f"expected['names'] has {len(expected['names'])} entries, the table has {len(row['names'])} rows: map every "
-        "row's source_id to its name, nothing else"
-    )
+    names, want = expected["names"], row["names"]
+    assert isinstance(names, dict), f"expected['names'] is a {type(names).__name__}; make it a dict: source id to table name"
+    if names != want:
+        wrong = [sid for sid in want if names.get(sid) != want[sid]]
+        extra = sorted(set(names) - set(want))
+        detail = (f"maps {wrong[0]} to {names.get(wrong[0])!r}; it should map to that row's table name, "
+                  f"{want[wrong[0]]!r} ({len(wrong)} of {len(want)} rows wrong)" if wrong else
+                  f"has {len(extra)} keys that are not source ids of the table, e.g. {extra[0]!r}")
+        pytest.fail(f"expected['names'] {detail}: map every row's source_id to its name, nothing else")
 
 
 def test_values_are_unchanged():

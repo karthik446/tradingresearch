@@ -14,7 +14,7 @@ labs/w1/
   tools/regrade.py         observe: regrade a recorded run with the learner's code ($0)
   tools/prove.py           the proof (below)
   exercises/w1lN.K-<slug>/
-    exercise.toml          id, title, lab, concepts, touches, check, observe, fixtures, origin, red_expect
+    exercise.toml          id, title, lab, concepts, touches, check, observe, observe_ok_exit, fixtures, origin, red_expect
     stub/<repo path>       the repo files with this exercise's TODO cut out (w1l2.4 has none: it works on the learner's file)
     test_w1lN_K.py         the check; its assertion messages are the FAIL messages
     hints.md               two hints, each under a `## Hint N` heading
@@ -23,7 +23,7 @@ labs/w1/
     fixtures/, observe.py  where an exercise needs its own data or observe command
 ```
 
-`check` and `observe` are repo-relative commands that start with `python`; `tr lab` and `prove.py` replace that word with the interpreter they run under. The `check` passes `-m lab` (a later `-m` overrides the `addopts` in `pyproject.toml`). Tests and tools read `labs/w1/data/`; `TR_LAB_DATA` overrides it. `.gitignore` re-includes `labs/**/data/` (the repo ignores `data/` elsewhere) and ignores `.tr-lab/`, the runner's state.
+`check` and `observe` are repo-relative commands, run without a shell; a leading `python` is replaced by the interpreter `tr lab` and `prove.py` run under. `tr lab` notes an observe exit code other than 0 (it never decides the exercise); `observe_ok_exit` lists the codes that are no news, e.g. `[0, 1]` for w1l4.1's `git diff --no-index`, which exits 1 whenever the files differ. The `check` passes `-m lab` (a later `-m` overrides the `addopts` in `pyproject.toml`). Tests and tools read `labs/w1/data/`; `TR_LAB_DATA` overrides it. `.gitignore` re-includes `labs/**/data/` (the repo ignores `data/` elsewhere) and ignores `.tr-lab/`, the runner's state.
 
 ## Old and new ids
 

@@ -1,6 +1,7 @@
 """`tr lab` on a fake two-lab repo: the state machine, refusals, unlocks, backups, verify targets, --assume-previous."""
 
 import json
+import re
 import subprocess
 import sys
 import textwrap
@@ -44,6 +45,7 @@ def repo(tmp_path, monkeypatch) -> Path:
     """w1l1 = w1l1.1 (stub, script check, 3 hints) + w1l1.2 (no stub, a real pytest check); w1l2 = w1l2.1 (stub)."""
     root = tmp_path / "repo"
     (root / "tests").mkdir(parents=True)
+    (root / ".gitignore").write_text(".tr-lab/\n")
     (root / "pyproject.toml").write_text(textwrap.dedent("""\
         [tool.pytest.ini_options]
         testpaths = ["tests"]
@@ -130,7 +132,7 @@ def solve(repo: Path, ex: str) -> None:
 
 def test_start_verify_next_walks_the_lab_and_commits_each_green_exercise(repo, tr):
     code, out = tr("list")
-    assert code == 0 and "locked           w1l1.1" in out and "tr lab start w1l1" in out
+    assert code == 0 and "start here       w1l1.1" in out and "tr lab start w1l1" in out
     code, out = tr("start", "w1l1")
     assert code == 0 and "edit: answer.txt (look for TODO(w1l1.1))" in out
     assert git(repo, "rev-parse", "--abbrev-ref", "HEAD").strip() == "lab"
@@ -143,6 +145,7 @@ def test_start_verify_next_walks_the_lab_and_commits_each_green_exercise(repo, t
     code, out = tr("next")
     assert code == 0 and "exercise w1l1.2" in out and "no stub" in out
     assert git(repo, "log", "-1", "--format=%s").strip() == "lab w1l1.1: green"
+    assert "committed `lab w1l1.1: green`: answer.txt" in out and "note:" not in out
     assert state(repo)["current"] == "w1l1.2" and state(repo)["done"] == ["w1l1.1"]
     code, out = tr("list")
     assert "done             w1l1.1" in out and "current          w1l1.2" in out and "locked           w1l2.1" in out
@@ -223,7 +226,7 @@ def test_reset_backs_up_only_files_you_edited(repo, tr):
     (repo / "answer.txt").write_text("my attempt\n")
     set_state(repo, fails={"w1l1.1": 3})
     code, out = tr("reset")
-    assert code == 0 and "your edits were saved first" in out
+    assert code == 0 and "saved your uncommitted edits to answer.txt in .tr-lab/backup/w1l1.1-" in out
     [backup] = (repo / ".tr-lab" / "backup").rglob("answer.txt")
     assert backup.read_text() == "my attempt\n"
     assert (repo / "answer.txt").read_text() == "TODO(w1l1.1)\n"
@@ -245,6 +248,8 @@ def test_the_no_stub_exercise_keeps_your_file_and_the_lab_ends_with_the_repo_sui
     code, out = tr("next")
     assert code == 0 and "lab w1l1 finished; tr lab start w1l2" in out
     assert state(repo)["current"] == "" and state(repo)["finished"] == ["w1l1"]
+    code, out = tr("list")
+    assert "w1l1  first: finished" in out and "start here       w1l2.1" in out and "start with: tr lab start w1l2" in out
 
 
 def test_verify_takes_no_argument_an_exercise_or_a_lab(repo, tr):
@@ -276,11 +281,14 @@ def test_a_check_that_cannot_run_is_reported_and_not_counted(repo, tr):
     test = next((repo / "labs" / "w1" / "exercises").glob("w1l1.2-*")) / "test_w1l1_2.py"
     test.write_text("def broken(:\n")
     code, out = tr("verify")
-    assert code == 1 and "ERROR w1l1.2: the check could not run" in out and "not counted as a try" in out
+    assert code == 3 and "ERROR w1l1.2: the check could not run" in out and "not counted as a try" in out
     assert "SyntaxError" in out
     assert state(repo)["fails"].get("w1l1.2", 0) == 0
     code, out = tr("verify", "-v")
     assert "short test summary info" in out or "errors" in out
+    test.write_text("x = 1\n")
+    code, out = tr("verify")
+    assert code == 3 and "pytest collected no tests: check the exercise's check command" in out
 
 
 def test_start_refuses_out_of_order_or_over_a_lab_in_progress(repo, tr):
@@ -295,6 +303,7 @@ def test_start_refuses_out_of_order_or_over_a_lab_in_progress(repo, tr):
     set_state(repo, fails={"w1l1.1": 4})
     code, out = tr("start", "w1l1", "--force")
     assert code == 0 and state(repo)["fails"] == {}
+    assert "saved" not in out and not (repo / ".tr-lab" / "backup").exists()  # the file is the runner's own stub
     git(repo, "checkout", "-q", "main")
     set_state(repo, current="")
     code, out = tr("start", "w1l1")
@@ -323,3 +332,60 @@ def test_tr_lab_runs_without_an_env_file_while_a_learner_module_is_broken(repo):
     assert lab.returncode == 0 and '"current": ""' in lab.stdout
     other = subprocess.run([sys.executable, "-c", code, "sessions"], cwd=repo, capture_output=True, text=True, env=env)
     assert other.returncode != 0 and "import of tradingresearch.analyze halted" in other.stderr
+    help_ = subprocess.run([sys.executable, "-c", code, "-h"], cwd=repo, capture_output=True, text=True, env=env)
+    assert help_.returncode == 0 and "usage: tr" in help_.stdout and "analyze" in help_.stdout
+
+
+def test_next_backs_up_your_committed_version_before_the_next_stub_replaces_it(repo, tr):
+    stub = next((repo / "labs" / "w1" / "exercises").glob("w1l1.2-*")) / "stub" / "answer.txt"
+    stub.parent.mkdir()
+    stub.write_text("42\nTODO(w1l1.2)\n")
+    code, out = tr("start", "w1l1")
+    assert "saved" not in out and "starts from" not in out  # answer.txt as the repo shipped it is nobody's work
+    (repo / "answer.txt").write_text("42\nmy own second line\n")
+    code, out = tr("next")
+    sha = git(repo, "log", "-1", "--format=%h").strip()
+    assert code == 0 and (f"w1l1.2 starts from the reference version of w1l1.1 in answer.txt; your version is in commit "
+                          f"{sha} (`lab w1l1.1: green`) and in .tr-lab/backup/w1l1.2-") in out
+    [backup] = (repo / ".tr-lab" / "backup").rglob("answer.txt")
+    assert backup.read_text() == "42\nmy own second line\n"
+    assert (repo / "answer.txt").read_text() == "42\nTODO(w1l1.2)\n"
+    assert git(repo, "show", "HEAD:answer.txt") == "42\nmy own second line\n"
+
+
+def test_restarting_a_lab_clears_its_reference_marks_and_backs_up_only_your_edits(repo, tr):
+    tr("start", "w1l1")
+    (repo / "answer.txt").write_text("my attempt\n")
+    code, out = tr("start", "w1l1", "--force")
+    assert code == 0 and "saved your uncommitted edits to answer.txt" in out
+    code, out = tr("start", "w1l2", "--assume-previous", "--force")
+    assert code == 0 and "saved" not in out and state(repo)["assumed"] == ["w1l1.1", "w1l1.2"]
+    code, out = tr("start", "w1l1", "--force")
+    assert code == 0 and "saved" not in out and "starts from" not in out  # a reference solution is nobody's work
+    assert state(repo)["assumed"] == [] and state(repo)["done"] == []
+    assert "done (reference) w1l1.1" not in tr("list")[1]
+
+
+def test_next_lists_the_commit_and_flags_a_changed_file_outside_the_exercise(repo, tr):
+    tr("start", "w1l1")
+    solve(repo, "w1l1.1")
+    suite = repo / "tests" / "test_suite.py"
+    suite.write_text(suite.read_text() + "# a stray edit\n")
+    (repo / "notes.txt").write_text("a new file\n")
+    code, out = tr("next")
+    assert code == 0 and "committed `lab w1l1.1: green`: answer.txt, notes.txt, tests/test_suite.py" in out
+    assert "note: tests/test_suite.py changed too, outside w1l1.1's files (answer.txt)" in out
+    assert "notes.txt changed" not in out
+
+
+def test_observe_exit_codes_in_observe_ok_exit_are_not_reported(repo, tr):
+    toml = next((repo / "labs" / "w1" / "exercises").glob("w1l1.1-*")) / "exercise.toml"
+    exits_1 = 'observe = "python -c \\"import sys; sys.exit(1)\\""'
+    toml.write_text(re.sub(r"^observe = .*$", lambda _: exits_1, toml.read_text(), flags=re.M))
+    tr("start", "w1l1")
+    solve(repo, "w1l1.1")
+    code, out = tr("verify")
+    assert code == 0 and "(observe exited 1; it never decides the exercise)" in out
+    toml.write_text(toml.read_text() + "observe_ok_exit = [0, 1]\n")
+    code, out = tr("verify")
+    assert code == 0 and "observe exited" not in out
