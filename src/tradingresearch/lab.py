@@ -389,6 +389,10 @@ def cmd_list(labs: Labs, args: argparse.Namespace) -> int:
     st = labs.load()
     up_next = None if st["current"] else next((lab for lab in labs.labs if lab.id not in st["finished"]), None)
     week = None
+
+    def open_lab(lab: Lab) -> bool:  # unfinished, and everything it builds on is finished (a week with a base starts afresh)
+        return not st["current"] and lab.id not in st["finished"] and all(p.id in st["finished"] for p in labs.builds_on(lab))
+
     for lab in labs.labs:
         if lab.week != week:
             week, base = lab.week, labs.bases.get(lab.week)
@@ -399,7 +403,7 @@ def cmd_list(labs: Labs, args: argparse.Namespace) -> int:
         for ex in lab.exercises:
             status = ("done (reference)" if ex.id in st["assumed"] else "done") if ex.id in st["done"] \
                 else "current" if ex.id == st["current"] \
-                else "start here" if up_next is lab and ex is lab.exercises[0] else "locked"
+                else "start here" if open_lab(lab) and ex is lab.exercises[0] else "locked"
             _say(f"  {status:<16} {ex.id:<8} {ex.title}")
     if up_next is not None:
         _say(f"start with: tr lab start {up_next.id}")

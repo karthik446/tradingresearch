@@ -472,6 +472,12 @@ def weeks(repo) -> Path:
     return repo
 
 
+def test_list_marks_the_first_lab_of_a_week_with_a_base_as_a_start_even_before_week_one_is_done(weeks, tr):
+    code, out = tr("list")
+    starts = [ln.split()[2] for ln in out.splitlines() if ln.strip().startswith("start here")]
+    assert code == 0 and starts == ["w1l1.1", "w2l1.1"], out
+
+
 def test_a_week_base_is_applied_once_committed_and_leaves_the_runner_and_labs_alone(weeks, tr):
     labs_tree = git(weeks, "rev-parse", "HEAD:labs")
     code, out = tr("start", "w2l1")  # week 1 is not finished: week 2 needs nothing from it
