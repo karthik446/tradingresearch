@@ -1,6 +1,6 @@
 why: lists several bad placeholders in reverse order
 expect: the detail lists them sorted
-before: GREEN (Codex review)
+before: GREEN (outside review)
 --- a/src/tradingresearch/analyze.py
 +++ b/src/tradingresearch/analyze.py
 @@ -255,7 +255,7 @@ def check_one(item: object, values: dict[str, float | None], kept: dict[str, Cla

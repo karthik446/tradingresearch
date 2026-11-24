@@ -8,5 +8,7 @@ independent draws. Group the diffs by `clusters[item]` first; with fewer than 10
 ## Hint 2
 
 Seed one `random.Random` and, each round, draw as many tickers as there are, with replacement; the round's mean is
-over all diffs of the drawn tickers. Sort the n means; the low end sits at position n × 0.025 (rounded down), the high
-end just before position n × 0.975.
+over all diffs of the drawn tickers. For the bounds, think in shares of the sorted means: `level` is the share the
+interval keeps, and what it leaves out is split evenly between the two tails, so a smaller `level` moves both ends in
+towards the middle. Then check your indices on a tiny case by hand: with n = 2 and level 0.5, which of the two means
+is each end? The page's "Which percentile" paragraph says how this lab rounds.

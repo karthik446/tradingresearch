@@ -42,6 +42,16 @@ def test_every_dist_atr_name_is_an_alias_not_only_averages():
     )
 
 
+def test_a_name_that_holds_dist_inside_keeps_it():
+    score = grade(fact("c1", "s1"), inference("c2", "Close to level_dist_x.", "c1"),
+                  names={"s1": "dist_level_dist_x_atr", "s2": "level_dist_x"})
+    assert score.value == 1.0, (
+        f"scored 0 ({score.explanation}): c1 cites dist_level_dist_x_atr, the distance from level_dist_x in ATRs, so "
+        "naming level_dist_x is grounded. Only the outer dist_ and _atr frame the name; a dist_ inside it is part of "
+        "the name."
+    )
+
+
 def test_only_the_exact_dist_atr_shape_is_an_alias():
     cases = [({"s1": "dist_sma_50_pct", "s2": "sma_50"}, "sma_50", "it does not end in _atr"),
              ({"s1": "sma_50_atr", "s2": "sma_50"}, "sma_50", "it does not start with dist_"),

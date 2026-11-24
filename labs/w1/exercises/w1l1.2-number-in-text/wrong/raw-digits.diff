@@ -1,6 +1,6 @@
 why: rejects any digit, including the ones inside allowed table names
 expect: a YYYY-MM-DD date is allowed
-before: RED (Codex review)
+before: RED (outside review)
 --- a/src/tradingresearch/analyze.py
 +++ b/src/tradingresearch/analyze.py
 @@ -251,7 +251,7 @@

@@ -1,0 +1,14 @@
+why: skips every row marked clean, so a wrong class on a clean row is never reported
+expect: is marked clean (first_failure -) but lists phantom
+before: GREEN (outside review round 2, w1l2.4-new)
+--- a/src/tradingresearch/taxonomy.py
++++ b/src/tradingresearch/taxonomy.py
+@@ -140,6 +140,8 @@ def backfill_todo(labels: Path, taxonomy: Path, run: Path) -> dict[str, list[str
+     found, counts = code_classes(run), class_counts(labels)
+     out: dict[str, list[str]] = {"unlabelled": [], "unknown": [], "code": [], "counts": []}
+     for row in rows:
++        if row["first_failure"] == "-":
++            continue
+         listed = {name.strip() for name in (row["classes"] or "").split(";")} - {""}
+         if row["first_failure"] != "-" and not listed - TAGS:
+             out["unlabelled"].append(row["item"])

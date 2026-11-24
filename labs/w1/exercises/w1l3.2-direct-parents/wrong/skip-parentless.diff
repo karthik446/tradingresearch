@@ -1,6 +1,6 @@
 why: never judges an inference that has no parents
 expect: With no parents nothing is allowed
-before: GREEN (Codex review)
+before: GREEN (outside review)
 --- a/src/tradingresearch/evals.py
 +++ b/src/tradingresearch/evals.py
 @@ -64,7 +64,7 @@ class InferencesGrounded:

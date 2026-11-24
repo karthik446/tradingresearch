@@ -1,6 +1,6 @@
 why: walks the traces sorted by item instead of in the run's order
 expect: the run's order
-before: GREEN (Codex review)
+before: GREEN (outside review)
 --- a/src/tradingresearch/taxonomy.py
 +++ b/src/tradingresearch/taxonomy.py
 @@ -77,7 +77,7 @@ def tally_notes(labels: Path, run: Path) -> dict[str, list[str]]:

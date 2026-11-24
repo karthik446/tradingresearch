@@ -1,6 +1,6 @@
 why: seeds the generator with 0, whatever seed the caller passes
 expect: three calls with seed=3, 11 and 42
-before: GREEN (Codex review w1l4.4-2)
+before: GREEN (outside review, w1l4.4-2)
 --- a/src/tradingresearch/paired.py
 +++ b/src/tradingresearch/paired.py
 @@ -50,7 +50,7 @@

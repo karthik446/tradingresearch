@@ -1,6 +1,6 @@
 why: resamples items, not tickers
 expect: Yours is narrower: did you resample the 20 items?
-before: GREEN before fix round 1 (READ-V2)
+before: GREEN before fix round 1 (review read)
 --- a/src/tradingresearch/paired.py
 +++ b/src/tradingresearch/paired.py
 @@ -53,7 +53,7 @@ def cluster_bootstrap(diffs: dict[str, float], clusters: dict[str, str], *, n: i

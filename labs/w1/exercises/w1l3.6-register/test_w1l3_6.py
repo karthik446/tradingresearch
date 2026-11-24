@@ -73,12 +73,22 @@ def test_every_grader_is_registered_in_the_order_asked():
         )
 
 
+def test_a_name_listed_twice_gives_two_graders():
+    got = [g.id for g in graders(["parsed", "parsed"])]
+    assert got == ["parsed", "parsed"], (
+        f"graders(['parsed', 'parsed']) returned graders {got}: one grader per name the config lists, a repeat "
+        "included. graders() returns what the config asked for; whether a config should list a grader twice is the "
+        "config's call, which a pre-flight can flag, not something to fix silently here."
+    )
+
+
 def test_the_grader_is_an_entry_of_GRADERS():
     from tradingresearch.evals import GRADERS, InferencesGrounded
 
     got = GRADERS.get("inferences_grounded")
+    held = "has no entry for that id" if got is None else f"holds {got!r} under that id"
     assert got is InferencesGrounded, (
-        f"GRADERS['inferences_grounded'] is {got!r}; expected the class InferencesGrounded. GRADERS is the registry "
-        "itself: graders() and labs/w1/tools/regrade.py both read it, so a name special-cased inside graders() is "
-        "still missing for every other reader. Add the class to GRADERS."
+        f"graders() finds inferences_grounded, but the registry itself {held}. graders() is not the registry's only "
+        "reader: labs/w1/tools/regrade.py reads it directly, so a grader that only graders() knows about is not in what "
+        "regrade.py reads. Which object do all of them share?"
     )

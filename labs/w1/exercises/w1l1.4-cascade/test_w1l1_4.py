@@ -62,11 +62,13 @@ def test_the_recorded_run_matches_the_author():
         shares.append(len(kept) / (len(kept) + len(rejected)))
         whole += not rejected
         cascades += sum(r.reason == "bad_derivation" for r in rejected)
-    assert cascades == 14, f"the recorded run has 14 bad_derivation rejections (week-1.md §3); you have {cascades}"
+    assert cascades == 14, (
+        f"the recorded run has 14 bad_derivation rejections (the chapter's Open coding section); you have {cascades}"
+    )
     mean = round(sum(shares) / len(shares), 3)
     assert (mean, whole) == (0.748, 4), (
-        f"the author's run scored claims_valid 0.748 with 4 of 20 analyses fully valid (week-1.md §2); yours "
-        f"{mean}, {whole} of 20"
+        f"the author's run scored claims_valid 0.748 with 4 of 20 analyses fully valid (the chapter's Observe "
+        f"section); yours {mean}, {whole} of 20"
     )
 
 
@@ -81,3 +83,13 @@ def test_missing_ids_keep_the_derived_from_order():
             f"c8 with derived_from {parents} gave {got}; expected ('bad_derivation', {detail!r}). The missing ids "
             "are listed in the order derived_from has them, not sorted."
         )
+
+
+def test_a_parent_listed_twice_is_listed_twice():
+    claims = {c["id"]: c for c in aapl()["output_parsed"]["claims"]}
+    edited = {**claims["c8"], "derived_from": ["c9", "c9"]}
+    got = reasons({"claims": [claims["c1"], edited]}, aapl()["values"]).get("c8")
+    assert got == ("bad_derivation", "unknown claim id: c9, c9"), (
+        f"c8 with derived_from ['c9', 'c9'], and no c9 in the reply, gave {got}; expected ('bad_derivation', 'unknown "
+        "claim id: c9, c9'). The missing ids are listed as derived_from has them, a repeat included."
+    )

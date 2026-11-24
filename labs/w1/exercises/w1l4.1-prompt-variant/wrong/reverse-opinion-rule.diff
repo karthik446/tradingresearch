@@ -1,6 +1,6 @@
 why: the opinion rule asks for citations instead of forbidding them
 expect: reads as asking opinions to cite
-before: GREEN (Codex review)
+before: GREEN (outside review)
 --- a/prompts/analyze-2.txt
 +++ b/prompts/analyze-2.txt
 @@ -7,7 +7,7 @@

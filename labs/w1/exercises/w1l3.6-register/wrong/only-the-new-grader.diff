@@ -1,6 +1,6 @@
 why: registers InferencesGrounded but drops the three graders already there
 expect: The three graders registered before still have to be found
-before: GREEN (Codex review)
+before: GREEN (outside review)
 --- a/src/tradingresearch/evals.py
 +++ b/src/tradingresearch/evals.py
 @@ -75,7 +75,7 @@ class InferencesGrounded:

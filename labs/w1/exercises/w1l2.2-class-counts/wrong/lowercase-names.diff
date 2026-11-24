@@ -1,6 +1,6 @@
 why: lowercases class names, so Window_Name merges into window_name
 expect: Class names are counted as written
-before: GREEN (Codex review)
+before: GREEN (outside review)
 --- a/src/tradingresearch/taxonomy.py
 +++ b/src/tradingresearch/taxonomy.py
 @@ -99,7 +99,7 @@ def class_counts(path: Path) -> dict[str, int]:

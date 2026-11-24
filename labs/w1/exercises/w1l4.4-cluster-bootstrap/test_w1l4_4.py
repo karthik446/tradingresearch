@@ -101,6 +101,19 @@ def test_level_sets_the_width():
     )
 
 
+def test_both_end_indices_are_exact():
+    diffs = {f"T{i}": i / 10 for i in range(10)}
+    clusters = {item: item for item in diffs}
+    got = {seed: cluster_bootstrap(diffs, clusters, n=2, seed=seed, level=0.5) for seed in range(6)}
+    split = {seed: (round(lo, 4), round(hi, 4)) for seed, (lo, hi) in got.items() if lo != hi}
+    assert not split, (
+        f"10 one-item tickers at 0.0, 0.1, ..., 0.9 with n=2 and level=0.5 gave {split} (seed: bounds). With n=2 and "
+        "level=0.5 the page's formula puts both ends at 0-based position 0 of the 2 sorted means, so they must be "
+        "equal whatever the two draws were. Check the position each end reads for n=2, low and high, against 'Which "
+        "percentile' on the page."
+    )
+
+
 def test_unequal_tickers_weigh_by_their_days():
     diffs = {**{f"A:{day}": 1.0 for day in range(9)}, **{f"T{c}:0": 0.0 for c in range(9)}}
     lo, hi = cluster_bootstrap(diffs, {item: item.split(":")[0] for item in diffs})

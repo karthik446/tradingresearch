@@ -1,6 +1,6 @@
 why: allowed = what the first parent cites
 expect: sma_200 is cited by parent c2, yet you flagged it
-before: RED with a format message before fix round 1 (READ-V2)
+before: RED with a format message before fix round 1 (review read)
 --- a/src/tradingresearch/evals.py
 +++ b/src/tradingresearch/evals.py
 @@ -66,7 +66,7 @@ class InferencesGrounded:

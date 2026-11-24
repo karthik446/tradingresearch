@@ -1,6 +1,6 @@
 why: adds the level of only one cited dist_<name>_atr
 expect: Each cited dist_<name>_atr adds its own
-before: GREEN (Codex review)
+before: GREEN (outside review)
 --- a/src/tradingresearch/evals.py
 +++ b/src/tradingresearch/evals.py
 @@ -58,7 +58,7 @@ class InferencesGrounded:

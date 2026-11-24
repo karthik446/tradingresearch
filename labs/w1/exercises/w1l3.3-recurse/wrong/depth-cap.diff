@@ -1,6 +1,6 @@
 why: stops walking up after four claims
 expect: a chain of eight scored 0
-before: GREEN (Codex review)
+before: GREEN (outside review)
 --- a/src/tradingresearch/evals.py
 +++ b/src/tradingresearch/evals.py
 @@ -55,7 +55,7 @@ class InferencesGrounded:

@@ -1,6 +1,6 @@
 why: deletes the source rule of analyze-1, a second change besides the rules
 expect: of analyze-1.txt is missing from analyze-2.txt
-before: GREEN (Codex review w1l4.1-extra4)
+before: GREEN (outside review, w1l4.1-extra4)
 --- a/prompts/analyze-2.txt
 +++ b/prompts/analyze-2.txt
 @@ -11,6 +11,5 @@

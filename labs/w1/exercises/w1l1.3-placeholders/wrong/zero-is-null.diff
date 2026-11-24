@@ -1,6 +1,6 @@
 why: treats a value of 0 as missing
 expect: with value 0, citing a source that holds 0.0, was rejected
-before: GREEN (Codex review)
+before: GREEN (outside review)
 --- a/src/tradingresearch/analyze.py
 +++ b/src/tradingresearch/analyze.py
 @@ -256,7 +256,7 @@

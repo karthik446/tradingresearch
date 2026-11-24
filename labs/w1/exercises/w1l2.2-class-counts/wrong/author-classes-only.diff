@@ -1,6 +1,6 @@
 why: counts only the author's 7 class names
 expect: counts whatever classes your rows name
-before: GREEN (Codex review)
+before: GREEN (outside review)
 --- a/src/tradingresearch/taxonomy.py
 +++ b/src/tradingresearch/taxonomy.py
 @@ -100,7 +100,9 @@ def class_counts(path: Path) -> dict[str, int]:

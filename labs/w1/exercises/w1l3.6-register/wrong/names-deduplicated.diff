@@ -1,0 +1,11 @@
+why: returns one grader for a name the config lists twice
+expect: graders(['parsed', 'parsed']) returned graders ['parsed']
+before: GREEN (outside review round 2, w1l3.6-new)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -82,4 +82,4 @@ def graders(names: list[str]) -> list:
+     unknown = [name for name in names if name not in GRADERS]
+     if unknown:
+         raise SystemExit(f"unknown grader(s) {unknown}; registered: {sorted(GRADERS)}")
+-    return [GRADERS[name]() for name in names]
++    return [GRADERS[name]() for name in dict.fromkeys(names)]

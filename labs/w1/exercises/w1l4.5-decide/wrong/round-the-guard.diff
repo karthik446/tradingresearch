@@ -1,6 +1,6 @@
 why: rounds the guard diff to 3 decimals, so a drop smaller than 0.0005 counts as no drop
 expect: The guard must not drop: any drop, however small
-before: GREEN (Codex review w1l4.5-2)
+before: GREEN (outside review, w1l4.5-2)
 --- a/src/tradingresearch/paired.py
 +++ b/src/tradingresearch/paired.py
 @@ -61,7 +61,7 @@

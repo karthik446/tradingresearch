@@ -58,7 +58,7 @@ def test_the_dataset_hash_moves():
     new = Dataset.of("observe", [item]).ref.sha256
     assert new != old, (
         "the dataset sha256 did not change, so expected did not change. A run records this hash: runs made before and "
-        "after this change must not be compared as if they used the same dataset (week-1.md §5)."
+        "after this change must not be compared as if they used the same dataset (the chapter's First evals section)."
     )
 
 

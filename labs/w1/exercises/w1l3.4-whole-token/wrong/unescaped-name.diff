@@ -1,6 +1,6 @@
 why: puts the name into the pattern unescaped, so ( ) in a name break it
 expect: A table name is text to find as it is
-before: GREEN (Codex review)
+before: GREEN (outside review)
 --- a/src/tradingresearch/evals.py
 +++ b/src/tradingresearch/evals.py
 @@ -69,7 +69,7 @@ class InferencesGrounded:

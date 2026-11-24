@@ -1,6 +1,6 @@
 why: reports at most two ungrounded names per inference
 expect: List all three, sorted
-before: GREEN (Codex review)
+before: GREEN (outside review)
 --- a/src/tradingresearch/evals.py
 +++ b/src/tradingresearch/evals.py
 @@ -70,7 +70,7 @@ class InferencesGrounded:

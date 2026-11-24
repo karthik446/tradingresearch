@@ -1,6 +1,6 @@
 why: sorts the missing parents instead of keeping derived_from order
 expect: listed in the order derived_from has them
-before: GREEN (Codex review)
+before: GREEN (outside review)
 --- a/src/tradingresearch/analyze.py
 +++ b/src/tradingresearch/analyze.py
 @@ -269,7 +269,7 @@ def check_one(item: object, values: dict[str, float | None], kept: dict[str, Cla

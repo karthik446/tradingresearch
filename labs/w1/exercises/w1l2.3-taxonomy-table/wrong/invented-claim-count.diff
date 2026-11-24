@@ -1,6 +1,6 @@
 why: window_name claim count 31 changed to 999
 expect: window_name: 999 claims in 15 analyses
-before: GREEN (Codex review)
+before: GREEN (outside review)
 --- a/evals/taxonomy.md
 +++ b/evals/taxonomy.md
 @@ -6,7 +6,7 @@

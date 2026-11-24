@@ -61,6 +61,17 @@ def test_any_id_missing_from_the_table_is_unknown():
     )
 
 
+def test_an_id_cited_twice_is_listed_twice():
+    claim = {"id": "c1", "tag": "fact", "text": "The close is {value}.", "value": 1.0, "unit": "usd",
+             "source_ids": ["missing", "missing"], "derived_from": [], "steps": None}
+    got = reasons({"item": "a made-up reply", "output_parsed": {"claims": [claim]}, "values": {"src_known": 1.0}})
+    assert got.get("c1") == ("unknown_source", "missing, missing"), (
+        f"a made-up claim cites the unknown id 'missing' twice; expected ('unknown_source', 'missing, missing'), got "
+        f"{got.get('c1')}. The detail lists the unknown ids as the claim cites them, a repeat included, so the reader "
+        "sees the reply exactly as it was written."
+    )
+
+
 def test_opinions_and_inferences_cite_known_ids_too():
     claims = [
         {"id": "c1", "tag": "fact", "text": "The close is {value}.", "value": 1.0, "unit": "usd",

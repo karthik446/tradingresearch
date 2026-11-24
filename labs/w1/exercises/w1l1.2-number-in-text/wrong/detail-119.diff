@@ -1,6 +1,6 @@
 why: cuts the detail one character short
 expect: no more and no fewer
-before: GREEN (Codex review)
+before: GREEN (outside review)
 --- a/src/tradingresearch/analyze.py
 +++ b/src/tradingresearch/analyze.py
 @@ -252,7 +252,7 @@ def check_one(item: object, values: dict[str, float | None], kept: dict[str, Cla

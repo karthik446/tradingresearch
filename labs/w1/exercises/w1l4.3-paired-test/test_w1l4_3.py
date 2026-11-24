@@ -52,10 +52,21 @@ def test_discordant_pairs():
 def test_mcnemar_exact():
     got = mcnemar_p(14, 0), mcnemar_p(14, 1), mcnemar_p(0, 0)
     assert got[0] == pytest.approx(0.000122, rel=0.01) and got[1] == pytest.approx(0.000977, rel=0.01), (
-        f"mcnemar_p(14, 0) = {got[0]:.3g}, (14, 1) = {got[1]:.3g}; compare printed 0.000122 and 0.000977. Two-sided: "
-        "double the binomial tail P(X <= min(up, down)) with n = up + down, p = 0.5."
+        f"mcnemar_p(14, 0) = {got[0]:.3g}, (14, 1) = {got[1]:.3g}; compare printed 0.000122 and 0.000977. Try (2, 0) "
+        "by hand first: if both arms were equally good, how likely is a split of 2 that lopsided, either way round?"
     )
     assert got[2] == 1.0, "with no discordant pairs there is no evidence either way: p = 1"
+
+
+def test_mcnemar_does_not_care_which_arm_is_up():
+    exact = {(14, 0): 0.0001220703125, (3, 1): 0.625, (5, 2): 0.453125, (9, 4): 0.266845703125}
+    got = {(u, d): (mcnemar_p(u, d), mcnemar_p(d, u)) for u, d in exact}
+    wrong = {pair: ps for pair, ps in got.items() if ps != pytest.approx((exact[pair],) * 2, rel=1e-9)}
+    assert not wrong, (
+        f"mcnemar_p(up, down), mcnemar_p(down, up) gave {wrong}; expected {({p: exact[p] for p in wrong})} both ways. "
+        "The test is two-sided: 0 up and 14 down is the same 14-to-0 split read from the other arm, so it is exactly as "
+        "strong evidence and gives the same p."
+    )
 
 
 def test_a_p_value_never_exceeds_1():

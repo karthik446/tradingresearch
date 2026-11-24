@@ -2,11 +2,12 @@
 
 ## Hint 1
 
-`graders(names)` looks names up in `GRADERS`; anything not there exits. Which line builds `GRADERS`, and which
-classes can it hold right now? Configs keep naming the graders that are already there.
+Run the check and read the exit message: it prints the names the registry knows. Find where in `evals.py` that
+set of names comes from. Configs keep naming the graders that are already there, so none of them may drop out.
 Then run the observe command: the analyses it flags should be the ones you labelled `inference_wider` in lab w1l2.
 
 ## Hint 2
 
-The registry is keyed by each grader's `id`, so the new class is found by the name a config uses. If the flags
-and labels still differ, print both lists and read those analyses: that disagreement is the spec's acceptance test.
+Two readers use the registry: `graders()` and `labs/w1/tools/regrade.py`. A change only one of them sees leaves the
+other one broken. If the flags and labels still differ once the grader is found, print both lists and read those
+analyses: that disagreement is the spec's acceptance test.

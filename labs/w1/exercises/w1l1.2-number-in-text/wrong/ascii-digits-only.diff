@@ -1,6 +1,6 @@
 why: looks for 0-9 only, so a number in other Unicode digits is kept
 expect: is twenty written in other digits
-before: GREEN (Codex review)
+before: GREEN (outside review)
 --- a/src/tradingresearch/analyze.py
 +++ b/src/tradingresearch/analyze.py
 @@ -251,7 +251,7 @@ def check_one(item: object, values: dict[str, float | None], kept: dict[str, Cla

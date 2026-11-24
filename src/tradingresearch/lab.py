@@ -16,6 +16,7 @@ from __future__ import annotations
 import argparse
 import filecmp
 import json
+import os
 import re
 import shlex
 import shutil
@@ -41,8 +42,8 @@ AUTHOR_ADDOPTS = "addopts = \"-m 'not live'\""
 LAB_ADDOPTS = "addopts = \"-m 'not live and not lab'\""
 TESTPATHS = 'testpaths = ["tests"]'
 LAB_MARKER = '    "lab: a lab exercise check under labs/ (run by `tr lab verify`, which passes -m lab)",'
-LAB_IGNORE = ("# the labs ship their recorded runs (labs/<week>/data/); `tr lab` keeps its state out of git",
-              "!labs/**/data/", ".tr-lab/")
+# only the state folder: labs/ is tracked, so a base's `data/` rule cannot hide labs/<week>/data/
+LAB_IGNORE = ("# `tr lab` keeps its state out of git", ".tr-lab/")
 
 
 class LabError(Exception):
@@ -698,3 +699,6 @@ def main(argv: list[str]) -> int:
     except LabError as err:
         print(err, file=sys.stderr)
         return 2
+    except BrokenPipeError:  # `tr lab list | head` stopped reading: stop quietly, with nothing more to flush at exit
+        os.dup2(os.open(os.devnull, os.O_WRONLY), sys.stdout.fileno())
+        return 1

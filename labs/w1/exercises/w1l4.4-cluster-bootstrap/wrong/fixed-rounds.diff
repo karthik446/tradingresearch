@@ -1,6 +1,6 @@
 why: always resamples 10_000 rounds, whatever n the caller asks for
 expect: cluster_bootstrap(..., n=7) took
-before: GREEN (Codex review w1l4.4-1)
+before: GREEN (outside review, w1l4.4-1)
 --- a/src/tradingresearch/paired.py
 +++ b/src/tradingresearch/paired.py
 @@ -52,7 +52,7 @@

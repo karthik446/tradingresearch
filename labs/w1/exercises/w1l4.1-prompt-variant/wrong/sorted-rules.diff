@@ -1,6 +1,6 @@
 why: lists each class's rules sorted instead of in the variant's order
 expect: under window_name for a variant that adds
-before: GREEN (Codex review w1l4.1-2)
+before: GREEN (outside review, w1l4.1-2)
 --- a/src/tradingresearch/replay.py
 +++ b/src/tradingresearch/replay.py
 @@ -78,7 +78,7 @@

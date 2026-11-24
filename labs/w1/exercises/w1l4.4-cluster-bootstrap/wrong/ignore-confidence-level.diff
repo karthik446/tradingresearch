@@ -1,6 +1,6 @@
 why: bounds fixed at 95%, level ignored
 expect: the bounds must follow `level`
-before: GREEN (Codex review)
+before: GREEN (outside review)
 --- a/src/tradingresearch/paired.py
 +++ b/src/tradingresearch/paired.py
 @@ -56,7 +56,7 @@

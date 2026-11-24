@@ -1,6 +1,6 @@
 why: files a rule under a class when it holds any one word of an option, so 'Every inference states its steps.' counts as an inference_wider rule
 expect: for a variant that adds 'Every inference states its steps.'
-before: GREEN (Codex review w1l4.1-1)
+before: GREEN (outside review, w1l4.1-1)
 --- a/src/tradingresearch/replay.py
 +++ b/src/tradingresearch/replay.py
 @@ -78,7 +78,7 @@

@@ -1,6 +1,6 @@
 why: checks the right side of a name only
 expect: both words end in sma_20 but are other tokens
-before: GREEN (Codex review)
+before: GREEN (outside review)
 --- a/src/tradingresearch/evals.py
 +++ b/src/tradingresearch/evals.py
 @@ -69,7 +69,7 @@

@@ -1,0 +1,14 @@
+why: does not let a brace pair span a line break, so {bad<newline>name} is kept
+expect: name}.' gave None (None: kept)
+before: GREEN (outside review round 2, w1l1.3-new)
+--- a/src/tradingresearch/analyze.py
++++ b/src/tradingresearch/analyze.py
+@@ -253,7 +253,7 @@ def check_one(item: object, values: dict[str, float | None], kept: dict[str, Cla
+     text, tag, value = str(item.get("text", "")), item.get("tag"), item.get("value")
+     if re.search(r"\d", ALLOWED_DIGITS.sub("", text)):
+         return "number_in_text", text[:120]
+-    placeholders = set(re.findall(r"\{[^}]*\}", text))
++    placeholders = set(re.findall(r"\{[^}\n]*\}", text))
+     if placeholders - {"{value}"}:
+         return "bad_placeholder", ", ".join(sorted(placeholders - {"{value}"}))
+     if "{value}" in placeholders and value is None:

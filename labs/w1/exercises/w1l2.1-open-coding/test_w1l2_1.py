@@ -127,6 +127,21 @@ def test_every_unknown_row_is_listed_in_the_files_order(tmp_path):
     )
 
 
+def test_two_unknown_rows_on_one_item_are_listed_twice(tmp_path):
+    path = tmp_path / "labels.csv"
+    with path.open("w", newline="") as fh:
+        out = csv.writer(fh)
+        out.writerow(HEADER)
+        out.writerow(["an_00000000000000aa", "KO:2026-11-13", "c2", "a note on a trace of another run", ""])
+        out.writerow(["an_00000000000000bb", "KO:2026-11-13", "c4", "a note on a trace of a third run", ""])
+    got = tally_notes(path, RUN).get("unknown")
+    assert got == ["KO:2026-11-13", "KO:2026-11-13"], (
+        f"two rows on KO:2026-11-13 whose analysis_ids (an_00000000000000aa, an_00000000000000bb) are no trace of the "
+        f"run gave unknown={got}; expected the item twice. unknown lists rows, not items: each row is a note you "
+        "have to fix or move, and two notes from two other runs are two rows to deal with."
+    )
+
+
 def test_the_lists_name_the_traces_item(tmp_path):
     path = notes(tmp_path, ("AMZN:2026-11-13", "c4"), ("KO:2026-11-13", "-"))
     path.write_text(path.read_text().replace("AMZN:2026-11-13", "AMZN:2026-11-31").replace("KO:2026", "K0:2026"))
@@ -196,7 +211,7 @@ def test_first_failure_is_a_real_claim_and_not_a_cascade():
         reason = {x.claim: x.reason for x in bad}.get(first)
         assert reason != "bad_derivation", (
             f"{r['item']}: first_failure {first} was rejected only as bad_derivation, which means a parent failed. "
-            "Note the parent's failure instead (week-1.md §3, traps)."
+            "Note the parent's failure instead (the chapter's Open coding section, traps)."
         )
 
 
@@ -218,5 +233,5 @@ def test_some_note_finds_what_the_checks_missed():
     assert got["missed"], (
         "every first_failure is a claim the code checks already reject (tally_notes lists none under missed). "
         "Write what a reader would object to: the author found 6 analyses whose first failure no check catches "
-        "(week-1.md §3, done when)."
+        "(the chapter's Open coding section, done when)."
     )

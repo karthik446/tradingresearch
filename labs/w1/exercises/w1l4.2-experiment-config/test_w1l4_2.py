@@ -142,7 +142,8 @@ def test_two_arms_that_differ_only_in_the_prompt():
     arms = config().arms
     assert len(arms) == 2, (
         f"prompt-v2.toml has {len(arms)} arm(s). A comparison needs a baseline (analyze-1) and a variant (analyze-2), "
-        "run fresh in the same experiment: the observe run is not a baseline (week-1.md §6, 'The baseline moved')."
+        "run fresh in the same experiment: the observe run is not a baseline (the chapter's First experiment section, "
+        "'The baseline moved')."
     )
     assert {arm.prompt for arm in arms} == {"analyze-1", "analyze-2"}, f"arm prompts are {[a.prompt for a in arms]}"
     assert len({arm.model for arm in arms}) == 1, "the arms use different models: change one thing at a time"

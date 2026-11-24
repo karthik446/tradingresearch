@@ -1,6 +1,6 @@
 why: ships when the interval's low end is exactly 0
 expect: decide returned 'ship' for CI [+0.000, +0.600]
-before: GREEN (Codex review)
+before: GREEN (outside review)
 --- a/src/tradingresearch/paired.py
 +++ b/src/tradingresearch/paired.py
 @@ -61,7 +61,7 @@

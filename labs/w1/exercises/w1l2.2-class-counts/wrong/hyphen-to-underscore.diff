@@ -1,0 +1,14 @@
+why: turns a hyphen into an underscore, merging two differently written names
+expect: a row listing 'wrong-sign; wrong_sign' gave
+before: GREEN (outside review round 2, w1l2.2-new)
+--- a/src/tradingresearch/taxonomy.py
++++ b/src/tradingresearch/taxonomy.py
+@@ -99,7 +99,7 @@ def class_counts(path: Path) -> dict[str, int]:
+     counts: Counter[str] = Counter()
+     with Path(path).open(newline="") as fh:
+         for row in csv.DictReader(fh):
+-            counts.update({name.strip() for name in (row["classes"] or "").split(";")} - TAGS - {""})
++            counts.update({name.strip().replace("-", "_") for name in (row["classes"] or "").split(";")} - TAGS - {""})
+     return dict(counts)
+ 
+ 

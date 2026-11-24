@@ -1,6 +1,6 @@
 why: counts a reply the grader could not grade (score None) as 0.0 in the mean
 expect: 4 replies unparseable
-before: GREEN (Codex review w1l4.2-1)
+before: GREEN (outside review, w1l4.2-1)
 --- a/src/tradingresearch/replay.py
 +++ b/src/tradingresearch/replay.py
 @@ -100,7 +100,8 @@

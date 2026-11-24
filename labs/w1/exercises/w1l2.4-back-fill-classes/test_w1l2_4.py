@@ -23,25 +23,25 @@ WINDOW = re.compile(r"\b\d+-day\b", re.IGNORECASE)
 KEYS = {"unlabelled", "unknown", "code", "counts"}
 
 
-def files(tmp_path: Path, rows: dict[str, str], table: dict[str, int]) -> tuple[Path, Path]:
-    """labels.csv with one row per item -> classes (first_failure c1, or - when classes is '-'), and a table whose
-    Claims column (count + 3) differs from its Analyses column (count)."""
+def files(tmp_path: Path, rows: dict[str, str], table: dict[str, int], clean: tuple[str, ...] = ()) -> tuple[Path, Path]:
+    """labels.csv with one row per item -> classes (first_failure c1, or - when classes is '-' or the item is in
+    clean), and a table whose Claims column (count + 3) differs from its Analyses column (count)."""
     ids = {r["item"]: r["analysis_id"] for r in map(json.loads, RUN.open())}
     labels, md = tmp_path / "labels.csv", tmp_path / "taxonomy.md"
     with labels.open("w", newline="") as fh:
         out = csv.writer(fh)
         out.writerow(["analysis_id", "item", "first_failure", "note", "classes"])
         for item, listed in rows.items():
-            out.writerow([ids[item], item, "-" if listed == "-" else "c1", "c1 is a note long enough to keep",
-                          "" if listed == "-" else listed])
+            out.writerow([ids[item], item, "-" if listed == "-" or item in clean else "c1",
+                          "c1 is a note long enough to keep", "" if listed == "-" else listed])
     md.write_text("| # | Class | Claims | Analyses | Caught today by | Example |\n|---|---|---|---|---|---|\n" + "".join(
         f"| {n} | {name}: a class | {count + 3} | {count} | nothing | JPM 11-12 c2 |\n"
         for n, (name, count) in enumerate(table.items(), 1)))
     return labels, md
 
 
-def todo(tmp_path: Path, rows: dict[str, str], table: dict[str, int]) -> dict[str, list[str]]:
-    got = backfill_todo(*files(tmp_path, rows, table), RUN)
+def todo(tmp_path: Path, rows: dict[str, str], table: dict[str, int], clean: tuple[str, ...] = ()) -> dict[str, list[str]]:
+    got = backfill_todo(*files(tmp_path, rows, table, clean), RUN)
     assert got and KEYS <= set(got), (
         f"backfill_todo returned {got!r} for labels {rows} and a table with {', '.join(table)}. It should return "
         f"the lists {', '.join(sorted(KEYS))}: e.g. a failing row with no classes (AAPL:2026-11-12 here) goes under "
@@ -96,6 +96,17 @@ def test_counts_cover_every_row_of_the_table(tmp_path):
         "the table says inference_wider is in 15 analyses and no row lists it (its Claims column says 18), so counts "
         f"should be ['inference_wider: table 15, labels 0'] (window_name and other agree at 1); got {got['counts']}. "
         "counts compares the Analyses column with class_counts, which counts analyses."
+    )
+
+
+def test_a_row_marked_clean_is_still_checked(tmp_path):
+    got = todo(tmp_path, {"KO:2026-11-13": "phantom;window_name"}, {"window_name": 1}, clean=("KO:2026-11-13",))
+    want = {"unlabelled": [], "unknown": ["KO:2026-11-13: phantom"], "code": ["KO:2026-11-13: -window_name"]}
+    assert {key: got[key] for key in want} == want, (
+        f"KO:2026-11-13 is marked clean (first_failure -) but lists phantom, no row of the table, and window_name, "
+        f"which the code does not find in it. backfill_todo gave {({key: got[key] for key in want})}; expected {want}. "
+        "Only unlabelled depends on first_failure: a row that lists classes is checked against the table and the code "
+        "whatever its first_failure says, or a wrong label hides behind a '-'."
     )
 
 

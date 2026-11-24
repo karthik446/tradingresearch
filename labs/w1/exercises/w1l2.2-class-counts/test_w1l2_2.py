@@ -61,6 +61,15 @@ def test_class_names_are_case_sensitive(tmp_path):
     )
 
 
+def test_a_hyphen_is_not_an_underscore(tmp_path):
+    got = class_counts(write(tmp_path, "wrong-sign; wrong_sign"))
+    assert got == {"wrong-sign": 1, "wrong_sign": 1}, (
+        f"a row listing 'wrong-sign; wrong_sign' gave {got}; expected {{'wrong-sign': 1, 'wrong_sign': 1}}. Names "
+        "are counted as written, punctuation included: a miswritten name shows up as its own class for you to fix "
+        "in labels.csv, instead of being merged by a guess."
+    )
+
+
 def test_only_a_semicolon_separates_classes(tmp_path):
     path = tmp_path / "labels.csv"
     with path.open("w", newline="") as fh:

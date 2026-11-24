@@ -1,6 +1,6 @@
 why: recurses into the first parent of an inference only
 expect: not its first one
-before: GREEN (Codex review)
+before: GREEN (outside review)
 --- a/src/tradingresearch/evals.py
 +++ b/src/tradingresearch/evals.py
 @@ -59,7 +59,7 @@ class InferencesGrounded:

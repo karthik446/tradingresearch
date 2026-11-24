@@ -1,6 +1,6 @@
 why: the same made-up analysis_id on every row
 expect: analysis_id is not the id of that item's trace
-before: GREEN (Codex review)
+before: GREEN (outside review)
 --- a/evals/labels.csv
 +++ b/evals/labels.csv
 @@ -1,21 +1,21 @@

@@ -1,6 +1,6 @@
 why: reports every missing parent as an unknown claim id
 expect: got ('bad_derivation', 'unknown claim id: c5')
-before: RED (Codex review)
+before: RED (outside review)
 --- a/src/tradingresearch/analyze.py
 +++ b/src/tradingresearch/analyze.py
 @@ -271,7 +271,7 @@

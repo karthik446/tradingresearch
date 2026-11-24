@@ -48,14 +48,15 @@ def test_value_is_the_only_placeholder():
 
 
 def test_any_braces_other_than_value_are_a_placeholder():
-    for text, bad in (("The close is {value} {the unit}.", "{the unit}"), ("The close is {value} {}.", "{}")):
+    for text, bad in (("The close is {value} {the unit}.", "{the unit}"), ("The close is {value} {}.", "{}"),
+                      ("The close is {value} {bad\nname}.", "{bad\nname}")):
         claim = {"id": "c1", "tag": "fact", "text": text, "value": 1.0, "unit": "usd",
                  "source_ids": ["src_close"], "derived_from": [], "steps": None}
         got = reasons({"claims": [claim]}, {"src_close": 1.0})
         assert got.get("c1") == ("bad_placeholder", bad), (
             f"a fact {text!r} gave {got.get('c1')} (None: kept); expected "
             f"('bad_placeholder', {bad!r}). The renderer fills only {{value}}: braces holding anything else (spaces, "
-            "or nothing at all) reach the reader as they are, so they count as a placeholder too."
+            "a line break, or nothing at all) reach the reader as they are, so they count as a placeholder too."
         )
 
 

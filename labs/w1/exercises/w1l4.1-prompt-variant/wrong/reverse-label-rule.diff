@@ -1,6 +1,6 @@
 why: the label rule tells the model to put the label in value, the label_in_value failure itself
 expect: reads as putting a label in value
-before: GREEN (Codex review w1l4.1-extra3)
+before: GREEN (outside review, w1l4.1-extra3)
 --- a/prompts/analyze-2.txt
 +++ b/prompts/analyze-2.txt
 @@ -10,7 +10,7 @@

@@ -508,6 +508,14 @@ def test_a_week_base_is_applied_once_committed_and_leaves_the_runner_and_labs_al
     assert code == 0 and "week 2 starts from the author's code at week-2-start" in out and state(weeks)["bases"] == ["w2"]
 
 
+def test_a_week_base_adds_only_its_state_folder_to_the_authors_gitignore(weeks, tr):
+    """The base's .gitignore is the author's, plus .tr-lab/ and nothing else: no re-include of labs/<week>/data/,
+    which labs/ being tracked makes unneeded. A .gitignore that already ignores .tr-lab/ is left as it is."""
+    code, out = tr("start", "w2l1")
+    assert code == 0 and (weeks / ".gitignore").read_text() == "data/\n\n# `tr lab` keeps its state out of git\n.tr-lab/\n"
+    assert lab._lab_gitignore("data/\n.tr-lab/\n") == "data/\n.tr-lab/\n"
+
+
 def test_a_week_base_refuses_a_dirty_tree(weeks, tr):
     (weeks / "notes.txt").write_text("mine\n")
     code, out = tr("start", "w2l1")

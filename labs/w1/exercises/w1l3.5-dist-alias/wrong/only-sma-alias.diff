@@ -1,6 +1,6 @@
 why: aliases dist_sma_*_atr only, not every dist_<name>_atr
 expect: c1 cites dist_high_20_atr
-before: GREEN (Codex review)
+before: GREEN (outside review)
 --- a/src/tradingresearch/evals.py
 +++ b/src/tradingresearch/evals.py
 @@ -58,7 +58,7 @@

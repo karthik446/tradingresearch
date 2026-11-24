@@ -2,9 +2,9 @@
 
 The first tests call rule_targets on short prompts written here. The rest read prompts/analyze-2.txt. That check is
 structural: it reads your words. It cannot tell whether a rule works (only a paid run can), only that each of the
-four target classes has a rule, that the window, inference, opinion and label rules do not point the wrong way, that
-every added line is such a rule, and that no line of analyze-1 outside its rule lines moved. Read your rules for
-meaning yourself.
+four target classes has a rule, that none of the window, inference, opinion and label rules uses a wording known to
+turn it around, that every added line is such a rule, and that no line of analyze-1 outside its rule lines moved. A
+word check cannot prove which way a rule points: read your rules for meaning yourself.
 """
 
 import difflib
@@ -26,6 +26,7 @@ SAYS_NONE = re.compile(r"\bempty\b|\bno\b|\bnever\b|\bnothing\b|\bnone\b")
 SAYS_NOT = re.compile(r"\bnever\b|\bnot\b|\bno\b|\bavoid\b|n't\b")
 LIMITS = re.compile(r"\bonly\b|\bmust not\b|\bmay not\b|\bnever\b|\bcannot\b")
 PERMITS = re.compile(r"\bprefer|\bany\b|\balso\b|\bfreely\b")
+NEGATED_CITE = re.compile(r"\b(?:do|does|did) not cite|n't cite|\bnot cited\b|\bnever cited?\b|\buncited\b")
 VALUE, TEXT = r"(?:the )?(?:\{value\}|\"value\"|value\b)", r"(?:the )?(?:\"text\"|text\b)"
 INTO_VALUE, OUT_OF_VALUE = re.compile(rf"\b(?:in|into|to) {VALUE}"), re.compile(rf"\bout of {VALUE}")
 INTO_TEXT = re.compile(rf"\b(?:in|into|to) {TEXT}")
@@ -85,6 +86,16 @@ def test_rules_keep_the_variants_order():
     assert got.get("window_name") == rules, (
         f"rule_targets filed {got.get('window_name')!r} under window_name for a variant that adds {rules!r}, in that "
         "order. A class's rules stay in the order the variant has them, so the observe reads like the prompt."
+    )
+
+
+def test_a_rule_added_twice_is_listed_twice():
+    rule = "Never use window names."
+    got = rule_targets(BASE, BASE + f"{rule}\n{rule}\n")
+    assert got.get("window_name") == [rule, rule], (
+        f"rule_targets filed {got.get('window_name')!r} under window_name for a variant that adds {rule!r} twice. The "
+        "observe shows what the variant adds, line for line: a rule written twice is listed twice, so you see the "
+        "repeat and can decide whether you meant it."
     )
 
 
@@ -182,6 +193,18 @@ def test_the_inference_rule_limits_what_it_names():
         f"your inference rule {wrong[0]!r} reads as letting an inference name more than its parents cite. Class "
         "inference_wider is that failure, which InferencesGrounded flags. The rule has to limit the inference to what "
         "its derived_from claims cite. This check only reads words, so read the rule once more."
+    )
+
+
+def test_the_inference_rule_is_not_turned_around():
+    rules = [line for line in added() if "cite" in line and ("inference" in line or "derived_from" in line)
+             and "opinion" not in line]
+    wrong = [part.strip() for line in rules for part in re.split(r"(?<=[.;,])\s+|\s+but\s+", line)
+             if re.search(r"\bonly\b", part) and NEGATED_CITE.search(part)]
+    assert not wrong, (
+        f"your inference rule {wrong[0]!r} limits an inference to indicators its parents do not cite. Read it as the "
+        "model will: the one thing it then may not name is what its parents cite. This check only reads words, and a "
+        "word check cannot prove which way a rule points, so read the rule once more for what it tells the model to do."
     )
 
 

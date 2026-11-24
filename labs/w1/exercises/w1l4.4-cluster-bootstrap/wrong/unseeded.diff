@@ -1,6 +1,6 @@
 why: draws from the module-level random, not seed
 expect: your interval follows the module-level random, not `seed`
-before: GREEN before fix round 1 (READ-V2)
+before: GREEN before fix round 1 (review read)
 --- a/src/tradingresearch/paired.py
 +++ b/src/tradingresearch/paired.py
 @@ -50,7 +50,7 @@ def cluster_bootstrap(diffs: dict[str, float], clusters: dict[str, str], *, n: i

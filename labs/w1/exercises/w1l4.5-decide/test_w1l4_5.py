@@ -6,8 +6,8 @@ from tradingresearch.paired import decide
 def test_the_recorded_result_ships():
     got = decide((0.45, 0.95), 0.0)
     assert got == "ship", (
-        f"decide returned {got!r} for primary CI [+0.450, +0.950] and guard diff +0.000. The rule: ship if the "
-        "interval's low end is above 0 and parsed did not drop."
+        f"decide returned {got!r} for primary CI [+0.450, +0.950] and guard diff +0.000, the recorded comparison. "
+        "Its answer is one of two strings: apply the rule experiments/prompt-v2.toml wrote down before the run."
     )
 
 
@@ -42,4 +42,14 @@ def test_the_guard_on_both_sides_of_zero():
                    0.0: "ship", 0.05: "ship"}, (
         f"decide((0.45, 0.95), guard) gave {got}. The guard must not drop: any drop, however small, keeps the baseline; "
         "no change or a rise ships."
+    )
+
+
+def test_a_larger_guard_gain_never_reverses_a_ship():
+    lows, gains = (1e-6, 0.01, 0.2, 0.45), (0.0, 0.005, 0.05, 0.5, 1.0)
+    vetoed = sorted((low, gain) for low in lows for gain in gains if decide((low, 0.95), gain) != "ship")
+    assert not vetoed, (
+        f"decide((low, 0.95), guard) kept the baseline for (low, guard) = {vetoed[:4]}. Every low end here is above 0 "
+        "and no guard dropped. A guard can only veto by dropping, so a larger gain on it is never a reason to keep the "
+        "baseline, however it compares with the primary interval."
     )

@@ -1,6 +1,6 @@
 why: matches names case-insensitively
 expect: Names match as written, case included
-before: GREEN (Codex review)
+before: GREEN (outside review)
 --- a/src/tradingresearch/evals.py
 +++ b/src/tradingresearch/evals.py
 @@ -69,7 +69,8 @@ class InferencesGrounded:

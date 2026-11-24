@@ -1,6 +1,6 @@
 why: treats only lower-case letters as part of a token on the left
 expect: a capital letter is a letter too
-before: GREEN (Codex review)
+before: GREEN (outside review)
 --- a/src/tradingresearch/evals.py
 +++ b/src/tradingresearch/evals.py
 @@ -69,7 +69,7 @@ class InferencesGrounded:

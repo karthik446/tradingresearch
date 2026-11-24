@@ -1,0 +1,14 @@
+why: vetoes when the guard gain is larger than the primary interval's low end
+expect: decide((low, 0.95), guard) kept the baseline
+before: GREEN (outside review round 2, w1l4.5-new)
+--- a/src/tradingresearch/paired.py
++++ b/src/tradingresearch/paired.py
+@@ -61,7 +61,7 @@ def cluster_bootstrap(diffs: dict[str, float], clusters: dict[str, str], *, n: i
+ 
+ def decide(primary_ci: tuple[float, float], guard_diff: float) -> str:
+     """The rule written before the run: ship only if the primary interval is above 0 and the guard did not drop."""
+-    return "ship" if primary_ci[0] > 0 and guard_diff >= 0 else "keep baseline"
++    return "ship" if primary_ci[0] > 0 and 0 <= guard_diff <= primary_ci[0] else "keep baseline"
+ 
+ 
+ def main() -> None:

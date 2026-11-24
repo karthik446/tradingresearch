@@ -1,5 +1,5 @@
 why: special-cases the name in graders() instead of registering it in GRADERS
-expect: GRADERS['inferences_grounded'] is None
+expect: the registry itself has no entry for that id
 before: GREEN (round-2 reader)
 --- a/src/tradingresearch/evals.py
 +++ b/src/tradingresearch/evals.py

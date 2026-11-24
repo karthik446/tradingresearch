@@ -83,3 +83,13 @@ def test_the_detail_is_exactly_the_first_120_characters():
         f"a {len(text)}-character fact with a 3 in its prose gave the detail {got!r} "
         f"({len(got or '')} characters); the detail is the first 120 characters of the text, no more and no fewer"
     )
+
+
+def test_the_detail_keeps_the_text_as_written():
+    text = "  7 USD "
+    _, rejected = validate_claims({"claims": [claim(text)]}, {"src_close": 1.0}, "an_lab")
+    got = {r.claim: r.detail for r in rejected}.get("c1")
+    assert got == text, (
+        f"a fact {text!r} gave the detail {got!r}; expected {text!r}. The detail is the text's first 120 characters "
+        "as written, spaces at either end included: a reader matching it against the reply finds it only as it is."
+    )

@@ -1,6 +1,6 @@
 why: ships only above a margin of 0.000001, so a low end that is above 0 but tiny keeps the baseline
 expect: Every low end here is above 0
-before: GREEN (Codex review w1l4.5-1)
+before: GREEN (outside review, w1l4.5-1)
 --- a/src/tradingresearch/paired.py
 +++ b/src/tradingresearch/paired.py
 @@ -61,7 +61,7 @@

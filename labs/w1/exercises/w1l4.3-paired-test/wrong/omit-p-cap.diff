@@ -1,6 +1,6 @@
 why: doubled tail not capped at 1
 expect: mcnemar_p(1, 1) = 1.5
-before: GREEN (Codex review)
+before: GREEN (outside review)
 --- a/src/tradingresearch/paired.py
 +++ b/src/tradingresearch/paired.py
 @@ -39,7 +39,7 @@

@@ -1,6 +1,6 @@
 why: judges the text only, not the steps
 expect: its text names no indicator, but its steps name high_20
-before: GREEN (Codex review)
+before: GREEN (outside review)
 --- a/src/tradingresearch/evals.py
 +++ b/src/tradingresearch/evals.py
 @@ -67,7 +67,7 @@

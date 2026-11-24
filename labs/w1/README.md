@@ -13,7 +13,8 @@ labs/w1/
   pages/                   index.md, w1l1.md .. w1l4.md (one page per lab), concepts.md
   tools/regrade.py         observe: regrade a recorded run with the learner's code ($0)
   exercises/w1lN.K-<slug>/
-    exercise.toml          id, title, lab, concepts, touches, check, observe, observe_ok_exit, fixtures, origin, red_expect
+    exercise.toml          id, title, lab, concepts, touches, check, observe, observe_ok_exit, fixtures, origin, red_expect,
+                           effect, paid, and the page text the site reads: goal, what_tested, writes, show_tests (show_data)
     stub/<repo path>       the repo files with this exercise's TODO cut out (w1l2.4 has none: it works on the learner's file)
     test_w1lN_K.py         the check; its assertion messages are the FAIL messages
     hints.md               two hints, each under a `## Hint N` heading
@@ -32,17 +33,17 @@ From the root of a clean clone (code at `week-1-start`, `uv sync` done):
 uv run python labs/tools/prove.py w1 > labs/w1/PROOF.md
 ```
 
-It takes one to three minutes (65-182 s measured) and never touches the clone it runs from. It copies the clone's files (tracked and untracked, not ignored) into two temp folders, gives each copy a git repo of its own, and runs:
+It takes three to seven minutes, the capture run included (192 s, 359 s and 375 s measured), and never touches the clone it runs from. It copies the clone's files (tracked and untracked, not ignored) into two temp folders, gives each copy a git repo of its own, and runs:
 
 - **The chain**, exercise by exercise: the stub is red with the message in `red_expect`; `solution.diff` makes it green; every earlier check of the lab stays green; every `wrong/*.diff` is red with its `expect:` message; a stub never overwrites a learner's data file from an earlier exercise.
-- **The end state**: after w1l4.5, the six files week 1 ends with equal the `week-1-end` tag byte for byte.
+- **The end state**: after applying the reference solutions through w1l4.5, the six files week 1 ends with equal the `week-1-end` tag byte for byte.
 - **The hint guard**: every `hints.md` is prose. No fenced block of more than one line, and no line copied from the exercise's `solution.diff`; a self-test plants a leak and the guard must catch it.
 - **A runner smoke**: `tr lab` itself through lab w1l1 (start, red verify, next refused, hint locked then unlocked, solution, verify, next, the repo-suite gate), then `start w1l3 --assume-previous`.
 
 It exits 1 if any row reads NOT PROVEN. Re-run it after changing an exercise, a stub, a test message or `lab.py`. The runner's own unit tests are `tests/test_lab.py`, which run under plain `pytest -q`.
 
-**Captures for the site.** The lab pages on scout.edgelab.one show real `tr lab` output, generated here and never typed by hand: each exercise's `expected_output/fail.txt` (the first verify on its stub) and `pass.txt` (the verify after its solution), and the walked-through session in `session/` (`session.toml` lists the steps, each `NN-*.txt` is what one step printed). Each `exercise.toml` also carries the page text the site reads: `goal`, `what_tested`, `writes`, `show_tests` (and `show_data` where a data file is worth showing). `python labs/tools/capture.py w1 --write` regenerates the captured files (about 75 s), `--leakcheck` checks that none of these texts gives away a solution line or a locked hint, and `prove.py` re-captures (about 75 s on top of the times above) and fails on any file that drifted, so re-run `--write` after changing a stub, a test message, a solution or the session.
+**Captures for the site.** The lab pages on scout.edgelab.one show real `tr lab` output, generated here and never typed by hand: each exercise's `expected_output/fail.txt` (the first verify on its stub) and `pass.txt` (the verify after its solution), and the walked-through session in `session/` (`session.toml` lists the steps, each `NN-*.txt` is what one step printed). Each `exercise.toml` also carries the page text the site reads: `goal`, `what_tested`, `writes`, `show_tests` (and `show_data` where a data file is worth showing). `python labs/tools/capture.py w1 --write` regenerates the captured files (about 75 s), `--leakcheck` checks that none of these texts gives away a solution line or a locked hint, and `prove.py` re-captures (within the minutes above) and fails on any file that drifted, so re-run `--write` after changing a stub, a test message, a solution or the session.
 
 ## Reading
 
-The week's reading is the published chapter, [Week 1: error analysis and evals](https://scout.edgelab.one/learn/ai-engineering/week-1/). The pages and the concept index link its sections §1-§7; test messages and `exercise.toml` cite them as `week-1.md §N`.
+The week's reading is the published chapter, [Week 1: error analysis and evals](https://scout.edgelab.one/learn/ai-engineering/week-1/). The pages and the concept index link its sections §1-§7; test messages and `exercise.toml` name a section by its title (for example "the chapter's Open coding section"), not by number, so they stay right if the chapter is renumbered.

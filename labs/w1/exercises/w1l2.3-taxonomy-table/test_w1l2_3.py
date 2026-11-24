@@ -144,8 +144,8 @@ def table() -> list[list[str]]:
 def test_five_to_eight_classes():
     rows = table()
     assert 5 <= len(rows) <= 8, (
-        f"taxonomy.md has {len(rows)} class rows; group your 20 notes into 5 to 8 classes (week-1.md §4). Fewer "
-        "and the classes say nothing; more and they will not get evals."
+        f"taxonomy.md has {len(rows)} class rows; group your 20 notes into 5 to 8 classes (the chapter's Axial coding "
+        "section). Fewer and the classes say nothing; more and they will not get evals."
     )
     for row in rows:
         assert len(row) == 6, f"row {row[0]} has {len(row)} cells; columns are # | Class | Claims | Analyses | " \
@@ -161,8 +161,8 @@ def test_classes_are_failures_not_validator_reasons():
         )
         names.append(name.strip())
     assert "bad_derivation" not in names and "cascade" not in names, (
-        "bad_derivation / cascade is a consequence of a parent's failure, not a class (week-1.md §4): count the "
-        "parent's class instead"
+        "bad_derivation / cascade is a consequence of a parent's failure, not a class (the chapter's Axial coding "
+        "section): count the parent's class instead"
     )
     assert not set(names) <= REASONS, (
         f"every class ({', '.join(names)}) is a validator reason. Grouping by reasons hides the failures no check "

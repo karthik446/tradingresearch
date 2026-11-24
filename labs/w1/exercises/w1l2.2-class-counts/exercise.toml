@@ -2,7 +2,7 @@ id = "w1l2.2"
 title = "Count analyses per class"
 effect = "Observe counts 7 classes in the author's labels, judgement_in_fact 19 first; your own labels show 0 classes until w1l2.4."
 goal = "Count how many analyses show each failure class, the number the taxonomy table reports. Here you count the author's finished labels; your own labels get their classes in w1l2.4."
-what_tested = "class_counts on the author's labels.csv (7 classes, cascade not among them) and on small files the test writes: a class listed twice in a row, empty and tag-only rows, classes outside the author's list, names in different case, and a comma inside a classes cell."
+what_tested = "class_counts on the author's labels.csv (7 classes, cascade not among them) and on small files the test writes: a class listed twice in a row, empty and tag-only rows, classes outside the author's list, names that differ in case or punctuation, and a comma inside a classes cell."
 writes = [
   "class_counts(path) in src/tradingresearch/taxonomy.py: a dict from class name to the number of rows that list it, as its docstring describes.",
   "No data this time: the observe also counts your own evals/labels.csv, which shows 0 classes until w1l2.4 fills in its classes column.",
@@ -15,5 +15,5 @@ check = "python -m pytest -q -x -p no:cacheprovider -m lab labs/w1/exercises/w1l
 observe = "python -m tradingresearch.taxonomy counts evals/labels.csv labs/w1/exercises/w1l2.2-class-counts/fixtures/labels.csv"
 paid = false
 fixtures = ["exercises/w1l2.2-class-counts/fixtures/labels.csv"]
-origin = "new module (not in the week-1-end tag): the counting week-1.md §4 does by hand"
+origin = "new module (not in the week-1-end tag): the counting the chapter's Axial coding section does by hand"
 red_expect = "class_counts returned {} for the author's labels.csv"

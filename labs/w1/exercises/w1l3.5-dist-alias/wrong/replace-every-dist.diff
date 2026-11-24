@@ -1,0 +1,14 @@
+why: removes every dist_ in the name, not only the leading one
+expect: c1 cites dist_level_dist_x_atr
+before: GREEN (outside review round 2, w1l3.5-new)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -58,7 +58,7 @@ class InferencesGrounded:
+             if claim is None or claim_id in seen:
+                 return set()
+             found = {names.get(source, "") for source in claim.get("source_ids") or []}
+-            found |= {name[5:-4] for name in found if name.startswith("dist_") and name.endswith("_atr")}
++            found |= {name.replace("dist_", "")[:-4] for name in found if name.startswith("dist_") and name.endswith("_atr")}
+             for parent in claim.get("derived_from") or []:
+                 found |= cited(parent, seen | {claim_id})
+             return found

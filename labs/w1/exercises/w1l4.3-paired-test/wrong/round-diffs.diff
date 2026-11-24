@@ -1,6 +1,6 @@
 why: rounds each difference to a whole number, so a fractional metric's +0.50 and -0.10 become 0
 expect: for a metric scored 0.25 -> 0.75
-before: GREEN (Codex review w1l4.3-2)
+before: GREEN (outside review, w1l4.3-2)
 --- a/src/tradingresearch/paired.py
 +++ b/src/tradingresearch/paired.py
 @@ -25,7 +25,7 @@

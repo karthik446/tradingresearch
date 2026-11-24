@@ -1,6 +1,6 @@
 why: graders lacks all_claims_valid, the primary metric
 expect: your comment names all_claims_valid as the primary metric
-before: GREEN (Codex review)
+before: GREEN (outside review)
 --- a/experiments/prompt-v2.toml
 +++ b/experiments/prompt-v2.toml
 @@ -5,7 +5,7 @@

@@ -1,6 +1,6 @@
 why: fills names only for the AMZN item the test reads
 expect: names comes from the rows of the context given
-before: GREEN (Codex review)
+before: GREEN (outside review)
 --- a/src/tradingresearch/analyze.py
 +++ b/src/tradingresearch/analyze.py
 @@ -327,7 +327,8 @@ def gather(conn, http, edgar: Edgar, ticker: str, session: date, cache_dir, feed
