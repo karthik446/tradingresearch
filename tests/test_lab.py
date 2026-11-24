@@ -234,6 +234,19 @@ def test_reset_backs_up_only_files_you_edited(repo, tr):
     assert state(repo)["fails"]["w1l1.1"] == 0
 
 
+def test_the_end_of_lab_gate_leaves_out_the_tests_a_week_lists(repo, tr):
+    toml = repo / "labs" / "w1" / "lab.toml"
+    toml.write_text(toml.read_text() + '\n[labs.w1l1.suite]\ndeselect = ["tests/test_suite.py::test_suite"]\n')
+    (repo / "tests" / "test_other.py").write_text("def test_other():\n    pass\n")
+    tr("start", "w1l1")
+    solve(repo, "w1l1.1")
+    tr("next")
+    solve(repo, "w1l1.2")
+    (repo / "suite_red").write_text("")
+    code, out = tr("next")
+    assert code == 0 and "lab w1l1 finished" in out, out
+
+
 def test_the_no_stub_exercise_keeps_your_file_and_the_lab_ends_with_the_repo_suite(repo, tr):
     tr("start", "w1l1")
     solve(repo, "w1l1.1")

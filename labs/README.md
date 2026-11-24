@@ -68,6 +68,8 @@ A failed run is a red `tr lab verify` of the current exercise. A check that cann
 
 The numbers live in one place, the week's `lab.toml` ([labs/w1/lab.toml](w1/lab.toml)): `[unlock] hints = [2, 5]` and `solution = 10`. A lab can override them with its own `[labs.<lab>.unlock]` table. `tr lab reset` zeroes the count of the current exercise.
 
+The last exercise of a lab also runs the repo's own suite and wants it green. A week whose chapter leaves tests red until later (week 2's `tests/test_week2.py` covers all of §2-§3) lists the pytest node ids the gate leaves out: `[suite] deselect = [...]` for the whole week and `[labs.<lab>.suite] deselect = [...]` for one lab, passed as `--deselect`. Only the end-of-lab gate uses them; `python -m pytest -q` still shows everything.
+
 The labs are an honor system: they are for you. They run on your machine against files you can edit, and `tr lab` does not verify that the tests, the exercise metadata or the recorded data under `labs/` are the ones the course shipped: a rewritten test or a `check` of `python -c pass` will turn an exercise green. A green only means something if you leave those files alone. `tr lab next` lists files outside the exercise's `touches`, and `git diff` against the branch you started from shows any change to course files. The solution diffs are in the repo for the same reason: opening them early costs you the exercise, not anyone else.
 
 ## Your work and git

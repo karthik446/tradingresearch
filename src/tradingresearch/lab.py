@@ -74,6 +74,7 @@ class Lab:
     hints: tuple[int, ...]  # failed runs needed for hint 1, 2, ...; extra hints use the last number
     solution: int  # failed runs needed for the solution (green unlocks it at once)
     week: str  # the folder under labs/, e.g. "w1"
+    deselect: tuple[str, ...] = ()  # pytest node ids the repo-suite gate at the end of this lab leaves out
 
     def hint_after(self, k: int) -> int:
         return self.hints[min(k, len(self.hints)) - 1]
@@ -113,7 +114,9 @@ class Labs:
                 self.labs.append(Lab(lab_id, lab_config.get("title", ""), toml.parent / page if page else None,
                                      tuple(sorted(found[lab_id], key=lambda e: _key(e.id))),
                                      tuple(unlock.get("hints", (2, 5))), int(unlock.get("solution", 10)),
-                                     toml.parent.name))
+                                     toml.parent.name,
+                                     tuple(config.get("suite", {}).get("deselect", ()))
+                                     + tuple(lab_config.get("suite", {}).get("deselect", ()))))
         if not self.labs:
             raise LabError(f"no labs found under {repo / 'labs'}")
         self.exercises = {ex.id: ex for lab in self.labs for ex in lab.exercises}
@@ -552,7 +555,8 @@ def cmd_next(labs: Labs, args: argparse.Namespace) -> int:
     lab = labs.by_id[ex.lab]
     last = ex is lab.exercises[-1]
     if last:
-        suite = subprocess.run([sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider"], cwd=labs.repo,
+        skip = [arg for node in lab.deselect for arg in ("--deselect", node)]
+        suite = subprocess.run([sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider", *skip], cwd=labs.repo,
                                capture_output=True, text=True)
         if suite.returncode:
             lines = (suite.stdout + suite.stderr).strip().splitlines()
