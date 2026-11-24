@@ -1,0 +1,24 @@
+--- a/src/tradingresearch/paired.py
++++ b/src/tradingresearch/paired.py
+@@ -45,9 +45,18 @@
+ def cluster_bootstrap(diffs: dict[str, float], clusters: dict[str, str], *, n: int = 10_000, seed: int = 0,
+                       level: float = 0.95) -> tuple[float, float]:
+     """Interval for the mean diff: resample whole clusters (tickers) with replacement, n times."""
+-    # TODO(w1l4.4) group diffs by cluster; ValueError below MIN_CLUSTERS. random.Random(seed); each round draws as
+-    #   many clusters as there are, with replacement, and takes the mean of all their diffs. Return the percentiles.
+-    return 0.0, 0.0
++    by: dict[str, list[float]] = {}
++    for item, d in diffs.items():
++        by.setdefault(clusters[item], []).append(d)
++    if len(by) < MIN_CLUSTERS:
++        raise ValueError(f"{len(by)} clusters; a paired interval needs at least {MIN_CLUSTERS}")
++    rng, keys = random.Random(seed), sorted(by)
++    means = []
++    for _ in range(n):
++        picked = [d for key in rng.choices(keys, k=len(keys)) for d in by[key]]
++        means.append(sum(picked) / len(picked))
++    means.sort()
++    return means[int(n * (1 - level) / 2)], means[int(n * (1 + level) / 2) - 1]
+ 
+ 
+ def decide(primary_ci: tuple[float, float], guard_diff: float) -> str:

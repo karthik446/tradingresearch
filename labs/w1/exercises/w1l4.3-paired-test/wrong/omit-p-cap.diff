@@ -1,0 +1,14 @@
+why: doubled tail not capped at 1
+expect: mcnemar_p(1, 1) = 1.5
+before: GREEN (Codex review)
+--- a/src/tradingresearch/paired.py
++++ b/src/tradingresearch/paired.py
+@@ -39,7 +39,7 @@
+     n = up + down
+     if n == 0:
+         return 1.0
+-    return min(1.0, 2 * sum(comb(n, k) for k in range(min(up, down) + 1)) / 2**n)
++    return 2 * sum(comb(n, k) for k in range(min(up, down) + 1)) / 2**n
+ 
+ 
+ def cluster_bootstrap(diffs: dict[str, float], clusters: dict[str, str], *, n: int = 10_000, seed: int = 0,

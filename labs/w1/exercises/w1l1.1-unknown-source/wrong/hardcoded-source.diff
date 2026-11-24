@@ -1,0 +1,14 @@
+why: flags one hardcoded source id, not every id missing from the table
+expect: Expected ('unknown_source', 'src_zz_new, src_aa_new')
+before: GREEN (Codex review)
+--- a/src/tradingresearch/analyze.py
++++ b/src/tradingresearch/analyze.py
+@@ -258,7 +258,7 @@
+     #   detail: the others, sorted, joined by ", "), and it needs a value (empty_placeholder,
+     #   detail: "text has {value} but value is null").
+     cited = list(item.get("source_ids") or [])
+-    unknown = [s for s in cited if s not in values]
++    unknown = [s for s in cited if s == "src_aa2421e8c7298ffd"]
+     if unknown:
+         return "unknown_source", ", ".join(unknown)
+     if tag == "opinion" and value is not None:

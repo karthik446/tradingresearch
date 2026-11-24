@@ -12,3 +12,6 @@ wheels/
 # tradingresearch: never commit data, caches, traces or keys (SPIKE §11)
 data/
 .env
+# the labs ship their recorded runs (labs/<week>/data/); `tr lab` keeps its state out of git
+!labs/**/data/
+.tr-lab/

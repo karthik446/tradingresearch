@@ -1,0 +1,14 @@
+why: averages each drawn ticker first, so a ticker with 9 days weighs as much as one with 1
+expect: count as one
+before: GREEN (read of fix round 2, R5)
+--- a/src/tradingresearch/paired.py
++++ b/src/tradingresearch/paired.py
+@@ -53,7 +53,7 @@
+     rng, keys = random.Random(seed), sorted(by)
+     means = []
+     for _ in range(n):
+-        picked = [d for key in rng.choices(keys, k=len(keys)) for d in by[key]]
++        picked = [sum(by[key]) / len(by[key]) for key in rng.choices(keys, k=len(keys))]
+         means.append(sum(picked) / len(picked))
+     means.sort()
+     return means[int(n * (1 - level) / 2)], means[int(n * (1 + level) / 2) - 1]

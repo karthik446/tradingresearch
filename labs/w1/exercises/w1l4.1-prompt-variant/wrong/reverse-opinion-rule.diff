@@ -1,0 +1,14 @@
+why: the opinion rule asks for citations instead of forbidding them
+expect: reads as asking opinions to cite
+before: GREEN (Codex review)
+--- a/prompts/analyze-2.txt
++++ b/prompts/analyze-2.txt
+@@ -7,7 +7,7 @@
+ - tag "inference": a conclusion drawn from earlier claims. derived_from lists their ids; steps says how in one
+   sentence; source_ids is empty. value is null unless the number appears in a cited source.
+   An inference may name only indicators that its derived_from claims cite. To use sma_20, first state it as a fact.
+-- tag "opinion": a judgement. value is null, the text contains no digits, and derived_from and source_ids are empty.
++- tag "opinion": a judgement. value is null, the text contains no digits, and derived_from and source_ids must be nonempty.
+ - Write numbers ONLY in "value". In "text", refer to it as {value}. Name indicators by their table name
+   (sma_200, high_20, rsi_14); never by their window ("200-day", "20-day", "14-day"). Dates as YYYY-MM-DD are allowed.
+ - {value} is the only placeholder, and only when value is set. A label such as the regime goes in the text.

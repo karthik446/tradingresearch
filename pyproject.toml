@@ -27,8 +27,10 @@ dev = [
 ]
 
 [tool.pytest.ini_options]
+testpaths = ["tests"]
 markers = [
     "live: calls a real API (needs network and, for Alpaca or OpenRouter, keys)",
     "oracle: checks indicators against TA-Lib (skipped when TA-Lib is not installed)",
+    "lab: a lab exercise check under labs/ (run by `tr lab verify`, which passes -m lab)",
 ]
-addopts = "-m 'not live'"
+addopts = "-m 'not live and not lab'"

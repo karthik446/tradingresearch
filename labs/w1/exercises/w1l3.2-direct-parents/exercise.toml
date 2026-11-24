@@ -1,0 +1,11 @@
+id = "w1l3.2"
+title = "The rule on direct parents"
+lab = "w1l3"
+concepts = ["code-checkable-grader", "eval-spec"]
+touches = ["src/tradingresearch/evals.py"]
+check = "python -m pytest -q -x -p no:cacheprovider -m lab labs/w1/exercises/w1l3.2-direct-parents/test_w1l3_2.py"
+observe = "python labs/w1/tools/regrade.py observe --grader inferences_grounded"
+paid = false
+fixtures = ["data/observe.jsonl"]
+origin = "week-1-end diff (evals.InferencesGrounded)"
+red_expect = "AMZN 2026-11-13 c4 scored 1"

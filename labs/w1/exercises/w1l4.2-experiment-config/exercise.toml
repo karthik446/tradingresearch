@@ -1,0 +1,11 @@
+id = "w1l4.2"
+title = "Write the experiment config"
+lab = "w1l4"
+concepts = ["paired-comparison", "pre-registration"]
+touches = ["experiments/prompt-v2.toml"]
+check = "python -m pytest -q -x -p no:cacheprovider -m lab labs/w1/exercises/w1l4.2-experiment-config/test_w1l4_2.py"
+observe = "python labs/w1/exercises/w1l4.2-experiment-config/observe.py"
+paid = false
+fixtures = []
+origin = "week-1-end diff (experiments/prompt-v2.toml)"
+red_expect = "prompt-v2.toml has 1 arm(s)"

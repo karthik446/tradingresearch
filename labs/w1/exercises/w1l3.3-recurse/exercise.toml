@@ -1,0 +1,11 @@
+id = "w1l3.3"
+title = "Recurse through inference parents"
+lab = "w1l3"
+concepts = ["code-checkable-grader"]
+touches = ["src/tradingresearch/evals.py"]
+check = "python -m pytest -q -x -p no:cacheprovider -m lab labs/w1/exercises/w1l3.3-recurse/test_w1l3_3.py"
+observe = "python labs/w1/exercises/w1l3.3-recurse/observe.py"
+paid = false
+fixtures = ["data/observe.jsonl"]
+origin = "week-1-end diff (evals.InferencesGrounded.cited)"
+red_expect = "c3 scored 0"

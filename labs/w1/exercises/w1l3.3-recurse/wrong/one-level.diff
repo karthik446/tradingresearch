@@ -1,0 +1,14 @@
+why: looks one level up instead of recursing; a chain of four is not grounded
+expect: a chain of four scored 0
+before: GREEN (read of fix round 2, R4)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -60,7 +60,7 @@
+             found = {names.get(source, "") for source in claim.get("source_ids") or []}
+             # TODO(w1l3.5) a parent that cites dist_sma_200_atr also grounds sma_200: add <name> for each dist_<name>_atr.
+             for parent in claim.get("derived_from") or []:
+-                found |= cited(parent, seen | {claim_id})
++                found |= {names.get(s, "") for s in (claims.get(parent) or {}).get("source_ids") or []}
+             return found
+ 
+         ungrounded = []

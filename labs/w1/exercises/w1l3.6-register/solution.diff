@@ -1,0 +1,12 @@
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -75,8 +75,7 @@
+         return Score(value=0.0 if ungrounded else 1.0, explanation="; ".join(ungrounded) or None)
+ 
+ 
+-# TODO(w1l3.6) register InferencesGrounded, so experiment configs and graders() can name it.
+-GRADERS = {grader.id: grader for grader in (Parsed, ClaimsValid, AllClaimsValid)}
++GRADERS = {grader.id: grader for grader in (Parsed, ClaimsValid, AllClaimsValid, InferencesGrounded)}
+ 
+ 
+ def graders(names: list[str]) -> list:

@@ -1,0 +1,14 @@
+why: treats a value of 0 as missing
+expect: with value 0, citing a source that holds 0.0, was rejected
+before: GREEN (Codex review)
+--- a/src/tradingresearch/analyze.py
++++ b/src/tradingresearch/analyze.py
+@@ -256,7 +256,7 @@
+     placeholders = set(re.findall(r"\{[^}]*\}", text))
+     if placeholders - {"{value}"}:
+         return "bad_placeholder", ", ".join(sorted(placeholders - {"{value}"}))
+-    if "{value}" in placeholders and value is None:
++    if "{value}" in placeholders and not value:
+         return "empty_placeholder", "text has {value} but value is null"
+     cited = list(item.get("source_ids") or [])
+     unknown = [s for s in cited if s not in values]

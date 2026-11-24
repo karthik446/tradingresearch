@@ -1,0 +1,11 @@
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -58,7 +58,7 @@
+             if claim is None or claim_id in seen:
+                 return set()
+             found = {names.get(source, "") for source in claim.get("source_ids") or []}
+-            # TODO(w1l3.5) a parent that cites dist_sma_200_atr also grounds sma_200: add <name> for each dist_<name>_atr.
++            found |= {name[5:-4] for name in found if name.startswith("dist_") and name.endswith("_atr")}
+             for parent in claim.get("derived_from") or []:
+                 found |= cited(parent, seen | {claim_id})
+             return found

@@ -1,0 +1,11 @@
+id = "w1l1.1"
+title = "Reject a claim that cites a source not in the table"
+lab = "w1l1"
+concepts = ["source-table", "claim-check"]
+touches = ["src/tradingresearch/analyze.py"]
+check = "python -m pytest -q -x -p no:cacheprovider -m lab labs/w1/exercises/w1l1.1-unknown-source/test_w1l1_1.py"
+observe = "python labs/w1/tools/regrade.py observe"
+paid = false
+fixtures = ["data/observe.jsonl"]
+origin = "rebuild of week-1-start code; reference = the tag's own check_one"
+red_expect = "validate_claims crashed with KeyError"

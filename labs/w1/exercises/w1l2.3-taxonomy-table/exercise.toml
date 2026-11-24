@@ -1,0 +1,11 @@
+id = "w1l2.3"
+title = "Write the taxonomy table"
+lab = "w1l2"
+concepts = ["axial-coding", "failure-taxonomy"]
+touches = ["evals/taxonomy.md"]
+check = "python -m pytest -q -x -p no:cacheprovider -m lab labs/w1/exercises/w1l2.3-taxonomy-table/test_w1l2_3.py"
+observe = "python -m tradingresearch.taxonomy labs/w1/exercises/w1l2.2-class-counts/fixtures/labels.csv"
+paid = false
+fixtures = ["data/observe.jsonl"]
+origin = "week-1-end diff (evals/taxonomy.md)"
+red_expect = "taxonomy.md has 1 class rows"

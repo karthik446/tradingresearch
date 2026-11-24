@@ -1,0 +1,14 @@
+# Week 1, step 6: does analyze-2 (three rules from the taxonomy) beat analyze-1 on the same 20 ticker-days?
+# TODO(w1l4.2) pre-register here, before any run: the primary metric (decides) and a guard metric (must not drop).
+#   Then add the lab w1l3 grader and a second arm that differs from the baseline only in its prompt.
+name = "prompt-v2"
+model = "anthropic/claude-sonnet-5.5"
+max_usd_per_arm = 1.00
+tickers = ["AAPL", "MSFT", "NVDA", "AMZN", "JPM", "XOM", "UNH", "HD", "KO", "CAT"]
+sessions = ["2026-11-12", "2026-11-13"]
+graders = ["parsed", "claims_valid", "all_claims_valid"]
+
+[[arms]]
+name = "baseline"
+prompt = "analyze-1"
+

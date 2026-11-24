@@ -1,0 +1,11 @@
+id = "w1l4.3"
+title = "Paired differences and McNemar"
+lab = "w1l4"
+concepts = ["paired-comparison", "mcnemars-test"]
+touches = ["src/tradingresearch/paired.py"]
+check = "python -m pytest -q -x -p no:cacheprovider -m lab labs/w1/exercises/w1l4.3-paired-test/test_w1l4_3.py"
+observe = "python -m tradingresearch.paired labs/w1/data/prompt-v2-baseline.jsonl labs/w1/data/prompt-v2-variant.jsonl"
+paid = false
+fixtures = ["data/prompt-v2-baseline.jsonl", "data/prompt-v2-variant.jsonl"]
+origin = "new module (not in the week-1-end tag): what gigai-core compare does, by hand"
+red_expect = "paired_diff returned 0 items"

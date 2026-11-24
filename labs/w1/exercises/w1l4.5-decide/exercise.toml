@@ -1,0 +1,11 @@
+id = "w1l4.5"
+title = "Apply the pre-registered rule"
+lab = "w1l4"
+concepts = ["pre-registration", "confidence-interval"]
+touches = ["src/tradingresearch/paired.py"]
+check = "python -m pytest -q -x -p no:cacheprovider -m lab labs/w1/exercises/w1l4.5-decide/test_w1l4_5.py"
+observe = "python -m tradingresearch.paired labs/w1/data/prompt-v2-baseline.jsonl labs/w1/data/prompt-v2-variant.jsonl"
+paid = false
+fixtures = ["data/prompt-v2-baseline.jsonl", "data/prompt-v2-variant.jsonl"]
+origin = "new module (not in the week-1-end tag): the rule from experiments/prompt-v2.toml as code"
+red_expect = "decide returned 'undecided'"

@@ -1,0 +1,14 @@
+why: inference_wider renamed, so w1l3.6 and w1l4.1 cannot find it
+expect: taxonomy.md has no row for inference_wider
+before: GREEN (fix round 2 writer)
+--- a/evals/taxonomy.md
++++ b/evals/taxonomy.md
+@@ -7,7 +7,7 @@ and 2026-11-13), 229 claims. Open-coded notes are in `labels.csv`; each class be
+ | # | Class | Claims | Analyses | Caught today by | Example |
+ |---|---|---|---|---|---|
+ | 1 | window_name: an indicator named by its window ("200-day", "20-day", "14-day RSI") | 31 | 15 | code (`number_in_text`) | JPM 11-12 c2 "The 200-day average, sma_200, stood at {value}" |
+-| 2 | inference_wider: an inference names indicators its parents never cite | 15 | 15 | nothing directly; 9 are rejected only because a parent failed | AMZN 11-13 c4 "above sma_20, sma_50 and sma_200" from close and sma_200 |
++| 2 | uncited_names: an inference names indicators its parents never cite | 15 | 15 | nothing directly; 9 are rejected only because a parent failed | AMZN 11-13 c4 "above sma_20, sma_50 and sma_200" from close and sma_200 |
+ | 3 | judgement_in_fact: a fact carries a verdict the source does not state | 33 | 19 | nothing (judge later, ADR-001) | HD 11-13 c8 "buyers finished the day in control" |
+ | 4 | opinion_cites: an opinion lists derived_from | 5 | 5 | code (`not_a_claim`, record rules) | CAT 11-13 c12 |
+ | 5 | label_in_value: a text label put in {value} with value null | 4 | 4 | code (`empty_placeholder`) | KO 11-12 c9 "labeled {value} on this date, which is bull-high" |

@@ -1,0 +1,11 @@
+id = "w1l3.6"
+title = "Register the grader and meet the spec"
+lab = "w1l3"
+concepts = ["grader", "eval-spec", "error-analysis"]
+touches = ["src/tradingresearch/evals.py"]
+check = "python -m pytest -q -x -p no:cacheprovider -m lab labs/w1/exercises/w1l3.6-register/test_w1l3_6.py"
+observe = "python labs/w1/tools/regrade.py observe --grader inferences_grounded"
+paid = false
+fixtures = ["data/observe.jsonl"]
+origin = "week-1-end diff (evals.GRADERS)"
+red_expect = "graders(['inferences_grounded']) exited"

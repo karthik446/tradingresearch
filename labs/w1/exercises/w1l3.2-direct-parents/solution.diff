@@ -1,0 +1,17 @@
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -66,11 +66,12 @@
+         for claim_id, claim in claims.items():
+             if claim.get("tag") != "inference":
+                 continue
+-            # TODO(w1l3.2) allowed = union of cited(parent) for each parent in derived_from. After `used`: names in
+-            #   used - allowed are ungrounded; append "c4: sma_20, sma_50" (sorted, joined by ", ").
++            allowed = set().union(*(cited(parent) for parent in claim.get("derived_from") or []))
+             words = f"{claim.get('text') or ''} {claim.get('steps') or ''}"
+             # TODO(w1l3.4) whole tokens only: sma_20 must not match inside sma_200 or dist_sma_20_atr.
+             used = {name for name in vocab if name in words}
++            if extra := sorted(used - allowed):
++                ungrounded.append(f"{claim_id}: {', '.join(extra)}")
+         return Score(value=0.0 if ungrounded else 1.0, explanation="; ".join(ungrounded) or None)
+ 
+ 

@@ -1,0 +1,14 @@
+why: judges the text only, not the steps
+expect: its text names no indicator, but its steps name high_20
+before: GREEN (Codex review)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -67,7 +67,7 @@
+             if claim.get("tag") != "inference":
+                 continue
+             allowed = set().union(*(cited(parent) for parent in claim.get("derived_from") or []))
+-            words = f"{claim.get('text') or ''} {claim.get('steps') or ''}"
++            words = claim.get("text") or ""
+             # TODO(w1l3.4) whole tokens only: sma_20 must not match inside sma_200 or dist_sma_20_atr.
+             used = {name for name in vocab if name in words}
+             if extra := sorted(used - allowed):

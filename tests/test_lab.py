@@ -1,0 +1,325 @@
+"""`tr lab` on a fake two-lab repo: the state machine, refusals, unlocks, backups, verify targets, --assume-previous."""
+
+import json
+import subprocess
+import sys
+import textwrap
+from pathlib import Path
+
+import pytest
+
+from tradingresearch.cli import main
+
+REAL_CONFTEST = Path(__file__).resolve().parents[1] / "labs" / "w1" / "conftest.py"
+CHECK = """\
+import sys
+from pathlib import Path
+
+path, want = Path(sys.argv[1]), sys.argv[2]
+got = (path.read_text().splitlines() or [""])[0] if path.exists() else None
+if got != want:
+    print(f"E   AssertionError: {path} holds {got!r}, which is not the answer")
+    sys.exit(1)
+"""
+
+
+def diff(path: str, old: list[str], new: list[str]) -> str:
+    body = [f"-{x}" for x in old if x not in new] + [f"{' ' if x in old else '+'}{x}" for x in new]
+    return f"--- a/{path}\n+++ b/{path}\n@@ -1,{len(old)} +1,{len(new)} @@\n" + "\n".join(body) + "\n"
+
+
+def exercise(root: Path, name: str, toml: str, files: dict[str, str]) -> None:
+    ex = root / "labs" / "w1" / "exercises" / name
+    for rel, text in {"exercise.toml": textwrap.dedent(toml), **files}.items():
+        (ex / rel).parent.mkdir(parents=True, exist_ok=True)
+        (ex / rel).write_text(text)
+
+
+def git(repo: Path, *args: str) -> str:
+    return subprocess.run(["git", *args], cwd=repo, check=True, capture_output=True, text=True).stdout
+
+
+@pytest.fixture
+def repo(tmp_path, monkeypatch) -> Path:
+    """w1l1 = w1l1.1 (stub, script check, 3 hints) + w1l1.2 (no stub, a real pytest check); w1l2 = w1l2.1 (stub)."""
+    root = tmp_path / "repo"
+    (root / "tests").mkdir(parents=True)
+    (root / "pyproject.toml").write_text(textwrap.dedent("""\
+        [tool.pytest.ini_options]
+        testpaths = ["tests"]
+        markers = ["lab: a lab check"]
+        addopts = "-m 'not lab'"
+        """))
+    (root / "tests" / "test_suite.py").write_text(
+        "from pathlib import Path\n\ndef test_suite():\n    assert not Path('suite_red').exists()\n")
+    (root / "answer.txt").write_text("start\n")
+    (root / "labs" / "w1").mkdir(parents=True)
+    (root / "labs" / "w1" / "conftest.py").write_text(REAL_CONFTEST.read_text())
+    (root / "labs" / "w1" / "check.py").write_text(CHECK)
+    (root / "labs" / "w1" / "lab.toml").write_text(textwrap.dedent("""\
+        [unlock]
+        hints = [2, 5]
+        solution = 10
+
+        [labs.w1l1]
+        title = "first"
+
+        [labs.w1l2]
+        title = "second"
+        """))
+    hints = "# Hints\n\n## Hint 1\n\nfirst hint\n\n## Hint 2\n\nsecond hint\n\n## Hint 3\n\nthird hint\n"
+    exercise(root, "w1l1.1-one", """\
+        id = "w1l1.1"
+        title = "write the answer"
+        lab = "w1l1"
+        touches = ["answer.txt"]
+        check = "python labs/w1/check.py answer.txt 42"
+        observe = "python -c \\"print('observed it')\\""
+        """, {"stub/answer.txt": "TODO(w1l1.1)\n", "hints.md": hints,
+              "solution.diff": diff("answer.txt", ["TODO(w1l1.1)"], ["42"])})
+    exercise(root, "w1l1.2-own", """\
+        id = "w1l1.2"
+        title = "add a second line"
+        lab = "w1l1"
+        touches = ["answer.txt"]
+        check = "python -m pytest -q -x -p no:cacheprovider -m lab labs/w1/exercises/w1l1.2-own/test_w1l1_2.py"
+        observe = ""
+        """, {"test_w1l1_2.py": "from pathlib import Path\n\ndef test_second_line():\n"
+                                "    assert Path('answer.txt').read_text() == '42\\n43\\n', 'answer.txt needs 43 below 42'\n",
+              "hints.md": hints, "solution.diff": diff("answer.txt", ["42"], ["42", "43"])})
+    exercise(root, "w1l2.1-two", """\
+        id = "w1l2.1"
+        title = "the second file"
+        lab = "w1l2"
+        touches = ["second.txt"]
+        check = "python labs/w1/check.py second.txt 7"
+        """, {"stub/second.txt": "TODO(w1l2.1)\n", "hints.md": hints,
+              "solution.diff": diff("second.txt", ["TODO(w1l2.1)"], ["7"])})
+    for name, value in {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "t",
+                        "GIT_COMMITTER_EMAIL": "t@t"}.items():
+        monkeypatch.setenv(name, value)
+    git(root, "init", "-q", "-b", "main")
+    git(root, "add", "-A")
+    git(root, "commit", "-qm", "start")
+    monkeypatch.chdir(root)
+    return root
+
+
+@pytest.fixture
+def tr(capsys):
+    def run(*args: str) -> tuple[int, str]:
+        with pytest.raises(SystemExit) as exit_:
+            main(["lab", *args])
+        out = capsys.readouterr()
+        return exit_.value.code, out.out + out.err
+    return run
+
+
+def state(repo: Path) -> dict:
+    return json.loads((repo / ".tr-lab" / "state.json").read_text())
+
+
+def set_state(repo: Path, **changes) -> None:
+    (repo / ".tr-lab" / "state.json").write_text(json.dumps({**state(repo), **changes}))
+
+
+def solve(repo: Path, ex: str) -> None:
+    folder = next((repo / "labs" / "w1" / "exercises").glob(f"{ex}-*"))
+    git(repo, "apply", str(folder / "solution.diff"))
+
+
+def test_start_verify_next_walks_the_lab_and_commits_each_green_exercise(repo, tr):
+    code, out = tr("list")
+    assert code == 0 and "locked           w1l1.1" in out and "tr lab start w1l1" in out
+    code, out = tr("start", "w1l1")
+    assert code == 0 and "edit: answer.txt (look for TODO(w1l1.1))" in out
+    assert git(repo, "rev-parse", "--abbrev-ref", "HEAD").strip() == "lab"
+    assert (repo / "answer.txt").read_text() == "TODO(w1l1.1)\n"
+    code, out = tr("verify")
+    assert code == 1 and "FAIL w1l1.1 (try 1)" in out and "which is not the answer" in out
+    solve(repo, "w1l1.1")
+    code, out = tr("verify")
+    assert code == 0 and "PASS w1l1.1" in out and "observed it" in out and "tr lab solution" in out
+    code, out = tr("next")
+    assert code == 0 and "exercise w1l1.2" in out and "no stub" in out
+    assert git(repo, "log", "-1", "--format=%s").strip() == "lab w1l1.1: green"
+    assert state(repo)["current"] == "w1l1.2" and state(repo)["done"] == ["w1l1.1"]
+    code, out = tr("list")
+    assert "done             w1l1.1" in out and "current          w1l1.2" in out and "locked           w1l2.1" in out
+
+
+def test_next_refuses_on_red_and_clears_a_stale_pass(repo, tr):
+    tr("start", "w1l1")
+    solve(repo, "w1l1.1")
+    assert tr("verify")[0] == 0 and state(repo)["passed"] == "w1l1.1"
+    (repo / "answer.txt").write_text("41\n")
+    code, out = tr("next")
+    assert code == 2 and "stays here" in out
+    assert "passed" not in state(repo) and state(repo)["current"] == "w1l1.1"
+    assert git(repo, "log", "-1", "--format=%s").strip() == "start"
+
+
+@pytest.mark.parametrize(("hook", "shown"), [("exit 1", "a hook or config refused it, no message"),
+                                              ("echo 'commit blocked by policy' >&2; exit 1", "commit blocked by policy")])
+def test_next_stops_on_a_failing_commit_hook_with_the_state_unchanged(repo, tr, hook, shown):
+    tr("start", "w1l1")
+    solve(repo, "w1l1.1")
+    hook_file = repo / ".git" / "hooks" / "pre-commit"
+    hook_file.write_text(f"#!/bin/sh\n{hook}\n")
+    hook_file.chmod(0o755)
+    before = state(repo)
+    code, out = tr("next")
+    assert code == 2 and "git commit failed" in out and shown in out and "nothing advanced" in out
+    assert state(repo) == before
+    assert (repo / "answer.txt").read_text() == "42\n"
+
+
+def test_hints_unlock_at_2_and_5_failed_runs_and_the_solution_at_10_or_on_green(repo, tr):
+    tr("start", "w1l1")
+    code, out = tr("verify")
+    assert "hint 1 unlocks after 2 failed runs" in out and "solution unlocks after 10 failed runs" in out
+    code, out = tr("hint")
+    assert code == 2 and "hint 1 unlocks after 2 failed runs" in out and "first hint" not in out
+    set_state(repo, fails={"w1l1.1": 2})
+    code, out = tr("hint")
+    assert code == 0 and "first hint" in out and "second hint" not in out and "hint 2 unlocks after 5" in out
+    set_state(repo, fails={"w1l1.1": 5})
+    code, out = tr("hint")
+    assert "second hint" in out and "third hint" in out  # hints past the list unlock at its last number
+    set_state(repo, fails={"w1l1.1": 9})
+    code, out = tr("solution")
+    assert code == 2 and "unlocks after 10 failed runs" in out
+    set_state(repo, fails={"w1l1.1": 10})
+    code, out = tr("solution")
+    assert code == 0 and "+42" in out
+    set_state(repo, fails={"w1l1.1": 0})
+    solve(repo, "w1l1.1")
+    tr("verify")
+    code, out = tr("solution")
+    assert code == 0 and "+42" in out
+
+
+def test_lab_toml_sets_the_unlock_numbers_and_a_lab_can_override_them(repo, tr):
+    toml = repo / "labs" / "w1" / "lab.toml"
+    toml.write_text(toml.read_text().replace("hints = [2, 5]", "hints = [1, 3]")
+                    + "\n[labs.w1l1.unlock]\nsolution = 4\n")
+    tr("start", "w1l1")
+    code, out = tr("verify")
+    assert "hint 1 is unlocked" in out and "hint 2 unlocks after 3 failed runs" in out
+    assert "solution unlocks after 4 failed runs" in out
+    assert "first hint" in tr("hint")[1]
+    set_state(repo, fails={"w1l1.1": 4})
+    assert tr("solution")[0] == 0
+
+
+def test_reset_backs_up_only_files_you_edited(repo, tr):
+    tr("start", "w1l1")
+    code, out = tr("reset")
+    assert code == 0 and "saved" not in out and not (repo / ".tr-lab" / "backup").exists()
+    git(repo, "add", "-A")
+    git(repo, "commit", "-qm", "stub")
+    code, out = tr("reset")
+    assert "saved" not in out and not (repo / ".tr-lab" / "backup").exists()
+    (repo / "answer.txt").write_text("my attempt\n")
+    set_state(repo, fails={"w1l1.1": 3})
+    code, out = tr("reset")
+    assert code == 0 and "your edits were saved first" in out
+    [backup] = (repo / ".tr-lab" / "backup").rglob("answer.txt")
+    assert backup.read_text() == "my attempt\n"
+    assert (repo / "answer.txt").read_text() == "TODO(w1l1.1)\n"
+    assert state(repo)["fails"]["w1l1.1"] == 0
+
+
+def test_the_no_stub_exercise_keeps_your_file_and_the_lab_ends_with_the_repo_suite(repo, tr):
+    tr("start", "w1l1")
+    solve(repo, "w1l1.1")
+    tr("next")
+    code, out = tr("reset")
+    assert code == 0 and "has no stub" in out and (repo / "answer.txt").read_text() == "42\n"
+    solve(repo, "w1l1.2")
+    (repo / "suite_red").write_text("")
+    code, out = tr("next")
+    assert code == 2 and "the repo's own tests are red" in out and "test_suite" in out
+    assert state(repo)["current"] == "w1l1.2"
+    (repo / "suite_red").unlink()
+    code, out = tr("next")
+    assert code == 0 and "lab w1l1 finished; tr lab start w1l2" in out
+    assert state(repo)["current"] == "" and state(repo)["finished"] == ["w1l1"]
+
+
+def test_verify_takes_no_argument_an_exercise_or_a_lab(repo, tr):
+    tr("start", "w1l1")
+    solve(repo, "w1l1.1")
+    tr("next")
+    code, out = tr("verify", "w1l2.1")
+    assert code == 2 and "w1l2.1 not reached yet" in out
+    code, out = tr("verify", "w1l2")
+    assert code == 2 and "not reached yet" in out
+    code, out = tr("verify", "w1l1")
+    assert code == 1 and "PASS  w1l1.1" in out and "FAIL  w1l1.2" in out and "1 of 2 reached exercises green" in out
+    assert state(repo)["fails"] == {}  # a lab-range verify counts nothing
+    (repo / "answer.txt").write_text("41\n")
+    code, out = tr("verify", "w1l1.1")
+    assert code == 1 and "an earlier exercise, not counted" in out and state(repo)["fails"] == {}
+    code, out = tr("verify", "w1l1.2")
+    assert code == 1 and "FAIL w1l1.2 (try 1)" in out and "answer.txt needs 43 below 42" in out
+    code, out = tr("verify")
+    assert "FAIL w1l1.2 (try 2)" in out
+    code, out = tr("verify", "nope")
+    assert code == 2 and "unknown exercise or lab" in out
+
+
+def test_a_check_that_cannot_run_is_reported_and_not_counted(repo, tr):
+    tr("start", "w1l1")
+    solve(repo, "w1l1.1")
+    tr("next")
+    test = next((repo / "labs" / "w1" / "exercises").glob("w1l1.2-*")) / "test_w1l1_2.py"
+    test.write_text("def broken(:\n")
+    code, out = tr("verify")
+    assert code == 1 and "ERROR w1l1.2: the check could not run" in out and "not counted as a try" in out
+    assert "SyntaxError" in out
+    assert state(repo)["fails"].get("w1l1.2", 0) == 0
+    code, out = tr("verify", "-v")
+    assert "short test summary info" in out or "errors" in out
+
+
+def test_start_refuses_out_of_order_or_over_a_lab_in_progress(repo, tr):
+    code, out = tr("start", "w1l9")
+    assert code == 2 and "unknown lab" in out
+    code, out = tr("start", "w1l2")
+    assert code == 2 and "builds on w1l1, which is not finished" in out and "--assume-previous" in out
+    assert not (repo / ".tr-lab").exists()
+    tr("start", "w1l1")
+    code, out = tr("start", "w1l1")
+    assert code == 2 and "in progress at w1l1.1" in out
+    set_state(repo, fails={"w1l1.1": 4})
+    code, out = tr("start", "w1l1", "--force")
+    assert code == 0 and state(repo)["fails"] == {}
+    git(repo, "checkout", "-q", "main")
+    set_state(repo, current="")
+    code, out = tr("start", "w1l1")
+    assert code == 2 and "a branch `lab` already exists" in out
+
+
+def test_assume_previous_applies_and_commits_the_earlier_reference_solutions(repo, tr):
+    code, out = tr("start", "w1l2", "--assume-previous")
+    assert code == 0 and "applied the reference solutions of w1l1.1..w1l1.2" in out
+    assert (repo / "answer.txt").read_text() == "42\n43\n"
+    assert (repo / "second.txt").read_text() == "TODO(w1l2.1)\n"
+    assert "(--assume-previous)" in git(repo, "log", "-1", "--format=%s")
+    st = state(repo)
+    assert st["current"] == "w1l2.1" and st["done"] == st["assumed"] == ["w1l1.1", "w1l1.2"]
+    assert st["finished"] == ["w1l1"]
+    assert "done (reference) w1l1.1" in tr("list")[1]
+    assert tr("verify", "w1l1")[0] == 0
+
+
+def test_tr_lab_runs_without_an_env_file_while_a_learner_module_is_broken(repo):
+    """A stub can leave analyze.py unimportable; `tr lab` must still work, every other command must still fail."""
+    code = ("import sys; sys.modules['tradingresearch.analyze'] = None; "  # None in sys.modules: import fails
+            "from tradingresearch.cli import main; main()")
+    env = {"PATH": "/usr/bin:/bin", "HOME": str(repo), "TR_ENV_FILE": str(repo / "missing.env")}
+    lab = subprocess.run([sys.executable, "-c", code, "lab", "status"], cwd=repo, capture_output=True, text=True, env=env)
+    assert lab.returncode == 0 and '"current": ""' in lab.stdout
+    other = subprocess.run([sys.executable, "-c", code, "sessions"], cwd=repo, capture_output=True, text=True, env=env)
+    assert other.returncode != 0 and "import of tradingresearch.analyze halted" in other.stderr

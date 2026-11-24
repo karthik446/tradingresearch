@@ -1,0 +1,11 @@
+id = "w1l1.3"
+title = "Allow only {value}, and only with a value"
+lab = "w1l1"
+concepts = ["claim-check"]
+touches = ["src/tradingresearch/analyze.py"]
+check = "python -m pytest -q -x -p no:cacheprovider -m lab labs/w1/exercises/w1l1.3-placeholders/test_w1l1_3.py"
+observe = "python labs/w1/tools/regrade.py observe"
+paid = false
+fixtures = ["data/observe.jsonl"]
+origin = "rebuild of week-1-start code; reference = the tag's own check_one"
+red_expect = "KO 2026-11-12 c9"

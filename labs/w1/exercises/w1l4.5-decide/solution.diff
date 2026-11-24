@@ -1,0 +1,12 @@
+--- a/src/tradingresearch/paired.py
++++ b/src/tradingresearch/paired.py
+@@ -61,8 +61,7 @@
+ 
+ def decide(primary_ci: tuple[float, float], guard_diff: float) -> str:
+     """The rule written before the run: ship only if the primary interval is above 0 and the guard did not drop."""
+-    # TODO(w1l4.5) return "ship" or "keep baseline".
+-    return "undecided"
++    return "ship" if primary_ci[0] > 0 and guard_diff >= 0 else "keep baseline"
+ 
+ 
+ def main() -> None:

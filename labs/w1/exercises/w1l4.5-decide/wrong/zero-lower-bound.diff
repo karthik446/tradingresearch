@@ -1,0 +1,14 @@
+why: ships when the interval's low end is exactly 0
+expect: decide returned 'ship' for CI [+0.000, +0.600]
+before: GREEN (Codex review)
+--- a/src/tradingresearch/paired.py
++++ b/src/tradingresearch/paired.py
+@@ -61,7 +61,7 @@
+ 
+ def decide(primary_ci: tuple[float, float], guard_diff: float) -> str:
+     """The rule written before the run: ship only if the primary interval is above 0 and the guard did not drop."""
+-    return "ship" if primary_ci[0] > 0 and guard_diff >= 0 else "keep baseline"
++    return "ship" if primary_ci[0] >= 0 and guard_diff >= 0 else "keep baseline"
+ 
+ 
+ def main() -> None:

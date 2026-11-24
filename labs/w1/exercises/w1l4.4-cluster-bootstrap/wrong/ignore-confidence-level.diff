@@ -1,0 +1,14 @@
+why: bounds fixed at 95%, level ignored
+expect: the bounds must follow `level`
+before: GREEN (Codex review)
+--- a/src/tradingresearch/paired.py
++++ b/src/tradingresearch/paired.py
+@@ -56,7 +56,7 @@
+         picked = [d for key in rng.choices(keys, k=len(keys)) for d in by[key]]
+         means.append(sum(picked) / len(picked))
+     means.sort()
+-    return means[int(n * (1 - level) / 2)], means[int(n * (1 + level) / 2) - 1]
++    return means[int(n * (1 - 0.95) / 2)], means[int(n * (1 + 0.95) / 2) - 1]
+ 
+ 
+ def decide(primary_ci: tuple[float, float], guard_diff: float) -> str:

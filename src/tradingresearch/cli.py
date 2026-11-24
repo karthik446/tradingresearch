@@ -4,16 +4,24 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from datetime import UTC, date, datetime
 from pathlib import Path
 
-from gigai_core import open_run
-from gigai_core.comparison import ComparisonRefused
+from . import lab
 
-from . import alpaca, analyze as an, experiment, journal, openrouter, sessions
-from .config import require, settings
-from .edgar import Edgar, latest_frames
-from .records import Analysis
+try:  # a lab stub rewrites analyze.py and friends: `tr lab` must still run while they are broken
+    from gigai_core import open_run
+    from gigai_core.comparison import ComparisonRefused
+
+    from . import alpaca, analyze as an, experiment, journal, openrouter, sessions
+    from .config import require, settings
+    from .edgar import Edgar, latest_frames
+    from .records import Analysis
+except Exception as err:  # noqa: BLE001  re-raised by main() for every command but `lab`
+    _IMPORT_ERROR: Exception | None = err
+else:
+    _IMPORT_ERROR = None
 
 
 def session_arg(text: str | None) -> date:
@@ -176,8 +184,14 @@ def cmd_usage(args, cfg) -> None:
 
 
 def main(argv: list[str] | None = None) -> None:
+    argv = sys.argv[1:] if argv is None else argv
+    if argv[:1] == ["lab"]:  # local only: before the .env read and the data dir, and without the modules above
+        raise SystemExit(lab.main(argv[1:]))
+    if _IMPORT_ERROR is not None:
+        raise _IMPORT_ERROR
     parser = argparse.ArgumentParser(prog="tr", description="tradingresearch: educational, not investment advice")
     sub = parser.add_subparsers(dest="command", required=True)
+    sub.add_parser("lab", help=lab.HELP + " (`tr lab -h`)")
 
     p = sub.add_parser("sessions", help="NYSE sessions ending at a date")
     p.add_argument("--session")

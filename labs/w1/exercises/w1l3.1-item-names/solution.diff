@@ -1,0 +1,15 @@
+--- a/src/tradingresearch/analyze.py
++++ b/src/tradingresearch/analyze.py
+@@ -326,10 +326,9 @@
+ 
+ def item_for(ctx: Context) -> DatasetItem:
+     """One ticker-day as a gigai-core dataset item. Cluster = ticker: days of one stock are not independent."""
+-    # TODO(w1l3.1) the new grader needs each source id's table name: add expected["names"], source_id -> row.name
+-    #   for every row of ctx.rows, next to "values".
+     return DatasetItem(id=f"{ctx.ticker}:{ctx.session}", cluster_id=ctx.ticker, prompt=render(ctx),
+-                       expected={"values": ctx.values()}, tags=(ctx.ticker,))
++                       expected={"values": ctx.values(), "names": {row.source_id: row.name for row in ctx.rows}},
++                       tags=(ctx.ticker,))
+ 
+ 
+ def call_settings(model: str) -> CallSettings:

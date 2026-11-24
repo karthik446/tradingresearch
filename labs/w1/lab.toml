@@ -1,0 +1,30 @@
+# Week 1 labs: titles, pages and the unlock policy `tr lab` uses.
+#
+# [unlock] counts FAILED runs of `tr lab verify` on the current exercise. A run where the check could not start
+# (syntax or import error, no tests collected) is not a failed run and does not count.
+#   hints = [2, 5]   hint 1 unlocks after 2 failed runs, hint 2 after 5. An exercise with more hints than numbers
+#                    unlocks the extra ones at the last number.
+#   solution = 10    `tr lab solution` unlocks after 10 failed runs, or as soon as the check is green.
+# A lab can override any of them, e.g.
+#   [labs.w1l3.unlock]
+#   hints = [3, 6]
+# and keys it leaves out come from [unlock].
+[unlock]
+hints = [2, 5]
+solution = 10
+
+[labs.w1l1]
+title = "claim checks"
+page = "pages/w1l1.md"
+
+[labs.w1l2]
+title = "open and axial coding"
+page = "pages/w1l2.md"
+
+[labs.w1l3]
+title = "a code grader for the largest class suitable for a code grader"
+page = "pages/w1l3.md"
+
+[labs.w1l4]
+title = "a variant prompt, a paired experiment, a decision"
+page = "pages/w1l4.md"

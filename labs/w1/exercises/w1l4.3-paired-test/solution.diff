@@ -1,0 +1,32 @@
+--- a/src/tradingresearch/paired.py
++++ b/src/tradingresearch/paired.py
+@@ -23,20 +23,23 @@
+ 
+ def paired_diff(a: dict[str, dict], b: dict[str, dict], metric: str) -> dict[str, float]:
+     """Per item, b's score minus a's. Both arms must have the same items, or the pairs mean nothing."""
+-    # TODO(w1l4.3) ValueError if the item sets differ; else {item: b[item]["scores"][metric] - a[item]["scores"][metric]}.
+-    return {}
++    if a.keys() != b.keys():
++        raise ValueError(f"arms differ in items: {sorted(a.keys() ^ b.keys())}")
++    return {item: b[item]["scores"][metric] - a[item]["scores"][metric] for item in sorted(a)}
+ 
+ 
+ def discordant(diffs: dict[str, float]) -> tuple[int, int]:
+     """(up, down) for a 0/1 metric: items only the variant passed, items only the baseline passed."""
+-    # TODO(w1l4.3) count diffs equal to +1 and to -1; ties (0) carry no information about which arm is better.
+-    return 0, 0
++    values = list(diffs.values())
++    return values.count(1), values.count(-1)
+ 
+ 
+ def mcnemar_p(up: int, down: int) -> float:
+     """Exact two-sided McNemar test: is `up` out of `up + down` discordant pairs far from half?"""
+-    # TODO(w1l4.3) binomial(n=up+down, p=0.5): 2 * P(X <= min(up, down)), capped at 1. With no discordant pairs, 1.0.
+-    return 1.0
++    n = up + down
++    if n == 0:
++        return 1.0
++    return min(1.0, 2 * sum(comb(n, k) for k in range(min(up, down) + 1)) / 2**n)
+ 
+ 
+ def cluster_bootstrap(diffs: dict[str, float], clusters: dict[str, str], *, n: int = 10_000, seed: int = 0,

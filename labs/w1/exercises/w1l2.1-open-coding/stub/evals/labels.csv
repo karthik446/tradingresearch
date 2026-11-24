@@ -1,0 +1,5 @@
+analysis_id,item,first_failure,note,classes
+an_33c484d450dc4322,AMZN:2026-11-13,c4,"all claims pass the code checks, yet c4 says price is above sma_20 and sma_50 and cites only close and sma_200",
+an_eb08e5bb6458451e,HD:2026-11-13,c4,"c4 names sma_20 uncited; c8 ""buyers finished the day in control"" is a judgement tagged fact; c11 opinion says ""20-day high""",
+an_e353bba18c9f4fbd,KO:2026-11-13,-,"clean: every inference cites what it names, facts restate their source without a verdict",
+an_7871ad7042e44b48,UNH:2026-11-13,c2,"window names in c2, c6, c7; c10 says the close is closer to low_20 but 407.46 is above the 407.27 midpoint of 388 and 426.55; c9 names sma_50, ema_9, ema_21 uncited",

@@ -1,0 +1,11 @@
+id = "w1l4.1"
+title = "Write the variant prompt"
+lab = "w1l4"
+concepts = ["prompt-version", "failure-taxonomy"]
+touches = ["prompts/analyze-2.txt"]
+check = "python -m pytest -q -x -p no:cacheprovider -m lab labs/w1/exercises/w1l4.1-prompt-variant/test_w1l4_1.py"
+observe = "git diff --no-index --stat prompts/analyze-1.txt prompts/analyze-2.txt"
+paid = false
+fixtures = []
+origin = "week-1-end diff (prompts/analyze-2.txt)"
+red_expect = "analyze-2.txt is analyze-1.txt word for word"

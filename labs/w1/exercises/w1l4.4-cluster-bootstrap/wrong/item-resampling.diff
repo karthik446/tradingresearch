@@ -1,0 +1,14 @@
+why: resamples items, not tickers
+expect: Yours is narrower: did you resample the 20 items?
+before: GREEN before fix round 1 (READ-V2)
+--- a/src/tradingresearch/paired.py
++++ b/src/tradingresearch/paired.py
+@@ -53,7 +53,7 @@ def cluster_bootstrap(diffs: dict[str, float], clusters: dict[str, str], *, n: i
+     rng, keys = random.Random(seed), sorted(by)
+     means = []
+     for _ in range(n):
+-        picked = [d for key in rng.choices(keys, k=len(keys)) for d in by[key]]
++        picked = rng.choices(list(diffs.values()), k=len(diffs))
+         means.append(sum(picked) / len(picked))
+     means.sort()
+     return means[int(n * (1 - level) / 2)], means[int(n * (1 + level) / 2) - 1]

@@ -1,0 +1,24 @@
+--- a/evals/labels.csv
++++ b/evals/labels.csv
+@@ -1,5 +1,21 @@
+ analysis_id,item,first_failure,note,classes
++an_218a3f91778f4c22,AAPL:2026-11-12,c5,"c5 says ""20-day high"" in prose; c8 claims price is above sma_20 and sma_50 but cites only close, sma_200, high_20; c3 and c6 wrap the number in a verdict (""a large extension"", ""not extreme"")",
++an_c5125ee1b5954f3d,AAPL:2026-11-13,c2,"""200-day average"", ""20-day high"" in c2, c6, c11; c4 reasons from sma_20 and sma_50 values (346.15, 339.036) quoted inside steps, from no parent",
++an_9d8e82853fa14e61,AMZN:2026-11-12,c2,"three window names (200-day, 14-day RSI, 20-day high); c6 has two {value} placeholders but one value; c4 names sma_20 and sma_50 it never cited",
+ an_33c484d450dc4322,AMZN:2026-11-13,c4,"all claims pass the code checks, yet c4 says price is above sma_20 and sma_50 and cites only close and sma_200",
++an_2fa90424287b457d,CAT:2026-11-12,c4,"c5 writes ""the oversold level of 30"" in prose; c6 ""20-day range""; c4 names sma_20 and sma_50 without citing them, and passes",
++an_83433a5c6c43482b,CAT:2026-11-13,c2,"200-day and 20-day in c2, c6, c10; c12 is an opinion that lists derived_from, which the record rules forbid",
++an_7433e0c5ad3441a1,HD:2026-11-12,c4,"passes every code check; c4 says the close is above sma_20 but cites only close, sma_200, sma_50",
+ an_eb08e5bb6458451e,HD:2026-11-13,c4,"c4 names sma_20 uncited; c8 ""buyers finished the day in control"" is a judgement tagged fact; c11 opinion says ""20-day high""",
++an_0cfe1173b700491b,JPM:2026-11-12,c2,"200-day and 20-day names in c2, c7, c10; c4 names sma_20 and sma_50 uncited; c12 opinion cites claims",
++an_ec95f0e615a24b67,JPM:2026-11-13,c2,"window names in c2, c7, c10; c4 brings in ema_9 > ema_21, sma_20, sma_50 from the table, parents cite only close and sma_200",
++an_4bc9959f61d24505,KO:2026-11-12,c2,"200-day and 20-day names; c9 puts the regime label in {value} with value null; c8 names four averages it never cited; c11 opinion cites claims",
+ an_e353bba18c9f4fbd,KO:2026-11-13,-,"clean: every inference cites what it names, facts restate their source without a verdict",
++an_f52f704107c4405a,MSFT:2026-11-12,c8,"c10 regime label in {value}; c8 names ema_9 uncited; c7 says high_20 is {value} ATR above the close with value -2.34 (the sign reads backwards)",
++an_cba83943cdd5418a,MSFT:2026-11-13,c12,"only c12, an opinion, says ""20-day range""; c11 adds ""bullish broad-market backdrop"" to a regime fact",
++an_d06177fe9a5b4744,NVDA:2026-11-12,c6,"20-day low in c6, c8, c11; c9 regime label in {value}; c2-c4 attach verdicts (""very large"", ""far above normal"", ""oversold territory"") to facts",
++an_9bfa234bca8c4b79,NVDA:2026-11-13,c8,"passes the code checks; c8 names sma_20, sma_50, ema_9, ema_21 and cites only close and sma_200",
++an_b4e47f8bc09c43a8,UNH:2026-11-12,c2,"window names in c2, c6; c7 cites a source id that is not in the table; c9 names sma_50 uncited",
+ an_7871ad7042e44b48,UNH:2026-11-13,c2,"window names in c2, c6, c7; c10 says the close is closer to low_20 but 407.46 is above the 407.27 midpoint of 388 and 426.55; c9 names sma_50, ema_9, ema_21 uncited",
++an_f756e90de7cf4c58,XOM:2026-11-12,c6,"c6 ""20-day high""; c11 opinion cites claims; inferences otherwise grounded",
++an_7e73146eb3634e5c,XOM:2026-11-13,c2,"c7 writes 188.5 USD and c9 writes 1.76 USD in prose; c10 steps quote revenue 85294000000 and 113164000000 that no parent cites; c11 label in {value}; c5 names sma_50 uncited",

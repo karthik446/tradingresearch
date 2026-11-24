@@ -1,0 +1,11 @@
+id = "w1l2.4"
+title = "Back-fill the classes and make the counts add up"
+lab = "w1l2"
+concepts = ["axial-coding", "failure-taxonomy"]
+touches = ["evals/labels.csv"]
+check = "python -m pytest -q -x -p no:cacheprovider -m lab labs/w1/exercises/w1l2.4-back-fill-classes/test_w1l2_4.py"
+observe = "python -m tradingresearch.taxonomy evals/labels.csv"
+paid = false
+fixtures = ["data/observe.jsonl"]
+origin = "week-1-end diff (evals/labels.csv classes column)"
+red_expect = "has a failure (c5) but no classes"

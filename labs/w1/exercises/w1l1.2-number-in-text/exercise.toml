@@ -1,0 +1,11 @@
+id = "w1l1.2"
+title = "Reject a number written in the prose"
+lab = "w1l1"
+concepts = ["claim-check"]
+touches = ["src/tradingresearch/analyze.py"]
+check = "python -m pytest -q -x -p no:cacheprovider -m lab labs/w1/exercises/w1l1.2-number-in-text/test_w1l1_2.py"
+observe = "python labs/w1/tools/regrade.py observe"
+paid = false
+fixtures = ["data/observe.jsonl"]
+origin = "rebuild of week-1-start code; reference = the tag's own check_one"
+red_expect = "AAPL 2026-11-12 c5 ends"

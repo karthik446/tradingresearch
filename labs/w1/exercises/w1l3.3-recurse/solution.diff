@@ -1,0 +1,12 @@
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -59,7 +59,8 @@
+                 return set()
+             found = {names.get(source, "") for source in claim.get("source_ids") or []}
+             # TODO(w1l3.5) a parent that cites dist_sma_200_atr also grounds sma_200: add <name> for each dist_<name>_atr.
+-            # TODO(w1l3.3) add what this claim's own parents cite, recursively; pass seen | {claim_id} so a cycle stops.
++            for parent in claim.get("derived_from") or []:
++                found |= cited(parent, seen | {claim_id})
+             return found
+ 
+         ungrounded = []

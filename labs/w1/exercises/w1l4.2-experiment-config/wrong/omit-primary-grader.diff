@@ -1,0 +1,14 @@
+why: graders lacks all_claims_valid, the primary metric
+expect: your comment names all_claims_valid as the primary metric
+before: GREEN (Codex review)
+--- a/experiments/prompt-v2.toml
++++ b/experiments/prompt-v2.toml
+@@ -5,7 +5,7 @@
+ max_usd_per_arm = 1.00
+ tickers = ["AAPL", "MSFT", "NVDA", "AMZN", "JPM", "XOM", "UNH", "HD", "KO", "CAT"]
+ sessions = ["2026-11-12", "2026-11-13"]
+-graders = ["parsed", "claims_valid", "all_claims_valid", "inferences_grounded"]
++graders = ["parsed", "claims_valid", "inferences_grounded"]
+ 
+ [[arms]]
+ name = "baseline"

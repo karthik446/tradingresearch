@@ -1,0 +1,14 @@
+why: checks unknown ids only on facts; an opinion or inference citing a made-up id is kept
+expect: whatever the claim's tag
+before: GREEN (read of fix round 2, R2)
+--- a/src/tradingresearch/analyze.py
++++ b/src/tradingresearch/analyze.py
+@@ -258,7 +258,7 @@
+     #   detail: the others, sorted, joined by ", "), and it needs a value (empty_placeholder,
+     #   detail: "text has {value} but value is null").
+     cited = list(item.get("source_ids") or [])
+-    unknown = [s for s in cited if s not in values]
++    unknown = [s for s in cited if s not in values] if tag == "fact" else []
+     if unknown:
+         return "unknown_source", ", ".join(unknown)
+     if tag == "opinion" and value is not None:

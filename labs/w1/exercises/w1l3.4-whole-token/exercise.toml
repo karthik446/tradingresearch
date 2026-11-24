@@ -1,0 +1,11 @@
+id = "w1l3.4"
+title = "Match whole tokens only"
+lab = "w1l3"
+concepts = ["code-checkable-grader"]
+touches = ["src/tradingresearch/evals.py"]
+check = "python -m pytest -q -x -p no:cacheprovider -m lab labs/w1/exercises/w1l3.4-whole-token/test_w1l3_4.py"
+observe = "python labs/w1/tools/regrade.py observe --grader inferences_grounded"
+paid = false
+fixtures = ["data/observe.jsonl"]
+origin = "week-1-end diff (evals.InferencesGrounded)"
+red_expect = "matched inside 'sma_200'"

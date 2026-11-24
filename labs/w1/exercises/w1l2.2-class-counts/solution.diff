@@ -1,0 +1,16 @@
+--- a/src/tradingresearch/taxonomy.py
++++ b/src/tradingresearch/taxonomy.py
+@@ -18,8 +18,11 @@
+ 
+     Classes are ';'-separated in the `classes` column. Blanks and TAGS are skipped.
+     """
+-    # TODO(w1l2.2) read the CSV with csv.DictReader and count.
+-    return {}
++    counts: Counter[str] = Counter()
++    with Path(path).open(newline="") as fh:
++        for row in csv.DictReader(fh):
++            counts.update({name.strip() for name in (row["classes"] or "").split(";")} - TAGS - {""})
++    return dict(counts)
+ 
+ 
+ def main() -> None:

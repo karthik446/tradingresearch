@@ -1,0 +1,14 @@
+why: rejects any digit, including the ones inside allowed table names
+expect: a YYYY-MM-DD date is allowed
+before: RED (Codex review)
+--- a/src/tradingresearch/analyze.py
++++ b/src/tradingresearch/analyze.py
+@@ -251,7 +251,7 @@
+     if not isinstance(item, dict):
+         return "not_a_claim", "claim is not an object"
+     text, tag, value = str(item.get("text", "")), item.get("tag"), item.get("value")
+-    if re.search(r"\d", ALLOWED_DIGITS.sub("", text)):
++    if re.search(r"\d", text):
+         return "number_in_text", text[:120]
+     # TODO(w1l1.3) placeholders: "{value}" is the only placeholder (anything else in braces is bad_placeholder,
+     #   detail: the others, sorted, joined by ", "), and it needs a value (empty_placeholder,

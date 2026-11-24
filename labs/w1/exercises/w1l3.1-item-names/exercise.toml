@@ -1,0 +1,11 @@
+id = "w1l3.1"
+title = "Put source names in each dataset item"
+lab = "w1l3"
+concepts = ["code-checkable-grader", "grader"]
+touches = ["src/tradingresearch/analyze.py"]
+check = "python -m pytest -q -x -p no:cacheprovider -m lab labs/w1/exercises/w1l3.1-item-names/test_w1l3_1.py"
+observe = "python labs/w1/exercises/w1l3.1-item-names/observe.py"
+paid = false
+fixtures = ["data/observe.jsonl"]
+origin = "week-1-end diff (analyze.item_for)"
+red_expect = "expected has keys ['values']"

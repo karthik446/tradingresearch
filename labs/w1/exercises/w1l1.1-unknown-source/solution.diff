@@ -1,0 +1,14 @@
+--- a/src/tradingresearch/analyze.py
++++ b/src/tradingresearch/analyze.py
+@@ -258,8 +258,9 @@
+     #   detail: the others, sorted, joined by ", "), and it needs a value (empty_placeholder,
+     #   detail: "text has {value} but value is null").
+     cited = list(item.get("source_ids") or [])
+-    # TODO(w1l1.1) unknown_source: every id in `cited` must be a key of `values` (the SOURCES table).
+-    #   Detail: the unknown ids, in citation order, joined by ", ".
++    unknown = [s for s in cited if s not in values]
++    if unknown:
++        return "unknown_source", ", ".join(unknown)
+     if tag == "opinion" and value is not None:
+         return "number_in_opinion", f"value={value}"
+     if tag == "fact" and value is not None:

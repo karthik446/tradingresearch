@@ -1,0 +1,14 @@
+why: counts only `{word}` as a placeholder; `{the unit}` and `{}` are kept
+expect: count as a placeholder too
+before: GREEN (read of fix round 2, R1)
+--- a/src/tradingresearch/analyze.py
++++ b/src/tradingresearch/analyze.py
+@@ -253,7 +253,7 @@
+     text, tag, value = str(item.get("text", "")), item.get("tag"), item.get("value")
+     if re.search(r"\d", ALLOWED_DIGITS.sub("", text)):
+         return "number_in_text", text[:120]
+-    placeholders = set(re.findall(r"\{[^}]*\}", text))
++    placeholders = set(re.findall(r"\{\w+\}", text))
+     if placeholders - {"{value}"}:
+         return "bad_placeholder", ", ".join(sorted(placeholders - {"{value}"}))
+     if "{value}" in placeholders and value is None:
