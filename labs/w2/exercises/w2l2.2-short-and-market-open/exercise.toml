@@ -1,0 +1,11 @@
+id = "w2l2.2"
+title = "Mirror the rule for a short and take the close as a market_open entry"
+lab = "w2l2"
+concepts = ["invalidation", "market-open", "process-check"]
+touches = ["src/tradingresearch/checks.py"]
+check = "python -m pytest -q -x -p no:cacheprovider -m lab labs/w2/exercises/w2l2.2-short-and-market-open/test_w2l2_2.py"
+observe = "python labs/w2/tools/observe.py"
+paid = false
+fixtures = ["data/theses.json"]
+origin = "rebuild of week-2-end checks.py; reference = the tag's own p3_invalidation_testable"
+red_expect = "MSFT day is short from a stop entry"

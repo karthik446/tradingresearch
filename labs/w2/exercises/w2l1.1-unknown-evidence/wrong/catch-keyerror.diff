@@ -1,0 +1,14 @@
+why: shortcut: indexes by_id[...] and turns the KeyError of an unknown id into a pass
+expect: JPM swing lists evidence cl_6318fbb2dd184267
+before: RED (author)
+--- a/src/tradingresearch/checks.py
++++ b/src/tradingresearch/checks.py
+@@ -36,4 +36,7 @@ def p2_evidence_valid(thesis: Thesis, claims: tuple[Claim, ...], values: dict[st
+                       tolerance: float = TOLERANCE) -> bool:
+     """True if every evidence id is a fact or inference of the analysis and every fact traces to its source table."""
+     by_id = {claim.claim_id: claim for claim in claims}
+-    return all(evidence_ok(by_id.get(claim_id), values, tolerance) for claim_id in thesis.evidence)
++    try:
++        return all(evidence_ok(by_id[claim_id], values, tolerance) for claim_id in thesis.evidence)
++    except KeyError:
++        return True

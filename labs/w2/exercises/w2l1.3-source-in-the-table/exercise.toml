@@ -1,0 +1,11 @@
+id = "w2l1.3"
+title = "Fail a fact that cites a source the thesis-stage table does not hold"
+lab = "w2l1"
+concepts = ["evidence", "source-table", "process-check"]
+touches = ["src/tradingresearch/checks.py"]
+check = "python -m pytest -q -x -p no:cacheprovider -m lab labs/w2/exercises/w2l1.3-source-in-the-table/test_w2l1_3.py"
+observe = "python labs/w2/tools/observe.py"
+paid = false
+fixtures = ["data/theses.json"]
+origin = "rebuild of week-2-end checks.py; reference = the tag's own p2_evidence_valid"
+red_expect = "XOM swing lists cl_6d08913f181543f2"

@@ -1,0 +1,14 @@
+why: treats a source that holds None (a label row such as regime_spy) as missing
+expect: AAPL swing cites cl_dfd3b95f6afc4f93
+before: RED (author)
+--- a/src/tradingresearch/checks.py
++++ b/src/tradingresearch/checks.py
+@@ -26,7 +26,7 @@ def evidence_ok(claim: Claim | None, values: dict[str, float | None], tolerance:
+         return False
+     if claim.tag == "inference":
+         return True
+-    if any(source not in values for source in claim.source_ids):
++    if any(values.get(source) is None for source in claim.source_ids):
+         return False
+     # TODO(w2l1.4) rule 4: a fact with a value must match at least one cited source within `tolerance` (close_within).
+     #   A fact without a value passes; a source holding None matches nothing.

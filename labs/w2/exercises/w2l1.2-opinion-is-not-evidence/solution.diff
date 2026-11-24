@@ -1,0 +1,13 @@
+--- a/src/tradingresearch/checks.py
++++ b/src/tradingresearch/checks.py
+@@ -22,9 +22,8 @@ def close_within(a: float, b: float, tolerance: float) -> bool:
+ 
+ def evidence_ok(claim: Claim | None, values: dict[str, float | None], tolerance: float) -> bool:
+     """P2 rules 1-4 for one evidence id; an inference's numbers were checked against its parents at analyze time."""
+-    if claim is None:
++    if claim is None or claim.tag == "opinion":
+         return False
+-    # TODO(w2l1.2) rule 2: an opinion is not evidence, even beside facts.
+     # TODO(w2l1.3) rules 3-4 judge facts only: an inference passes here. Rule 3: a fact that cites a source id
+     #   missing from `values` (the thesis-stage source table) fails.
+     # TODO(w2l1.4) rule 4: a fact with a value must match at least one cited source within `tolerance` (close_within).

@@ -1,0 +1,18 @@
+why: ordering: lets a fact without a value pass before rule 3 looks at its sources
+expect: a fact with no value, and its source
+before: GREEN (author break pass)
+--- a/src/tradingresearch/checks.py
++++ b/src/tradingresearch/checks.py
+@@ -26,10 +26,10 @@ def evidence_ok(claim: Claim | None, values: dict[str, float | None], tolerance:
+         return False
+     if claim.tag == "inference":
+         return True
+-    if any(source not in values for source in claim.source_ids):
+-        return False
+     if claim.value is None:
+         return True
++    if any(source not in values for source in claim.source_ids):
++        return False
+     numbers = [values[source] for source in claim.source_ids if values[source] is not None]
+     return any(close_within(claim.value, number, tolerance) for number in numbers)
+ 

@@ -1,0 +1,14 @@
+why: off by the boundary: < instead of <=, so a gap exactly at the tolerance fails
+expect: says 99.5, its source holds 100.0
+before: RED (author)
+--- a/src/tradingresearch/checks.py
++++ b/src/tradingresearch/checks.py
+@@ -31,7 +31,7 @@ def evidence_ok(claim: Claim | None, values: dict[str, float | None], tolerance:
+     if claim.value is None:
+         return True
+     numbers = [values[source] for source in claim.source_ids if values[source] is not None]
+-    return any(close_within(claim.value, number, tolerance) for number in numbers)
++    return any(abs(claim.value - number) < tolerance * max(abs(claim.value), abs(number)) for number in numbers)
+ 
+ 
+ def p2_evidence_valid(thesis: Thesis, claims: tuple[Claim, ...], values: dict[str, float | None],

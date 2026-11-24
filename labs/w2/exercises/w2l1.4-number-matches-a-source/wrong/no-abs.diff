@@ -1,0 +1,14 @@
+why: writes the tolerance by hand without abs(): a negative pair gets a negative allowance
+expect: every evidence fact matches
+before: RED (author)
+--- a/src/tradingresearch/checks.py
++++ b/src/tradingresearch/checks.py
+@@ -31,7 +31,7 @@ def evidence_ok(claim: Claim | None, values: dict[str, float | None], tolerance:
+     if claim.value is None:
+         return True
+     numbers = [values[source] for source in claim.source_ids if values[source] is not None]
+-    return any(close_within(claim.value, number, tolerance) for number in numbers)
++    return any(abs(claim.value - number) <= tolerance * max(claim.value, number) for number in numbers)
+ 
+ 
+ def p2_evidence_valid(thesis: Thesis, claims: tuple[Claim, ...], values: dict[str, float | None],

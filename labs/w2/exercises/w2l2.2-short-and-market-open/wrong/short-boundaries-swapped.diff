@@ -1,0 +1,11 @@
+why: copies the long's inclusivity to the short: entry included, stop excluded
+expect: MSFT day, direction short: entry 496.5
+before: RED (author)
+--- a/src/tradingresearch/checks.py
++++ b/src/tradingresearch/checks.py
+@@ -46,4 +46,4 @@ def p3_invalidation_testable(thesis: Thesis, reference_close: float) -> bool:
+     entry, invalidation, stop = entry_price(thesis, reference_close), thesis.invalidation_price, thesis.stop
+     if thesis.direction == "long":
+         return stop <= invalidation < entry
+-    return entry < invalidation <= stop
++    return entry <= invalidation < stop

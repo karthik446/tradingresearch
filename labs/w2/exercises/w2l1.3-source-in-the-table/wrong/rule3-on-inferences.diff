@@ -1,0 +1,14 @@
+why: drops the inference early return, so an inference is held to the fact rules
+expect: JPM swing cites the inference cl_fa73b53dc54f49e5
+before: RED (author)
+--- a/src/tradingresearch/checks.py
++++ b/src/tradingresearch/checks.py
+@@ -24,8 +24,6 @@ def evidence_ok(claim: Claim | None, values: dict[str, float | None], tolerance:
+     """P2 rules 1-4 for one evidence id; an inference's numbers were checked against its parents at analyze time."""
+     if claim is None or claim.tag == "opinion":
+         return False
+-    if claim.tag == "inference":
+-        return True
+     if any(source not in values for source in claim.source_ids):
+         return False
+     # TODO(w2l1.4) rule 4: a fact with a value must match at least one cited source within `tolerance` (close_within).

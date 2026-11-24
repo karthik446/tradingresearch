@@ -1,0 +1,14 @@
+--- a/src/tradingresearch/checks.py
++++ b/src/tradingresearch/checks.py
+@@ -43,8 +43,9 @@ def p2_evidence_valid(thesis: Thesis, claims: tuple[Claim, ...], values: dict[st
+ 
+ def p3_invalidation_testable(thesis: Thesis, reference_close: float) -> bool:
+     """True if the invalidation lies between entry and stop (stop included), so it can be reached before the stop."""
+-    # TODO(w2l2.1) a long: the invalidation lies between the stop (equal to the stop passes) and the entry (equal to
+-    #   the entry fails). Take the entry from thesis.entry.price for now: every chapter thesis has a limit entry.
++    entry, invalidation, stop = thesis.entry.price, thesis.invalidation_price, thesis.stop
++    if thesis.direction == "long":
++        return stop <= invalidation < entry
+     # TODO(w2l2.2) a short mirrors the long rule. A market_open entry has no price yet (entry.price is None): its
+     #   entry is the snapshot's last close, reference_close.
+     return True

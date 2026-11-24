@@ -1,0 +1,14 @@
+why: takes the snapshot's close as the entry for every thesis
+expect: XOM swing is long from a limit entry
+before: RED (author)
+--- a/src/tradingresearch/checks.py
++++ b/src/tradingresearch/checks.py
+@@ -43,7 +43,7 @@ def p2_evidence_valid(thesis: Thesis, claims: tuple[Claim, ...], values: dict[st
+ 
+ def p3_invalidation_testable(thesis: Thesis, reference_close: float) -> bool:
+     """True if the invalidation lies between entry and stop (stop included), so it can be reached before the stop."""
+-    entry, invalidation, stop = thesis.entry.price, thesis.invalidation_price, thesis.stop
++    entry, invalidation, stop = reference_close, thesis.invalidation_price, thesis.stop
+     if thesis.direction == "long":
+         return stop <= invalidation < entry
+     # TODO(w2l2.2) a short mirrors the long rule. A market_open entry has no price yet (entry.price is None): its

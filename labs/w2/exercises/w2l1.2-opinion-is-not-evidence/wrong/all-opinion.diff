@@ -1,0 +1,21 @@
+why: copies tr thesis's rule: fails only when every evidence id is an opinion
+expect: AAPL swing lists cl_ba1ecc8934034a7d as evidence
+before: RED (author)
+--- a/src/tradingresearch/checks.py
++++ b/src/tradingresearch/checks.py
+@@ -22,7 +22,7 @@ def close_within(a: float, b: float, tolerance: float) -> bool:
+ 
+ def evidence_ok(claim: Claim | None, values: dict[str, float | None], tolerance: float) -> bool:
+     """P2 rules 1-4 for one evidence id; an inference's numbers were checked against its parents at analyze time."""
+-    if claim is None or claim.tag == "opinion":
++    if claim is None:
+         return False
+     # TODO(w2l1.3) rules 3-4 judge facts only: an inference passes here. Rule 3: a fact that cites a source id
+     #   missing from `values` (the thesis-stage source table) fails.
+@@ -35,4 +35,6 @@ def p2_evidence_valid(thesis: Thesis, claims: tuple[Claim, ...], values: dict[st
+                       tolerance: float = TOLERANCE) -> bool:
+     """True if every evidence id is a fact or inference of the analysis and every fact traces to its source table."""
+     by_id = {claim.claim_id: claim for claim in claims}
++    if all(getattr(by_id.get(claim_id), "tag", None) == "opinion" for claim_id in thesis.evidence):
++        return False
+     return all(evidence_ok(by_id.get(claim_id), values, tolerance) for claim_id in thesis.evidence)

@@ -1,0 +1,14 @@
+why: checks only that the invalidation is below the entry
+expect: a cent beyond the stop
+before: RED (author)
+--- a/src/tradingresearch/checks.py
++++ b/src/tradingresearch/checks.py
+@@ -45,7 +45,7 @@ def p3_invalidation_testable(thesis: Thesis, reference_close: float) -> bool:
+     """True if the invalidation lies between entry and stop (stop included), so it can be reached before the stop."""
+     entry, invalidation, stop = thesis.entry.price, thesis.invalidation_price, thesis.stop
+     if thesis.direction == "long":
+-        return stop <= invalidation < entry
++        return invalidation < entry
+     # TODO(w2l2.2) a short mirrors the long rule. A market_open entry has no price yet (entry.price is None): its
+     #   entry is the snapshot's last close, reference_close.
+     return True

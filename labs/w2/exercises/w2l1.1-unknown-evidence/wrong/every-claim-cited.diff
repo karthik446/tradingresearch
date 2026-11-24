@@ -1,0 +1,11 @@
+why: wrong subject: asks that every claim of the analysis be cited, not that every cited id be a claim
+expect: AAPL swing cites 3 ids, all claims of its own analysis
+before: RED (author)
+--- a/src/tradingresearch/checks.py
++++ b/src/tradingresearch/checks.py
+@@ -36,4 +36,4 @@ def p2_evidence_valid(thesis: Thesis, claims: tuple[Claim, ...], values: dict[st
+                       tolerance: float = TOLERANCE) -> bool:
+     """True if every evidence id is a fact or inference of the analysis and every fact traces to its source table."""
+     by_id = {claim.claim_id: claim for claim in claims}
+-    return all(evidence_ok(by_id.get(claim_id), values, tolerance) for claim_id in thesis.evidence)
++    return all(claim.claim_id in thesis.evidence and evidence_ok(claim, values, tolerance) for claim in claims)

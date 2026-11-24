@@ -1,0 +1,16 @@
+why: passes any thesis whose entry has no price yet
+expect: HD day (market_open) with invalidation 348.0
+before: RED (author)
+--- a/src/tradingresearch/checks.py
++++ b/src/tradingresearch/checks.py
+@@ -43,7 +43,9 @@ def p2_evidence_valid(thesis: Thesis, claims: tuple[Claim, ...], values: dict[st
+ 
+ def p3_invalidation_testable(thesis: Thesis, reference_close: float) -> bool:
+     """True if the invalidation lies between entry and stop (stop included), so it can be reached before the stop."""
+-    entry, invalidation, stop = entry_price(thesis, reference_close), thesis.invalidation_price, thesis.stop
++    if thesis.entry.price is None:
++        return True
++    entry, invalidation, stop = thesis.entry.price, thesis.invalidation_price, thesis.stop
+     if thesis.direction == "long":
+         return stop <= invalidation < entry
+     return entry < invalidation <= stop

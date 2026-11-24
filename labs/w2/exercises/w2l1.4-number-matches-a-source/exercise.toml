@@ -1,0 +1,11 @@
+id = "w2l1.4"
+title = "Fail a fact whose number matches none of its cited sources"
+lab = "w2l1"
+concepts = ["evidence", "tolerance", "process-check"]
+touches = ["src/tradingresearch/checks.py"]
+check = "python -m pytest -q -x -p no:cacheprovider -m lab labs/w2/exercises/w2l1.4-number-matches-a-source/test_w2l1_4.py"
+observe = "python labs/w2/tools/observe.py"
+paid = false
+fixtures = ["data/theses.json"]
+origin = "rebuild of week-2-end checks.py; reference = the tag's own p2_evidence_valid"
+red_expect = "HD swing cites cl_16f17802b00c4312"

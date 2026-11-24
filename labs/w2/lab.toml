@@ -1,0 +1,52 @@
+# Week 2 labs: the base, titles, pages, the unlock policy and the suite gate `tr lab` uses.
+#
+# base: the first `tr lab start` of this week makes the repo's files equal to the author's code at this tag (labs/
+# and the runner's own files excepted) and commits it as `lab: week 2 base (week-2-start)`.
+#
+# [unlock] counts FAILED runs of `tr lab verify` on the current exercise. A run where the check could not start
+# (syntax or import error, no tests collected) is not a failed run and does not count.
+#   hints = [2, 5]   hint 1 unlocks after 2 failed runs, hint 2 after 5. An exercise with more hints than numbers
+#                    unlocks the extra ones at the last number.
+#   solution = 10    `tr lab solution` unlocks after 10 failed runs, or as soon as the check is green.
+# A lab can override any of them, e.g.
+#   [labs.w2l1.unlock]
+#   hints = [3, 6]
+# and keys it leaves out come from [unlock].
+#
+# [suite] deselect: tests/test_week2.py covers all of the chapter's §2-§3, so the repo suite is red until the week
+# ends. The end-of-lab gate (`tr lab next` on a lab's last exercise) passes these node ids to pytest as --deselect:
+# [suite] for every lab of the week, [labs.<lab>.suite] for one lab. Plain `python -m pytest -q` still runs them.
+base = "week-2-start"
+
+[unlock]
+hints = [2, 5]
+solution = 10
+
+# §3's rubric file and draft judge are written by hand from the chapter, not in these labs.
+[suite]
+deselect = ["tests/test_week2.py::test_the_p1_rubric_has_every_section",
+            "tests/test_week2.py::test_p1_judge_is_registered_as_an_unvalidated_model_grader"]
+
+[labs.w2l1]
+title = "P2: is the evidence real"
+page = "pages/w2l1.md"
+
+# After w2l1, P2 is green; P3, P4 and the grader registrations come later in §2.
+[labs.w2l1.suite]
+deselect = ["tests/test_week2.py::test_p3_invalidation_testable",
+            "tests/test_week2.py::test_p4_levels_coherent",
+            "tests/test_week2.py::test_the_code_check_is_a_registered_binary_code_grader"]
+
+[labs.w2l2]
+title = "P3: can the invalidation be reached"
+page = "pages/w2l2.md"
+
+[labs.w2l2.suite]
+deselect = ["tests/test_week2.py::test_p4_levels_coherent",
+            "tests/test_week2.py::test_the_code_check_is_a_registered_binary_code_grader"]
+
+# What labs/tools/prove.py checks after the last exercise: these files must equal the tag byte for byte (the runner
+# ignores this table). checks.py is not listed yet: after w2l2 it still lacks P4, which a later lab adds.
+[end]
+tag = "week-2-end"
+files = []
