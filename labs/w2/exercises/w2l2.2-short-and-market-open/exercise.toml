@@ -1,6 +1,13 @@
 id = "w2l2.2"
 title = "Mirror the rule for a short and take the close as a market_open entry"
 effect = "Observe drops the synthetic P3 rows still accepted to 0 of 3: the MSFT day short and HD day market_open rows fail, and the real HD day passes P3 again."
+goal = "Finish P3: mirror the rule for a short, and give a market_open entry, which has no price yet, the snapshot's last close as its entry."
+what_tested = "p3_invalidation_testable on later real theses: MSFT day made short with its invalidation below the entry fails, the real shorts pass, the short boundaries (equal to the stop passes, equal to the entry fails, a tenth of a cent beyond the stop fails), HD day's market_open entry and a short one take the close, and limit and stop entries ignore the close."
+writes = [
+  "p3_invalidation_testable in src/tradingresearch/checks.py, for a short: the stop sits above the entry, and the invalidation must lie between them, equal to the stop allowed and equal to the entry not.",
+  "A market_open entry has entry.price None: its entry is reference_close, the snapshot's last close. Every other entry keeps its own price.",
+]
+show_tests = ["test_msft_day_short_invalidation_below_the_entry_fails", "test_the_short_boundaries"]
 lab = "w2l2"
 concepts = ["invalidation", "market_open-entry", "process-check"]
 touches = ["src/tradingresearch/checks.py"]

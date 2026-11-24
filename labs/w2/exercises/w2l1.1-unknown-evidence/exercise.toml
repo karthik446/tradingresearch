@@ -1,6 +1,14 @@
 id = "w2l1.1"
 title = "Fail a thesis whose evidence names no claim of its analysis"
 effect = "Observe drops the synthetic P2 rows still accepted from 4 of 4 to 3 of 4: JPM swing citing an XOM claim fails; the chapter's six stay at 6/6."
+goal = "Start P2, the check that a thesis's evidence is real, with rule 1: every evidence id must name a claim of the thesis's own analysis. One id that names nothing is enough to fail the thesis."
+what_tested = "p2_evidence_valid on the author's theses, claims and source tables (labs/w2/data/theses.json): JPM swing with an XOM claim id added fails, the chapter's six pass, an unknown id fails wherever it sits, an analysis with no claims supports nothing, and an id from another analysis, a source id or an id that only starts like a real one names no claim."
+writes = [
+  "p2_evidence_valid in src/tradingresearch/checks.py: for each id in thesis.evidence, find the claim of the analysis whose claim_id is exactly that id (None when there is none) and ask evidence_ok about it.",
+  "The thesis passes only if evidence_ok accepts every one of its evidence ids.",
+  "evidence_ok, rule 1: an id that names no claim (claim is None) is not evidence.",
+]
+show_tests = ["test_jpm_swing_citing_a_claim_of_the_xom_analysis_fails", "test_an_id_that_only_starts_like_a_real_one_fails"]
 lab = "w2l1"
 concepts = ["evidence", "process-check"]
 touches = ["src/tradingresearch/checks.py"]

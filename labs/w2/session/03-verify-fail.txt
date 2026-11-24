@@ -1,0 +1,7 @@
+FAIL w2l1.1 (try 1): Fail a thesis whose evidence names no claim of its analysis
+  JPM swing lists evidence cl_6318fbb2dd184267, an id from the XOM analysis: none of the 7 claims of
+  JPM's analysis has it, so the thesis cites evidence that does not exist; p2_evidence_valid
+  returned True. Its other three ids are real JPM claims: one id that names no claim is enough to
+  fail.
+  hint 1 unlocks after 2 failed runs; hint 2 unlocks after 5 failed runs; the solution unlocks after
+  10 failed runs or when the check is green

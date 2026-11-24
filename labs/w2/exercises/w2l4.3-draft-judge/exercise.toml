@@ -1,6 +1,13 @@
 id = "w2l4.3"
 title = "Register the draft P1 judge: a model grader that refuses to score"
 effect = "Observe's Graders block lists p1_judge as a model grader, version 1, not validated, that cannot grade either sample: it is a draft until week 3."
+goal = "Register the draft P1 judge: a model grader, marked not validated, that refuses to score and makes no model call. Nobody has checked its verdicts against human labels yet; it stays a draft until closed trades in week 3."
+what_tested = "evals.GRADERS['p1_judge']: its id, kind 'model', a non-empty string version and validated False. Then its grade on empty and full replies must raise CannotGrade saying why (a draft, not validated), under an offline guard that records any network, subprocess or model call even when the judge catches the error. $0 with or without a key."
+writes = [
+  "In src/tradingresearch/evals.py, a @grader class P1Judge with id p1_judge, version \"1\", kind model and validated False.",
+  "Its grade(sample, expected) makes no model call: it refuses with CannotGrade and says why (a draft; no model call until closed trades in week 3). Spec: evals/specs/p1_judge.md.",
+]
+show_tests = ["test_the_judge_is_registered_as_an_unvalidated_model_grader"]
 lab = "w2l4"
 concepts = ["draft-judge", "grader", "registry"]
 touches = ["src/tradingresearch/evals.py"]

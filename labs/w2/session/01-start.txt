@@ -1,0 +1,6 @@
+week 2 starts from the author's code at week-2-start: 112 files changed, committed as `lab: week 2 base (week-2-start)`
+your earlier commits stay in the history of `lab`
+started lab w2l1 (P2: is the evidence real) on branch `lab`; read labs/w2/pages/w2l1.md
+exercise w2l1.1: Fail a thesis whose evidence names no claim of its analysis
+edit: src/tradingresearch/checks.py (look for TODO(w2l1.1))
+then: tr lab verify

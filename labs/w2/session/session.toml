@@ -1,0 +1,90 @@
+# The walked-through session on the w2 lab pages. labs/tools/capture.py runs every step in a fresh scratch clone
+# (one clone per part) and writes what each `run` printed to the step's `output` file next to this one. `prove.py`
+# re-runs it and fails when an output file no longer matches.
+
+diagram = """
+ tr lab start w2l1     first command of the week: commits the author's code at week-2-start
+         |             as `lab: week 2 base (week-2-start)`, then puts the w2l1.1 stub in place
+         v
+   edit the TODO  <------------------------------------------------+
+         |                                                         |
+         v                                                         |
+ tr lab verify  --> FAIL (try N): what the check expected and got -+
+         |
+         v
+   PASS, then labs/w2/tools/observe.py: which synthetic rows each check still accepts
+         |
+         v
+ tr lab next    commits `lab <id>: green`, puts the next stub in place
+"""
+
+[[part]]
+id = "p1"
+title = "The start of week 2: the base commit and exercise w2l1.1"
+intro = """A fresh clone of the labs repo, as in week 1, but this time the first command of the week does more than \
+put a stub in place. Every command below ran in a scratch clone when this page was built, and the text under it is \
+what it printed; the clone's path shows as <repo> and commit hashes as <sha>. Where you would write the rule, the \
+capture applies the reference solution instead, so the steps after it have real output."""
+
+[[part.step]]
+title = "Start the week"
+run = "tr lab start w2l1"
+shown = ".venv/bin/tr lab start w2l1"
+output = "01-start.txt"
+explain = """Week 2 does not build on your week-1 code. It starts from the author's code at the tag week-2-start: \
+`start` makes the tree equal to that tag (labs/ and the runner's own files excepted) and commits it. How many \
+files change depends on your clone; here it is a fresh one. Your week-1 commits are not lost: they stay in the \
+history of `lab`, under the base commit. If the tag is missing, `git fetch --tags` gets it; if pyproject.toml or \
+uv.lock change, `start` tells you to run `uv sync`."""
+
+[[part.step]]
+title = "Where you are: branch, changed files, commits"
+run = "git branch --show-current; git status --short; git log --oneline -3"
+shown = "git branch --show-current; git status --short; git log --oneline -3"
+output = "02-where.txt"
+explain = """The base is one commit on `lab`. The stub is not part of it: src/tradingresearch/checks.py does not \
+exist at week-2-start, so it shows as a new, untracked file. The w2l1.1 stub created it, with evidence_ok and \
+p2_evidence_valid accepting everything and the `TODO(w2l1.1)` comments where rule 1 goes."""
+
+[[part.step]]
+title = "Verify the stub: FAIL"
+run = "tr lab verify"
+shown = ".venv/bin/tr lab verify"
+output = "03-verify-fail.txt"
+explain = """The stub's p2_evidence_valid accepts everything, so the first check fails on the real JPM swing thesis \
+with one id taken from the XOM analysis. The message names the id and says why one bad id is enough. The hint and \
+solution thresholds come from labs/w2/lab.toml."""
+
+[[part.step]]
+title = "Write the rule"
+apply = "solution"
+explain = """Here you write rule 1 in evidence_ok and the loop in p2_evidence_valid that the `TODO(w2l1.1)` \
+comments describe. The capture applies the reference solution instead."""
+
+[[part.step]]
+title = "Verify again: PASS"
+run = "tr lab verify"
+shown = ".venv/bin/tr lab verify"
+output = "04-verify-pass.txt"
+explain = """PASS, then the observe command of week 2, `python labs/w2/tools/observe.py`. It runs your checks on \
+the chapter's six theses, on later real ones, and on synthetic copies that each break one rule. The chapter's six \
+stay at P2 6/6, and the synthetic P2 rows still accepted drop from 4 of 4 to 3 of 4: the JPM copy now reads 0. \
+The other synthetic rows wait for the exercises that follow."""
+
+[[part.step]]
+title = "Move on"
+run = "tr lab next"
+shown = ".venv/bin/tr lab next"
+output = "05-next.txt"
+explain = """`next` re-runs the check, commits your file as `lab w2l1.1: green` and puts the w2l1.2 stub in place: \
+checks.py with the reference rule 1 in it. Here that equals the file just committed, so nothing changes. Had you \
+written rule 1 differently, the stub would replace your file and `next` would name the copy it kept in \
+.tr-lab/backup/."""
+
+[[part.step]]
+title = "The commit"
+run = "git log --oneline -3; git status --short"
+shown = "git log --oneline -3; git status --short"
+output = "06-after-next.txt"
+explain = """Your green commit sits on the base commit, and the base on the repo you cloned. `git status --short` \
+prints nothing: the w2l1.2 stub is byte for byte the file just committed."""

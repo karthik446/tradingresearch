@@ -89,6 +89,8 @@ It copies the clone into temp folders and runs the chain (each stub red with `re
 
 The hint guard is a string match: it rejects a hint that repeats a `solution.diff` added line of 12 or more characters, or holds a code fence longer than one line. It does not judge whether prose dictates the answer; that is a reading job (each hint states the idea and a counterexample, not the steps).
 
+**Captures for the site.** The same as week 1's (see [labs/w1/README.md](../w1/README.md)): each exercise's `expected_output/fail.txt` and `pass.txt`, the walked-through session in `session/` (the start of the week: the base commit from `week-2-start`, then w2l1.1 end to end), and the page text in each `exercise.toml`: `goal`, `what_tested`, `writes`, `show_tests` (no `show_data`: the w2 stubs hold no data file). `python labs/tools/capture.py w2 --write` regenerates the captured files (about 65 s), `--leakcheck` checks that no page text gives away a solution line or a locked hint, and `prove.py w2` re-captures and fails on any difference.
+
 ## Reading
 
 The week's reading is the published chapter, [Week 2](https://scout.edgelab.one/learn/ai-engineering/week-2/). These labs are the code half of its §2 and the draft judge of its §3; the pages link its sections and observe cites `week-2.md §2`.

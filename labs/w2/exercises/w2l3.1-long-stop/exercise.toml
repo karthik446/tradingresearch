@@ -1,6 +1,13 @@
 id = "w2l3.1"
 title = "Place a long's stop beyond the nearest level under the entry"
 effect = "Observe takes the chapter's six from P4 6/6 to 5/6: HD swing's stop sits between hvn 319.08 and its entry, so it fails, and HD day's market_open row too."
+goal = "Start P4, the check that stop and target are placed against the price levels analyze found: a long's stop must sit beyond the nearest level under its entry, where ordinary noise does not reach it."
+what_tested = "p4_levels_coherent on the author's theses and levels, stored unrounded and unsorted: HD swing's stop above hvn 319.08 fails, a stop below the nearest level passes, a stop on the level fails, the nearest level is the highest under the entry, a level at the entry is not under it, no level under the entry leaves the stop free, and any kind or strength of level counts."
+writes = [
+  "p4_levels_coherent in src/tradingresearch/checks.py, the long's stop half: among the level prices strictly under the entry, find the nearest one.",
+  "The stop passes when it sits strictly below that level. With no level under the entry, this half holds.",
+]
+show_tests = ["test_hd_swing_stop_above_the_nearest_level_fails", "test_a_stop_on_the_level_fails"]
 lab = "w2l3"
 concepts = ["level", "process-check"]
 touches = ["src/tradingresearch/checks.py"]

@@ -1,6 +1,14 @@
 id = "w2l4.2"
 title = "Register P3 and P4 as graders, each fed what its check reads from the snapshot"
 effect = "Observe's Graders block adds P3 and P4: P3 scores the recorded AAPL reply 1.0, P4 scores it 0.0 (fails: swing), as in the chapter's table."
+goal = "Register P3 and P4 as graders the same way, each fed what its check reads from the graded sample's snapshot: the close for P3; the levels, atr_14 and close for P4."
+what_tested = "The registered graders p3_invalidation_testable and p4_levels_coherent on the recorded AAPL reply and copies: P3 scores it 1.0 and names a broken short, P4 scores it 0.0 at cents and 1.0 with the stop a cent lower, half the sample's ATR is allowed, a market_open entry uses the sample's close, a second class with an id is refused, and an empty run cannot be graded."
+writes = [
+  "In src/tradingresearch/evals.py, a @grader class InvalidationTestable (id p3_invalidation_testable) whose grade scores every_thesis with checks.p3_invalidation_testable and the snapshot's close.",
+  "A @grader class LevelsCoherent (id p4_levels_coherent) whose grade scores every_thesis with checks.p4_levels_coherent, the snapshot's levels, its atr_14 and its close.",
+  "Each is a binary code grader with a string version, like EvidenceValid.",
+]
+show_tests = ["test_p3_passes_the_real_reply_and_names_a_broken_short", "test_p4_fails_the_real_reply_at_cents"]
 lab = "w2l4"
 concepts = ["grader", "registry", "thesis-sample", "level"]
 touches = ["src/tradingresearch/evals.py"]

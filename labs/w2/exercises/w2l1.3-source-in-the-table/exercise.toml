@@ -1,6 +1,13 @@
 id = "w2l1.3"
 title = "Fail a fact that cites a source the thesis-stage table does not hold"
 effect = "Observe drops the synthetic P2 rows still accepted from 2 of 4 to 1 of 4: XOM swing citing an EDGAR fact fails; the chapter's six stay at 6/6."
+goal = "Add rule 3 of P2: a fact must cite sources the thesis-stage table holds, the snapshot rows the thesis prompt showed. A number no reader of the thesis can trace to that table is not evidence."
+what_tested = "p2_evidence_valid on the author's data: XOM swing citing an EDGAR fact fails, every real thesis passes, a fact citing a table row that holds a label instead of a number passes, one missing source of two fails, the last of three sources missing fails, and an inference is not held to rules 3 and 4."
+writes = [
+  "evidence_ok in src/tradingresearch/checks.py: rules 3 and 4 judge facts only, so an inference passes at this point.",
+  "Rule 3: a fact fails when a source id it cites is not in values, the thesis-stage table. A row holding None is still in the table.",
+]
+show_tests = ["test_xom_swing_citing_an_edgar_fact_fails", "test_a_fact_with_no_number_is_in_the_table_too"]
 lab = "w2l1"
 concepts = ["evidence", "source-table", "process-check"]
 touches = ["src/tradingresearch/checks.py"]

@@ -1,6 +1,14 @@
 id = "w2l1.4"
 title = "Fail a fact whose number matches none of its cited sources"
 effect = "Observe drops the synthetic P2 rows still accepted to 0 of 4: HD swing's close fact, 2% off its source, fails; the chapter's six stay at 6/6."
+goal = "Finish P2 with rule 4: a fact's number must match at least one of its cited sources within a relative tolerance, so the thesis quotes the number code computed, not a misremembered one."
+what_tested = "p2_evidence_valid on the author's data: HD swing's close fact 2% off its source fails, every real thesis passes, the tolerance is relative with its edge included, the tolerance argument is used, zero is a number, a source holding None matches nothing, a fact with no number still needs its source in the table, and one matching source of several is enough."
+writes = [
+  "evidence_ok in src/tradingresearch/checks.py, rule 4: it judges a fact that states a value; a fact without a value passes.",
+  "Compare that value with each cited source's value within `tolerance`, using close_within. A source holding None matches nothing.",
+  "The fact passes when at least one of its cited sources matches.",
+]
+show_tests = ["test_hd_swing_close_fact_two_percent_off_fails", "test_the_tolerance_is_relative_and_inclusive"]
 lab = "w2l1"
 concepts = ["evidence", "tolerance", "process-check"]
 touches = ["src/tradingresearch/checks.py"]

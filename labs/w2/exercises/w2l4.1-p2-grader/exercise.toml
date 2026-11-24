@@ -1,6 +1,14 @@
 id = "w2l4.1"
 title = "Score a whole thesis run with P2: every_thesis and the EvidenceValid grader"
 effect = "Observe's Graders block scores p2_evidence_valid: 1.0 on the author's recorded AAPL reply, 0.0 once a broken short thesis is added (fails: short)."
+goal = "Turn P2 into a grader: one score for a whole thesis run, 1 when every thesis passes and 0 otherwise, naming the failing horizons, registered under the id the experiment configs use."
+what_tested = "The registered grader p2_evidence_valid on the author's recorded AAPL reply and copies of its thesis: the real reply scores 1.0 with no explanation, one broken thesis before or after a good one, or third of three, scores 0.0, failing horizons are named in order, an item that does not build is skipped, and a run with nothing to grade raises CannotGrade."
+writes = [
+  "every_thesis(theses, passes) in src/tradingresearch/evals.py: a Score of 1.0 with no explanation when every thesis passes, else 0.0 explained as 'fails: ' and the failing horizons in order, joined by ', '.",
+  "A @grader class EvidenceValid with id p2_evidence_valid, version \"1\" (a string) and kind code.",
+  "Its grade(sample, expected): the analysis and theses from built_theses, the thesis prompt's source table as {source id: value} from the snapshot rows, then every_thesis with checks.p2_evidence_valid.",
+]
+show_tests = ["test_the_real_reply_scores_one", "test_one_broken_thesis_after_a_good_one_scores_zero"]
 lab = "w2l4"
 concepts = ["grader", "registry", "thesis-sample"]
 touches = ["src/tradingresearch/evals.py"]

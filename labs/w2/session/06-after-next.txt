@@ -1,0 +1,3 @@
+<sha> lab w2l1.1: green
+<sha> lab: week 2 base (week-2-start)
+<sha> the repo as you cloned it (capture scratch copy)

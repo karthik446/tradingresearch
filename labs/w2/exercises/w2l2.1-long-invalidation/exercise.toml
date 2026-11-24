@@ -1,6 +1,14 @@
 id = "w2l2.1"
 title = "Pass a long only when its invalidation lies between stop and entry"
 effect = "Observe drops the synthetic P3 rows still accepted from 3 of 3 to 2 of 3: XOM swing's invalidation above the entry fails; HD day's market_open row crashes."
+goal = "Start P3, the check that a thesis can be shown wrong before its stop takes the trade out: for a long, the invalidation price must lie between the stop and the entry."
+what_tested = "p3_invalidation_testable on the author's theses (labs/w2/data/theses.json): XOM swing with its invalidation moved above the entry fails, the chapter's six pass, the boundaries on AAPL swing (equal to the stop passes, equal to the entry fails, a cent or a tenth of a cent beyond the stop fails: prices compare as written), and a limit entry ignores the close."
+writes = [
+  "p3_invalidation_testable in src/tradingresearch/checks.py, for a long: the entry is thesis.entry.price for now (every chapter thesis has a limit entry); the stop and the invalidation come from the thesis.",
+  "A long passes when its invalidation lies between the stop and the entry: equal to the stop passes, equal to the entry fails.",
+  "Leave the short and the market_open entry to w2l2.2.",
+]
+show_tests = ["test_xom_swing_invalidation_above_the_entry_fails", "test_the_long_boundaries"]
 lab = "w2l2"
 concepts = ["invalidation", "process-check"]
 touches = ["src/tradingresearch/checks.py"]

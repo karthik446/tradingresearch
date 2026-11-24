@@ -1,6 +1,14 @@
 id = "w2l3.4"
 title = "Amend P4 to compare prices at cents"
 effect = "Observe takes the chapter's six from P4 4/6 to 2/6, the chapter's figure: AAPL swing and both XOM theses fail, JPM swing passes, 0 of 10 rows differ."
+goal = "Amend P4 the way the author did: compare prices at cents. Levels are stored unrounded (hvn 343.40978) while the model quotes cents (343.41); on raw floats P4 passes 4 of the chapter's six, at cents 2."
+what_tested = "p4_levels_coherent at cents on the author's data: AAPL swing fails (hvn 343.40978 is its entry at cents, so the stop sits on pivot_low 338.7), the chapter's six give 2/6, every price, a market_open close and a short's stop included, compares at cents, a price goes to its nearest cent, and the ATR allowance stays exact."
+writes = [
+  "cents(price) in src/tradingresearch/checks.py, above p4_levels_coherent: the price rounded to 2 decimals.",
+  "In p4_levels_coherent, compare at cents: use it on the entry (a market_open close too), the stop, the target and every level price.",
+  "The allowance stays exact: only prices go to cents.",
+]
+show_tests = ["test_aapl_swing_at_cents_fails", "test_the_allowance_stays_exact"]
 lab = "w2l3"
 concepts = ["cents", "level", "atr-allowance"]
 touches = ["src/tradingresearch/checks.py"]

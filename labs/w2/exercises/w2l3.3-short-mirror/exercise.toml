@@ -1,6 +1,14 @@
 id = "w2l3.3"
 title = "Mirror P4 for a short: stop over the nearest level above, target down to the next level below"
 effect = "Observe keeps the chapter's six at P4 4/6 while the JPM swing and UNH swing rows made short now fail; the MSFT day short still passes."
+goal = "Mirror P4 for a short, which loses when price rises: its stop must sit beyond the nearest level over the entry, and its target may run down to the next level under it, minus the same allowance."
+what_tested = "p4_levels_coherent on later real shorts: UNH swing's stop under hvn 376.09 fails, JPM swing short's target past the next level fails, MSFT day passes, the short stop and target boundaries (allowance inclusive, scaled by the ATR), a level at the entry on neither side, a side with no level holds, a short market_open measures from the close, and the long rules still hold."
+writes = [
+  "p4_levels_coherent in src/tradingresearch/checks.py, the short branch: judge the stop against the levels strictly over the entry; it must sit strictly beyond the nearest of them.",
+  "Judge the target against the levels strictly under the entry: at or above the next one minus the allowance passes.",
+  "Each half holds when its side has no level.",
+]
+show_tests = ["test_unh_swing_short_stop_under_the_nearest_level_fails", "test_the_short_target_boundary"]
 lab = "w2l3"
 concepts = ["level", "atr-allowance", "process-check"]
 touches = ["src/tradingresearch/checks.py"]

@@ -1,6 +1,13 @@
 id = "w2l3.2"
 title = "Keep a long's target at or before the next level over the entry, plus half an ATR"
 effect = "Observe takes the chapter's six from P4 5/6 to 4/6: on the stored floats JPM swing's target of 344.4 runs past hvn 335.11379 plus half an ATR."
+goal = "Add the long's target half of P4: the target may reach the next level over the entry plus half an ATR of room, and no further, so the trade does not count on breaking through a level."
+what_tested = "p4_levels_coherent on AAPL swing (stop moved to 338.69 so only the target decides) and other real theses: a target past high_20 360.83 plus half the ATR fails, the allowance boundary is inclusive, scales with the ATR and is not rounded, the next level is the lowest over the entry, a level at the entry is not over it, and no level over the entry leaves the target free."
+writes = [
+  "p4_levels_coherent in src/tradingresearch/checks.py, the long's target half: among the level prices strictly over the entry, find the next one.",
+  "The target passes at or below that level plus TARGET_ALLOWANCE_ATR times atr14, exact. With no level over the entry, this half holds.",
+]
+show_tests = ["test_aapl_swing_target_past_the_allowance_fails", "test_the_allowance_boundary"]
 lab = "w2l3"
 concepts = ["level", "atr-allowance", "process-check"]
 touches = ["src/tradingresearch/checks.py"]

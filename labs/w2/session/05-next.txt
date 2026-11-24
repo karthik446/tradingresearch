@@ -1,0 +1,4 @@
+committed `lab w2l1.1: green`: src/tradingresearch/checks.py
+exercise w2l1.2: Fail a thesis that leans on an opinion, even beside facts
+edit: src/tradingresearch/checks.py (look for TODO(w2l1.2))
+then: tr lab verify

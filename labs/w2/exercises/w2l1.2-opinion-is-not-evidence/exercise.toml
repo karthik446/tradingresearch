@@ -1,6 +1,13 @@
 id = "w2l1.2"
 title = "Fail a thesis that leans on an opinion, even beside facts"
 effect = "Observe drops the synthetic P2 rows still accepted from 3 of 4 to 2 of 4: AAPL swing leaning on an opinion fails; the chapter's six stay at 6/6."
+goal = "Add rule 2 of P2: an opinion is not evidence, even when it sits beside facts. tr thesis only refuses evidence that is all opinion; P2 is stricter."
+what_tested = "p2_evidence_valid on the author's data: AAPL swing with its analysis's opinion added fails, each analysis's opinion fails its thesis in any position, a second opinion fails too, inferences are still evidence, the chapter's six still pass, and the claim's tag decides, not its wording, what it cites or its length."
+writes = [
+  "evidence_ok in src/tradingresearch/checks.py, rule 2: an evidence id whose claim is tagged as an opinion fails.",
+  "Facts and inferences go on to the rules that come next (w2l1.3 and w2l1.4).",
+]
+show_tests = ["test_aapl_swing_leaning_on_its_opinion_fails", "test_inferences_are_still_evidence"]
 lab = "w2l1"
 concepts = ["evidence", "claim-tag", "process-check"]
 touches = ["src/tradingresearch/checks.py"]
