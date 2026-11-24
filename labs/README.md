@@ -36,7 +36,7 @@ Then, for each exercise:
 | Command | Does | Exit |
 |---|---|---|
 | `tr lab list` | every lab and exercise: done, done (reference), current, start here (the first exercise of the lab to start next) or locked | 0 |
-| `tr lab start <lab>` | switch to branch `lab` (`git checkout -B lab`) and install the lab's first stub. Refuses while another lab is in progress (`--force` restarts), while an earlier lab is unfinished (`--assume-previous`, below), or when a branch `lab` exists and you are not on it (`--force` recreates it from your current commit) | 0, 2 refused |
+| `tr lab start <lab>` | switch to branch `lab` (`git checkout -B lab`) and install the lab's first stub; the first start in a week with a base brings in that week's code first ([Weeks](#weeks)). Refuses while another lab is in progress (`--force` restarts), while an earlier lab is unfinished (`--assume-previous`, below), or when a branch `lab` exists and you are not on it (`--force` recreates it from your current commit) | 0, 2 refused |
 | `tr lab verify` | run the current exercise's check; counts a failed run | 0 green, 1 red, 2 refused, 3 the check could not run |
 | `tr lab verify <exercise>` | run one exercise you have reached, e.g. `w1l1.2`; counts only if it is the current one | 0, 1, 2 not reached, 3 |
 | `tr lab verify <lab>` | run every reached exercise of a lab, one line each; counts nothing | 0 all green, 1 any red or ERROR line |
@@ -47,9 +47,13 @@ Then, for each exercise:
 | `tr lab next` | re-run the check; on green commit, print the files the commit holds, and install the next stub | 0, 2 if red or git refused |
 | `tr lab status` | the state as one JSON line | 0 |
 
-`--assume-previous` on `start` (for example `tr lab start w1l3 --assume-previous`) applies the reference solutions of every exercise in the earlier, unfinished labs, commits them as `lab: reference solutions <first>..<last> (--assume-previous)`, and marks those exercises "done (reference)". Use it to enter the week at a later lab; the later labs read files the earlier ones produce.
+`--assume-previous` on `start` (for example `tr lab start w1l3 --assume-previous`) applies the reference solutions of every exercise in the earlier, unfinished labs (of the same week, when the week has a base), commits them as `lab: reference solutions <first>..<last> (--assume-previous)`, and marks those exercises "done (reference)". Use it to enter the week at a later lab; the later labs read files the earlier ones produce.
 
 What `verify` runs is the `check` line of the exercise's `exercise.toml`, a plain pytest command such as `python -m pytest -q -x -p no:cacheprovider -m lab labs/w1/exercises/w1l1.1-unknown-source/test_w1l1_1.py`. Each exercise on the lab pages shows it, so you can run it by hand. The lab tests carry the `lab` marker; the repo's `pyproject.toml` deselects them (`addopts = "-m 'not live and not lab'"`, `testpaths = ["tests"]`), so plain `pytest -q` runs only the repo's own suite.
+
+## Weeks
+
+Week 1 starts from the code on this branch. Each later week starts from the author's code at its tag: its `labs/<week>/lab.toml` says `base = "week-N-start"`. The first `tr lab start` of such a week makes the repo's files equal to the tag's, except `labs/` and `tr lab`'s own files, puts `tr lab`'s lines back into `pyproject.toml` and `.gitignore`, and commits that as `lab: week N base (<tag>)`; your earlier commits stay in the history of `lab`. It refuses while you have uncommitted changes (commit or stash first), asks for `git fetch --tags` when the tag is missing, and says when `pyproject.toml` or `uv.lock` changed: run `uv sync` then. A week's labs build only on the earlier labs of the same week, so you can start week 2 without finishing week 1. `tr lab list` shows each week and its tag.
 
 ## Hints and the solution
 
@@ -76,7 +80,7 @@ The labs are an honor system: they are for you. They run on your machine against
 
   Not copied: a file equal to the new stub or to the current exercise's stub (the runner put it there), a file as the repo shipped it, and the reference solutions `--assume-previous` committed.
 - State is in `.tr-lab/state.json` at the repo root; `.tr-lab/` is in `.gitignore`. Restarting a lab (`start --force`) clears that lab's done marks, failed runs and "done (reference)" marks.
-- `tr lab` imports nothing a stub overwrites, so it still runs when your edit leaves `analyze.py` or `evals.py` broken. The other `tr` commands show that import error; `tr -h` still prints the command list.
+- `tr lab` imports nothing a stub overwrites, so it still runs when your edit leaves `analyze.py` or `evals.py` broken: the `tr` entry point (`src/tradingresearch/labmain.py`) sends `tr lab` to the runner before anything imports the rest of `tr`. The other `tr` commands, `tr -h` included, show that import error.
 
 ## When something goes wrong
 
@@ -90,8 +94,8 @@ The labs are an honor system: they are for you. They run on your machine against
 | Your edit breaks an import `tr` needs | `tr lab` still runs (see above). |
 | An exercise has no stub (w1l2.4 back-fills your own `labels.csv`) | `next` installs nothing, `reset` keeps your file, `solution --apply` explains that the diff expects the reference files. |
 | You start a later lab first | `start` refuses and names the unfinished lab; `--assume-previous` applies its reference solutions. |
-| A lab page and its tests disagree | `python labs/w1/tools/prove.py` re-proves every exercise (stub red, solution green, earlier checks still green, each known wrong fix red with its message, the end state equal to `week-1-end`, and a `tr lab` smoke run) and writes [labs/w1/PROOF.md](w1/PROOF.md). |
+| A lab page and its tests disagree | `python labs/tools/prove.py w1` re-proves every exercise of a week (stub red, solution green, earlier checks still green, each known wrong fix red with its message, the end state equal to the week's end tag, and a `tr lab` smoke run) and writes [labs/w1/PROOF.md](w1/PROOF.md) when redirected there. |
 
 ## For authors
 
-The layout of a week and how to re-run the proof: [labs/w1/README.md](w1/README.md). `tr lab`'s own tests: `tests/test_lab.py` (plain `pytest`, no network). The runner: `src/tradingresearch/lab.py`.
+The layout of a week and how to re-run the proof: [labs/w1/README.md](w1/README.md); the proof tool is `labs/tools/prove.py <week>`. `tr lab`'s own tests: `tests/test_lab.py` (plain `pytest`, no network). The runner: `src/tradingresearch/lab.py`, reached through `src/tradingresearch/labmain.py`.

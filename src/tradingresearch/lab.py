@@ -6,6 +6,8 @@ stub, runs the check, counts failed runs to unlock hints and the solution, and c
 `lab`. State lives in .tr-lab/state.json (gitignored). A stub is the reference state of the earlier exercises plus one
 TODO, not your own file: before it overwrites a file that holds your work (uncommitted edits, or the version a
 `lab <id>: green` commit holds) the file is copied to .tr-lab/backup/, and a committed version also stays in git.
+A week whose lab.toml names a `base` (a tag, e.g. week-2-start) starts from the author's code there: the first `start` of
+that week makes the tree equal to the tag's, except the runner's own paths, and commits it on `lab`.
 How to use it: labs/README.md. The unlock numbers: labs/<week>/lab.toml.
 """
 
@@ -29,6 +31,18 @@ LAB_ID = re.compile(r"w(\d+)l(\d+)")
 EXERCISE_ID = re.compile(r"w(\d+)l(\d+)\.(\d+)")
 LAB_COMMIT = re.compile(r"lab (w\d+l\d+\.\d+): green")
 WIDTH = 100
+# paths the runner owns: a week's base never replaces or deletes them
+RUNNER_DIRS = ("labs/", ".tr-lab/")
+RUNNER_FILES = frozenset({"src/tradingresearch/lab.py", "src/tradingresearch/labmain.py", "tests/test_lab.py"})
+# the runner's lines in pyproject.toml and .gitignore, re-applied to a week's base
+AUTHOR_SCRIPT = 'tr = "tradingresearch.cli:main"'
+LAB_SCRIPT = 'tr = "tradingresearch.labmain:main"'
+AUTHOR_ADDOPTS = "addopts = \"-m 'not live'\""
+LAB_ADDOPTS = "addopts = \"-m 'not live and not lab'\""
+TESTPATHS = 'testpaths = ["tests"]'
+LAB_MARKER = '    "lab: a lab exercise check under labs/ (run by `tr lab verify`, which passes -m lab)",'
+LAB_IGNORE = ("# the labs ship their recorded runs (labs/<week>/data/); `tr lab` keeps its state out of git",
+              "!labs/**/data/", ".tr-lab/")
 
 
 class LabError(Exception):
@@ -59,6 +73,7 @@ class Lab:
     exercises: tuple[Exercise, ...]
     hints: tuple[int, ...]  # failed runs needed for hint 1, 2, ...; extra hints use the last number
     solution: int  # failed runs needed for the solution (green unlocks it at once)
+    week: str  # the folder under labs/, e.g. "w1"
 
     def hint_after(self, k: int) -> int:
         return self.hints[min(k, len(self.hints)) - 1]
@@ -79,9 +94,12 @@ class Labs:
         self.state_file = repo / ".tr-lab" / "state.json"
         self.backup_dir = repo / ".tr-lab" / "backup"
         self.labs: list[Lab] = []
+        self.bases: dict[str, str] = {}  # week -> the tag its labs start from
         weeks = sorted((repo / "labs").glob("*/lab.toml"), key=lambda p: _key(p.parent.name))
         for toml in weeks:
             config = tomllib.loads(toml.read_text())
+            if "base" in config:
+                self.bases[toml.parent.name] = str(config["base"])
             found: dict[str, list[Exercise]] = {}
             for meta_file in sorted((toml.parent / "exercises").glob("*/exercise.toml")):
                 m = tomllib.loads(meta_file.read_text())
@@ -94,11 +112,18 @@ class Labs:
                 page = lab_config.get("page")
                 self.labs.append(Lab(lab_id, lab_config.get("title", ""), toml.parent / page if page else None,
                                      tuple(sorted(found[lab_id], key=lambda e: _key(e.id))),
-                                     tuple(unlock.get("hints", (2, 5))), int(unlock.get("solution", 10))))
+                                     tuple(unlock.get("hints", (2, 5))), int(unlock.get("solution", 10)),
+                                     toml.parent.name))
         if not self.labs:
             raise LabError(f"no labs found under {repo / 'labs'}")
         self.exercises = {ex.id: ex for lab in self.labs for ex in lab.exercises}
         self.by_id = {lab.id: lab for lab in self.labs}
+
+    def builds_on(self, lab: Lab) -> list[Lab]:
+        """The earlier labs `lab` needs: every one before it, back to the first lab of the latest week with a base."""
+        week = _key(lab.week)[0]
+        start = max((_key(w)[0] for w in self.bases if _key(w)[0] <= week), default=0)
+        return [p for p in self.labs[:self.labs.index(lab)] if _key(p.week)[0] >= start]
 
     # state ------------------------------------------------------------------------------------------------------
 
@@ -127,6 +152,50 @@ class Labs:
             why = " / ".join(detail[-3:]) if detail else "(a hook or config refused it, no message)"
             raise LabError(f"git {cmd[0]} failed (exit {r.returncode}): {why}; nothing advanced")
         return r.stdout
+
+    def show(self, ref: str, path: str) -> str | None:
+        r = subprocess.run(["git", "show", f"{ref}:{path}"], cwd=self.repo, capture_output=True, text=True)
+        return None if r.returncode else r.stdout
+
+    def uncommitted(self) -> list[str]:
+        """Changed and untracked paths outside .tr-lab/."""
+        lines = self.git("status", "--porcelain", "--untracked-files=normal").splitlines()
+        return [ln[3:] for ln in lines if not ln[3:].strip('"').startswith(".tr-lab/")]
+
+    def apply_base(self, week: str) -> list[str]:
+        """Make the tree equal to the week's base, runner paths excepted, and commit it. Returns the lines to print.
+
+        The base's pyproject.toml and .gitignore get the runner's lines back (checked before any file changes). Files
+        tracked now and absent from the base are removed; untracked and ignored files are left alone.
+        """
+        tag, n = self.bases[week], _key(week)[0]
+        if subprocess.run(["git", "rev-parse", "-q", "--verify", f"{tag}^{{commit}}"], cwd=self.repo,
+                          capture_output=True).returncode:
+            raise LabError(f"week {n} starts from the tag {tag}, which this clone does not have; "
+                           "`git fetch --tags` gets it")
+        pyproject = self.show(tag, "pyproject.toml")
+        if pyproject is None:
+            raise LabError(f"pyproject.toml is missing at {tag}; `tr lab` re-applies its lines there, so nothing changed")
+        pyproject = _lab_pyproject(pyproject, tag)
+        gitignore = _lab_gitignore(self.show(tag, ".gitignore") or "")
+        theirs = [p for p in self.git("ls-tree", "-r", "-z", "--name-only", tag).split("\0") if p and not _runner(p)]
+        keep = set(theirs)
+        gone = [p for p in self.git("ls-files", "-z").split("\0") if p and not _runner(p) and p not in keep]
+        if theirs:
+            self.git("checkout", tag, "--", *(f":(literal){p}" for p in theirs))
+        if gone:
+            self.git("rm", "-q", "--", *(f":(literal){p}" for p in gone))
+        (self.repo / "pyproject.toml").write_text(pyproject)
+        (self.repo / ".gitignore").write_text(gitignore)
+        self.git("add", "--", "pyproject.toml", ".gitignore")
+        changed = [p for p in self.git("diff", "--cached", "--name-only", "-z", "HEAD").split("\0") if p]
+        subject = f"lab: week {n} base ({tag})"
+        self.git("commit", "-q", "--allow-empty", "-m", subject)
+        lines = [f"week {n} starts from the author's code at {tag}: {len(changed)} files changed, committed as "
+                 f"`{subject}`", "your earlier commits stay in the history of `lab`"]
+        if {"pyproject.toml", "uv.lock"} & set(changed):
+            lines.append("pyproject.toml or uv.lock changed: run `uv sync` now")
+        return lines
 
     def install_stub(self, ex: Exercise, current: Exercise | None, written: set[str] | None = None) -> list[str]:
         """Copy the exercise's stub over the repo. Returns one line per file copied to .tr-lab/backup/ first.
@@ -191,6 +260,50 @@ class Labs:
 
 def _same(a: Path, b: Path) -> bool:
     return a.is_file() and b.is_file() and filecmp.cmp(a, b, shallow=False)
+
+
+def _runner(path: str) -> bool:
+    return path.startswith(RUNNER_DIRS) or path in RUNNER_FILES
+
+
+def _lab_pyproject(text: str, tag: str) -> str:
+    """A base's pyproject.toml with the runner's lines: `tr` through labmain, the `lab` marker deselected. Idempotent."""
+    lines = text.splitlines()
+
+    def need(found: bool, what: str) -> None:
+        if not found:
+            raise LabError(f"pyproject.toml at {tag} has no {what}; `tr lab` re-applies its own lines there and "
+                           "cannot, so nothing changed")
+
+    if LAB_SCRIPT not in lines:
+        need(AUTHOR_SCRIPT in lines, f"line `{AUTHOR_SCRIPT}`")
+        lines[lines.index(AUTHOR_SCRIPT)] = LAB_SCRIPT
+    need("[tool.pytest.ini_options]" in lines, "table [tool.pytest.ini_options]")
+    start = lines.index("[tool.pytest.ini_options]") + 1
+    end = next((i for i in range(start, len(lines)) if lines[i].startswith("[")), len(lines))
+    section = lines[start:end]
+    if LAB_ADDOPTS not in section:
+        need(AUTHOR_ADDOPTS in section, f"line `{AUTHOR_ADDOPTS}` in [tool.pytest.ini_options]")
+        lines[start + section.index(AUTHOR_ADDOPTS)] = LAB_ADDOPTS
+    testpaths = [ln for ln in section if ln.startswith("testpaths")]
+    need(testpaths in ([], [TESTPATHS]), f"other testpaths than `{TESTPATHS}`")
+    need("markers = [" in section, "line `markers = [` in [tool.pytest.ini_options]")
+    opened = start + section.index("markers = [")
+    closed = next((i for i in range(opened + 1, end) if lines[i].strip() == "]"), None)
+    need(closed is not None, "closing `]` of its markers list")
+    if not any(ln.strip().startswith('"lab:') for ln in lines[opened + 1:closed]):
+        lines.insert(closed, LAB_MARKER)
+    if not testpaths:
+        lines.insert(start, TESTPATHS)
+    return "\n".join(lines) + "\n"
+
+
+def _lab_gitignore(text: str) -> str:
+    lines = text.splitlines()
+    missing = [ln for ln in LAB_IGNORE[1:] if ln not in lines]
+    if not missing:
+        return text
+    return "\n".join([*lines, *([""] if lines and lines[-1] else []), LAB_IGNORE[0], *missing]) + "\n"
 
 
 def _key(ident: str) -> tuple[int, ...]:
@@ -272,7 +385,11 @@ def _committed(labs: Labs, ex: Exercise) -> list[str]:
 def cmd_list(labs: Labs, args: argparse.Namespace) -> int:
     st = labs.load()
     up_next = None if st["current"] else next((lab for lab in labs.labs if lab.id not in st["finished"]), None)
+    week = None
     for lab in labs.labs:
+        if lab.week != week:
+            week, base = lab.week, labs.bases.get(lab.week)
+            _say(f"week {_key(week)[0]}" + (f" (starts from {base})" if base else ""))
         page = f"  ({lab.page.relative_to(labs.repo)})" if lab.page else ""
         mark = ": finished" if lab.id in st["finished"] else ""
         _say(f"{lab.id}  {lab.title}{mark}{page}")
@@ -294,18 +411,31 @@ def cmd_start(labs: Labs, args: argparse.Namespace) -> int:
     if st["current"] and not args.force:
         raise LabError(f"lab {st['lab']} is in progress at {st['current']}; finish it with `tr lab next`, "
                        f"or pass --force to start {lab.id} anyway (your commits on `lab` stay)")
-    index = labs.labs.index(lab)
-    missing = [p for p in labs.labs[:index] if p.id not in st["finished"]]
+    missing = [p for p in labs.builds_on(lab) if p.id not in st["finished"]]
     if missing and not args.assume_previous:
         raise LabError(f"lab {lab.id} builds on {missing[-1].id}, which is not finished. Finish it first "
                        f"(`tr lab start {missing[0].id}`), or pass --assume-previous to apply the reference solutions "
-                       f"of every earlier exercise and start {lab.id} on top of them")
+                       f"of the earlier exercises it builds on and start {lab.id} on top of them")
     branch = labs.git("rev-parse", "--abbrev-ref", "HEAD").strip()
-    if branch != "lab":
-        if labs.git("branch", "--list", "lab").strip() and not args.force:
-            raise LabError("a branch `lab` already exists and you are not on it; `git checkout lab` to continue there, "
-                           "or pass --force to recreate it from your current commit")
+    fresh = branch != "lab"
+    if fresh and labs.git("branch", "--list", "lab").strip() and not args.force:
+        raise LabError("a branch `lab` already exists and you are not on it; `git checkout lab` to continue there, "
+                       "or pass --force to recreate it from your current commit")
+    bases = [] if fresh else st.get("bases", [])  # a base is applied once per `lab` branch
+    base = labs.bases.get(lab.week) if lab.week not in bases else None
+    if base:
+        dirty = labs.uncommitted()
+        if dirty:
+            raise LabError(f"you have uncommitted changes ({', '.join(dirty[:5])}{', ...' if len(dirty) > 5 else ''}): "
+                           f"commit or stash first; week {_key(lab.week)[0]} starts from the author's code at {base} "
+                           "and replaces files")
+    if fresh:
         labs.git("checkout", "-q", "-B", "lab")
+    st["bases"] = bases
+    if base:
+        _say(*labs.apply_base(lab.week))
+        st["bases"] = [*bases, lab.week]
+        labs.save(st)
     said: list[str] = []
     current = labs.exercises.get(st["current"])
     written: set[str] = set()
@@ -512,7 +642,9 @@ def cmd_reset(labs: Labs, args: argparse.Namespace) -> int:
 
 def cmd_status(labs: Labs, args: argparse.Namespace) -> int:
     st = labs.load()
-    _say(json.dumps({k: st.get(k) for k in ("lab", "current", "done", "assumed", "finished", "fails", "passed")}))
+    lab = labs.by_id.get(st["lab"])
+    shown = {k: st.get(k) for k in ("lab", "current", "done", "assumed", "finished", "fails", "passed")}
+    _say(json.dumps({**shown, "base": labs.bases.get(lab.week) if lab else None, "bases": st.get("bases", [])}))
     return 0
 
 
@@ -527,11 +659,13 @@ def parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="tr lab", description=HELP)
     cmds = p.add_subparsers(dest="lab_command", required=True)
     cmds.add_parser("list", help="every lab and exercise: done, current, start here or locked")
-    q = cmds.add_parser("start", help="begin a lab on branch `lab` and install its first stub")
+    q = cmds.add_parser("start", help="begin a lab on branch `lab` and install its first stub (a week with a base "
+                                      "first brings in the author's code at that week's tag)")
     q.add_argument("lab", help="lab id, e.g. w1l1")
     q.add_argument("--force", action="store_true", help="start even though another lab is in progress")
     q.add_argument("--assume-previous", action="store_true",
-                   help="apply the reference solutions of the earlier, unfinished labs first")
+                   help="apply the reference solutions of the earlier, unfinished labs first (within the week when "
+                        "the week has a base)")
     q = cmds.add_parser("verify", help="run a check: the current exercise, one exercise id, or a lab id")
     q.add_argument("target", nargs="?", help="exercise id (w1l1.2) or lab id (w1l1); default: the current exercise")
     q.add_argument("-v", "--verbose", action="store_true", help="also print pytest's full output")

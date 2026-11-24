@@ -1,4 +1,4 @@
-"""`tr lab` on a fake two-lab repo: the state machine, refusals, unlocks, backups, verify targets, --assume-previous."""
+"""`tr lab` on a fake repo: the state machine, refusals, unlocks, backups, verify targets, --assume-previous, week bases."""
 
 import json
 import re
@@ -9,7 +9,8 @@ from pathlib import Path
 
 import pytest
 
-from tradingresearch.cli import main
+from tradingresearch import lab
+from tradingresearch.labmain import main
 
 REAL_CONFTEST = Path(__file__).resolve().parents[1] / "labs" / "w1" / "conftest.py"
 CHECK = """\
@@ -29,8 +30,8 @@ def diff(path: str, old: list[str], new: list[str]) -> str:
     return f"--- a/{path}\n+++ b/{path}\n@@ -1,{len(old)} +1,{len(new)} @@\n" + "\n".join(body) + "\n"
 
 
-def exercise(root: Path, name: str, toml: str, files: dict[str, str]) -> None:
-    ex = root / "labs" / "w1" / "exercises" / name
+def exercise(root: Path, name: str, toml: str, files: dict[str, str], week: str = "w1") -> None:
+    ex = root / "labs" / week / "exercises" / name
     for rel, text in {"exercise.toml": textwrap.dedent(toml), **files}.items():
         (ex / rel).parent.mkdir(parents=True, exist_ok=True)
         (ex / rel).write_text(text)
@@ -126,7 +127,7 @@ def set_state(repo: Path, **changes) -> None:
 
 
 def solve(repo: Path, ex: str) -> None:
-    folder = next((repo / "labs" / "w1" / "exercises").glob(f"{ex}-*"))
+    folder = next((repo / "labs" / ex.split("l")[0] / "exercises").glob(f"{ex}-*"))
     git(repo, "apply", str(folder / "solution.diff"))
 
 
@@ -324,16 +325,18 @@ def test_assume_previous_applies_and_commits_the_earlier_reference_solutions(rep
 
 
 def test_tr_lab_runs_without_an_env_file_while_a_learner_module_is_broken(repo):
-    """A stub can leave analyze.py unimportable; `tr lab` must still work, every other command must still fail."""
-    code = ("import sys; sys.modules['tradingresearch.analyze'] = None; "  # None in sys.modules: import fails
-            "from tradingresearch.cli import main; main()")
+    """A stub can leave analyze.py (or anything cli.py imports) unimportable; `tr lab` must still work without importing
+    cli at all, and every other command fails exactly as before."""
+    broken = "import sys; sys.modules['tradingresearch.analyze'] = None; "  # None in sys.modules: import fails
+    run = "from tradingresearch.labmain import main; main()"
     env = {"PATH": "/usr/bin:/bin", "HOME": str(repo), "TR_ENV_FILE": str(repo / "missing.env")}
-    lab = subprocess.run([sys.executable, "-c", code, "lab", "status"], cwd=repo, capture_output=True, text=True, env=env)
-    assert lab.returncode == 0 and '"current": ""' in lab.stdout
-    other = subprocess.run([sys.executable, "-c", code, "sessions"], cwd=repo, capture_output=True, text=True, env=env)
-    assert other.returncode != 0 and "import of tradingresearch.analyze halted" in other.stderr
-    help_ = subprocess.run([sys.executable, "-c", code, "-h"], cwd=repo, capture_output=True, text=True, env=env)
-    assert help_.returncode == 0 and "usage: tr" in help_.stdout and "analyze" in help_.stdout
+    no_cli = broken + "sys.modules['tradingresearch.cli'] = None; " + run
+    lab_ = subprocess.run([sys.executable, "-c", no_cli, "lab", "status"], cwd=repo, capture_output=True, text=True, env=env)
+    assert lab_.returncode == 0 and '"current": ""' in lab_.stdout
+    for args in (["sessions"], ["-h"]):
+        other = subprocess.run([sys.executable, "-c", broken + run, *args], cwd=repo, capture_output=True, text=True,
+                               env=env)
+        assert other.returncode != 0 and "import of tradingresearch.analyze halted" in other.stderr
 
 
 def test_next_backs_up_your_committed_version_before_the_next_stub_replaces_it(repo, tr):
@@ -389,3 +392,136 @@ def test_observe_exit_codes_in_observe_ok_exit_are_not_reported(repo, tr):
     toml.write_text(toml.read_text() + "observe_ok_exit = [0, 1]\n")
     code, out = tr("verify")
     assert code == 0 and "observe exited" not in out
+
+
+AUTHOR_PYPROJECT = """\
+[project.scripts]
+tr = "tradingresearch.cli:main"
+
+[tool.pytest.ini_options]
+markers = [
+    "live: calls a real API",
+]
+addopts = "-m 'not live'"
+"""
+RUNNER_FILES = {"src/tradingresearch/lab.py": "the runner\n", "src/tradingresearch/labmain.py": "the dispatcher\n",
+                "tests/test_lab.py": "# the runner's tests\n"}
+
+
+def write(root: Path, files: dict[str, str]) -> None:
+    for rel, text in files.items():
+        (root / rel).parent.mkdir(parents=True, exist_ok=True)
+        (root / rel).write_text(text)
+
+
+@pytest.fixture
+def weeks(repo) -> Path:
+    """`repo` plus week 2. Tag week-2-start (the author's tree): changed.txt changed, gone.txt deleted, new.txt added,
+    the author's pyproject.toml, .gitignore, cli.py and tests/test_lab.py, and no labs/, lab.py or labmain.py. Tag
+    week-2-bad: the same without the addopts line. w2l1 = w2l1.1 (stub changed.txt), w2l2 = w2l2.1 (stub third.txt)."""
+    write(repo, {**RUNNER_FILES, "src/tradingresearch/cli.py": "week 1 cli\n", "changed.txt": "week 1\n",
+                 "gone.txt": "only in week 1\n"})
+    git(repo, "add", "-A")
+    git(repo, "commit", "-qm", "week 1 files")
+    git(repo, "checkout", "-q", "-b", "author")
+    git(repo, "rm", "-rq", "labs", "src/tradingresearch/lab.py", "src/tradingresearch/labmain.py", "gone.txt")
+    write(repo, {"changed.txt": "week 2\n", "new.txt": "new in week 2\n", "src/tradingresearch/cli.py": "week 2 cli\n",
+                 "tests/test_lab.py": "# the author's own file\n", "pyproject.toml": AUTHOR_PYPROJECT,
+                 ".gitignore": "data/\n"})
+    git(repo, "add", "-A")
+    git(repo, "commit", "-qm", "week 2")
+    git(repo, "tag", "week-2-start")
+    write(repo, {"pyproject.toml": AUTHOR_PYPROJECT.replace("addopts = \"-m 'not live'\"\n", "")})
+    git(repo, "commit", "-qam", "no addopts")
+    git(repo, "tag", "week-2-bad")
+    git(repo, "checkout", "-q", "main")
+    git(repo, "branch", "-qD", "author")
+    write(repo, {"labs/w2/lab.toml": 'base = "week-2-start"\n\n[labs.w2l1]\ntitle = "third"\n\n[labs.w2l2]\ntitle = "fourth"\n'})
+    hints = "# Hints\n\n## Hint 1\n\nlook again\n"
+    exercise(repo, "w2l1.1-changed", """\
+        id = "w2l1.1"
+        title = "fix changed.txt"
+        lab = "w2l1"
+        touches = ["changed.txt"]
+        check = "python labs/w1/check.py changed.txt 5"
+        """, {"stub/changed.txt": "TODO(w2l1.1)\n", "hints.md": hints,
+              "solution.diff": diff("changed.txt", ["TODO(w2l1.1)"], ["5"])}, week="w2")
+    exercise(repo, "w2l2.1-third", """\
+        id = "w2l2.1"
+        title = "the third file"
+        lab = "w2l2"
+        touches = ["third.txt"]
+        check = "python labs/w1/check.py third.txt 8"
+        """, {"stub/third.txt": "TODO(w2l2.1)\n", "hints.md": hints,
+              "solution.diff": diff("third.txt", ["TODO(w2l2.1)"], ["8"])}, week="w2")
+    git(repo, "add", "-A")
+    git(repo, "commit", "-qm", "week 2 labs")
+    return repo
+
+
+def test_a_week_base_is_applied_once_committed_and_leaves_the_runner_and_labs_alone(weeks, tr):
+    labs_tree = git(weeks, "rev-parse", "HEAD:labs")
+    code, out = tr("start", "w2l1")  # week 1 is not finished: week 2 needs nothing from it
+    assert code == 0 and "week 2 starts from the author's code at week-2-start: 6 files changed" in out
+    assert "your earlier commits stay in the history of `lab`" in out and "run `uv sync` now" in out
+    assert git(weeks, "log", "-1", "--format=%s").strip() == "lab: week 2 base (week-2-start)"
+    assert git(weeks, "rev-parse", "HEAD:labs") == labs_tree
+    assert all((weeks / rel).read_text() == text for rel, text in RUNNER_FILES.items())
+    assert git(weeks, "show", "HEAD:changed.txt") == "week 2\n" and (weeks / "changed.txt").read_text() == "TODO(w2l1.1)\n"
+    assert not (weeks / "gone.txt").exists() and (weeks / "new.txt").read_text() == "new in week 2\n"
+    assert (weeks / "src" / "tradingresearch" / "cli.py").read_text() == "week 2 cli\n"
+    pyproject = (weeks / "pyproject.toml").read_text()
+    assert lab.LAB_SCRIPT in pyproject and lab.LAB_ADDOPTS in pyproject and lab.LAB_MARKER in pyproject
+    assert lab.TESTPATHS in pyproject and lab.AUTHOR_SCRIPT not in pyproject and lab.AUTHOR_ADDOPTS not in pyproject
+    assert lab._lab_pyproject(pyproject, "x") == pyproject == lab._lab_pyproject(lab._lab_pyproject(AUTHOR_PYPROJECT, "x"), "x")
+    gitignore = (weeks / ".gitignore").read_text().splitlines()
+    assert gitignore[0] == "data/" and ".tr-lab/" in gitignore and lab._lab_gitignore("\n".join(gitignore)) == "\n".join(gitignore)
+    assert git(weeks, "status", "--porcelain", "--", ".tr-lab") == "" and state(weeks)["bases"] == ["w2"]
+    commits = git(weeks, "rev-list", "--count", "HEAD")
+    code, out = tr("start", "w2l1", "--force")
+    assert code == 0 and "week 2 starts" not in out and git(weeks, "rev-list", "--count", "HEAD") == commits
+    code, out = tr("status")
+    assert '"base": "week-2-start"' in out and '"bases": ["w2"]' in out
+    code, out = tr("list")
+    assert "week 1\nw1l1  first" in out and "week 2 (starts from week-2-start)\nw2l1  third" in out
+    git(weeks, "checkout", "-qf", "main")  # recreating `lab` with --force starts the bases again
+    code, out = tr("start", "w2l1", "--force")
+    assert code == 0 and "week 2 starts from the author's code at week-2-start" in out and state(weeks)["bases"] == ["w2"]
+
+
+def test_a_week_base_refuses_a_dirty_tree(weeks, tr):
+    (weeks / "notes.txt").write_text("mine\n")
+    code, out = tr("start", "w2l1")
+    assert code == 2 and "uncommitted changes (notes.txt): commit or stash first; week 2 starts from" in out
+    assert git(weeks, "branch", "--show-current").strip() == "main" and not (weeks / ".tr-lab").exists()
+    (weeks / "notes.txt").unlink()
+    (weeks / "changed.txt").write_text("edited\n")
+    code, out = tr("start", "w2l1")
+    assert code == 2 and "uncommitted changes (changed.txt)" in out and (weeks / "changed.txt").read_text() == "edited\n"
+
+
+def test_assume_previous_in_a_week_with_a_base_applies_only_that_weeks_earlier_labs(weeks, tr):
+    code, out = tr("start", "w2l2")
+    assert code == 2 and "builds on w2l1, which is not finished" in out and "w1l" not in out
+    code, out = tr("start", "w2l2", "--assume-previous")
+    assert code == 0 and "applied the reference solutions of w2l1.1..w2l1.1" in out and "saved" not in out
+    st = state(weeks)
+    assert st["assumed"] == ["w2l1.1"] and st["finished"] == ["w2l1"] and st["current"] == "w2l2.1"
+    assert (weeks / "changed.txt").read_text() == "5\n" and (weeks / "answer.txt").read_text() == "start\n"
+    assert git(weeks, "log", "-3", "--format=%s").splitlines() == [
+        "lab: reference solutions w2l1.1..w2l1.1 (--assume-previous)", "lab: week 2 base (week-2-start)", "week 2 labs"]
+    assert (weeks / "third.txt").read_text() == "TODO(w2l2.1)\n"
+
+
+@pytest.mark.parametrize(("tag", "said"), [
+    ("week-2-bad", "pyproject.toml at week-2-bad has no line `addopts = \"-m 'not live'\"` in [tool.pytest.ini_options]"),
+    ("week-2-nope", "week 2 starts from the tag week-2-nope, which this clone does not have")])
+def test_a_base_that_cannot_be_applied_errors_by_name_and_changes_nothing(weeks, tr, tag, said):
+    toml = weeks / "labs" / "w2" / "lab.toml"
+    toml.write_text(toml.read_text().replace("week-2-start", tag))
+    git(weeks, "commit", "-qam", "another base")
+    head = git(weeks, "rev-parse", "HEAD")
+    code, out = tr("start", "w2l1")
+    assert code == 2 and said in out
+    assert git(weeks, "status", "--porcelain") == "" and git(weeks, "rev-parse", "HEAD") == head
+    assert not (weeks / ".tr-lab" / "state.json").exists()

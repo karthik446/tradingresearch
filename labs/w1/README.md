@@ -6,13 +6,12 @@ This folder holds week 1 of the AI engineering track as 19 exercises in 4 labs, 
 
 ```
 labs/w1/
-  lab.toml                 lab titles and pages, and the unlock numbers ([unlock] hints = [2, 5], solution = 10)
+  lab.toml                 lab titles and pages, the unlock numbers ([unlock] hints = [2, 5], solution = 10), [end] for the proof
   conftest.py              marks every test in this folder `lab`, so plain `pytest -q` never collects them
-  PROOF.md                 output of tools/prove.py: every exercise red, green, chained, every wrong fix red
+  PROOF.md                 output of labs/tools/prove.py w1: every exercise red, green, chained, every wrong fix red
   data/                    the author's recorded runs (observe, prompt-v2 baseline and variant), 20 analyses each
   pages/                   index.md, w1l1.md .. w1l4.md (one page per lab), concepts.md
   tools/regrade.py         observe: regrade a recorded run with the learner's code ($0)
-  tools/prove.py           the proof (below)
   exercises/w1lN.K-<slug>/
     exercise.toml          id, title, lab, concepts, touches, check, observe, observe_ok_exit, fixtures, origin, red_expect
     stub/<repo path>       the repo files with this exercise's TODO cut out (w1l2.4 has none: it works on the learner's file)
@@ -30,7 +29,7 @@ labs/w1/
 From the root of a clean clone (code at `week-1-start`, `uv sync` done):
 
 ```bash
-uv run python labs/w1/tools/prove.py > labs/w1/PROOF.md
+uv run python labs/tools/prove.py w1 > labs/w1/PROOF.md
 ```
 
 It takes one to three minutes (65-182 s measured) and never touches the clone it runs from. It copies the clone's files (tracked and untracked, not ignored) into two temp folders, gives each copy a git repo of its own, and runs:

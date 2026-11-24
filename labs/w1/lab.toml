@@ -28,3 +28,10 @@ page = "pages/w1l3.md"
 [labs.w1l4]
 title = "a variant prompt, a paired experiment, a decision"
 page = "pages/w1l4.md"
+
+# What labs/tools/prove.py checks after the last exercise: these files must equal the tag byte for byte (the runner
+# ignores this table).
+[end]
+tag = "week-1-end"
+files = ["src/tradingresearch/analyze.py", "src/tradingresearch/evals.py", "evals/labels.csv", "evals/taxonomy.md",
+         "prompts/analyze-2.txt", "experiments/prompt-v2.toml"]
