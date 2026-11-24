@@ -1,0 +1,14 @@
+why: a level exactly at the entry counts as over it
+expect: with one extra level at exactly 343.41
+before: RED (author)
+--- a/src/tradingresearch/checks.py
++++ b/src/tradingresearch/checks.py
+@@ -59,7 +59,7 @@ def p4_levels_coherent(thesis: Thesis, levels: tuple[Level, ...], atr14: float,
+     entry, stop, target = entry_price(thesis, reference_close), thesis.stop, thesis.target
+     prices = [level.price for level in levels]
+     below = [price for price in prices if price < entry]
+-    above = [price for price in prices if price > entry]
++    above = [price for price in prices if price >= entry]
+     allowance = TARGET_ALLOWANCE_ATR * atr14
+     if thesis.direction == "long":
+         stop_ok = not below or stop < max(below)

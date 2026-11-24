@@ -1,0 +1,14 @@
+why: a level exactly at the entry counts as under it
+expect: JPM short (long, entry 336.67) with stop 335.5
+before: RED (author)
+--- a/src/tradingresearch/checks.py
++++ b/src/tradingresearch/checks.py
+@@ -58,7 +58,7 @@ def p4_levels_coherent(thesis: Thesis, levels: tuple[Level, ...], atr14: float,
+     #   stop, the target and every level price. The allowance stays exact.
+     entry, stop, target = entry_price(thesis, reference_close), thesis.stop, thesis.target
+     prices = [level.price for level in levels]
+-    below = [price for price in prices if price < entry]
++    below = [price for price in prices if price <= entry]
+     if thesis.direction == "long":
+         stop_ok = not below or stop < max(below)
+         # TODO(w2l3.2) a long's target: at or below the next level over the entry plus TARGET_ALLOWANCE_ATR * atr14

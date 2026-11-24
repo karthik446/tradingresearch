@@ -22,20 +22,20 @@ base = "week-2-start"
 hints = [2, 5]
 solution = 10
 
-# §3's rubric file and draft judge are written by hand from the chapter, not in these labs.
+# §3's rubric file (evals/rubrics/p1_thesis_quality.md) is written by hand from the chapter, not in these labs.
 [suite]
-deselect = ["tests/test_week2.py::test_the_p1_rubric_has_every_section",
-            "tests/test_week2.py::test_p1_judge_is_registered_as_an_unvalidated_model_grader"]
+deselect = ["tests/test_week2.py::test_the_p1_rubric_has_every_section"]
 
 [labs.w2l1]
 title = "P2: is the evidence real"
 page = "pages/w2l1.md"
 
-# After w2l1, P2 is green; P3, P4 and the grader registrations come later in §2.
+# After w2l1, P2 is green; P3, P4 and the grader registrations come later in §2, the draft P1 judge in lab w2l4.
 [labs.w2l1.suite]
 deselect = ["tests/test_week2.py::test_p3_invalidation_testable",
             "tests/test_week2.py::test_p4_levels_coherent",
-            "tests/test_week2.py::test_the_code_check_is_a_registered_binary_code_grader"]
+            "tests/test_week2.py::test_the_code_check_is_a_registered_binary_code_grader",
+            "tests/test_week2.py::test_p1_judge_is_registered_as_an_unvalidated_model_grader"]
 
 [labs.w2l2]
 title = "P3: can the invalidation be reached"
@@ -43,10 +43,25 @@ page = "pages/w2l2.md"
 
 [labs.w2l2.suite]
 deselect = ["tests/test_week2.py::test_p4_levels_coherent",
-            "tests/test_week2.py::test_the_code_check_is_a_registered_binary_code_grader"]
+            "tests/test_week2.py::test_the_code_check_is_a_registered_binary_code_grader",
+            "tests/test_week2.py::test_p1_judge_is_registered_as_an_unvalidated_model_grader"]
+
+[labs.w2l3]
+title = "P4: are stop and target placed against the levels"
+page = "pages/w2l3.md"
+
+# After w2l3, checks.py is complete; the graders and the draft P1 judge are lab w2l4.
+[labs.w2l3.suite]
+deselect = ["tests/test_week2.py::test_the_code_check_is_a_registered_binary_code_grader",
+            "tests/test_week2.py::test_p1_judge_is_registered_as_an_unvalidated_model_grader"]
+
+# After w2l4, the only test in tests/test_week2.py still red is the P1 rubric in [suite], so w2l4 has no list.
+[labs.w2l4]
+title = "Graders and the draft judge"
+page = "pages/w2l4.md"
 
 # What labs/tools/prove.py checks after the last exercise: these files must equal the tag byte for byte (the runner
-# ignores this table). checks.py is not listed yet: after w2l2 it still lacks P4, which a later lab adds.
+# ignores this table).
 [end]
 tag = "week-2-end"
-files = []
+files = ["src/tradingresearch/checks.py", "src/tradingresearch/evals.py"]

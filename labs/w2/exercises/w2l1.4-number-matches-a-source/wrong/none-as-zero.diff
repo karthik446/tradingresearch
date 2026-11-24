@@ -1,0 +1,14 @@
+why: type: a source holding None is read as 0.0 (values[source] or 0.0), so it matches a fact saying 0
+expect: says 0.0 and cites src_label_lab holding None
+before: GREEN (independent read)
+--- a/src/tradingresearch/checks.py
++++ b/src/tradingresearch/checks.py
+@@ -30,7 +30,7 @@ def evidence_ok(claim: Claim | None, values: dict[str, float | None], tolerance:
+         return False
+     if claim.value is None:
+         return True
+-    numbers = [values[source] for source in claim.source_ids if values[source] is not None]
++    numbers = [values[source] or 0.0 for source in claim.source_ids]
+     return any(close_within(claim.value, number, tolerance) for number in numbers)
+ 
+ 

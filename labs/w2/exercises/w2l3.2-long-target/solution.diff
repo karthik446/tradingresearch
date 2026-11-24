@@ -1,0 +1,17 @@
+--- a/src/tradingresearch/checks.py
++++ b/src/tradingresearch/checks.py
+@@ -59,11 +59,11 @@ def p4_levels_coherent(thesis: Thesis, levels: tuple[Level, ...], atr14: float,
+     entry, stop, target = entry_price(thesis, reference_close), thesis.stop, thesis.target
+     prices = [level.price for level in levels]
+     below = [price for price in prices if price < entry]
++    above = [price for price in prices if price > entry]
++    allowance = TARGET_ALLOWANCE_ATR * atr14
+     if thesis.direction == "long":
+         stop_ok = not below or stop < max(below)
+-        # TODO(w2l3.2) a long's target: at or below the next level over the entry plus TARGET_ALLOWANCE_ATR * atr14
+-        #   (exact, inclusive); with no level over the entry this half holds.
+-        target_ok = True
++        target_ok = not above or target <= min(above) + allowance
+     else:
+         # TODO(w2l3.3) a short mirrors both halves: its stop beyond the nearest level over the entry, its target at
+         #   or above the next level under the entry minus the allowance.

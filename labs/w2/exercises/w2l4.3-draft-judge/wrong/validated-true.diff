@@ -1,0 +1,14 @@
+why: marks the judge validated because the code runs
+expect: P1Judge.validated is True
+before: RED (author)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -178,7 +178,7 @@ class P1Judge:
+     id = "p1_judge"
+     version = "1"
+     kind = "model"
+-    validated = False
++    validated = True
+ 
+     def grade(self, sample, expected) -> Score:
+         raise CannotGrade("p1_judge is a draft: no model call until it runs on closed trades in week 3")

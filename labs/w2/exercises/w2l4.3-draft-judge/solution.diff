@@ -1,0 +1,28 @@
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -167,10 +167,21 @@ class LevelsCoherent:
+                                                                        snap.values["close"]))
+ 
+ 
+-# TODO(w2l4.3) the draft P1 judge: a @grader class P1Judge with id "p1_judge", version "1", kind "model" and
+-#   validated = False. Nobody has checked a judge's verdicts against human labels yet, so its grade makes no model
+-#   call: it refuses with CannotGrade and a message that says why (no call until it runs on closed trades in week 3).
+-#   Spec: evals/specs/p1_judge.md.
++@grader
++class P1Judge:
++    """P1, did the mechanism in `reason` happen: a draft judge, registered but unvalidated (evals/specs/p1_judge.md).
++
++    Week 3 wraps gigai-core `llm_judge` with evals/rubrics/p1_thesis_quality.md on closed trades; `validated` turns
++    True only by an ADR that records kappa on the operator's labels (SPIKE §7.3).
++    """
++
++    id = "p1_judge"
++    version = "1"
++    kind = "model"
++    validated = False
++
++    def grade(self, sample, expected) -> Score:
++        raise CannotGrade("p1_judge is a draft: no model call until it runs on closed trades in week 3")
+ 
+ 
+ def graders(names: list[str]) -> list:

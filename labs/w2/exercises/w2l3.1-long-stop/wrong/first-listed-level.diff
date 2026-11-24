@@ -1,0 +1,14 @@
+why: takes the first level under the entry in stored order, as if the levels were sorted
+expect: AAPL swing (long, entry 343.41) with its stop moved to 338.69
+before: RED (author)
+--- a/src/tradingresearch/checks.py
++++ b/src/tradingresearch/checks.py
+@@ -60,7 +60,7 @@ def p4_levels_coherent(thesis: Thesis, levels: tuple[Level, ...], atr14: float,
+     prices = [level.price for level in levels]
+     below = [price for price in prices if price < entry]
+     if thesis.direction == "long":
+-        stop_ok = not below or stop < max(below)
++        stop_ok = not below or stop < below[0]
+         # TODO(w2l3.2) a long's target: at or below the next level over the entry plus TARGET_ALLOWANCE_ATR * atr14
+         #   (exact, inclusive); with no level over the entry this half holds.
+         target_ok = True

@@ -1,0 +1,37 @@
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -117,17 +117,25 @@ def built_theses(sample, expected) -> tuple[Analysis, list[Thesis]]:
+ 
+ def every_thesis(theses: list[Thesis], passes: Callable[[Thesis], bool]) -> Score:
+     """1 if every thesis passes, else 0 (binary, so compare uses McNemar); the explanation names the failing horizons."""
+-    # TODO(w2l4.1) Score(value=1.0, explanation=None) when every thesis passes; otherwise value 0.0 and the
+-    #   explanation "fails: " then the failing theses' horizons in the order they came, joined by ", "
+-    #   ("fails: swing, short").
+-    raise NotImplementedError("every_thesis is lab w2l4.1")
++    failed = [t.horizon for t in theses if not passes(t)]
++    return Score(value=0.0 if failed else 1.0, explanation=f"fails: {', '.join(failed)}" if failed else None)
+ 
+ 
+-# TODO(w2l4.1) P2 as a grader: a @grader class EvidenceValid with id "p2_evidence_valid", version "1" (a string:
+-#   the registry and the eval records read it as one) and kind "code". Its grade(self, sample, expected) takes the
+-#   analysis and the theses that built_theses returns, the thesis prompt's source table as {source id: value} over
+-#   the Row list that analyze.snapshot_rows(analysis.snapshot) returns second, and scores every_thesis with
+-#   checks.p2_evidence_valid. Spec: evals/specs/p2_evidence_valid.md.
++@grader
++class EvidenceValid:
++    """P2: every evidence id is a fact or inference whose numbers match the thesis prompt's source table.
++
++    Spec: evals/specs/p2_evidence_valid.md. The table is the snapshot rows only, so a fact citing only EDGAR fails.
++    """
++
++    id = "p2_evidence_valid"
++    version = "1"
++    kind = "code"
++
++    def grade(self, sample, expected) -> Score:
++        analysis, theses = built_theses(sample, expected)
++        values = {row.source_id: row.value for row in snapshot_rows(analysis.snapshot)[1]}
++        return every_thesis(theses, lambda t: checks.p2_evidence_valid(t, analysis.claims, values))
+ 
+ 
+ # TODO(w2l4.2) P3 and P4 as graders, the same shape as EvidenceValid: InvalidationTestable (id

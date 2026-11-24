@@ -1,0 +1,14 @@
+why: version as the number 1
+expect: P1Judge.version is 1 (int)
+before: RED (author)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -176,7 +176,7 @@ class P1Judge:
+     """
+ 
+     id = "p1_judge"
+-    version = "1"
++    version = 1
+     kind = "model"
+     validated = False
+ 

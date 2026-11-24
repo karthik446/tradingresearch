@@ -1,0 +1,11 @@
+id = "w2l4.1"
+title = "Score a whole thesis run with P2: every_thesis and the EvidenceValid grader"
+lab = "w2l4"
+concepts = ["grader", "registry", "thesis-sample"]
+touches = ["src/tradingresearch/evals.py"]
+check = "python -m pytest -q -x -p no:cacheprovider -m lab labs/w2/exercises/w2l4.1-p2-grader/test_w2l4_1.py"
+observe = "python labs/w2/tools/observe.py"
+paid = false
+fixtures = ["data/theses.json"]
+origin = "rebuild of week-2-end evals.py; reference = the tag's own every_thesis and EvidenceValid; sample = the recorded reply tests/fixtures/thesis/AAPL_2026-11-16"
+red_expect = "No grader is registered under 'p2_evidence_valid'"

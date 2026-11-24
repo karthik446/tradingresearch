@@ -113,3 +113,22 @@ def test_a_fact_with_no_number_still_needs_its_source_in_the_table():
         f"regime_spy is taken out of the table. Rule 4 has nothing to match, but rule 3 still fails the fact: a fact "
         f"without a value passes rule 4 only after rule 3; p2_evidence_valid returned {got!r}"
     )
+
+
+def test_a_negative_edge_a_none_and_the_first_of_two_sources():
+    cases = (
+        (-99.5, {"src_close_lab": -100.0}, True, "the gap 0.50 is exactly 0.5% of the larger magnitude, 100.0 (a "
+         "minus sign does not make the allowance smaller, and a gap at the edge counts)"),
+        (-100.0, {"src_close_lab": -99.5}, True, "the gap 0.50 is exactly 0.5% of the larger magnitude, 100.0, "
+         "whichever side holds it"),
+        (0.0, {"src_label_lab": None}, False, "None is no number (not a zero), it matches nothing, not even 0.0"),
+        (1.0, {"src_one_lab": 1.0, "src_five_lab": 5.0}, True, "the first source matches exactly, and one match "
+         "among the cited sources is enough, whatever the others hold"),
+    )
+    for value, sources, want, why in cases:
+        got = hd_close(value, sources)
+        held = ", ".join(f"{source} holding {number}" for source, number in sources.items())
+        assert got is want, (
+            f"HD swing's close fact says {value} and cites {held}: {why}, so it should "
+            f"{'pass' if want else 'fail'}; p2_evidence_valid returned {got!r}"
+        )

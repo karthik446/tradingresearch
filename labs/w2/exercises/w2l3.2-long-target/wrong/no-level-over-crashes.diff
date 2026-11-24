@@ -1,0 +1,14 @@
+why: forgets the side with no level: min() of an empty list raises
+expect: with target 400.0 and only the levels under the entry
+before: RED (author)
+--- a/src/tradingresearch/checks.py
++++ b/src/tradingresearch/checks.py
+@@ -63,7 +63,7 @@ def p4_levels_coherent(thesis: Thesis, levels: tuple[Level, ...], atr14: float,
+     allowance = TARGET_ALLOWANCE_ATR * atr14
+     if thesis.direction == "long":
+         stop_ok = not below or stop < max(below)
+-        target_ok = not above or target <= min(above) + allowance
++        target_ok = target <= min(above) + allowance
+     else:
+         # TODO(w2l3.3) a short mirrors both halves: its stop beyond the nearest level over the entry, its target at
+         #   or above the next level under the entry minus the allowance.

@@ -1,0 +1,14 @@
+why: gives P3 the thesis's own entry price instead of the snapshot close, so a market_open entry has none
+expect: The swing made market_open (entry = the snapshot's close, 352.78)
+before: RED (author)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -149,7 +149,7 @@ class InvalidationTestable:
+     def grade(self, sample, expected) -> Score:
+         analysis, theses = built_theses(sample, expected)
+         close = analysis.snapshot.values["close"]
+-        return every_thesis(theses, lambda t: checks.p3_invalidation_testable(t, close))
++        return every_thesis(theses, lambda t: checks.p3_invalidation_testable(t, t.entry.price))
+ 
+ 
+ @grader

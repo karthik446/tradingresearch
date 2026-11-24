@@ -1,0 +1,14 @@
+why: keys the source table by row name instead of source id, so no fact finds its number
+expect: The recorded AAPL reply
+before: RED (author)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -134,7 +134,7 @@ class EvidenceValid:
+ 
+     def grade(self, sample, expected) -> Score:
+         analysis, theses = built_theses(sample, expected)
+-        values = {row.source_id: row.value for row in snapshot_rows(analysis.snapshot)[1]}
++        values = {row.name: row.value for row in snapshot_rows(analysis.snapshot)[1]}
+         return every_thesis(theses, lambda t: checks.p2_evidence_valid(t, analysis.claims, values))
+ 
+ 

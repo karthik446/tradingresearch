@@ -1,0 +1,14 @@
+why: checks the parse before saying it is a draft, so an unparsed run gets a different reason
+expect: raised CannotGrade(output did not parse)
+before: RED (author)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -181,6 +181,8 @@ class P1Judge:
+     validated = False
+ 
+     def grade(self, sample, expected) -> Score:
++        if sample.parse_status != "ok":
++            raise CannotGrade("output did not parse")
+         raise CannotGrade("p1_judge is a draft: no model call until it runs on closed trades in week 3")
+ 
+ 

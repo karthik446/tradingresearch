@@ -74,8 +74,14 @@ def test_a_fact_with_no_number_still_needs_its_source_in_the_table():
 
 def test_every_real_thesis_passes():
     for label in REAL:
-        got = p2(*case(label))
-        assert got is True, f"{label}: every evidence fact cites sources of the thesis-stage table; got {got!r}"
+        thesis, claims, values = case(label)
+        got = p2(thesis, claims, values)
+        uncited = [claim for claim in claims if claim.tag == "fact" and claim.claim_id not in thesis.evidence
+                   and any(source not in values for source in claim.source_ids)]
+        aside = (f" The facts of its analysis that cite an id the table does not have are "
+                 f"{', '.join(f'{claim.claim_id} ({claim.text[:30]!r}...)' for claim in uncited)}, and none of them "
+                 f"is in thesis.evidence {thesis.evidence}." if uncited else "")
+        assert got is True, f"{label}: every evidence fact cites sources of the thesis-stage table; got {got!r}.{aside}"
 
 
 def test_one_missing_source_of_two_fails():

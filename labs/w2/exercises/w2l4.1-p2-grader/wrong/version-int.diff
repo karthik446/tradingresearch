@@ -1,0 +1,14 @@
+why: version as the number 1, not a string
+expect: version is 1 (int)
+before: RED (author)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -129,7 +129,7 @@ class EvidenceValid:
+     """
+ 
+     id = "p2_evidence_valid"
+-    version = "1"
++    version = 1
+     kind = "code"
+ 
+     def grade(self, sample, expected) -> Score:

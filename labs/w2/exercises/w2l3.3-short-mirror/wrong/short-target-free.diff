@@ -1,0 +1,12 @@
+why: shortcut: only the short stop is checked, any target passes
+expect: with target 478.04
+before: RED (author)
+--- a/src/tradingresearch/checks.py
++++ b/src/tradingresearch/checks.py
+@@ -66,5 +66,5 @@ def p4_levels_coherent(thesis: Thesis, levels: tuple[Level, ...], atr14: float,
+         target_ok = not above or target <= min(above) + allowance
+     else:
+         stop_ok = not above or stop > min(above)
+-        target_ok = not below or target >= max(below) - allowance
++        target_ok = True
+     return stop_ok and target_ok

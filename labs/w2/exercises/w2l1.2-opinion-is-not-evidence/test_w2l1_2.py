@@ -70,3 +70,38 @@ def test_the_six_chapter_theses_still_pass():
     for label in CHAPTER:
         got = p2(*case(label))
         assert got is True, f"{label} cites only facts and inferences of its analysis; p2_evidence_valid returned {got!r}"
+
+
+def test_the_tag_decides_not_the_wording():
+    thesis, claims, values = case("AAPL swing")
+    opinion = next(claim for claim in claims if claim.tag == "opinion")
+    plain = opinion.model_copy(update={"text": "Buyers are in control of the trend."})
+    reworded = tuple(plain if claim.claim_id == opinion.claim_id else claim for claim in claims)
+    got = p2(thesis.model_copy(update={"evidence": (*thesis.evidence, opinion.claim_id)}), reworded, values)
+    assert got is False, (
+        f"AAPL swing citing its opinion {opinion.claim_id}, reworded here to {plain.text!r} (no 'looks', no "
+        f"'should'): the analysis still tags it {plain.tag}, so it is still a view of the setup, not evidence; "
+        f"p2_evidence_valid returned {got!r}. A model can state an opinion in plain words."
+    )
+    inference = next(claim for claim in claims if claim.tag == "inference")
+    hedged = inference.model_copy(update={"text": "The setup looks extended and should likely pause."})
+    reworded = tuple(hedged if claim.claim_id == inference.claim_id else claim for claim in claims)
+    got = p2(thesis.model_copy(update={"evidence": (inference.claim_id,)}), reworded, values)
+    assert got is True, (
+        f"AAPL swing citing only its inference {inference.claim_id}, reworded here to {hedged.text!r}: hedged "
+        f"words, but the analysis tags it {hedged.tag}, and an inference is evidence; p2_evidence_valid returned "
+        f"{got!r}"
+    )
+
+
+def test_a_second_opinion_fails_too():
+    thesis, claims, values = case("AAPL swing")
+    opinion = next(claim for claim in claims if claim.tag == "opinion")
+    second = opinion.model_copy(update={"claim_id": "cl_5ec0d0000000000a"})
+    got = p2(thesis.model_copy(update={"evidence": (*thesis.evidence, second.claim_id)}), (*claims, second), values)
+    assert got is False, (
+        f"AAPL swing's analysis here holds a second opinion, {second.claim_id} (a copy of {opinion.claim_id}, also "
+        f"tagged {second.tag}), after its first, and the thesis cites the second beside its three real ids; "
+        f"p2_evidence_valid returned {got!r}. The chapter's analyses happen to hold one opinion each; an analysis "
+        f"may hold several, and none of them is evidence."
+    )

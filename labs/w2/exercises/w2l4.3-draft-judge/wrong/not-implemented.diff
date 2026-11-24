@@ -1,0 +1,14 @@
+why: raises NotImplementedError instead of CannotGrade
+expect: raised NotImplementedError
+before: RED (author)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -181,7 +181,7 @@ class P1Judge:
+     validated = False
+ 
+     def grade(self, sample, expected) -> Score:
+-        raise CannotGrade("p1_judge is a draft: no model call until it runs on closed trades in week 3")
++        raise NotImplementedError("p1_judge is a draft: no model call until week 3")
+ 
+ 
+ def graders(names: list[str]) -> list:

@@ -1,0 +1,12 @@
+--- a/src/tradingresearch/checks.py
++++ b/src/tradingresearch/checks.py
+@@ -65,7 +65,6 @@ def p4_levels_coherent(thesis: Thesis, levels: tuple[Level, ...], atr14: float,
+         stop_ok = not below or stop < max(below)
+         target_ok = not above or target <= min(above) + allowance
+     else:
+-        # TODO(w2l3.3) a short mirrors both halves: its stop beyond the nearest level over the entry, its target at
+-        #   or above the next level under the entry minus the allowance.
+-        stop_ok = target_ok = True
++        stop_ok = not above or stop > min(above)
++        target_ok = not below or target >= max(below) - allowance
+     return stop_ok and target_ok

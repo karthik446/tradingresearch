@@ -1,0 +1,20 @@
+why: decides which side a level is on at cents, but compares the stop and target with the raw level
+expect: XOM short (long, entry 163.38
+before: RED (author)
+--- a/src/tradingresearch/checks.py
++++ b/src/tradingresearch/checks.py
+@@ -58,10 +58,10 @@ def cents(price: float) -> float:
+ def p4_levels_coherent(thesis: Thesis, levels: tuple[Level, ...], atr14: float, reference_close: float) -> bool:
+     """True if the stop sits beyond the nearest level against the trade and the target at or before the next level
+     with the trade (plus 0.5·ATR, exact). Prices compare at cents; a side with no level holds."""
+-    entry, stop, target = cents(entry_price(thesis, reference_close)), cents(thesis.stop), cents(thesis.target)
+-    prices = [cents(level.price) for level in levels]
+-    below = [price for price in prices if price < entry]
+-    above = [price for price in prices if price > entry]
++    entry, stop, target = entry_price(thesis, reference_close), thesis.stop, thesis.target
++    prices = [level.price for level in levels]
++    below = [price for price in prices if cents(price) < cents(entry)]
++    above = [price for price in prices if cents(price) > cents(entry)]
+     allowance = TARGET_ALLOWANCE_ATR * atr14
+     if thesis.direction == "long":
+         stop_ok = not below or stop < max(below)

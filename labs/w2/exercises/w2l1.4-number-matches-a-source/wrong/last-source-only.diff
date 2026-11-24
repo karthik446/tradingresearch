@@ -1,0 +1,14 @@
+why: ordering: compares the fact with its last cited source only
+expect: says 1.0 and cites src_one_lab holding 1.0, src_five_lab holding 5.0
+before: GREEN (independent read)
+--- a/src/tradingresearch/checks.py
++++ b/src/tradingresearch/checks.py
+@@ -30,7 +30,7 @@ def evidence_ok(claim: Claim | None, values: dict[str, float | None], tolerance:
+         return False
+     if claim.value is None:
+         return True
+-    numbers = [values[source] for source in claim.source_ids if values[source] is not None]
++    numbers = [values[source] for source in claim.source_ids[-1:] if values[source] is not None]
+     return any(close_within(claim.value, number, tolerance) for number in numbers)
+ 
+ 

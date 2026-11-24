@@ -1,0 +1,25 @@
+--- a/src/tradingresearch/checks.py
++++ b/src/tradingresearch/checks.py
+@@ -50,14 +50,16 @@ def p3_invalidation_testable(thesis: Thesis, reference_close: float) -> bool:
+     return entry < invalidation <= stop
+ 
+ 
++def cents(price: float) -> float:
++    """Levels are unrounded floats and the model quotes cents (hvn 343.40978 vs entry 343.41), so P4 compares cents."""
++    return round(price, 2)
++
++
+ def p4_levels_coherent(thesis: Thesis, levels: tuple[Level, ...], atr14: float, reference_close: float) -> bool:
+     """True if the stop sits beyond the nearest level against the trade and the target at or before the next level
+-    with the trade (plus 0.5·ATR). A side with no level holds."""
+-    # TODO(w2l3.4) compare at cents: levels are stored unrounded (hvn 343.40978) while the model quotes cents (entry
+-    #   343.41). Write cents(price) above this function, the price rounded to 2 decimals, and use it on the entry, the
+-    #   stop, the target and every level price. The allowance stays exact.
+-    entry, stop, target = entry_price(thesis, reference_close), thesis.stop, thesis.target
+-    prices = [level.price for level in levels]
++    with the trade (plus 0.5·ATR, exact). Prices compare at cents; a side with no level holds."""
++    entry, stop, target = cents(entry_price(thesis, reference_close)), cents(thesis.stop), cents(thesis.target)
++    prices = [cents(level.price) for level in levels]
+     below = [price for price in prices if price < entry]
+     above = [price for price in prices if price > entry]
+     allowance = TARGET_ALLOWANCE_ATR * atr14

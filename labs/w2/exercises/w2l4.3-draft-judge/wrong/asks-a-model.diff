@@ -1,0 +1,17 @@
+why: asks a model for the verdict right away
+expect: tried a network or model call
+before: RED (author)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -181,7 +181,10 @@ class P1Judge:
+     validated = False
+ 
+     def grade(self, sample, expected) -> Score:
+-        raise CannotGrade("p1_judge is a draft: no model call until it runs on closed trades in week 3")
++        import httpx
++
++        reply = httpx.post("https://openrouter.ai/api/v1/chat/completions", json={"model": "judge", "messages": []})
++        return Score(value=1.0 if "pass" in reply.text else 0.0, explanation=reply.text)
+ 
+ 
+ def graders(names: list[str]) -> list:

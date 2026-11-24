@@ -1,0 +1,13 @@
+why: forgets @grader on InvalidationTestable
+expect: No grader is registered under 'p3_invalidation_testable'
+before: RED (author)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -138,7 +138,6 @@ class EvidenceValid:
+         return every_thesis(theses, lambda t: checks.p2_evidence_valid(t, analysis.claims, values))
+ 
+ 
+-@grader
+ class InvalidationTestable:
+     """P3: the invalidation price lies between entry and stop. Spec: evals/specs/p3_invalidation_testable.md."""
+ 

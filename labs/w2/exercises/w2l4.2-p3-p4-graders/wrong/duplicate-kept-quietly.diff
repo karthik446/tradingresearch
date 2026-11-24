@@ -1,0 +1,14 @@
+why: makes grader() return the class already registered instead of raising, so a re-import "just works"
+expect: evals.grader() accepted a second class
+before: RED (author)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -20,7 +20,7 @@ GRADERS: dict[str, type] = {}
+ def grader(cls: type) -> type:
+     """Register a grader class under its `id`; a duplicate id would silently shadow a grader, so it raises."""
+     if cls.id in GRADERS:
+-        raise ValueError(f"grader id {cls.id!r} is already registered by {GRADERS[cls.id].__name__}")
++        return GRADERS[cls.id]
+     GRADERS[cls.id] = cls
+     return cls
+ 

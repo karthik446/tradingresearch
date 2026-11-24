@@ -1,0 +1,14 @@
+why: kind "code", as for P2-P4
+expect: P1Judge.kind is 'code'
+before: RED (author)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -177,7 +177,7 @@ class P1Judge:
+ 
+     id = "p1_judge"
+     version = "1"
+-    kind = "model"
++    kind = "code"
+     validated = False
+ 
+     def grade(self, sample, expected) -> Score:

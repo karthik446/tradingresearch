@@ -1,0 +1,11 @@
+id = "w2l3.2"
+title = "Keep a long's target at or before the next level over the entry, plus half an ATR"
+lab = "w2l3"
+concepts = ["level", "atr-allowance", "process-check"]
+touches = ["src/tradingresearch/checks.py"]
+check = "python -m pytest -q -x -p no:cacheprovider -m lab labs/w2/exercises/w2l3.2-long-target/test_w2l3_2.py"
+observe = "python labs/w2/tools/observe.py"
+paid = false
+fixtures = ["data/theses.json"]
+origin = "rebuild of week-2-end checks.py; reference = the tag's own p4_levels_coherent, before the cents amendment"
+red_expect = "AAPL swing is long from a limit entry at 343.41"

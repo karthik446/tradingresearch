@@ -1,0 +1,14 @@
+why: reads atr_pct (ATR as a percent of the close) instead of atr_14
+expect: 3.17 past high_20 360.83
+before: RED (author)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -163,7 +163,7 @@ class LevelsCoherent:
+     def grade(self, sample, expected) -> Score:
+         analysis, theses = built_theses(sample, expected)
+         snap = analysis.snapshot
+-        return every_thesis(theses, lambda t: checks.p4_levels_coherent(t, snap.levels, snap.values["atr_14"],
++        return every_thesis(theses, lambda t: checks.p4_levels_coherent(t, snap.levels, snap.values["atr_pct"],
+                                                                        snap.values["close"]))
+ 
+ 

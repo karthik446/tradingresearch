@@ -1,0 +1,14 @@
+why: returns a 0 for every sample instead of refusing
+expect: returned Score(
+before: RED (author)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -181,7 +181,7 @@ class P1Judge:
+     validated = False
+ 
+     def grade(self, sample, expected) -> Score:
+-        raise CannotGrade("p1_judge is a draft: no model call until it runs on closed trades in week 3")
++        return Score(value=0.0, explanation="p1_judge is a draft")
+ 
+ 
+ def graders(names: list[str]) -> list:

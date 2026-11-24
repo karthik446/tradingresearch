@@ -1,0 +1,14 @@
+why: the allowance is a whole ATR instead of half of one
+expect: AAPL swing is long from a limit entry at 343.41
+before: RED (author)
+--- a/src/tradingresearch/checks.py
++++ b/src/tradingresearch/checks.py
+@@ -60,7 +60,7 @@ def p4_levels_coherent(thesis: Thesis, levels: tuple[Level, ...], atr14: float,
+     prices = [level.price for level in levels]
+     below = [price for price in prices if price < entry]
+     above = [price for price in prices if price > entry]
+-    allowance = TARGET_ALLOWANCE_ATR * atr14
++    allowance = atr14
+     if thesis.direction == "long":
+         stop_ok = not below or stop < max(below)
+         target_ok = not above or target <= min(above) + allowance

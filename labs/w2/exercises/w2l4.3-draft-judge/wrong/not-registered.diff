@@ -1,0 +1,13 @@
+why: forgets @grader on P1Judge
+expect: No grader is registered under 'p1_judge'
+before: RED (author)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -167,7 +167,6 @@ class LevelsCoherent:
+                                                                        snap.values["close"]))
+ 
+ 
+-@grader
+ class P1Judge:
+     """P1, did the mechanism in `reason` happen: a draft judge, registered but unvalidated (evals/specs/p1_judge.md).
+ 

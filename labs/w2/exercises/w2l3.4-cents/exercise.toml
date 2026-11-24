@@ -1,0 +1,11 @@
+id = "w2l3.4"
+title = "Amend P4 to compare prices at cents"
+lab = "w2l3"
+concepts = ["cents", "level", "atr-allowance"]
+touches = ["src/tradingresearch/checks.py"]
+check = "python -m pytest -q -x -p no:cacheprovider -m lab labs/w2/exercises/w2l3.4-cents/test_w2l3_4.py"
+observe = "python labs/w2/tools/observe.py"
+paid = false
+fixtures = ["data/theses.json"]
+origin = "rebuild of week-2-end checks.py; reference = the tag's own cents() and p4_levels_coherent"
+red_expect = "AAPL swing is long from a limit entry at 343.41, stop 338.7"

@@ -1,0 +1,13 @@
+why: measures a short's stop from the highest level over the entry
+expect: MSFT day is short from a stop entry at 496.5
+before: RED (author)
+--- a/src/tradingresearch/checks.py
++++ b/src/tradingresearch/checks.py
+@@ -65,6 +65,6 @@ def p4_levels_coherent(thesis: Thesis, levels: tuple[Level, ...], atr14: float,
+         stop_ok = not below or stop < max(below)
+         target_ok = not above or target <= min(above) + allowance
+     else:
+-        stop_ok = not above or stop > min(above)
++        stop_ok = not above or stop > max(above)
+         target_ok = not below or target >= max(below) - allowance
+     return stop_ok and target_ok

@@ -1,0 +1,14 @@
+why: gives P4 the thesis's limit price (or 0) as the close, so a market_open entry is measured from 0
+expect: The swing made market_open (entry = the snapshot's close, 352.78) with stop 338.69
+before: RED (author)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -164,7 +164,7 @@ class LevelsCoherent:
+         analysis, theses = built_theses(sample, expected)
+         snap = analysis.snapshot
+         return every_thesis(theses, lambda t: checks.p4_levels_coherent(t, snap.levels, snap.values["atr_14"],
+-                                                                       snap.values["close"]))
++                                                                       t.entry.price or 0.0))
+ 
+ 
+ # TODO(w2l4.3) the draft P1 judge: a @grader class P1Judge with id "p1_judge", version "1", kind "model" and

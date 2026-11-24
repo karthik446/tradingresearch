@@ -1,0 +1,14 @@
+why: truncates to cents instead of rounding
+expect: Its level hvn 343.40978 is 343.41 at cents
+before: RED (author)
+--- a/src/tradingresearch/checks.py
++++ b/src/tradingresearch/checks.py
+@@ -52,7 +52,7 @@ def p3_invalidation_testable(thesis: Thesis, reference_close: float) -> bool:
+ 
+ def cents(price: float) -> float:
+     """Levels are unrounded floats and the model quotes cents (hvn 343.40978 vs entry 343.41), so P4 compares cents."""
+-    return round(price, 2)
++    return int(price * 100) / 100
+ 
+ 
+ def p4_levels_coherent(thesis: Thesis, levels: tuple[Level, ...], atr14: float, reference_close: float) -> bool:

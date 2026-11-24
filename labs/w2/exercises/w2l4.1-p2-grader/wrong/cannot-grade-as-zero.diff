@@ -1,0 +1,17 @@
+why: turns an ungradable run into a 0 instead of leaving it out
+expect: there is no thesis to check
+before: RED (author)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -133,7 +133,10 @@ class EvidenceValid:
+     kind = "code"
+ 
+     def grade(self, sample, expected) -> Score:
+-        analysis, theses = built_theses(sample, expected)
++        try:
++            analysis, theses = built_theses(sample, expected)
++        except CannotGrade as exc:
++            return Score(value=0.0, explanation=str(exc))
+         values = {row.source_id: row.value for row in snapshot_rows(analysis.snapshot)[1]}
+         return every_thesis(theses, lambda t: checks.p2_evidence_valid(t, analysis.claims, values))
+ 

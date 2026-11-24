@@ -1,0 +1,40 @@
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -138,10 +138,33 @@ class EvidenceValid:
+         return every_thesis(theses, lambda t: checks.p2_evidence_valid(t, analysis.claims, values))
+ 
+ 
+-# TODO(w2l4.2) P3 and P4 as graders, the same shape as EvidenceValid: InvalidationTestable (id
+-#   "p3_invalidation_testable") runs checks.p3_invalidation_testable with the snapshot's close; LevelsCoherent
+-#   (id "p4_levels_coherent") runs checks.p4_levels_coherent with the snapshot's levels, its atr_14 and its close.
+-#   Each is a binary code grader with a string version.
++@grader
++class InvalidationTestable:
++    """P3: the invalidation price lies between entry and stop. Spec: evals/specs/p3_invalidation_testable.md."""
++
++    id = "p3_invalidation_testable"
++    version = "1"
++    kind = "code"
++
++    def grade(self, sample, expected) -> Score:
++        analysis, theses = built_theses(sample, expected)
++        close = analysis.snapshot.values["close"]
++        return every_thesis(theses, lambda t: checks.p3_invalidation_testable(t, close))
++
++
++@grader
++class LevelsCoherent:
++    """P4: stop beyond the nearest level, target at or before the next one. Spec: evals/specs/p4_levels_coherent.md."""
++
++    id = "p4_levels_coherent"
++    version = "1"
++    kind = "code"
++
++    def grade(self, sample, expected) -> Score:
++        analysis, theses = built_theses(sample, expected)
++        snap = analysis.snapshot
++        return every_thesis(theses, lambda t: checks.p4_levels_coherent(t, snap.levels, snap.values["atr_14"],
++                                                                       snap.values["close"]))
+ 
+ 
+ # TODO(w2l4.3) the draft P1 judge: a @grader class P1Judge with id "p1_judge", version "1", kind "model" and

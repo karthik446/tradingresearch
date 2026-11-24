@@ -1,0 +1,11 @@
+id = "w2l4.2"
+title = "Register P3 and P4 as graders, each fed what its check reads from the snapshot"
+lab = "w2l4"
+concepts = ["grader", "registry", "thesis-sample", "level"]
+touches = ["src/tradingresearch/evals.py"]
+check = "python -m pytest -q -x -p no:cacheprovider -m lab labs/w2/exercises/w2l4.2-p3-p4-graders/test_w2l4_2.py"
+observe = "python labs/w2/tools/observe.py"
+paid = false
+fixtures = ["data/theses.json"]
+origin = "rebuild of week-2-end evals.py; reference = the tag's own InvalidationTestable and LevelsCoherent; sample = the recorded reply tests/fixtures/thesis/AAPL_2026-11-16"
+red_expect = "No grader is registered under 'p3_invalidation_testable'"

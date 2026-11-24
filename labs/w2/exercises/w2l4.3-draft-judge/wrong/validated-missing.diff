@@ -1,0 +1,13 @@
+why: leaves validated out, so nothing says the judge is a draft
+expect: P1Judge.validated is None
+before: RED (author)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -178,7 +178,6 @@ class P1Judge:
+     id = "p1_judge"
+     version = "1"
+     kind = "model"
+-    validated = False
+ 
+     def grade(self, sample, expected) -> Score:
+         raise CannotGrade("p1_judge is a draft: no model call until it runs on closed trades in week 3")

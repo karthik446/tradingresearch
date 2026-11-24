@@ -1,0 +1,14 @@
+why: the target must not pass the next level at all: the 0.5·ATR allowance is left out
+expect: XOM swing (long, entry 163.38, stop moved to 160.1)
+before: RED (author)
+--- a/src/tradingresearch/checks.py
++++ b/src/tradingresearch/checks.py
+@@ -63,7 +63,7 @@ def p4_levels_coherent(thesis: Thesis, levels: tuple[Level, ...], atr14: float,
+     allowance = TARGET_ALLOWANCE_ATR * atr14
+     if thesis.direction == "long":
+         stop_ok = not below or stop < max(below)
+-        target_ok = not above or target <= min(above) + allowance
++        target_ok = not above or target <= min(above)
+     else:
+         # TODO(w2l3.3) a short mirrors both halves: its stop beyond the nearest level over the entry, its target at
+         #   or above the next level under the entry minus the allowance.

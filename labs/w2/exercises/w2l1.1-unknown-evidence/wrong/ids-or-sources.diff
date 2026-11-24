@@ -1,0 +1,13 @@
+why: wrong subject: an id counts as known if it is a claim id or a source id of the table
+expect: AAPL swing with src_3737a7c770eb2194 added to its evidence
+before: GREEN (independent read)
+--- a/src/tradingresearch/checks.py
++++ b/src/tradingresearch/checks.py
+@@ -35,5 +35,5 @@ def evidence_ok(claim: Claim | None, values: dict[str, float | None], tolerance:
+ def p2_evidence_valid(thesis: Thesis, claims: tuple[Claim, ...], values: dict[str, float | None],
+                       tolerance: float = TOLERANCE) -> bool:
+     """True if every evidence id is a fact or inference of the analysis and every fact traces to its source table."""
+-    by_id = {claim.claim_id: claim for claim in claims}
+-    return all(evidence_ok(by_id.get(claim_id), values, tolerance) for claim_id in thesis.evidence)
++    known = {claim.claim_id for claim in claims} | set(values)
++    return all(claim_id in known for claim_id in thesis.evidence)

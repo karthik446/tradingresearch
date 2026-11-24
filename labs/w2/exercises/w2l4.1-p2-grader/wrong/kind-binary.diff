@@ -1,0 +1,14 @@
+why: kind describes the score (0 or 1) instead of what decides it
+expect: kind is 'binary'
+before: RED (author)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -130,7 +130,7 @@ class EvidenceValid:
+ 
+     id = "p2_evidence_valid"
+     version = "1"
+-    kind = "code"
++    kind = "binary"
+ 
+     def grade(self, sample, expected) -> Score:
+         analysis, theses = built_theses(sample, expected)

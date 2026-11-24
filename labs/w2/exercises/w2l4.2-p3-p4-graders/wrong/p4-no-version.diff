@@ -1,0 +1,13 @@
+why: leaves the version out
+expect: LevelsCoherent.version is None
+before: RED (author)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -157,7 +157,6 @@ class LevelsCoherent:
+     """P4: stop beyond the nearest level, target at or before the next one. Spec: evals/specs/p4_levels_coherent.md."""
+ 
+     id = "p4_levels_coherent"
+-    version = "1"
+     kind = "code"
+ 
+     def grade(self, sample, expected) -> Score:

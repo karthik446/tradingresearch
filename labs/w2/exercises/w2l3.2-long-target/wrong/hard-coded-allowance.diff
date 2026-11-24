@@ -1,0 +1,14 @@
+why: hard-codes the allowance as 2.0, half of the hand-built fixture's ATR of 4.0
+expect: with target 364.85, inside
+before: RED (author)
+--- a/src/tradingresearch/checks.py
++++ b/src/tradingresearch/checks.py
+@@ -60,7 +60,7 @@ def p4_levels_coherent(thesis: Thesis, levels: tuple[Level, ...], atr14: float,
+     prices = [level.price for level in levels]
+     below = [price for price in prices if price < entry]
+     above = [price for price in prices if price > entry]
+-    allowance = TARGET_ALLOWANCE_ATR * atr14
++    allowance = 2.0
+     if thesis.direction == "long":
+         stop_ok = not below or stop < max(below)
+         target_ok = not above or target <= min(above) + allowance

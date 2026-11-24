@@ -1,0 +1,16 @@
+why: passes the close as the ATR and the ATR as the close
+expect: target 366.0, 5.17 past high_20
+before: RED (author)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -163,8 +163,8 @@ class LevelsCoherent:
+     def grade(self, sample, expected) -> Score:
+         analysis, theses = built_theses(sample, expected)
+         snap = analysis.snapshot
+-        return every_thesis(theses, lambda t: checks.p4_levels_coherent(t, snap.levels, snap.values["atr_14"],
+-                                                                       snap.values["close"]))
++        return every_thesis(theses, lambda t: checks.p4_levels_coherent(t, snap.levels, snap.values["close"],
++                                                                       snap.values["atr_14"]))
+ 
+ 
+ # TODO(w2l4.3) the draft P1 judge: a @grader class P1Judge with id "p1_judge", version "1", kind "model" and

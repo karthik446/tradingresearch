@@ -1,0 +1,15 @@
+why: scores the share of theses that pass instead of all-or-nothing
+expect: P2 is binary per run
+before: RED (author)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -118,7 +118,8 @@ def built_theses(sample, expected) -> tuple[Analysis, list[Thesis]]:
+ def every_thesis(theses: list[Thesis], passes: Callable[[Thesis], bool]) -> Score:
+     """1 if every thesis passes, else 0 (binary, so compare uses McNemar); the explanation names the failing horizons."""
+     failed = [t.horizon for t in theses if not passes(t)]
+-    return Score(value=0.0 if failed else 1.0, explanation=f"fails: {', '.join(failed)}" if failed else None)
++    share = 1.0 - len(failed) / len(theses)
++    return Score(value=share, explanation=f"fails: {', '.join(failed)}" if failed else None)
+ 
+ 
+ @grader

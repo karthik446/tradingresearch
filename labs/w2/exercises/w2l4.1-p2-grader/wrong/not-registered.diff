@@ -1,0 +1,13 @@
+why: forgets @grader: the class exists but no config can name it
+expect: No grader is registered under
+before: RED (author)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -121,7 +121,6 @@ def every_thesis(theses: list[Thesis], passes: Callable[[Thesis], bool]) -> Scor
+     return Score(value=0.0 if failed else 1.0, explanation=f"fails: {', '.join(failed)}" if failed else None)
+ 
+ 
+-@grader
+ class EvidenceValid:
+     """P2: every evidence id is a fact or inference whose numbers match the thesis prompt's source table.
+ 
