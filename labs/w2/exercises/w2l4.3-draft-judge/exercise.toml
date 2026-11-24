@@ -1,5 +1,6 @@
 id = "w2l4.3"
 title = "Register the draft P1 judge: a model grader that refuses to score"
+effect = "Observe's Graders block lists p1_judge as a model grader, version 1, not validated, that cannot grade either sample: it is a draft until week 3."
 lab = "w2l4"
 concepts = ["draft-judge", "grader", "registry"]
 touches = ["src/tradingresearch/evals.py"]

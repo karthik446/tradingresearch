@@ -1,5 +1,6 @@
 id = "w2l1.2"
 title = "Fail a thesis that leans on an opinion, even beside facts"
+effect = "Observe drops the synthetic P2 rows still accepted from 3 of 4 to 2 of 4: AAPL swing leaning on an opinion fails; the chapter's six stay at 6/6."
 lab = "w2l1"
 concepts = ["evidence", "claim-tag", "process-check"]
 touches = ["src/tradingresearch/checks.py"]

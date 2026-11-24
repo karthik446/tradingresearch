@@ -1,5 +1,6 @@
 id = "w2l3.4"
 title = "Amend P4 to compare prices at cents"
+effect = "Observe takes the chapter's six from P4 4/6 to 2/6, the chapter's figure: AAPL swing and both XOM theses fail, JPM swing passes, 0 of 10 rows differ."
 lab = "w2l3"
 concepts = ["cents", "level", "atr-allowance"]
 touches = ["src/tradingresearch/checks.py"]

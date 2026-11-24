@@ -1,5 +1,6 @@
 id = "w2l1.4"
 title = "Fail a fact whose number matches none of its cited sources"
+effect = "Observe drops the synthetic P2 rows still accepted to 0 of 4: HD swing's close fact, 2% off its source, fails; the chapter's six stay at 6/6."
 lab = "w2l1"
 concepts = ["evidence", "tolerance", "process-check"]
 touches = ["src/tradingresearch/checks.py"]

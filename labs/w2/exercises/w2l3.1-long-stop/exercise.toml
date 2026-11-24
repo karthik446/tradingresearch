@@ -1,5 +1,6 @@
 id = "w2l3.1"
 title = "Place a long's stop beyond the nearest level under the entry"
+effect = "Observe takes the chapter's six from P4 6/6 to 5/6: HD swing's stop sits between hvn 319.08 and its entry, so it fails, and HD day's market_open row too."
 lab = "w2l3"
 concepts = ["level", "process-check"]
 touches = ["src/tradingresearch/checks.py"]

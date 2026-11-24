@@ -1,5 +1,6 @@
 id = "w2l1.3"
 title = "Fail a fact that cites a source the thesis-stage table does not hold"
+effect = "Observe drops the synthetic P2 rows still accepted from 2 of 4 to 1 of 4: XOM swing citing an EDGAR fact fails; the chapter's six stay at 6/6."
 lab = "w2l1"
 concepts = ["evidence", "source-table", "process-check"]
 touches = ["src/tradingresearch/checks.py"]

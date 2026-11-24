@@ -1,5 +1,6 @@
 id = "w2l2.1"
 title = "Pass a long only when its invalidation lies between stop and entry"
+effect = "Observe drops the synthetic P3 rows still accepted from 3 of 3 to 2 of 3: XOM swing's invalidation above the entry fails; HD day's market_open row crashes."
 lab = "w2l2"
 concepts = ["invalidation", "process-check"]
 touches = ["src/tradingresearch/checks.py"]

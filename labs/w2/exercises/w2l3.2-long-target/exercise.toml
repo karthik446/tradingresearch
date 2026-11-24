@@ -1,5 +1,6 @@
 id = "w2l3.2"
 title = "Keep a long's target at or before the next level over the entry, plus half an ATR"
+effect = "Observe takes the chapter's six from P4 5/6 to 4/6: on the stored floats JPM swing's target of 344.4 runs past hvn 335.11379 plus half an ATR."
 lab = "w2l3"
 concepts = ["level", "atr-allowance", "process-check"]
 touches = ["src/tradingresearch/checks.py"]

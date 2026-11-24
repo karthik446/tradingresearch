@@ -1,5 +1,6 @@
 id = "w2l4.2"
 title = "Register P3 and P4 as graders, each fed what its check reads from the snapshot"
+effect = "Observe's Graders block adds P3 and P4: P3 scores the recorded AAPL reply 1.0, P4 scores it 0.0 (fails: swing), as in the chapter's table."
 lab = "w2l4"
 concepts = ["grader", "registry", "thesis-sample", "level"]
 touches = ["src/tradingresearch/evals.py"]

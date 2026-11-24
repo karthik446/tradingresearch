@@ -12,15 +12,15 @@ This folder holds week 2 of the AI engineering track: labs w2l1 (P2), w2l2 (P3),
 | [w2l1.4](exercises/w2l1.4-number-matches-a-source/) | Fail a fact whose number matches none of its cited sources | `checks.py` | 13 |
 | [w2l2.1](exercises/w2l2.1-long-invalidation/) | Pass a long only when its invalidation lies between stop and entry | `checks.py` | 6 |
 | [w2l2.2](exercises/w2l2.2-short-and-market-open/) | Mirror the rule for a short and take the close as a market_open entry | `checks.py` | 6 |
-| [w2l3.1](exercises/w2l3.1-long-stop/) | Place a long's stop beyond the nearest level under the entry | `checks.py` | 7 |
-| [w2l3.2](exercises/w2l3.2-long-target/) | Keep a long's target at or before the next level over the entry, plus half an ATR | `checks.py` | 8 |
-| [w2l3.3](exercises/w2l3.3-short-mirror/) | Mirror P4 for a short: stop over the nearest level above, target down to the next level below | `checks.py` | 7 |
-| [w2l3.4](exercises/w2l3.4-cents/) | Amend P4 to compare prices at cents | `checks.py` | 7 |
+| [w2l3.1](exercises/w2l3.1-long-stop/) | Place a long's stop beyond the nearest level under the entry | `checks.py` | 9 |
+| [w2l3.2](exercises/w2l3.2-long-target/) | Keep a long's target at or before the next level over the entry, plus half an ATR | `checks.py` | 11 |
+| [w2l3.3](exercises/w2l3.3-short-mirror/) | Mirror P4 for a short: stop over the nearest level above, target down to the next level below | `checks.py` | 8 |
+| [w2l3.4](exercises/w2l3.4-cents/) | Amend P4 to compare prices at cents | `checks.py` | 8 |
 | [w2l4.1](exercises/w2l4.1-p2-grader/) | Score a whole thesis run with P2: `every_thesis` and the `EvidenceValid` grader | `evals.py` | 9 |
 | [w2l4.2](exercises/w2l4.2-p3-p4-graders/) | Register P3 and P4 as graders, each fed what its check reads from the snapshot | `evals.py` | 8 |
-| [w2l4.3](exercises/w2l4.3-draft-judge/) | Register the draft P1 judge: a model grader that refuses to score | `evals.py` | 9 |
+| [w2l4.3](exercises/w2l4.3-draft-judge/) | Register the draft P1 judge: a model grader that refuses to score | `evals.py` | 11 |
 
-102 wrong fixes in all. Two of them are known to be narrow: `w2l4.2 duplicate-kept-quietly` changes `grader()` itself, outside the exercise's TODO, to show why the registry refuses a duplicate id; `w2l4.2 p4-atr-close-swapped` is caught only by the case with a target of 366.0.
+111 wrong fixes in all. Two of them are known to be narrow: `w2l4.2 duplicate-kept-quietly` changes `grader()` itself, outside the exercise's TODO, to show why the registry refuses a duplicate id; `w2l4.2 p4-atr-close-swapped` is caught only by the case with a target of 366.0.
 
 ## Layout
 

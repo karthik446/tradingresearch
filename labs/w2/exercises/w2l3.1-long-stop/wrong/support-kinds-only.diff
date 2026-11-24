@@ -1,0 +1,14 @@
+why: counts only the low kinds (hvn, pivot_low, low_20) as levels under a long's entry
+expect: JPM short (long, entry 336.67) with stop 335.5 and one extra level, pivot_high 335.8
+before: GREEN (independent read)
+--- a/src/tradingresearch/checks.py
++++ b/src/tradingresearch/checks.py
+@@ -58,7 +58,7 @@ def p4_levels_coherent(thesis: Thesis, levels: tuple[Level, ...], atr14: float,
+     #   stop, the target and every level price. The allowance stays exact.
+     entry, stop, target = entry_price(thesis, reference_close), thesis.stop, thesis.target
+     prices = [level.price for level in levels]
+-    below = [price for price in prices if price < entry]
++    below = [level.price for level in levels if level.price < entry and level.kind in ("hvn", "pivot_low", "low_20")]
+     if thesis.direction == "long":
+         stop_ok = not below or stop < max(below)
+         # TODO(w2l3.2) a long's target: at or below the next level over the entry plus TARGET_ALLOWANCE_ATR * atr14

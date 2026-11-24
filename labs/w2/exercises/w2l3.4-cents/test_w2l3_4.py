@@ -114,3 +114,15 @@ def test_a_short_is_compared_at_cents_too():
         f"entry 335.33 at cents, so the next level under the entry is low_20 330.4 and the target is within half an "
         f"ATR ({atr / 2:.2f}) of it; p4_levels_coherent returned {got!r}"
     )
+
+
+def test_a_limit_entry_is_compared_at_cents():
+    thesis, levels, atr, close = case("AAPL swing")
+    moved = thesis.model_copy(update={"entry": thesis.entry.model_copy(update={"price": 343.414})})
+    got = p4(moved, levels, atr, close)
+    assert got is False, (
+        f"AAPL swing with its limit entry moved to 343.414 (long, stop {thesis.stop}, target {thesis.target}) should "
+        f"fail: the entry is 343.41 at cents like every other price, so hvn 343.40978 is the entry, not a level "
+        f"under it, and the stop sits on pivot_low 338.7. A limit entry is a quoted price too, not only the close of "
+        f"a market_open entry; p4_levels_coherent returned {got!r}"
+    )

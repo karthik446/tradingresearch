@@ -1,10 +1,12 @@
 """w2l4.3 the draft P1 judge: registered as a model grader, marked unvalidated, and refusing to score.
 
-Every way out to a model is a tripwire here: a socket connection, an httpx request, the judge library's ModelJudge. A
-draft judge that reaches any of them fails, whether or not a key is set, so the check costs $0.
+Every way out to a model is a tripwire here: a socket connection (connect, connect_ex, create_connection), an httpx
+request, a subprocess, the judge library's ModelJudge. A draft judge that reaches any of them fails, whether or not a
+key is set, so the check costs $0. A determined author can still get past them; the check is an honor system.
 """
 
 import socket
+import subprocess
 from types import SimpleNamespace
 
 import httpx
@@ -26,7 +28,9 @@ def tripwires(monkeypatch):
         raise ModelCalled("a network or model call")
 
     monkeypatch.setattr(socket.socket, "connect", tripped)
+    monkeypatch.setattr(socket.socket, "connect_ex", tripped)
     monkeypatch.setattr(socket, "create_connection", tripped)
+    monkeypatch.setattr(subprocess.Popen, "__init__", tripped)
     monkeypatch.setattr(httpx.Client, "send", tripped)
     monkeypatch.setattr(httpx.AsyncClient, "send", tripped)
     import gigai_core.graders.judge as judge  # noqa: PLC0415

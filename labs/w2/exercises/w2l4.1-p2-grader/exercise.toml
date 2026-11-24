@@ -1,5 +1,6 @@
 id = "w2l4.1"
 title = "Score a whole thesis run with P2: every_thesis and the EvidenceValid grader"
+effect = "Observe's Graders block scores p2_evidence_valid: 1.0 on the author's recorded AAPL reply, 0.0 once a broken short thesis is added (fails: short)."
 lab = "w2l4"
 concepts = ["grader", "registry", "thesis-sample"]
 touches = ["src/tradingresearch/evals.py"]

@@ -116,3 +116,25 @@ def test_no_level_under_the_entry_leaves_the_stop_free():
             f"JPM short (long, entry {thesis.entry.price}, stop {thesis.stop}, target {thesis.target}) with {what}: "
             f"there is no level for the stop to sit beyond, so this half holds; p4_levels_coherent returned {got!r}"
         )
+
+
+def test_a_stop_just_under_the_level_passes():
+    thesis, levels, atr, close = case("HD swing")
+    got = p4(thesis.model_copy(update={"stop": 319.07}), levels, atr, close)
+    assert got is True, (
+        f"HD swing (long, entry {thesis.entry.price}) with stop 319.07, under hvn 319.07886 (319.08 at cents), the "
+        f"nearest level under the entry (levels: {listed(levels)}), should pass. Below the level is beyond it, even "
+        f"by less than a cent: the rule asks for no extra gap past the level; p4_levels_coherent returned {got!r}"
+    )
+
+
+def test_any_kind_of_level_under_the_entry_counts():
+    thesis, levels, atr, close = case("JPM short")
+    extra = level(335.8, "pivot_high")
+    got = p4(thesis.model_copy(update={"stop": 335.5}), (*levels, extra), atr, close)
+    assert got is True, (
+        f"JPM short (long, entry {thesis.entry.price}) with stop 335.5 and one extra level, pivot_high 335.8, under "
+        f"the entry (levels: {listed((*levels, extra))}), should pass. A level's side is set by its price, not its "
+        f"kind: a pivot_high under the entry is the nearest level under it here, and the stop sits below it. Reading "
+        f"only the low kinds measures the stop against hvn 335.11 instead; p4_levels_coherent returned {got!r}"
+    )

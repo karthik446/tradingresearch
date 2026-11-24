@@ -1,0 +1,15 @@
+why: shells out to curl before refusing
+expect: tried a network or model call
+before: GREEN (independent read)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -181,6 +181,9 @@ class P1Judge:
+     validated = False
+ 
+     def grade(self, sample, expected) -> Score:
++        import subprocess
++
++        subprocess.run(["curl", "-s", "-m", "2", "http://127.0.0.1:9/"], capture_output=True)
+         raise CannotGrade("p1_judge is a draft: no model call until it runs on closed trades in week 3")
+ 
+ 

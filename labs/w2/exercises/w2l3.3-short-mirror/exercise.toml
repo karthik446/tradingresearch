@@ -1,5 +1,6 @@
 id = "w2l3.3"
 title = "Mirror P4 for a short: stop over the nearest level above, target down to the next level below"
+effect = "Observe keeps the chapter's six at P4 4/6 while the JPM swing and UNH swing rows made short now fail; the MSFT day short still passes."
 lab = "w2l3"
 concepts = ["level", "atr-allowance", "process-check"]
 touches = ["src/tradingresearch/checks.py"]

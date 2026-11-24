@@ -138,3 +138,15 @@ def test_the_long_rules_still_hold():
             f"should still {'pass' if want else 'fail'} after the short side is written; p4_levels_coherent returned "
             f"{got!r}"
         )
+
+
+def test_jpm_swing_short_target_past_the_next_level_fails():
+    thesis, levels, atr, close = case("JPM swing, direction short")
+    got = p4(thesis, levels, atr, close)
+    assert got is False, (
+        f"JPM swing is short from a limit entry at {thesis.entry.price}, stop {thesis.stop}, target {thesis.target} "
+        f"(levels: {listed(levels)}, ATR14 {atr:.4f}). The page's table shows this row failing P4. The next level "
+        f"under the entry is the highest one below it: hvn 335.32647 on raw floats, low_20 330.4 at cents (where "
+        f"that hvn is the entry). Either way the target runs more than half an ATR ({atr / 2:.2f}) past it; "
+        f"pivot_low 325.07, farther down, is not the next level; p4_levels_coherent returned {got!r}"
+    )

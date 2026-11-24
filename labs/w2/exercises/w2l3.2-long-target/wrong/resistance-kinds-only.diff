@@ -1,0 +1,14 @@
+why: counts only the high kinds (hvn, pivot_high, high_20) as levels over a long's entry
+expect: with one extra level, pivot_low 350.0, over the entry
+before: GREEN (independent read)
+--- a/src/tradingresearch/checks.py
++++ b/src/tradingresearch/checks.py
+@@ -59,7 +59,7 @@ def p4_levels_coherent(thesis: Thesis, levels: tuple[Level, ...], atr14: float,
+     entry, stop, target = entry_price(thesis, reference_close), thesis.stop, thesis.target
+     prices = [level.price for level in levels]
+     below = [price for price in prices if price < entry]
+-    above = [price for price in prices if price > entry]
++    above = [level.price for level in levels if level.price > entry and level.kind in ("hvn", "pivot_high", "high_20")]
+     allowance = TARGET_ALLOWANCE_ATR * atr14
+     if thesis.direction == "long":
+         stop_ok = not below or stop < max(below)

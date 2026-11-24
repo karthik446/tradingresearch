@@ -1,5 +1,6 @@
 id = "w2l1.1"
 title = "Fail a thesis whose evidence names no claim of its analysis"
+effect = "Observe drops the synthetic P2 rows still accepted from 4 of 4 to 3 of 4: JPM swing citing an XOM claim fails; the chapter's six stay at 6/6."
 lab = "w2l1"
 concepts = ["evidence", "process-check"]
 touches = ["src/tradingresearch/checks.py"]

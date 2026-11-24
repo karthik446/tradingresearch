@@ -1,0 +1,14 @@
+why: demands the stop at least a cent under the nearest level, not just under it
+expect: HD swing (long, entry 335.71) with stop 319.07
+before: GREEN (independent read)
+--- a/src/tradingresearch/checks.py
++++ b/src/tradingresearch/checks.py
+@@ -60,7 +60,7 @@ def p4_levels_coherent(thesis: Thesis, levels: tuple[Level, ...], atr14: float,
+     prices = [level.price for level in levels]
+     below = [price for price in prices if price < entry]
+     if thesis.direction == "long":
+-        stop_ok = not below or stop < max(below)
++        stop_ok = not below or stop <= max(below) - 0.01
+         # TODO(w2l3.2) a long's target: at or below the next level over the entry plus TARGET_ALLOWANCE_ATR * atr14
+         #   (exact, inclusive); with no level over the entry this half holds.
+         target_ok = True

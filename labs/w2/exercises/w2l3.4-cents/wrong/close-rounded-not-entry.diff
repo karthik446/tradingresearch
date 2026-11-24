@@ -1,0 +1,14 @@
+why: rounds the close before entry_price, so a limit entry is compared unrounded
+expect: AAPL swing with its limit entry moved to 343.414
+before: GREEN (independent read)
+--- a/src/tradingresearch/checks.py
++++ b/src/tradingresearch/checks.py
+@@ -58,7 +58,7 @@ def cents(price: float) -> float:
+ def p4_levels_coherent(thesis: Thesis, levels: tuple[Level, ...], atr14: float, reference_close: float) -> bool:
+     """True if the stop sits beyond the nearest level against the trade and the target at or before the next level
+     with the trade (plus 0.5·ATR, exact). Prices compare at cents; a side with no level holds."""
+-    entry, stop, target = cents(entry_price(thesis, reference_close)), cents(thesis.stop), cents(thesis.target)
++    entry, stop, target = entry_price(thesis, cents(reference_close)), cents(thesis.stop), cents(thesis.target)
+     prices = [cents(level.price) for level in levels]
+     below = [price for price in prices if price < entry]
+     above = [price for price in prices if price > entry]

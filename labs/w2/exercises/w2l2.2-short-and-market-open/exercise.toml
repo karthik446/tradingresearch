@@ -1,5 +1,6 @@
 id = "w2l2.2"
 title = "Mirror the rule for a short and take the close as a market_open entry"
+effect = "Observe drops the synthetic P3 rows still accepted to 0 of 3: the MSFT day short and HD day market_open rows fail, and the real HD day passes P3 again."
 lab = "w2l2"
 concepts = ["invalidation", "market_open-entry", "process-check"]
 touches = ["src/tradingresearch/checks.py"]

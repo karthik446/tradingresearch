@@ -120,3 +120,28 @@ def test_no_level_over_the_entry_leaves_the_target_free():
             f"JPM short (long, entry {thesis.entry.price}, stop {thesis.stop}) with target 400.0 and {what}: there is "
             f"no level for the target to stop at, so this half holds; p4_levels_coherent returned {got!r}"
         )
+
+
+def test_the_allowance_is_not_rounded():
+    thesis, levels, atr, close = aapl(364.852)
+    got = p4(thesis, levels, atr, close)
+    assert got is True, (
+        f"AAPL swing (long, entry {thesis.entry.price}, stop 338.69, ATR14 {atr:.4f}) with target 364.852 should "
+        f"pass: the limit is high_20 360.83 plus half an ATR, {360.83 + atr / 2:.4f} exactly, and 364.852 is inside "
+        f"it (364.85 at cents is inside too). Rounding that limit to cents moves it to 364.85 and refuses a target "
+        f"the rule allows; p4_levels_coherent returned {got!r}"
+    )
+
+
+def test_any_level_between_the_entry_and_the_close_counts():
+    thesis, levels, atr, close = aapl(360.83)
+    extra = level(350.0, "pivot_low")
+    got = p4(thesis, (*levels, extra), atr, close)
+    assert got is False, (
+        f"AAPL swing (long, entry {thesis.entry.price}, stop 338.69, target 360.83, ATR14 {atr:.4f}) with one extra "
+        f"level, pivot_low 350.0, over the entry and under reference_close {close} (levels: "
+        f"{listed((*levels, extra))}), should fail. Levels are measured from the entry, where the trade starts, not "
+        f"from the close, and a level's side is set by its price, not its kind: pivot_low 350.0 is the next level "
+        f"over the entry, and the target runs {360.83 - 350.0:.2f} past it, more than half an ATR ({atr / 2:.2f}); "
+        f"p4_levels_coherent returned {got!r}"
+    )
