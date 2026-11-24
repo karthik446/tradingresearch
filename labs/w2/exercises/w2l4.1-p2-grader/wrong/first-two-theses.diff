@@ -1,6 +1,6 @@
 why: checks only the first two theses of a run
 expect: A run of three theses
-before: GREEN (Codex review G18)
+before: GREEN (outside review G18)
 --- a/src/tradingresearch/evals.py
 +++ b/src/tradingresearch/evals.py
 @@ -117,7 +117,7 @@

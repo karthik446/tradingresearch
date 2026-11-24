@@ -1,6 +1,6 @@
 why: looks claims up by the first 8 characters of their id, so an unknown id that starts like a real one resolves
 expect: shares its first 11 characters
-before: GREEN (Codex review G01)
+before: GREEN (outside review G01)
 --- a/src/tradingresearch/checks.py
 +++ b/src/tradingresearch/checks.py
 @@ -35,5 +35,5 @@

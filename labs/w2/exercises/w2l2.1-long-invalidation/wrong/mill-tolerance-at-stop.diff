@@ -1,6 +1,6 @@
 why: lets a long's invalidation sit up to a tenth of a cent beyond the stop
 expect: with invalidation 338.699,
-before: GREEN (Codex review G09)
+before: GREEN (outside review G09)
 --- a/src/tradingresearch/checks.py
 +++ b/src/tradingresearch/checks.py
 @@ -45,7 +45,7 @@

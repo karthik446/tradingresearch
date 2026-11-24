@@ -1,6 +1,6 @@
 why: excludes an opinion only when its text is longer than 20 characters
 expect: reworded to 'Buy now.'
-before: GREEN (Codex review G03)
+before: GREEN (outside review G03)
 --- a/src/tradingresearch/checks.py
 +++ b/src/tradingresearch/checks.py
 @@ -22,7 +22,7 @@

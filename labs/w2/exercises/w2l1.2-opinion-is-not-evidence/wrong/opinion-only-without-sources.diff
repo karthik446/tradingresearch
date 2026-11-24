@@ -1,6 +1,6 @@
 why: excludes an opinion only when it cites no source
 expect: given the source
-before: GREEN (Codex review G02)
+before: GREEN (outside review G02)
 --- a/src/tradingresearch/checks.py
 +++ b/src/tradingresearch/checks.py
 @@ -22,7 +22,7 @@

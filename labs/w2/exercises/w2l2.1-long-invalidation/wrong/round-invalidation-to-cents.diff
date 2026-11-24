@@ -1,6 +1,6 @@
 why: rounds the invalidation to cents before comparing it with the stop
 expect: with invalidation 338.699,
-before: GREEN (Codex review G08)
+before: GREEN (outside review G08)
 --- a/src/tradingresearch/checks.py
 +++ b/src/tradingresearch/checks.py
 @@ -43,7 +43,7 @@

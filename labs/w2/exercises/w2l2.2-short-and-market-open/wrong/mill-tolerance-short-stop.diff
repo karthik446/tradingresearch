@@ -1,6 +1,6 @@
 why: lets a short's invalidation sit up to a tenth of a cent beyond the stop
 expect: with invalidation 500.601,
-before: GREEN (Codex review G11)
+before: GREEN (outside review G11)
 --- a/src/tradingresearch/checks.py
 +++ b/src/tradingresearch/checks.py
 @@ -46,4 +46,4 @@

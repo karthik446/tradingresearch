@@ -20,7 +20,7 @@ This folder holds week 2 of the AI engineering track: labs w2l1 (P2), w2l2 (P3),
 | [w2l4.2](exercises/w2l4.2-p3-p4-graders/) | Register P3 and P4 as graders, each fed what its check reads from the snapshot | `evals.py` | 11 |
 | [w2l4.3](exercises/w2l4.3-draft-judge/) | Register the draft P1 judge: a model grader that refuses to score | `evals.py` | 15 |
 
-135 wrong fixes in all; the 23 whose header reads `before: GREEN (Codex review G..)` passed the check until the review's counterexamples were added as tests, and `w2l4.3 swallow-import-time-connection` passed until the guard's record stopped being cleared before each test. Two of them are known to be narrow: `w2l4.2 duplicate-kept-quietly` changes `grader()` itself, outside the exercise's TODO, to show why the registry refuses a duplicate id; `w2l4.2 p4-atr-close-swapped` is caught only by the case with a target of 366.0.
+135 wrong fixes in all; the 23 whose header reads `before: GREEN (outside review G..)` passed the check until the review's counterexamples were added as tests, and `w2l4.3 swallow-import-time-connection` passed until the guard's record stopped being cleared before each test. Two of them are known to be narrow: `w2l4.2 duplicate-kept-quietly` changes `grader()` itself, outside the exercise's TODO, to show why the registry refuses a duplicate id; `w2l4.2 p4-atr-close-swapped` is caught only by the case with a target of 366.0.
 
 ## Layout
 

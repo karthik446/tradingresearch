@@ -1,6 +1,6 @@
 why: uses the recorded day's close, 352.78, instead of the sample snapshot's close
 expect: closed at 349.0 instead
-before: GREEN (Codex review G20)
+before: GREEN (outside review G20)
 --- a/src/tradingresearch/evals.py
 +++ b/src/tradingresearch/evals.py
 @@ -148,7 +148,7 @@

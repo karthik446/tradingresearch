@@ -1,6 +1,6 @@
 why: rounds the fact's value to cents before matching it
 expect: cites src_small_lab holding 0.004
-before: GREEN (Codex review G06)
+before: GREEN (outside review G06)
 --- a/src/tradingresearch/checks.py
 +++ b/src/tradingresearch/checks.py
 @@ -31,7 +31,7 @@

@@ -1,6 +1,6 @@
 why: opens a socket connection and swallows the error before refusing
 expect: tried a network or model call (socket.create_connection)
-before: GREEN (Codex review G23)
+before: GREEN (outside review G23)
 --- a/src/tradingresearch/evals.py
 +++ b/src/tradingresearch/evals.py
 @@ -181,6 +181,11 @@

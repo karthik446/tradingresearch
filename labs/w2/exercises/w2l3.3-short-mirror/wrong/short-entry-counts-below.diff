@@ -1,6 +1,6 @@
 why: counts a level at the entry as under the entry for a short
 expect: with one extra level at exactly 496.5
-before: GREEN (Codex review G14)
+before: GREEN (outside review G14)
 --- a/src/tradingresearch/checks.py
 +++ b/src/tradingresearch/checks.py
 @@ -58,7 +58,7 @@

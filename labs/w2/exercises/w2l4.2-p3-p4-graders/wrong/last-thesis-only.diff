@@ -1,6 +1,6 @@
 why: grades only the last thesis of a run
 expect: on a run of two theses: first a short-horizon copy
-before: GREEN (Codex review G19)
+before: GREEN (outside review G19)
 --- a/src/tradingresearch/evals.py
 +++ b/src/tradingresearch/evals.py
 @@ -135,7 +135,7 @@

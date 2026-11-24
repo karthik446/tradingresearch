@@ -1,6 +1,6 @@
 why: scores 1 whenever the reply holds a thesis, so only the empty replies are refused
 expect: returned Score(value=1.0
-before: GREEN (Codex review G22)
+before: GREEN (outside review G22)
 --- a/src/tradingresearch/evals.py
 +++ b/src/tradingresearch/evals.py
 @@ -181,6 +181,8 @@

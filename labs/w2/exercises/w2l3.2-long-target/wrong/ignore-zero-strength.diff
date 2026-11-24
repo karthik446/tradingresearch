@@ -1,6 +1,6 @@
 why: drops levels of zero strength before finding the next one
 expect: hvn 350.0 of strength 0.0
-before: GREEN (Codex review G13)
+before: GREEN (outside review G13)
 --- a/src/tradingresearch/checks.py
 +++ b/src/tradingresearch/checks.py
 @@ -57,7 +57,7 @@

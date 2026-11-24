@@ -1,6 +1,6 @@
 why: checks only a fact's first two sources against the table
 expect: given here a third source
-before: GREEN (Codex review G04)
+before: GREEN (outside review G04)
 --- a/src/tradingresearch/checks.py
 +++ b/src/tradingresearch/checks.py
 @@ -26,7 +26,7 @@

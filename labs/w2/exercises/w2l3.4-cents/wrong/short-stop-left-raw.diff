@@ -1,6 +1,6 @@
 why: rounds a long's stop to cents but leaves a short's stop raw
 expect: with its stop moved to 496.514
-before: GREEN (Codex review G17)
+before: GREEN (outside review G17)
 --- a/src/tradingresearch/checks.py
 +++ b/src/tradingresearch/checks.py
 @@ -58,7 +58,7 @@
