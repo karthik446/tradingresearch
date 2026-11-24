@@ -1,0 +1,14 @@
+why: reads the data pack's observe run, whatever run it is given
+expect: It reads the run it is given
+before: GREEN (Codex review)
+--- a/src/tradingresearch/taxonomy.py
++++ b/src/tradingresearch/taxonomy.py
+@@ -112,7 +112,7 @@ def code_classes(run: Path) -> dict[str, dict[str, list[str]]]:
+     Every name in CODE_FINDS is a key. An item with no such claim is not listed under it.
+     """
+     found: dict[str, dict[str, list[str]]] = {name: {} for name in CODE_FINDS}
+-    for trace in load_run(run):
++    for trace in load_run(Path("labs/w1/data/observe.jsonl")):
+         texts = claim_texts(trace)
+         for claim, reason in rejected(trace):
+             if reason == "number_in_text" and WINDOW.search(texts.get(claim, "")):

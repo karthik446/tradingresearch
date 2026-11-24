@@ -56,3 +56,18 @@ def test_flags_match_your_inference_wider_labels():
         f"{sorted(got - labelled)}; only labelled: {sorted(labelled - got)}. Read each one: either the grader is wrong "
         "(fix it) or your label is (fix labels.csv). The spec is done when they agree."
     )
+
+
+def test_every_grader_is_registered_in_the_order_asked():
+    ids = ["parsed", "claims_valid", "all_claims_valid", "inferences_grounded"]
+    for names in (ids, ids[::-1]):
+        try:
+            got = [g.id for g in graders(names)]
+        except SystemExit as exc:
+            raise AssertionError(
+                f"graders({names}) exited: {exc}. The three graders registered before still have to be found: "
+                "experiment configs name them."
+            ) from None
+        assert got == names, (
+            f"graders({names}) returned graders {got}: one grader per name, in the order the config lists them"
+        )

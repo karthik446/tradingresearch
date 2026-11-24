@@ -20,6 +20,17 @@ def test_paired_diff_per_item():
     assert mean == pytest.approx(0.70), f"mean diff {mean:+.3f}; the recorded means are 0.150 -> 0.850, so +0.700"
 
 
+def test_a_fractional_metric_keeps_its_scale():
+    a = {"X:1": {"scores": {"m": 0.25}}, "Y:1": {"scores": {"m": 0.5}}}
+    b = {"X:1": {"scores": {"m": 0.75}}, "Y:1": {"scores": {"m": 0.4}}}
+    got = paired_diff(a, b, "m")
+    assert got == pytest.approx({"X:1": 0.5, "Y:1": -0.1}), (
+        f"paired_diff gave {got} for a metric scored 0.25 -> 0.75 on X:1 and 0.50 -> 0.40 on Y:1; the differences are "
+        "+0.50 and -0.10. Not every metric is 0/1 (claims_valid is a share of a reply's claims): a paired difference "
+        "stays on the metric's own scale, or a small gain or loss disappears."
+    )
+
+
 def test_different_items_cannot_be_paired():
     try:
         paired_diff(A, {k: v for k, v in B.items() if k != "KO:2026-11-13"}, "all_claims_valid")

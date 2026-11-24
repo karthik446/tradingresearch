@@ -2,7 +2,7 @@
 +++ b/src/tradingresearch/taxonomy.py
 @@ -96,8 +96,11 @@
  
-     Classes are ';'-separated in the `classes` column. Blanks and TAGS are skipped.
+     Classes are ';'-separated in `classes`; names are stripped and case-sensitive. Blanks and TAGS are skipped.
      """
 -    # TODO(w1l2.2) read the CSV with csv.DictReader and count.
 -    return {}

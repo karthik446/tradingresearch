@@ -4,9 +4,9 @@
      if not isinstance(item, dict):
          return "not_a_claim", "claim is not an object"
      text, tag, value = str(item.get("text", "")), item.get("tag"), item.get("value")
--    # TODO(w1l1.2) number_in_text: reject a claim whose text has a digit that is not inside {value}, a YYYY-MM-DD
--    #   date or a word such as sma_200. ALLOWED_DIGITS (above) matches exactly those three; remove its matches
--    #   from `text`, then look for a digit in what is left. Detail: the first 120 characters of the text.
+-    # TODO(w1l1.2) number_in_text: reject a claim whose text has a digit (any Unicode digit, \d) that is not inside
+-    #   {value}, a YYYY-MM-DD date or a word such as sma_200. ALLOWED_DIGITS (above) matches exactly those three;
+-    #   remove its matches from `text`, then look for a digit in what is left. Detail: the first 120 characters.
 +    if re.search(r"\d", ALLOWED_DIGITS.sub("", text)):
 +        return "number_in_text", text[:120]
      # TODO(w1l1.3) placeholders: "{value}" is the only placeholder (anything else in braces is bad_placeholder,

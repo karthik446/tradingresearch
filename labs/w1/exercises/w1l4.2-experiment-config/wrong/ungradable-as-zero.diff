@@ -1,0 +1,15 @@
+why: counts a reply the grader could not grade (score None) as 0.0 in the mean
+expect: 4 replies unparseable
+before: GREEN (Codex review w1l4.2-1)
+--- a/src/tradingresearch/replay.py
++++ b/src/tradingresearch/replay.py
+@@ -100,7 +100,8 @@
+         rows = [row for row in load_rows(recorded[arm.prompt]) if row["item"] in items]
+         means = {}
+         for grader in graders:
+-            values = [v for v in (score(grader, row) for row in rows) if v is not None]
++            values = [v for v in (score(grader, row) for row in rows) if v is not None or True]
++            values = [v if v is not None else 0.0 for v in values]
+             if values:
+                 means[grader.id] = sum(values) / len(values)
+         out[arm.name] = means

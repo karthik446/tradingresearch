@@ -1,0 +1,14 @@
+why: always resamples 10_000 rounds, whatever n the caller asks for
+expect: cluster_bootstrap(..., n=7) took
+before: GREEN (Codex review w1l4.4-1)
+--- a/src/tradingresearch/paired.py
++++ b/src/tradingresearch/paired.py
+@@ -52,7 +52,7 @@
+         raise ValueError(f"{len(by)} clusters; a paired interval needs at least {MIN_CLUSTERS}")
+     rng, keys = random.Random(seed), sorted(by)
+     means = []
+-    for _ in range(n):
++    for _ in range(10_000):
+         picked = [d for key in rng.choices(keys, k=len(keys)) for d in by[key]]
+         means.append(sum(picked) / len(picked))
+     means.sort()

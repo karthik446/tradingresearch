@@ -1,0 +1,16 @@
+why: counts only the author's 7 class names
+expect: counts whatever classes your rows name
+before: GREEN (Codex review)
+--- a/src/tradingresearch/taxonomy.py
++++ b/src/tradingresearch/taxonomy.py
+@@ -100,7 +100,9 @@ def class_counts(path: Path) -> dict[str, int]:
+     with Path(path).open(newline="") as fh:
+         for row in csv.DictReader(fh):
+             counts.update({name.strip() for name in (row["classes"] or "").split(";")} - TAGS - {""})
+-    return dict(counts)
++    known = {"window_name", "inference_wider", "judgement_in_fact", "opinion_cites", "label_in_value",
++             "number_outside_value", "other"}
++    return {k: v for k, v in counts.items() if k in known}
+ 
+ 
+ def code_classes(run: Path) -> dict[str, dict[str, list[str]]]:

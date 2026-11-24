@@ -1,0 +1,14 @@
+why: walks the traces sorted by item instead of in the run's order
+expect: the run's order
+before: GREEN (Codex review)
+--- a/src/tradingresearch/taxonomy.py
++++ b/src/tradingresearch/taxonomy.py
+@@ -77,7 +77,7 @@ def tally_notes(labels: Path, run: Path) -> dict[str, list[str]]:
+     traces = load_run(run)
+     notes = {row["analysis_id"]: row for row in rows}
+     out: dict[str, list[str]] = {"missed": [], "caught": [], "clean": [], "missing": [], "unknown": []}
+-    for trace in traces:
++    for trace in sorted(traces, key=lambda t: t["item"]):
+         row = notes.get(trace["analysis_id"])
+         if row is None:
+             out["missing"].append(trace["item"])

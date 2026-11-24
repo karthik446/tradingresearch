@@ -74,3 +74,14 @@ def test_zero_is_a_value():
             f"a fact 'The change today is {{value}} percent.' with value {zero!r}, citing a source that holds 0.0, was "
             f"rejected as {got['c1']}. 0 is a number the table holds; only a missing value (null) leaves {{value}} empty."
         )
+
+
+def test_several_bad_placeholders_are_sorted():
+    text = "The {zeta} close is {value} above the {alpha} line."
+    claim = {"id": "c1", "tag": "fact", "text": text, "value": 1.0, "unit": "usd", "source_ids": ["src_close"],
+             "derived_from": [], "steps": None}
+    got = reasons({"claims": [claim]}, {"src_close": 1.0}).get("c1")
+    assert got == ("bad_placeholder", "{alpha}, {zeta}"), (
+        f"a fact {text!r} gave {got}; expected ('bad_placeholder', '{{alpha}}, {{zeta}}'). With more than one bad "
+        "placeholder the detail lists them sorted, whatever order the text has them in."
+    )

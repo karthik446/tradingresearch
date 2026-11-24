@@ -3,6 +3,7 @@
 import os
 import random
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -34,6 +35,48 @@ def test_interval_matches_compare():
         f"cluster_bootstrap returned ({lo:+.3f}, {hi:+.3f}); gigai-core's compare printed [+0.450, +0.950] for "
         f"all_claims_valid.{narrow} Resample the 10 tickers with replacement, mean all diffs of the drawn tickers, "
         "repeat n times, read the 2.5th and 97.5th percentiles."
+    )
+
+
+@pytest.fixture
+def draws(monkeypatch):
+    """The test's draw source: random.Random, recording each seed it is built from and counting the numbers it gives."""
+    log = SimpleNamespace(seeds=[], count=0)
+
+    class Draws(random.Random):
+        def __init__(self, seed=None):
+            log.seeds.append(seed)
+            super().__init__(seed)
+
+        def random(self):
+            log.count += 1
+            return super().random()
+
+        def getrandbits(self, k):
+            log.count += 1
+            return super().getrandbits(k)
+
+    monkeypatch.setattr(random, "Random", Draws)
+    return log
+
+
+def test_the_callers_seed_seeds_the_draws(draws):
+    diffs = paired_diff(A, B, "inferences_grounded")
+    for seed in (3, 11, 42):
+        cluster_bootstrap(diffs, CLUSTERS, n=20, seed=seed)
+    assert draws.seeds == [3, 11, 42], (
+        f"three calls with seed=3, 11 and 42 built random.Random generators from the seeds {draws.seeds}. Each call "
+        "draws from one generator made from the caller's seed: otherwise two callers who ask for different resamples "
+        "get the same interval, and a rerun with the reported seed is not the same run."
+    )
+
+
+def test_n_is_the_number_of_resamples(draws):
+    cluster_bootstrap(paired_diff(A, B, "inferences_grounded"), CLUSTERS, n=7)
+    assert 70 <= draws.count <= 280, (
+        f"cluster_bootstrap(..., n=7) took {draws.count} random numbers from its generator. n is the number of "
+        "resampled means: 7 rounds, each drawing the 10 tickers with replacement, take 70 draws (a few more if a draw "
+        "is rejected and redrawn). The caller picks n to trade time for precision; it is not a constant."
     )
 
 

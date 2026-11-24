@@ -1,0 +1,14 @@
+why: seeds the generator with 0, whatever seed the caller passes
+expect: three calls with seed=3, 11 and 42
+before: GREEN (Codex review w1l4.4-2)
+--- a/src/tradingresearch/paired.py
++++ b/src/tradingresearch/paired.py
+@@ -50,7 +50,7 @@
+         by.setdefault(clusters[item], []).append(d)
+     if len(by) < MIN_CLUSTERS:
+         raise ValueError(f"{len(by)} clusters; a paired interval needs at least {MIN_CLUSTERS}")
+-    rng, keys = random.Random(seed), sorted(by)
++    rng, keys = random.Random(0), sorted(by)
+     means = []
+     for _ in range(n):
+         picked = [d for key in rng.choices(keys, k=len(keys)) for d in by[key]]

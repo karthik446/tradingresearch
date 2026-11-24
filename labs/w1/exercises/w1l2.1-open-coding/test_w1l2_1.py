@@ -98,6 +98,35 @@ def test_the_four_starting_notes(tmp_path):
         )
 
 
+def test_the_lists_follow_the_runs_order(tmp_path):
+    run = tmp_path / "reversed.jsonl"
+    run.write_text("".join(reversed(RUN.read_text().splitlines(keepends=True))))
+    items = list(reversed(pack()))
+    got = tally_notes(notes(tmp_path, ("AMZN:2026-11-13", "c4"), ("HD:2026-11-13", "c4")), run)
+    want = {"missed": ["HD:2026-11-13 c4", "AMZN:2026-11-13 c4"],
+            "missing": [i for i in items if i not in ("AMZN:2026-11-13", "HD:2026-11-13")]}
+    for key, value in want.items():
+        assert got.get(key) == value, (
+            f"on a run whose traces are in reverse order (first {items[0]}, last {items[-1]}), {key} should be "
+            f"{value[:3]}... (the run's order); got {(got.get(key) or [])[:3]}... The lists follow the order of the "
+            "traces in the run, whatever order their items sort in."
+        )
+
+
+def test_every_unknown_row_is_listed_in_the_files_order(tmp_path):
+    path = tmp_path / "labels.csv"
+    with path.open("w", newline="") as fh:
+        out = csv.writer(fh)
+        out.writerow(HEADER)
+        out.writerow(["an_00000000000000aa", "KO:2026-11-13", "c2", "a note on a trace of another run", ""])
+        out.writerow(["an_00000000000000bb", "AMZN:2026-11-13", "c4", "another note on another run", ""])
+    got = tally_notes(path, RUN).get("unknown")
+    assert got == ["KO:2026-11-13", "AMZN:2026-11-13"], (
+        f"two rows whose analysis_id is no trace of the run, KO:2026-11-13 then AMZN:2026-11-13, gave unknown={got}; "
+        "expected both, in the order the file has them"
+    )
+
+
 def labels() -> list[dict]:
     path = REPO / "evals" / "labels.csv"
     assert path.exists(), f"{path} does not exist; start it with the header {','.join(HEADER)}"

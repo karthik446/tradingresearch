@@ -2,7 +2,8 @@
 
 ## Hint 1
 
-`graders(names)` looks names up in `GRADERS`; anything not there exits. Add the class to the tuple that builds it.
+`graders(names)` looks names up in `GRADERS`; anything not there exits. Which line builds `GRADERS`, and which
+classes can it hold right now? Configs keep naming the graders that are already there.
 Then run the observe command: the analyses it flags should be the ones you labelled `inference_wider` in lab w1l2.
 
 ## Hint 2

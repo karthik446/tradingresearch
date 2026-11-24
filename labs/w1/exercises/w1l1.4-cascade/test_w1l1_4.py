@@ -68,3 +68,16 @@ def test_the_recorded_run_matches_the_author():
         f"the author's run scored claims_valid 0.748 with 4 of 20 analyses fully valid (week-1.md §2); yours "
         f"{mean}, {whole} of 20"
     )
+
+
+def test_missing_ids_keep_the_derived_from_order():
+    claims = {c["id"]: c for c in aapl()["output_parsed"]["claims"]}
+    cases = ((["c99", "c5"], [claims["c5"]], "unknown claim id: c99, c5"),
+             (["c9", "c5"], [claims["c5"], claims["c9"]], "derives from a rejected or later claim: c9, c5"))
+    for parents, others, detail in cases:
+        edited = {**claims["c8"], "derived_from": parents}
+        got = reasons({"claims": [claims["c1"], *others[:1], edited, *others[1:]]}, aapl()["values"]).get("c8")
+        assert got == ("bad_derivation", detail), (
+            f"c8 with derived_from {parents} gave {got}; expected ('bad_derivation', {detail!r}). The missing ids "
+            "are listed in the order derived_from has them, not sorted."
+        )

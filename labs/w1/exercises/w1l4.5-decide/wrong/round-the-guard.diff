@@ -1,0 +1,14 @@
+why: rounds the guard diff to 3 decimals, so a drop smaller than 0.0005 counts as no drop
+expect: The guard must not drop: any drop, however small
+before: GREEN (Codex review w1l4.5-2)
+--- a/src/tradingresearch/paired.py
++++ b/src/tradingresearch/paired.py
+@@ -61,7 +61,7 @@
+ 
+ def decide(primary_ci: tuple[float, float], guard_diff: float) -> str:
+     """The rule written before the run: ship only if the primary interval is above 0 and the guard did not drop."""
+-    return "ship" if primary_ci[0] > 0 and guard_diff >= 0 else "keep baseline"
++    return "ship" if primary_ci[0] > 0 and round(guard_diff, 3) >= 0 else "keep baseline"
+ 
+ 
+ def main() -> None:

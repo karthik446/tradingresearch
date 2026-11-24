@@ -56,3 +56,30 @@ def test_the_recorded_run_has_34_numbers_in_text():
         f"the recorded observe run has 34 claims with a digit outside {{value}}, dates and table names; your check "
         f"rejects {found}"
     )
+
+
+def claim(text: str) -> dict:
+    return {"id": "c1", "tag": "fact", "text": text, "value": None, "unit": None, "source_ids": ["src_close"],
+            "derived_from": [], "steps": None}
+
+
+def test_any_unicode_digit_is_a_number_in_text():
+    for digits in ("\uff12\uff10", "\u0662\u0660"):
+        text = f"AAPL sits just below its {digits}-day high."
+        _, rejected = validate_claims({"claims": [claim(text)]}, {"src_close": 1.0}, "an_lab")
+        got = {r.claim: r.reason for r in rejected}.get("c1")
+        assert got == "number_in_text", (
+            f"a fact {text!r} gave {got} (None: kept). {digits} is twenty written in other digits (full-width, "
+            "Arabic-Indic): still a number in prose. Any Unicode digit counts, not only 0-9."
+        )
+
+
+def test_the_detail_is_exactly_the_first_120_characters():
+    text = ("AAPL closed 3 sessions in a row above the sma_200, and the stretch from the average is now the widest "
+            "it has been since the spring rally.")
+    _, rejected = validate_claims({"claims": [claim(text)]}, {"src_close": 1.0}, "an_lab")
+    got = {r.claim: r.detail for r in rejected}.get("c1")
+    assert got == text[:120], (
+        f"a {len(text)}-character fact with a 3 in its prose gave the detail {got!r} "
+        f"({len(got or '')} characters); the detail is the first 120 characters of the text, no more and no fewer"
+    )

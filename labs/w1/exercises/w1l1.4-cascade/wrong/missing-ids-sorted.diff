@@ -1,0 +1,14 @@
+why: sorts the missing parents instead of keeping derived_from order
+expect: listed in the order derived_from has them
+before: GREEN (Codex review)
+--- a/src/tradingresearch/analyze.py
++++ b/src/tradingresearch/analyze.py
+@@ -269,7 +269,7 @@ def check_one(item: object, values: dict[str, float | None], kept: dict[str, Cla
+             got = ", ".join(f"{values[s]}" for s in cited)
+             return "unsourced_number", f"value={value}, cited sources hold {got}"
+     if tag == "inference":
+-        missing = [d for d in item.get("derived_from") or [] if d not in kept]
++        missing = sorted(d for d in item.get("derived_from") or [] if d not in kept)
+         if missing:
+             why = "derives from a rejected or later claim" if all(d in ids for d in missing) else "unknown claim id"
+             return "bad_derivation", f"{why}: {', '.join(missing)}"

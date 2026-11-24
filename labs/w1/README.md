@@ -23,7 +23,7 @@ labs/w1/
     fixtures/, observe.py  where an exercise needs its own data or observe command
 ```
 
-`check` and `observe` are repo-relative commands, run without a shell; a leading `python` is replaced by the interpreter `tr lab` and `prove.py` run under. `tr lab` notes an observe exit code other than 0 (it never decides the exercise); `observe_ok_exit` lists the codes that are no news, e.g. `[0, 1]` for w1l4.1's `git diff --no-index`, which exits 1 whenever the files differ. The `check` passes `-m lab` (a later `-m` overrides the `addopts` in `pyproject.toml`). Tests and tools read `labs/w1/data/`; `TR_LAB_DATA` overrides it. `.gitignore` re-includes `labs/**/data/` (the repo ignores `data/` elsewhere) and ignores `.tr-lab/`, the runner's state.
+`check` and `observe` are repo-relative commands, run without a shell; a leading `python` is replaced by the interpreter `tr lab` and `prove.py` run under. `tr lab` notes an observe exit code other than 0 (it never decides the exercise); `observe_ok_exit` lists the codes that are no news, for an observe that exits 1 by design (none of week 1's observes needs it). The `check` passes `-m lab` (a later `-m` overrides the `addopts` in `pyproject.toml`). Tests and tools read `labs/w1/data/`; `TR_LAB_DATA` overrides it. `.gitignore` re-includes `labs/**/data/` (the repo ignores `data/` elsewhere) and ignores `.tr-lab/`, the runner's state.
 
 ## Old and new ids
 

@@ -49,3 +49,22 @@ def test_grounding_passes_through_any_number_of_inferences():
 def test_a_cycle_stops():
     score = grade(fact("c1", "s1"), inference("c2", "Above sma_20.", "c1", "c3"), inference("c3", "So up.", "c2"))
     assert score.explanation == "c2: sma_20", f"explanation is {score.explanation!r}; expected 'c2: sma_20'"
+
+
+def test_a_chain_of_eight_still_reaches_the_fact():
+    chain = [inference(f"c{i}", "The move goes on.", f"c{i - 1}") for i in range(2, 8)]
+    score = grade(fact("c1", "s6"), *chain, inference("c8", "Near high_20.", "c7"))
+    assert score.value == 1.0, (
+        f"a chain of eight scored 0 ({score.explanation}): c8 names high_20, c2 to c7 are inferences that cite "
+        "nothing, and c1, seven steps up, cites high_20. The walk stops only at a claim it has already passed "
+        "through, never after a fixed number of steps."
+    )
+
+
+def test_every_parent_of_an_inference_parent_counts():
+    score = grade(fact("c1", "s1"), fact("c2", "s6"), inference("c3", "Price nears its high.", "c1", "c2"),
+                  inference("c4", "Near high_20.", "c3"))
+    assert score.value == 1.0, (
+        f"c4 scored 0 ({score.explanation}): c4 names high_20 and stands on c3, whose parents are c1 (close) and "
+        "c2 (high_20). cited(c3) is the union over all of c3's parents, not its first one."
+    )

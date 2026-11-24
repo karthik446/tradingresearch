@@ -83,6 +83,41 @@ def test_code_classes_matches_the_recording():
             )
 
 
+def claim(cid: str, tag: str, text: str, value: float | None, sources: list[str], parents: list[str]) -> dict:
+    return {"id": cid, "tag": tag, "text": text, "value": value, "unit": "usd" if value is not None else None,
+            "source_ids": sources, "derived_from": parents, "steps": None}
+
+
+def trace(item: str, values: dict, *claims: dict) -> dict:
+    return {"item": item, "analysis_id": "an_" + item[:3].lower().rjust(16, "0"), "values": values,
+            "output_parsed": {"claims": list(claims)}}
+
+
+def test_code_classes_reads_the_run_it_is_given(tmp_path):
+    clean = trace("QQQ:2030-01-02", {"src_a": 412.0},
+                  claim("c1", "fact", "The close stood at {value} USD.", 412.0, ["src_a"], []))
+    failing = trace("ZZZ:2030-01-02", {"src_a": 412.0, "src_b": None},
+                    claim("c1", "fact", "The 50-day average stood at {value} USD.", 412.0, ["src_a"], []),
+                    claim("c2", "fact", "The regime is labeled {value} today.", None, ["src_b"], []),
+                    claim("c3", "inference", "So the trend still points up.", None, [], ["c1"]),
+                    claim("c4", "fact", "The close stood 5 USD above it.", None, ["src_a"], []))
+    run = tmp_path / "run.jsonl"
+    run.write_text("".join(json.dumps(row) + "\n" for row in (clean, failing)))
+    want = {"window_name": {"ZZZ:2030-01-02": ["c1"]}, "label_in_value": {"ZZZ:2030-01-02": ["c2"]},
+            "cascade": {"ZZZ:2030-01-02": ["c3"]}}
+    got = code_classes(run)
+    assert got == want, (
+        f"on a two-trace run written for this test (QQQ:2030-01-02 clean; ZZZ:2030-01-02 c1 '50-day' in prose, c2 "
+        f"{{value}} with value null, c3 standing on c1, c4 '5 USD' in prose) code_classes returned {got}; expected "
+        f"{want}. It reads the run it is given, and lists only items with such a claim."
+    )
+    run.write_text(json.dumps(clean) + "\n")
+    got = code_classes(run)
+    assert got == {name: {} for name in HOW}, (
+        f"on a run whose only trace is clean, code_classes returned {got}; every class is still a key, with no items"
+    )
+
+
 def table() -> list[list[str]]:
     path = REPO / "evals" / "taxonomy.md"
     assert path.exists(), f"{path} does not exist"

@@ -2,8 +2,8 @@
 
 The first tests call rule_targets on short prompts written here. The rest read prompts/analyze-2.txt. That check is
 structural: it reads your words. It cannot tell whether a rule works (only a paid run can), only that each of the
-four target classes has a rule, that the window, inference and opinion rules do not point the wrong way, and that
-nothing else moved. Read your rules for meaning yourself.
+four target classes has a rule, that the window, inference, opinion and label rules do not point the wrong way, and
+that no line of analyze-1 outside its rule lines moved. Read your rules for meaning yourself.
 """
 
 import difflib
@@ -25,6 +25,11 @@ SAYS_NONE = re.compile(r"\bempty\b|\bno\b|\bnever\b|\bnothing\b|\bnone\b")
 SAYS_NOT = re.compile(r"\bnever\b|\bnot\b|\bno\b|\bavoid\b|n't\b")
 LIMITS = re.compile(r"\bonly\b|\bmust not\b|\bmay not\b|\bnever\b|\bcannot\b")
 PERMITS = re.compile(r"\bprefer|\bany\b|\balso\b|\bfreely\b")
+VALUE, TEXT = r"(?:the )?(?:\{value\}|\"value\"|value\b)", r"(?:the )?(?:\"text\"|text\b)"
+INTO_VALUE, OUT_OF_VALUE = re.compile(rf"\b(?:in|into|to) {VALUE}"), re.compile(rf"\bout of {VALUE}")
+INTO_TEXT = re.compile(rf"\b(?:in|into|to) {TEXT}")
+RULE_LINES = ('- tag "inference":', "  sentence; source_ids is empty.", '- tag "opinion":', "- Write numbers ONLY",
+              "  (sma_200, high_20, rsi_14).")  # the analyze-1 lines that hold the rules a variant may rewrite
 BASE = "Name indicators by their table name, never by their window.\nKeep it short.\n"
 
 
@@ -62,6 +67,36 @@ def test_a_rule_counts_whatever_its_case():
     )
 
 
+def test_a_rule_needs_every_word_of_an_option():
+    variant = BASE + "Every inference states its steps.\nOpinions are judgements.\n"
+    got = rule_targets(BASE, variant)
+    assert got == none_but(), (
+        f"rule_targets returned {got!r} for a variant that adds 'Every inference states its steps.' and 'Opinions are "
+        "judgements.'. Neither line names a class: a rule names one only when it holds every word of one option, so "
+        "inference_wider needs 'inference' together with 'cite', and opinion_cites needs 'opinion' together with "
+        "'derived_from' or 'source_ids'. A line that only mentions a claim tag says nothing about its failure."
+    )
+
+
+def test_rules_keep_the_variants_order():
+    rules = ["Never write a window such as 200-day.", "Avoid 20-day as well."]
+    got = rule_targets(BASE, BASE + "\n".join(rules) + "\n")
+    assert got.get("window_name") == rules, (
+        f"rule_targets filed {got.get('window_name')!r} under window_name for a variant that adds {rules!r}, in that "
+        "order. A class's rules stay in the order the variant has them, so the observe reads like the prompt."
+    )
+
+
+def test_one_rule_can_name_two_classes():
+    rule = "An opinion has empty derived_from; an inference may cite only what its parents cite."
+    got = rule_targets(BASE, BASE + rule + "\n")
+    want = none_but(inference_wider=[rule], opinion_cites=[rule])
+    assert got == want, (
+        f"rule_targets returned {got!r} for one added line that holds 'opinion' with 'derived_from' and 'inference' "
+        f"with 'cite'. That line names opinion_cites and inference_wider, so it is listed under each: {want!r}."
+    )
+
+
 def texts() -> tuple[list[str], list[str]]:
     old = (REPO / "prompts" / "analyze-1.txt").read_text().splitlines()
     path = REPO / "prompts" / "analyze-2.txt"
@@ -96,11 +131,15 @@ def test_each_targeted_class_has_a_rule():
 
 def test_only_the_rules_moved():
     old, new = texts()
-    for kept in (old[0], old[-1]):
-        assert kept in new, (
-            f"the line {kept!r} is gone. One change per experiment: if the role or the closing line also moves, a "
-            "difference cannot be traced to the rules."
+    at = 0
+    for line in (line for line in old if not line.startswith(RULE_LINES)):
+        assert line in new[at:], (
+            f"the line {line!r} of analyze-1.txt is missing from analyze-2.txt, or out of its place. Only the "
+            "inference, opinion and numbers lines may be rewritten, and new lines added; every other line stays word "
+            "for word, in the same order. One change per experiment: if the role, the format, the source rule or the "
+            "closing line also moves, a difference cannot be traced to the rules."
         )
+        at = new.index(line, at) + 1
 
 
 def test_the_opinion_rule_forbids_citations():
@@ -131,4 +170,16 @@ def test_the_inference_rule_limits_what_it_names():
         f"your inference rule {wrong[0]!r} reads as letting an inference name more than its parents cite. Class "
         "inference_wider is that failure, which InferencesGrounded flags. The rule has to limit the inference to what "
         "its derived_from claims cite. This check only reads words, so read the rule once more."
+    )
+
+
+def test_the_label_rule_keeps_labels_out_of_value():
+    sentences = [part.strip() for line in added() for part in re.split(r"(?<=\.)\s+", line) if "label" in part]
+    wrong = [s for s in sentences if (INTO_VALUE.search(s) and not (SAYS_NOT.search(s) or OUT_OF_VALUE.search(s)))
+             or not (INTO_TEXT.search(s) or SAYS_NOT.search(s) or OUT_OF_VALUE.search(s))]
+    assert not wrong, (
+        f"your label rule {wrong[0]!r} reads as putting a label in value. Class label_in_value is that failure: a text "
+        "label such as the regime written as {value} while value is null, which the placeholder check rejects as "
+        "empty_placeholder. The rule has to keep labels out of value. This check only reads words, so read the rule "
+        "once more for what it tells the model to do."
     )

@@ -69,7 +69,7 @@ class InferencesGrounded:
             # TODO(w1l3.2) allowed = union of cited(parent) for each parent in derived_from. After `used`: names in
             #   used - allowed are ungrounded; append "c4: sma_20, sma_50" (sorted, joined by ", ").
             words = f"{claim.get('text') or ''} {claim.get('steps') or ''}"
-            # TODO(w1l3.4) whole tokens only: sma_20 must not match inside sma_200 or dist_sma_20_atr.
+            # TODO(w1l3.4) whole tokens, matched literally, case included: sma_20 not inside sma_200 or dist_sma_20_atr.
             used = {name for name in vocab if name in words}
         return Score(value=0.0 if ungrounded else 1.0, explanation="; ".join(ungrounded) or None)
 

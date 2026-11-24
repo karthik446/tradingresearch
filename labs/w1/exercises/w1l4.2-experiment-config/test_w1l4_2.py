@@ -97,6 +97,39 @@ def test_only_the_configs_items_count(tmp_path):
     )
 
 
+def broken(tmp_path: Path, tickers: list[str]) -> Path:
+    """The analyze-1 recording with some tickers' replies unparseable: a grader that needs a parse cannot grade them."""
+    path = tmp_path / "broken.jsonl"
+    with path.open("w") as fh:
+        for row in map(json.loads, RECORDED["analyze-1"].open()):
+            if row["cluster"] in tickers:
+                row = row | {"parse_status": "invalid_json", "output_parsed": None}
+            fh.write(json.dumps(row) + "\n")
+    return path
+
+
+def test_a_reply_that_cannot_be_graded_is_left_out(tmp_path):
+    path = broken(tmp_path, ["KO", "CAT"])
+    got = replay(a_config(tmp_path, [("baseline", "analyze-1")], ["parsed", "all_claims_valid"]), {"analyze-1": path})
+    want = {"baseline": {"parsed": 0.8, "all_claims_valid": regraded(path, "all_claims_valid")}}
+    assert same(got, want), (
+        f"replay returned {got!r} for the analyze-1 recording with KO's and CAT's 4 replies unparseable; expected "
+        f"{want!r}. all_claims_valid cannot grade a reply that did not parse (score is None), so its mean is over the "
+        "16 it could grade: a reply it never graded is no failure. parsed grades all 20, the 4 as 0."
+    )
+
+
+def test_a_grader_that_could_grade_nothing_is_left_out(tmp_path):
+    path = broken(tmp_path, TICKERS)
+    got = replay(a_config(tmp_path, [("baseline", "analyze-1")], ["parsed", "all_claims_valid"]), {"analyze-1": path})
+    want = {"baseline": {"parsed": 0.0}}
+    assert same(got, want), (
+        f"replay returned {got!r} for analyze-1 replies none of which parsed; expected {want!r}. all_claims_valid "
+        "could grade none of them, so it has no mean and is left out: a 0.0 there would read as 'graded, and every "
+        "reply failed'."
+    )
+
+
 def config():
     assert PATH.exists(), "experiments/prompt-v2.toml does not exist: start from experiments/observe.toml"
     try:
@@ -131,12 +164,17 @@ def test_the_new_grader_runs_and_the_rule_is_written():
     head = "\n".join(line for line in PATH.read_text().splitlines() if line.startswith("#")).lower()
     rule = {role: re.search(rf"{role}[^;.\n]*?\b({GRADER_ID})\b", head) for role in ("primary", "guard")}
     assert rule["primary"] and rule["guard"] and rule["primary"].group(1) == "all_claims_valid", (
-        "the comment at the top must pre-register the rule: the primary metric (all_claims_valid) and a guard metric, "
-        "each named by its grader id, written before the run so the result cannot pick the rule"
+        "the comment at the top must pre-register the rule: the primary metric (all_claims_valid) and the guard metric "
+        "(parsed), each named by its grader id, written before the run so the result cannot pick the rule"
     )
     for role, found in rule.items():
         assert found.group(1) in cfg.graders, (
             f"your comment names {found.group(1)} as the {role} metric, but graders is {list(cfg.graders)}: the run "
             "would not record the number the rule reads, so the decision could not be made from it"
         )
+    assert rule["guard"].group(1) == "parsed", (
+        f"your comment names {rule['guard'].group(1)} as the guard metric. This experiment's guard is parsed: a new "
+        "rule must not cost replies that parse, and the decision of lab w1l4.5 reads parsed as its guard. A guard the "
+        "decision does not read vetoes nothing."
+    )
     assert cfg.max_usd_per_arm <= 1.0, f"max_usd_per_arm is {cfg.max_usd_per_arm}: the author's cap is $1.00 per arm"

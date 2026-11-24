@@ -1,0 +1,14 @@
+why: registers InferencesGrounded but drops the three graders already there
+expect: The three graders registered before still have to be found
+before: GREEN (Codex review)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -75,7 +75,7 @@ class InferencesGrounded:
+         return Score(value=0.0 if ungrounded else 1.0, explanation="; ".join(ungrounded) or None)
+ 
+ 
+-GRADERS = {grader.id: grader for grader in (Parsed, ClaimsValid, AllClaimsValid, InferencesGrounded)}
++GRADERS = {grader.id: grader for grader in (InferencesGrounded,)}
+ 
+ 
+ def graders(names: list[str]) -> list:

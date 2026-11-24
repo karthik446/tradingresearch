@@ -60,3 +60,17 @@ def test_the_dataset_hash_moves():
         "the dataset sha256 did not change, so expected did not change. A run records this hash: runs made before and "
         "after this change must not be compared as if they used the same dataset (week-1.md §5)."
     )
+
+
+def test_names_come_from_the_context_given():
+    rows = [Row(source_id="src_zz01", name="close", value=12.5, unit="usd"),
+            Row(source_id="src_zz02", name="regime", value=None, unit=None, label="bull"),
+            Row(source_id="src_zz03", name="revenue_CY2025Q2", value=1.0, unit="usd")]
+    got = item_for(Context("ZZZ", date(2030, 1, 2), None, [], rows)).expected.get("names")
+    want = {"src_zz01": "close", "src_zz02": "regime", "src_zz03": "revenue_CY2025Q2"}
+    assert got == want, (
+        f"item_for on a made-up ZZZ:2030-01-02 table of 3 rows (close, the regime label row, revenue_CY2025Q2) gave "
+        f"names={got}; expected {want}. names comes from the rows of the context given, whatever its ticker or day."
+    )
+    got = item_for(Context("ZZZ", date(2030, 1, 2), None, [], [])).expected.get("names")
+    assert got == {}, f"a context with no rows gave names={got}; a table with no rows has no names: {{}}"

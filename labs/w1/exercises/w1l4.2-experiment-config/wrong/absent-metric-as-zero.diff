@@ -1,0 +1,15 @@
+why: reports a grader that could grade no reply as a mean of 0.0 instead of leaving it out
+expect: for analyze-1 replies none of which parsed
+before: new (W1FIX-B)
+--- a/src/tradingresearch/replay.py
++++ b/src/tradingresearch/replay.py
+@@ -101,8 +101,7 @@
+         means = {}
+         for grader in graders:
+             values = [v for v in (score(grader, row) for row in rows) if v is not None]
+-            if values:
+-                means[grader.id] = sum(values) / len(values)
++            means[grader.id] = sum(values) / len(values) if values else 0.0
+         out[arm.name] = means
+     return out
+ 

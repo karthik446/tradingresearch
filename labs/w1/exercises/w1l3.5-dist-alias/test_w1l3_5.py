@@ -52,3 +52,13 @@ def test_only_the_exact_dist_atr_shape_is_an_alias():
             f"c2 'Above {named}.' derives from a fact citing only {names['s1']}, yet scored {score.value:g} "
             f"({score.explanation}). {names['s1']} grounds nothing extra: {why}."
         )
+
+
+def test_every_cited_dist_atr_name_adds_its_level():
+    names = {"s1": "close", "s2": "sma_200", "s3": "dist_sma_200_atr", "s6": "high_20", "s7": "dist_high_20_atr"}
+    score = grade(fact("c1", "s1", "s3", "s7"), inference("c2", "Between sma_200 and high_20.", "c1"), names=names)
+    assert score.value == 1.0, (
+        f"c2 'Between sma_200 and high_20.' scored 0 ({score.explanation}): its parent c1 cites close, "
+        "dist_sma_200_atr and dist_high_20_atr, so both sma_200 and high_20 are grounded. Each cited "
+        "dist_<name>_atr adds its own <name>."
+    )

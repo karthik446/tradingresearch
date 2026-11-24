@@ -1,0 +1,14 @@
+why: lists only the first row whose analysis_id is unknown
+expect: expected both, in the order the file has them
+before: GREEN (Codex review)
+--- a/src/tradingresearch/taxonomy.py
++++ b/src/tradingresearch/taxonomy.py
+@@ -87,7 +87,7 @@ def tally_notes(labels: Path, run: Path) -> dict[str, list[str]]:
+             kind = "caught" if row["first_failure"] in dict(rejected(trace)) else "missed"
+             out[kind].append(f"{trace['item']} {row['first_failure']}")
+     ids = {trace["analysis_id"] for trace in traces}
+-    out["unknown"] = [row["item"] for row in rows if row["analysis_id"] not in ids]
++    out["unknown"] = [row["item"] for row in rows if row["analysis_id"] not in ids][:1]
+     return out
+ 
+ 

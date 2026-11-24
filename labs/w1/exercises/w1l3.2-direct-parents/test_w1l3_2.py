@@ -79,3 +79,20 @@ def test_names_in_steps_count_too():
         f"c2 scored {score.value:g} ({score.explanation}): its text names no indicator, but its steps name high_20 and "
         "its only parent c1 cites close. The steps are part of the inference, so a name there needs grounding too."
     )
+
+
+def test_an_inference_with_no_parents_grounds_nothing():
+    score = grade(fact("c1", "s4"), inference("c2", "Price is above sma_20."))
+    assert score.explanation == "c2: sma_20", (
+        f"c2 'Price is above sma_20.' has derived_from [] and scored {score.value:g} ({score.explanation}). With no "
+        "parents nothing is allowed, so every name it uses is ungrounded: 'c2: sma_20'. (Fact c1 cites sma_20, but "
+        "c1 is not c2's parent.)"
+    )
+
+
+def test_every_ungrounded_name_is_listed():
+    score = grade(fact("c1", "s1"), inference("c2", "Above sma_20 and sma_50, below high_20.", "c1"))
+    assert score.explanation == "c2: high_20, sma_20, sma_50", (
+        f"c2 names sma_20, sma_50 and high_20, its parent c1 cites only close; explanation is {score.explanation!r}. "
+        "List all three, sorted: 'c2: high_20, sma_20, sma_50'"
+    )

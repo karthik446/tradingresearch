@@ -251,9 +251,9 @@ def check_one(item: object, values: dict[str, float | None], kept: dict[str, Cla
     if not isinstance(item, dict):
         return "not_a_claim", "claim is not an object"
     text, tag, value = str(item.get("text", "")), item.get("tag"), item.get("value")
-    # TODO(w1l1.2) number_in_text: reject a claim whose text has a digit that is not inside {value}, a YYYY-MM-DD
-    #   date or a word such as sma_200. ALLOWED_DIGITS (above) matches exactly those three; remove its matches
-    #   from `text`, then look for a digit in what is left. Detail: the first 120 characters of the text.
+    # TODO(w1l1.2) number_in_text: reject a claim whose text has a digit (any Unicode digit, \d) that is not inside
+    #   {value}, a YYYY-MM-DD date or a word such as sma_200. ALLOWED_DIGITS (above) matches exactly those three;
+    #   remove its matches from `text`, then look for a digit in what is left. Detail: the first 120 characters.
     # TODO(w1l1.3) placeholders: "{value}" is the only placeholder (anything else in braces is bad_placeholder,
     #   detail: the others, sorted, joined by ", "), and it needs a value (empty_placeholder,
     #   detail: "text has {value} but value is null").
@@ -270,7 +270,7 @@ def check_one(item: object, values: dict[str, float | None], kept: dict[str, Cla
     if tag == "inference":
         # TODO(w1l1.4) cascade: every id in derived_from must be a claim already in `kept`. If one is not, reject
         #   with bad_derivation: "derives from a rejected or later claim: c5" when every missing id is a claim
-        #   of this reply (`ids`), else "unknown claim id: c99". Missing ids joined by ", ".
+        #   of this reply (`ids`), else "unknown claim id: c99". Missing ids in derived_from order, joined by ", ".
         if value is not None:
             parents = [kept[d].value for d in item["derived_from"]]
             if not any(p is not None and close_to(float(value), p) for p in parents):

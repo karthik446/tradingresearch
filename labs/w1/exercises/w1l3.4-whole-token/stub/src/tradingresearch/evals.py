@@ -69,7 +69,7 @@ class InferencesGrounded:
                 continue
             allowed = set().union(*(cited(parent) for parent in claim.get("derived_from") or []))
             words = f"{claim.get('text') or ''} {claim.get('steps') or ''}"
-            # TODO(w1l3.4) whole tokens only: sma_20 must not match inside sma_200 or dist_sma_20_atr.
+            # TODO(w1l3.4) whole tokens, matched literally, case included: sma_20 not inside sma_200 or dist_sma_20_atr.
             used = {name for name in vocab if name in words}
             if extra := sorted(used - allowed):
                 ungrounded.append(f"{claim_id}: {', '.join(extra)}")

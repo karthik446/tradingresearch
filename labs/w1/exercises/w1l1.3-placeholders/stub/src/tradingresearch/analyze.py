@@ -269,7 +269,7 @@ def check_one(item: object, values: dict[str, float | None], kept: dict[str, Cla
     if tag == "inference":
         # TODO(w1l1.4) cascade: every id in derived_from must be a claim already in `kept`. If one is not, reject
         #   with bad_derivation: "derives from a rejected or later claim: c5" when every missing id is a claim
-        #   of this reply (`ids`), else "unknown claim id: c99". Missing ids joined by ", ".
+        #   of this reply (`ids`), else "unknown claim id: c99". Missing ids in derived_from order, joined by ", ".
         if value is not None:
             parents = [kept[d].value for d in item["derived_from"]]
             if not any(p is not None and close_to(float(value), p) for p in parents):

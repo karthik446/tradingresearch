@@ -94,7 +94,7 @@ def tally_notes(labels: Path, run: Path) -> dict[str, list[str]]:
 def class_counts(path: Path) -> dict[str, int]:
     """Analyses per class: a row adds one to each class it lists, however often it lists it.
 
-    Classes are ';'-separated in the `classes` column. Blanks and TAGS are skipped.
+    Classes are ';'-separated in `classes`; names are stripped and case-sensitive. Blanks and TAGS are skipped.
     """
     # TODO(w1l2.2) read the CSV with csv.DictReader and count.
     return {}

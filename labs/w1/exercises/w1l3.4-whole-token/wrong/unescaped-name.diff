@@ -1,0 +1,14 @@
+why: puts the name into the pattern unescaped, so ( ) in a name break it
+expect: A table name is text to find as it is
+before: GREEN (Codex review)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -69,7 +69,7 @@ class InferencesGrounded:
+                 continue
+             allowed = set().union(*(cited(parent) for parent in claim.get("derived_from") or []))
+             words = f"{claim.get('text') or ''} {claim.get('steps') or ''}"
+-            used = {name for name in vocab if re.search(rf"(?<![A-Za-z0-9_]){re.escape(name)}(?![A-Za-z0-9_])", words)}
++            used = {name for name in vocab if re.search(rf"(?<![A-Za-z0-9_]){name}(?![A-Za-z0-9_])", words)}
+             if extra := sorted(used - allowed):
+                 ungrounded.append(f"{claim_id}: {', '.join(extra)}")
+         return Score(value=0.0 if ungrounded else 1.0, explanation="; ".join(ungrounded) or None)

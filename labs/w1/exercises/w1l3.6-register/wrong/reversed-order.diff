@@ -1,0 +1,11 @@
+why: returns the graders in reverse order
+expect: in the order the config lists them
+before: GREEN (Codex review)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -82,4 +82,4 @@ def graders(names: list[str]) -> list:
+     unknown = [name for name in names if name not in GRADERS]
+     if unknown:
+         raise SystemExit(f"unknown grader(s) {unknown}; registered: {sorted(GRADERS)}")
+-    return [GRADERS[name]() for name in names]
++    return [GRADERS[name]() for name in reversed(names)]

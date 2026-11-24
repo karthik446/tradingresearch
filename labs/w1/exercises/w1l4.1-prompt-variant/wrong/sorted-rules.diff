@@ -1,0 +1,14 @@
+why: lists each class's rules sorted instead of in the variant's order
+expect: under window_name for a variant that adds
+before: GREEN (Codex review w1l4.1-2)
+--- a/src/tradingresearch/replay.py
++++ b/src/tradingresearch/replay.py
+@@ -78,7 +78,7 @@
+     """
+     old = {line.strip() for line in base.splitlines()}
+     rules = [line.strip() for line in variant.splitlines() if line.strip() and line.strip() not in old]
+-    return {name: [rule for rule in rules if any(all(word in rule.lower() for word in words) for words in options)]
++    return {name: [rule for rule in sorted(rules) if any(all(word in rule.lower() for word in words) for words in options)]
+             for name, options in CLASS_WORDS.items()}
+ 
+ 

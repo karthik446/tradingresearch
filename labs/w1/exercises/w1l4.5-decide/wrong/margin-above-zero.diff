@@ -1,0 +1,14 @@
+why: ships only above a margin of 0.000001, so a low end that is above 0 but tiny keeps the baseline
+expect: Every low end here is above 0
+before: GREEN (Codex review w1l4.5-1)
+--- a/src/tradingresearch/paired.py
++++ b/src/tradingresearch/paired.py
+@@ -61,7 +61,7 @@
+ 
+ def decide(primary_ci: tuple[float, float], guard_diff: float) -> str:
+     """The rule written before the run: ship only if the primary interval is above 0 and the guard did not drop."""
+-    return "ship" if primary_ci[0] > 0 and guard_diff >= 0 else "keep baseline"
++    return "ship" if primary_ci[0] > 0.000001 and guard_diff >= 0 else "keep baseline"
+ 
+ 
+ def main() -> None:

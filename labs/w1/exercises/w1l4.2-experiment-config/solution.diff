@@ -2,8 +2,8 @@
 +++ b/experiments/prompt-v2.toml
 @@ -1,14 +1,16 @@
  # Week 1, step 6: does analyze-2 (three rules from the taxonomy) beat analyze-1 on the same 20 ticker-days?
--# TODO(w1l4.2) pre-register here, before any run: the primary metric (decides) and a guard metric (must not drop).
--#   Then add the lab w1l3 grader and a second arm that differs from the baseline only in its prompt.
+-# TODO(w1l4.2) pre-register here, before any run: the primary metric (decides); the guard metric is parsed (must not
+-#   drop). Then add the lab w1l3 grader and a second arm that differs from the baseline only in its prompt.
 +# Pre-registered before the run (ADR-002): primary metric all_claims_valid; guard metric parsed must not drop.
  name = "prompt-v2"
  model = "anthropic/claude-sonnet-5.5"

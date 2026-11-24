@@ -1,0 +1,14 @@
+why: cuts the detail one character short
+expect: no more and no fewer
+before: GREEN (Codex review)
+--- a/src/tradingresearch/analyze.py
++++ b/src/tradingresearch/analyze.py
+@@ -252,7 +252,7 @@ def check_one(item: object, values: dict[str, float | None], kept: dict[str, Cla
+         return "not_a_claim", "claim is not an object"
+     text, tag, value = str(item.get("text", "")), item.get("tag"), item.get("value")
+     if re.search(r"\d", ALLOWED_DIGITS.sub("", text)):
+-        return "number_in_text", text[:120]
++        return "number_in_text", text[:119]
+     # TODO(w1l1.3) placeholders: "{value}" is the only placeholder (anything else in braces is bad_placeholder,
+     #   detail: the others, sorted, joined by ", "), and it needs a value (empty_placeholder,
+     #   detail: "text has {value} but value is null").

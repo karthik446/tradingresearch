@@ -1,0 +1,14 @@
+why: recurses into the first parent of an inference only
+expect: not its first one
+before: GREEN (Codex review)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -59,7 +59,7 @@ class InferencesGrounded:
+                 return set()
+             found = {names.get(source, "") for source in claim.get("source_ids") or []}
+             # TODO(w1l3.5) a parent that cites dist_sma_200_atr also grounds sma_200: add <name> for each dist_<name>_atr.
+-            for parent in claim.get("derived_from") or []:
++            for parent in (claim.get("derived_from") or [])[:1]:
+                 found |= cited(parent, seen | {claim_id})
+             return found
+ 

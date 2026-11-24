@@ -1,0 +1,14 @@
+why: never judges an inference that has no parents
+expect: With no parents nothing is allowed
+before: GREEN (Codex review)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -64,7 +64,7 @@ class InferencesGrounded:
+ 
+         ungrounded = []
+         for claim_id, claim in claims.items():
+-            if claim.get("tag") != "inference":
++            if claim.get("tag") != "inference" or not claim.get("derived_from"):
+                 continue
+             allowed = set().union(*(cited(parent) for parent in claim.get("derived_from") or []))
+             words = f"{claim.get('text') or ''} {claim.get('steps') or ''}"

@@ -1,0 +1,12 @@
+why: pre-registers claims_valid as the guard, but the decision reads parsed
+expect: names claims_valid as the guard metric
+before: GREEN (Codex review w1l4.2-extra5)
+--- a/experiments/prompt-v2.toml
++++ b/experiments/prompt-v2.toml
+@@ -1,5 +1,5 @@
+ # Week 1, step 6: does analyze-2 (three rules from the taxonomy) beat analyze-1 on the same 20 ticker-days?
+-# Pre-registered before the run (ADR-002): primary metric all_claims_valid; guard metric parsed must not drop.
++# Pre-registered before the run (ADR-002): primary metric all_claims_valid; guard metric claims_valid must not drop.
+ name = "prompt-v2"
+ model = "anthropic/claude-sonnet-5.5"
+ max_usd_per_arm = 1.00

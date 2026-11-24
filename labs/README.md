@@ -55,6 +55,8 @@ A failed run is a red `tr lab verify` of the current exercise. A check that cann
 
 The numbers live in one place, the week's `lab.toml` ([labs/w1/lab.toml](w1/lab.toml)): `[unlock] hints = [2, 5]` and `solution = 10`. A lab can override them with its own `[labs.<lab>.unlock]` table. `tr lab reset` zeroes the count of the current exercise.
 
+The labs are an honor system. They run on your machine against files you can edit, and `tr lab` does not verify that the tests, the exercise metadata or the recorded data under `labs/` are the ones the course shipped: a rewritten test or a `check` of `python -c pass` will turn an exercise green. A green only means something if you leave those files alone. `tr lab next` lists files outside the exercise's `touches`, and `git diff` against the branch you started from shows any change to course files. The solution diffs are in the repo for the same reason: opening them early costs you the exercise, not anyone else.
+
 ## Your work and git
 
 - `start` works on a branch `lab`, so your `main` is untouched.

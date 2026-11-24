@@ -40,3 +40,21 @@ def test_a_class_listed_twice_in_a_row_counts_once(tmp_path):
 def test_a_clean_row_adds_nothing(tmp_path):
     got = class_counts(write(tmp_path, "", "cascade"))
     assert got == {}, f"an empty classes column and a row tagged only cascade add no class; got {got}"
+
+
+def test_any_class_a_row_lists_is_counted(tmp_path):
+    got = class_counts(write(tmp_path, "sign_backwards", "sign_backwards; missing_unit",
+                             "cascade; missing_unit; sign_backwards"))
+    assert got == {"sign_backwards": 3, "missing_unit": 2}, (
+        f"three rows listing sign_backwards (3 rows) and missing_unit (2 rows) gave {got}. class_counts counts "
+        "whatever classes your rows name, not a fixed list of the author's."
+    )
+
+
+def test_class_names_are_case_sensitive(tmp_path):
+    got = class_counts(write(tmp_path, "Window_Name; window_name"))
+    assert got == {"Window_Name": 1, "window_name": 1}, (
+        f"a row listing 'Window_Name; window_name' gave {got}; expected {{'Window_Name': 1, 'window_name': 1}}. "
+        "Class names are counted as written: a miscased name is another class, which w1l2.4 then reports as no row "
+        "of the table, instead of being merged silently."
+    )
