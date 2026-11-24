@@ -7,5 +7,5 @@ Then run the observe command: the analyses it flags should be the ones you label
 
 ## Hint 2
 
-`GRADERS = {grader.id: grader for grader in (Parsed, ClaimsValid, AllClaimsValid, InferencesGrounded)}`. If the flags
+The registry is keyed by each grader's `id`, so the new class is found by the name a config uses. If the flags
 and labels still differ, print both lists and read those analyses: that disagreement is the spec's acceptance test.

@@ -7,5 +7,5 @@ An inference cites no sources itself; what it can name comes from its own parent
 
 ## Hint 2
 
-Inside `cited`, before `return found`:
-`for parent in claim.get("derived_from") or []: found |= cited(parent, seen | {claim_id})`.
+The recursion goes inside `cited`, after the claim's own sources are collected and before it returns: add what
+each parent cites. Pass `seen` with the current claim added, so a loop stops.

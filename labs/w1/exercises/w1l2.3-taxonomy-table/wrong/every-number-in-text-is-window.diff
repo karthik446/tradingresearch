@@ -1,0 +1,14 @@
+why: files every number_in_text claim under window_name, window or not
+expect: These are rejected as number_in_text, but their text names no window
+before: new (F07a)
+--- a/src/tradingresearch/taxonomy.py
++++ b/src/tradingresearch/taxonomy.py
+@@ -115,7 +115,7 @@
+     for trace in load_run(run):
+         texts = claim_texts(trace)
+         for claim, reason in rejected(trace):
+-            if reason == "number_in_text" and WINDOW.search(texts.get(claim, "")):
++            if reason == "number_in_text":
+                 name = "window_name"
+             else:
+                 name = {"empty_placeholder": "label_in_value", "bad_derivation": "cascade"}.get(reason)

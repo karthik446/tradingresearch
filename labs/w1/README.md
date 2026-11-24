@@ -65,6 +65,7 @@ It takes one to three minutes (65-182 s measured) and never touches the clone it
 
 - **The chain**, exercise by exercise: the stub is red with the message in `red_expect`; `solution.diff` makes it green; every earlier check of the lab stays green; every `wrong/*.diff` is red with its `expect:` message; a stub never overwrites a learner's data file from an earlier exercise.
 - **The end state**: after w1l4.5, the six files week 1 ends with equal the `week-1-end` tag byte for byte.
+- **The hint guard** (F11): every `hints.md` is prose. No fenced block of more than one line, and no line copied from the exercise's `solution.diff`; a self-test plants a leak and the guard must catch it.
 - **A runner smoke**: `tr lab` itself through lab w1l1 (start, red verify, next refused, hint locked then unlocked, solution, verify, next, the repo-suite gate), then `start w1l3 --assume-previous`.
 
 It exits 1 if any row reads NOT PROVEN. Re-run it after changing an exercise, a stub, a test message or `lab.py`. The runner's own unit tests are `tests/test_lab.py`, which run under plain `pytest -q`.

@@ -1,8 +1,9 @@
-"""w1l4.1 prompt variant: prompts/analyze-2.txt changes only the rules your taxonomy points at.
+"""w1l4.1 prompt variant: rule_targets in src/tradingresearch/replay.py, then prompts/analyze-2.txt.
 
-The check is structural: it reads your words. It cannot tell whether a rule works (only a paid run can), only that
-each of the four target classes has a rule, that the window, inference and opinion rules do not point the wrong way,
-and that nothing else moved. Read your rules for meaning yourself.
+The first tests call rule_targets on short prompts written here. The rest read prompts/analyze-2.txt. That check is
+structural: it reads your words. It cannot tell whether a rule works (only a paid run can), only that each of the
+four target classes has a rule, that the window, inference and opinion rules do not point the wrong way, and that
+nothing else moved. Read your rules for meaning yourself.
 """
 
 import difflib
@@ -10,6 +11,7 @@ import re
 from pathlib import Path
 
 import tradingresearch
+from tradingresearch.replay import rule_targets
 
 REPO = Path(tradingresearch.__file__).resolve().parents[2]
 CLASSES = {  # target class (the ids lab w1l2 fixes) -> words one of your added lines must contain (all of a tuple)
@@ -23,6 +25,41 @@ SAYS_NONE = re.compile(r"\bempty\b|\bno\b|\bnever\b|\bnothing\b|\bnone\b")
 SAYS_NOT = re.compile(r"\bnever\b|\bnot\b|\bno\b|\bavoid\b|n't\b")
 LIMITS = re.compile(r"\bonly\b|\bmust not\b|\bmay not\b|\bnever\b|\bcannot\b")
 PERMITS = re.compile(r"\bprefer|\bany\b|\balso\b|\bfreely\b")
+BASE = "Name indicators by their table name, never by their window.\nKeep it short.\n"
+
+
+def none_but(**rules: list[str]) -> dict[str, list[str]]:
+    return {name: rules.get(name, []) for name in CLASSES}
+
+
+def test_rule_targets_lists_every_class():
+    got = rule_targets(BASE, BASE)
+    assert got == none_but(), (
+        f"rule_targets returned {got!r} for two identical prompts. Two identical prompts add no rule, and every target "
+        f"class is still a key: {none_but()!r}. The observe prints one line per class, rule or not."
+    )
+
+
+def test_a_line_in_both_prompts_is_no_rule():
+    variant = BASE.replace("Keep it short.", "  {value} is the only placeholder.\nKeep it short.")
+    got = rule_targets(BASE, variant)
+    kept = [rule for rules in got.values() for rule in rules if rule in BASE]
+    assert not kept, (
+        f"rule_targets filed {kept[0]!r} as a rule, but that line is in both prompts. A rule is a line the variant has "
+        "and the base does not; otherwise every prompt would get credit for the rules it started with."
+    )
+    want = none_but(label_in_value=["{value} is the only placeholder."])
+    assert got == want, f"rule_targets returned {got!r} for a variant that adds one indented line; expected {want!r}"
+
+
+def test_a_rule_counts_whatever_its_case():
+    variant = BASE + "Inference claims cite only what their parents cite.\n"
+    got = rule_targets(BASE, variant)
+    assert got.get("inference_wider") == ["Inference claims cite only what their parents cite."], (
+        "rule_targets filed nothing under inference_wider for the added rule 'Inference claims cite only what their "
+        f"parents cite.' (got {got!r}). A rule that starts with a capital names the same class: 'Inference' and "
+        "'inference' are one word to the model."
+    )
 
 
 def texts() -> tuple[list[str], list[str]]:

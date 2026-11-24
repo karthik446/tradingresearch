@@ -2,10 +2,13 @@
 
 ## Hint 1
 
-Copy the shape of `experiments/observe.toml`: same model, tickers and sessions, so the items are the ones your
-taxonomy came from. A second `[[arms]]` table with `prompt = "analyze-2"` is the variant.
+For `replay`: `load` gives the arms, items and grader ids; `registry` turns the ids into graders. For each arm,
+take the recording of its prompt, keep only the config's ticker-days, and grade every reply with `score`. A `None`
+means the grader could not grade that reply: leave it out of the mean.
 
 ## Hint 2
 
-The second comment line is the pre-registration: "primary metric all_claims_valid; guard metric parsed must not
-drop". Add `"inferences_grounded"` to `graders`; `load` refuses it if lab w1l3 did not register it.
+For the config: copy the shape of `experiments/observe.toml` (same model, tickers and sessions), add a second arm
+that differs only in its prompt, and add the lab w1l3 grader. The top comment pre-registers the decision before any
+run: the primary metric and the guard metric, each named by its grader id. Run the observe to see what the arms
+score on the recorded replies.

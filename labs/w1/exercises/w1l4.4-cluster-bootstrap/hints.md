@@ -7,5 +7,6 @@ independent draws. Group the diffs by `clusters[item]` first; with fewer than 10
 
 ## Hint 2
 
-`rng = random.Random(seed)`; each round `rng.choices(keys, k=len(keys))`, flatten the drawn tickers' diffs, take the
-mean. Sort the n means and return `means[int(n * 0.025)]`, `means[int(n * 0.975) - 1]` for level 0.95.
+Seed one `random.Random` and, each round, draw as many tickers as there are, with replacement; the round's mean is
+over all diffs of the drawn tickers. Sort the n means; the low end sits at position n × 0.025 (rounded down), the high
+end just before position n × 0.975.

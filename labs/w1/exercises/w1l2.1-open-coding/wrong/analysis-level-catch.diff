@@ -1,0 +1,14 @@
+why: counts a note as caught when the code rejects any claim of the analysis
+expect: HD:2026-11-13 c4 should be under missed
+before: new (F07a)
+--- a/src/tradingresearch/taxonomy.py
++++ b/src/tradingresearch/taxonomy.py
+@@ -84,7 +84,7 @@
+         elif row["first_failure"] == "-":
+             out["clean"].append(trace["item"])
+         else:
+-            kind = "caught" if row["first_failure"] in dict(rejected(trace)) else "missed"
++            kind = "caught" if rejected(trace) else "missed"
+             out[kind].append(f"{trace['item']} {row['first_failure']}")
+     ids = {trace["analysis_id"] for trace in traces}
+     out["unknown"] = [row["item"] for row in rows if row["analysis_id"] not in ids]

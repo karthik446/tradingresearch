@@ -1,0 +1,14 @@
+why: no branch for first_failure '-', so a clean analysis lands under missed
+expect: should be listed under clean and nowhere else
+before: new (F07a)
+--- a/src/tradingresearch/taxonomy.py
++++ b/src/tradingresearch/taxonomy.py
+@@ -81,8 +81,6 @@
+         row = notes.get(trace["analysis_id"])
+         if row is None:
+             out["missing"].append(trace["item"])
+-        elif row["first_failure"] == "-":
+-            out["clean"].append(trace["item"])
+         else:
+             kind = "caught" if row["first_failure"] in dict(rejected(trace)) else "missed"
+             out[kind].append(f"{trace['item']} {row['first_failure']}")

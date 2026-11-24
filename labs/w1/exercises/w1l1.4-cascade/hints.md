@@ -8,7 +8,6 @@ apart from an id the model made up.
 
 ## Hint 2
 
-`missing = [d for d in item.get("derived_from") or [] if d not in kept]`. If it is not empty, the reason is
-`bad_derivation`, and the detail starts "derives from a rejected or later claim" when `all(d in ids for d in
-missing)`, else "unknown claim id". It goes inside `if tag == "inference":`, before the value check that reads
-`kept[d]`.
+Collect the parents that are not in `kept`. If there are any, the reason is `bad_derivation`; the detail says
+"derives from a rejected or later claim" when every missing parent is in `ids`, and "unknown claim id" otherwise.
+The check belongs in the inference branch, before the value check that looks a parent up in `kept`.

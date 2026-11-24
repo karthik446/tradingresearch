@@ -7,4 +7,5 @@ the inner name to `found` in `cited`, before the recursion.
 
 ## Hint 2
 
-`found |= {name[5:-4] for name in found if name.startswith("dist_") and name.endswith("_atr")}`.
+The inner name is what is left once the `dist_` prefix and the `_atr` suffix are cut off. Add it for every cited
+name that has both; the recursion then carries it to the children.

@@ -2,12 +2,13 @@
 
 ## Hint 1
 
-Go down your taxonomy and, for each of the four target classes, add one line to the rules block: window names
-(`window_name`), inferences naming uncited indicators (`inference_wider`), opinions that cite (`opinion_cites`),
-labels in `{value}` (`label_in_value`). `judgement_in_fact` needs a judge and the rest are rare; leave them.
+For `rule_targets`: a rule is a line the variant has and the base does not, so collect the base's lines (stripped)
+first and keep the variant's other non-blank lines, in order. Then file each rule under every class one of whose
+`CLASS_WORDS` options it holds in full, ignoring case. Every class is a key, with or without rules.
 
 ## Hint 2
 
-Edit existing rule lines where the rule already lives: the opinion line gets "and derived_from and source_ids are
-empty"; the table-name line gets "never by their window ("200-day", "20-day", "14-day")". Then add one line under
-the inference rule and one placeholder line.
+For the prompt: give each of the four target classes one rule, in words the model will meet: window names,
+inferences naming what their parents never cite, opinions that cite, labels in `{value}`. Where the rule already
+lives (the opinion line, the table-name line), extend that line rather than adding a second rule. Say what the model
+must not do. `judgement_in_fact` needs a judge and the rest are rare; leave them. Run the observe after each rule.

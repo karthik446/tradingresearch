@@ -27,3 +27,25 @@
 +  It is mechanical (names in text vs names in cited sources), so it gets a code eval: `specs/inferences_grounded.md`.
 +- Class 3 is the largest by count but needs judgement about wording. It waits for an LLM judge with measured
 +  agreement (week 4), per ADR-001.
+--- a/src/tradingresearch/taxonomy.py
++++ b/src/tradingresearch/taxonomy.py
+@@ -111,8 +111,17 @@
+       cascade:        rejected as bad_derivation (a parent failed; a tag, not a class)
+     Every name in CODE_FINDS is a key. An item with no such claim is not listed under it.
+     """
+-    # TODO(w1l2.3) for each trace, file each rejected claim under the class its reason (and text) shows.
+-    return {}
++    found: dict[str, dict[str, list[str]]] = {name: {} for name in CODE_FINDS}
++    for trace in load_run(run):
++        texts = claim_texts(trace)
++        for claim, reason in rejected(trace):
++            if reason == "number_in_text" and WINDOW.search(texts.get(claim, "")):
++                name = "window_name"
++            else:
++                name = {"empty_placeholder": "label_in_value", "bad_derivation": "cascade"}.get(reason)
++            if name:
++                found[name].setdefault(trace["item"], []).append(claim)
++    return found
+ 
+ 
+ def backfill_todo(labels: Path, taxonomy: Path, run: Path) -> dict[str, list[str]]:

@@ -20,3 +20,29 @@
 +[[arms]]
 +name = "variant"
 +prompt = "analyze-2"
+--- a/src/tradingresearch/replay.py
++++ b/src/tradingresearch/replay.py
+@@ -90,8 +90,21 @@
+     graders with score(); a mean is over the replies the grader could grade (score is not None), and a grader that
+     could grade none is left out.
+     """
+-    # TODO(w1l4.2) load(config) is the runner's pre-flight; grade each arm's recorded replies with the config's graders.
+-    return {}
++    cfg = load(Path(config))
++    items = {f"{ticker}:{session.isoformat()}" for ticker in cfg.tickers for session in cfg.sessions}
++    graders = registry(list(cfg.graders))
++    out: dict[str, dict[str, float]] = {}
++    for arm in cfg.arms:
++        if arm.prompt not in recorded:
++            continue
++        rows = [row for row in load_rows(recorded[arm.prompt]) if row["item"] in items]
++        means = {}
++        for grader in graders:
++            values = [v for v in (score(grader, row) for row in rows) if v is not None]
++            if values:
++                means[grader.id] = sum(values) / len(values)
++        out[arm.name] = means
++    return out
+ 
+ 
+ # ---------- the command ----------

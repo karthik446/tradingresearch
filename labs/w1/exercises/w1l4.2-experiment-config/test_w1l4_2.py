@@ -1,19 +1,100 @@
-"""w1l4.2 experiment config: two arms on the same 20 ticker-days, the rule written down before the run.
+"""w1l4.2 experiment config: replay in src/tradingresearch/replay.py, then experiments/prompt-v2.toml.
 
+The first tests call replay on small configs written here and on the recorded prompt-v2 replies (labs/w1/data). The
+rest check your config: two arms on the same 20 ticker-days, the rule written down before the run.
 `experiment.load` is the runner's own pre-flight: it checks every prompt file and grader before any spend.
 """
 
+import json
+import os
 import re
 import tomllib
 from pathlib import Path
+from types import SimpleNamespace
+
+import pytest
+from gigai_core.graders.protocol import CannotGrade
 
 import tradingresearch
 from tradingresearch.evals import GRADERS
 from tradingresearch.experiment import load
+from tradingresearch.replay import replay
 
 REPO = Path(tradingresearch.__file__).resolve().parents[2]
 PATH = REPO / "experiments" / "prompt-v2.toml"
 GRADER_ID = "|".join(sorted(map(re.escape, GRADERS), key=len, reverse=True))
+DATA = Path(os.environ.get("TR_LAB_DATA") or Path(__file__).resolve().parents[2] / "data")
+RECORDED = {"analyze-1": DATA / "prompt-v2-baseline.jsonl", "analyze-2": DATA / "prompt-v2-variant.jsonl"}
+TICKERS = ["AAPL", "MSFT", "NVDA", "AMZN", "JPM", "XOM", "UNH", "HD", "KO", "CAT"]
+
+
+def a_config(tmp_path: Path, arms: list[tuple[str, str]], graders: list[str], tickers: list[str] = TICKERS) -> Path:
+    lines = ['name = "test"', 'model = "anthropic/claude-sonnet-5.5"', "max_usd_per_arm = 1.00",
+             f"tickers = {json.dumps(tickers)}", 'sessions = ["2026-11-12", "2026-11-13"]', f"graders = {json.dumps(graders)}"]
+    for name, prompt in arms:
+        lines += ["", "[[arms]]", f'name = "{name}"', f'prompt = "{prompt}"']
+    path = tmp_path / "test.toml"
+    path.write_text("\n".join(lines) + "\n")
+    return path
+
+
+def regraded(path: Path, grader_id: str, tickers: list[str] = TICKERS) -> float:
+    """This test's own mean of one grader over the recorded replies of some tickers."""
+    grader, values = GRADERS[grader_id](), []
+    for row in map(json.loads, path.open()):
+        if row["cluster"] in tickers:
+            sample = SimpleNamespace(parse_status=row["parse_status"], output_parsed=row["output_parsed"])
+            try:
+                values.append(grader.grade(sample, {"values": row["values"], "names": row["names"]}).value)
+            except CannotGrade:
+                pass
+    return sum(values) / len(values)
+
+
+def same(got, want: dict[str, dict[str, float]]) -> bool:
+    return isinstance(got, dict) and got.keys() == want.keys() and all(got[arm] == pytest.approx(want[arm]) for arm in want)
+
+
+def test_replay_grades_each_arm(tmp_path):
+    got = replay(a_config(tmp_path, [("baseline", "analyze-1")], ["parsed", "all_claims_valid"]), RECORDED)
+    want = {"baseline": {"parsed": 1.0, "all_claims_valid": regraded(RECORDED["analyze-1"], "all_claims_valid")}}
+    assert same(got, want), (
+        f"replay returned {got!r} for a config with one arm (baseline, prompt analyze-1) and graders parsed and "
+        f"all_claims_valid; grading the 20 recorded analyze-1 replies gives {want!r}"
+    )
+
+
+def test_replay_grades_the_replies_itself(tmp_path):
+    zeroed = tmp_path / "zeroed.jsonl"
+    with zeroed.open("w") as fh:
+        for row in map(json.loads, RECORDED["analyze-1"].open()):
+            fh.write(json.dumps(row | {"scores": {name: 0.0 for name in row["scores"]}}) + "\n")
+    got = replay(a_config(tmp_path, [("baseline", "analyze-1")], ["all_claims_valid"]), {"analyze-1": zeroed})
+    want = regraded(zeroed, "all_claims_valid")
+    assert got.get("baseline", {}).get("all_claims_valid") == pytest.approx(want), (
+        f"replay returned {got!r} for the analyze-1 replies with every stored score set to 0, but grading those "
+        f"replies gives all_claims_valid={want:.3f}. A stored score is what the author's grader said then; the config's "
+        "graders are what your run would say."
+    )
+
+
+def test_an_arm_finds_its_replies_by_prompt(tmp_path):
+    got = replay(a_config(tmp_path, [("treatment", "analyze-2")], ["all_claims_valid"]), RECORDED)
+    want = {"treatment": {"all_claims_valid": regraded(RECORDED["analyze-2"], "all_claims_valid")}}
+    assert same(got, want), (
+        f"replay returned {got!r} for one arm named 'treatment' with prompt analyze-2; expected {want!r}. The "
+        "recordings are filed by the prompt that made them, and an arm may have any name."
+    )
+
+
+def test_only_the_configs_items_count(tmp_path):
+    got = replay(a_config(tmp_path, [("baseline", "analyze-1")], ["all_claims_valid"], ["JPM", "MSFT"]), RECORDED)
+    want = regraded(RECORDED["analyze-1"], "all_claims_valid", ["JPM", "MSFT"])
+    assert got.get("baseline", {}).get("all_claims_valid") == pytest.approx(want), (
+        f"replay returned {got!r} for a config with tickers JPM and MSFT only; their 4 analyze-1 replies give "
+        f"all_claims_valid={want:.3f}, all 20 give {regraded(RECORDED['analyze-1'], 'all_claims_valid'):.3f}. "
+        "A run asks only the config's ticker-days."
+    )
 
 
 def config():

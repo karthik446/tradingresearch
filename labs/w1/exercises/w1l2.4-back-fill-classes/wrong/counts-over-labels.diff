@@ -1,0 +1,16 @@
+why: compares counts only for classes the labels use, so a table row nobody labels is never reported
+expect: the table says inference_wider is in 15 analyses and no row lists it
+before: new (F07a)
+--- a/src/tradingresearch/taxonomy.py
++++ b/src/tradingresearch/taxonomy.py
+@@ -149,8 +149,8 @@
+                 out["code"].append(f"{row['item']}: +{name}")
+             elif name != "cascade" and name in listed and row["item"] not in found[name]:
+                 out["code"].append(f"{row['item']}: -{name}")
+-    out["counts"] = [f"{name}: table {n}, labels {counts.get(name, 0)}" for name, n in table.items()
+-                     if n != counts.get(name, 0)]
++    out["counts"] = [f"{name}: table {table.get(name)}, labels {m}" for name, m in counts.items()
++                     if table.get(name) != m]
+     return {key: sorted(value) for key, value in out.items()}
+ 
+ 

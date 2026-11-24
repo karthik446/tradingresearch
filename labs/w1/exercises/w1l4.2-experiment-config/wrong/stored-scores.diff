@@ -1,0 +1,14 @@
+why: averages the scores stored with the replies instead of grading them
+expect: with every stored score set to 0
+before: new (F07a)
+--- a/src/tradingresearch/replay.py
++++ b/src/tradingresearch/replay.py
+@@ -100,7 +100,7 @@
+         rows = [row for row in load_rows(recorded[arm.prompt]) if row["item"] in items]
+         means = {}
+         for grader in graders:
+-            values = [v for v in (score(grader, row) for row in rows) if v is not None]
++            values = [row["scores"][grader.id] for row in rows if grader.id in row["scores"]]
+             if values:
+                 means[grader.id] = sum(values) / len(values)
+         out[arm.name] = means

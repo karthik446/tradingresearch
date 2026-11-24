@@ -3,7 +3,7 @@ expect: is one analysis: strip spaces, count a class once per row
 before: RED (Codex review)
 --- a/src/tradingresearch/taxonomy.py
 +++ b/src/tradingresearch/taxonomy.py
-@@ -21,7 +21,7 @@
+@@ -99,7 +99,7 @@
      counts: Counter[str] = Counter()
      with Path(path).open(newline="") as fh:
          for row in csv.DictReader(fh):

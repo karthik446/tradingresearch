@@ -8,4 +8,5 @@ class out so the rule reads like the spec.)
 
 ## Hint 2
 
-`re.search(rf"(?<![A-Za-z0-9_]){re.escape(name)}(?![A-Za-z0-9_])", words)` in place of `name in words`.
+A negative lookbehind and a negative lookahead for those characters, around the escaped name (`re.escape`),
+do it. Search the words with that pattern where the plain `in` test was.

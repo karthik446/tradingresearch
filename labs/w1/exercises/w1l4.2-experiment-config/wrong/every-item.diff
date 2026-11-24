@@ -1,0 +1,14 @@
+why: grades every recorded reply, not only the config's ticker-days
+expect: for a config with tickers JPM and MSFT only
+before: new (F07a)
+--- a/src/tradingresearch/replay.py
++++ b/src/tradingresearch/replay.py
+@@ -97,7 +97,7 @@
+     for arm in cfg.arms:
+         if arm.prompt not in recorded:
+             continue
+-        rows = [row for row in load_rows(recorded[arm.prompt]) if row["item"] in items]
++        rows = load_rows(recorded[arm.prompt])
+         means = {}
+         for grader in graders:
+             values = [v for v in (score(grader, row) for row in rows) if v is not None]

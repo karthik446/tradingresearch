@@ -1,0 +1,14 @@
+why: misses a rule that starts with a capital
+expect: filed nothing under inference_wider
+before: new (F07a)
+--- a/src/tradingresearch/replay.py
++++ b/src/tradingresearch/replay.py
+@@ -78,7 +78,7 @@
+     """
+     old = {line.strip() for line in base.splitlines()}
+     rules = [line.strip() for line in variant.splitlines() if line.strip() and line.strip() not in old]
+-    return {name: [rule for rule in rules if any(all(word in rule.lower() for word in words) for words in options)]
++    return {name: [rule for rule in rules if any(all(word in rule for word in words) for words in options)]
+             for name, options in CLASS_WORDS.items()}
+ 
+ 

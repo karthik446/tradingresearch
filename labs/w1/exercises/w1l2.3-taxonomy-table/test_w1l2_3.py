@@ -1,7 +1,8 @@
-"""w1l2.3 taxonomy table: 5 to 8 failure classes, each with counts, what catches it and a real example.
+"""w1l2.3 taxonomy table: code_classes in src/tradingresearch/taxonomy.py, then 5 to 8 failure classes in
+evals/taxonomy.md, each with counts, what catches it and a real example.
 
-Checks the table in `evals/taxonomy.md` in your repo; examples and the two classes the code checks already find
-(window_name, label_in_value) are looked up in the recorded observe run.
+code_classes is called on the recorded observe run. The table's examples and the two classes the code checks
+already find (window_name, label_in_value) are looked up in the same run.
 """
 
 import json
@@ -11,9 +12,11 @@ from pathlib import Path
 
 import tradingresearch
 from tradingresearch.analyze import validate_claims
+from tradingresearch.taxonomy import code_classes
 
 DATA = Path(os.environ.get("TR_LAB_DATA") or Path(__file__).resolve().parents[2] / "data")
 REPO = Path(tradingresearch.__file__).resolve().parents[2]
+RUN = DATA / "observe.jsonl"
 REASONS = {"number_in_text", "bad_placeholder", "empty_placeholder", "unknown_source", "number_in_opinion",
            "unsourced_number", "bad_derivation", "not_a_claim"}
 REQUIRED = {  # class id -> the later exercise that reads it under this name
@@ -23,23 +26,61 @@ REQUIRED = {  # class id -> the later exercise that reads it under this name
     "label_in_value": "w1l4.1 writes a rule for it",
 }
 WINDOW = re.compile(r"\b\d+-day\b", re.IGNORECASE)
+HOW = {"window_name": "rejected as number_in_text and naming a window such as '200-day'",
+       "label_in_value": "rejected as empty_placeholder", "cascade": "rejected as bad_derivation"}
 
 
 def pack() -> list[dict]:
-    return [json.loads(line) for line in (DATA / "observe.jsonl").open()]
+    return [json.loads(line) for line in RUN.open()]
 
 
-def found_by_code() -> dict[str, tuple[int, int]]:
-    """(claims, analyses) of the two classes a code check finds: number_in_text naming a window, empty_placeholder."""
-    hits: dict[str, list[str]] = {"window_name": [], "label_in_value": []}
+def found_by_code() -> dict[str, dict[str, list[str]]]:
+    """class -> item -> claim ids, for what the code checks find by themselves."""
+    hits: dict[str, dict[str, list[str]]] = {name: {} for name in HOW}
     for row in pack():
         texts = {c.get("id"): str(c.get("text") or "") for c in row["output_parsed"]["claims"]}
         for x in validate_claims(row["output_parsed"], row["values"], "an_lab")[1]:
             if x.reason == "number_in_text" and WINDOW.search(texts.get(x.claim, "")):
-                hits["window_name"].append(row["item"])
+                hits["window_name"].setdefault(row["item"], []).append(x.claim)
             elif x.reason == "empty_placeholder":
-                hits["label_in_value"].append(row["item"])
-    return {name: (len(items), len(set(items))) for name, items in hits.items()}
+                hits["label_in_value"].setdefault(row["item"], []).append(x.claim)
+            elif x.reason == "bad_derivation":
+                hits["cascade"].setdefault(row["item"], []).append(x.claim)
+    return hits
+
+
+def size(by_item: dict[str, list[str]]) -> tuple[int, int]:
+    return sum(map(len, by_item.values())), len(by_item)
+
+
+def test_code_classes_lists_three_classes():
+    got = code_classes(RUN)
+    assert got and set(HOW) <= set(got), (
+        f"code_classes returned {got!r} for the observe run. It should return window_name, label_in_value and "
+        "cascade, each as item -> claim ids: e.g. label_in_value lists KO:2026-11-12 ['c9'], the claim rejected as "
+        "empty_placeholder there."
+    )
+
+
+def test_a_number_in_text_without_a_window_is_not_window_name():
+    got = code_classes(RUN)["window_name"]
+    wrong = [f"{item} {claim}" for item, claim in (("CAT:2026-11-12", "c5"), ("XOM:2026-11-13", "c7"),
+                                                   ("XOM:2026-11-13", "c9")) if claim in got.get(item, [])]
+    assert not wrong, (
+        f"window_name lists {', '.join(wrong)}. These are rejected as number_in_text, but their text names no window: "
+        "CAT:2026-11-12 c5 says 'the oversold level of 30', XOM:2026-11-13 c7 says '188.5 USD'. window_name is a "
+        "number_in_text claim whose text names a window such as '200-day' or '14-day RSI'."
+    )
+
+
+def test_code_classes_matches_the_recording():
+    got, want = code_classes(RUN), found_by_code()
+    for name in HOW:
+        for item in sorted(set(got[name]) | set(want[name])):
+            assert got[name].get(item, []) == want[name].get(item, []), (
+                f"{name} in {item}: code_classes lists {got[name].get(item, [])}, but the claims {HOW[name]} there "
+                f"are {want[name].get(item, [])} (in reply order)"
+            )
 
 
 def table() -> list[list[str]]:
@@ -108,18 +149,18 @@ def test_counts_and_caught_by():
 
 def test_the_classes_code_finds_match_the_recording():
     rows = {row[1].partition(":")[0].strip(): (int(row[2]), int(row[3])) for row in table()}
-    how = {"window_name": "rejected as number_in_text and naming a window such as '200-day'",
-           "label_in_value": "rejected as empty_placeholder"}
-    for name, (claims, analyses) in found_by_code().items():
+    found = found_by_code()
+    for name in ("window_name", "label_in_value"):
+        claims, analyses = size(found[name])
         assert rows[name] == (claims, analyses), (
             f"{name}: the table says {rows[name][0]} claims in {rows[name][1]} analyses, but the observe run has "
-            f"{claims} claims {how[name]}, in {analyses} analyses. These two counts come straight from the code "
-            "checks: recount them on the traces."
+            f"{claims} claims {HOW[name]}, in {analyses} analyses. These two counts come straight from the code "
+            "checks: `uv run python -m tradingresearch.taxonomy table` puts your code_classes next to the table."
         )
 
 
 def test_examples_are_real_claims():
-    items = {row["item"]: row for row in map(json.loads, (DATA / "observe.jsonl").open())}
+    items = {row["item"]: row for row in pack()}
     for row in table():
         found = re.search(r"\b([A-Z]+) (\d\d-\d\d) (c\d+)\b", row[5])
         assert found, f"{row[1].split(':')[0]}: example {row[5]!r} should start `TICKER MM-DD cN`, e.g. JPM 11-12 c2"

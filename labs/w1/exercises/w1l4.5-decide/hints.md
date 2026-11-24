@@ -7,4 +7,5 @@ The rule is in the config's comment, written before the run: the primary metric 
 
 ## Hint 2
 
-`return "ship" if primary_ci[0] > 0 and guard_diff >= 0 else "keep baseline"`.
+Two conditions, both needed to ship: the primary interval lies wholly above 0, and the guard did not drop. Anything
+else keeps the baseline. The two answers are the strings the docstring names.

@@ -22,3 +22,31 @@
  an_7871ad7042e44b48,UNH:2026-11-13,c2,"window names in c2, c6, c7; c10 says the close is closer to low_20 but 407.46 is above the 407.27 midpoint of 388 and 426.55; c9 names sma_50, ema_9, ema_21 uncited",
 +an_f756e90de7cf4c58,XOM:2026-11-12,c6,"c6 ""20-day high""; c11 opinion cites claims; inferences otherwise grounded",
 +an_7e73146eb3634e5c,XOM:2026-11-13,c2,"c7 writes 188.5 USD and c9 writes 1.76 USD in prose; c10 steps quote revenue 85294000000 and 113164000000 that no parent cites; c11 label in {value}; c5 names sma_50 uncited",
+--- a/src/tradingresearch/taxonomy.py
++++ b/src/tradingresearch/taxonomy.py
+@@ -72,8 +72,23 @@
+       missing: "ITEM" for an analysis of the run that no row is about
+       unknown: the item of each row whose analysis_id is no analysis of the run
+     """
+-    # TODO(w1l2.1) read labels.csv and load_run(run); put each trace in one list, using the row with its analysis_id.
+-    return {}
++    with Path(labels).open(newline="") as fh:
++        rows = list(csv.DictReader(fh))
++    traces = load_run(run)
++    notes = {row["analysis_id"]: row for row in rows}
++    out: dict[str, list[str]] = {"missed": [], "caught": [], "clean": [], "missing": [], "unknown": []}
++    for trace in traces:
++        row = notes.get(trace["analysis_id"])
++        if row is None:
++            out["missing"].append(trace["item"])
++        elif row["first_failure"] == "-":
++            out["clean"].append(trace["item"])
++        else:
++            kind = "caught" if row["first_failure"] in dict(rejected(trace)) else "missed"
++            out[kind].append(f"{trace['item']} {row['first_failure']}")
++    ids = {trace["analysis_id"] for trace in traces}
++    out["unknown"] = [row["item"] for row in rows if row["analysis_id"] not in ids]
++    return out
+ 
+ 
+ def class_counts(path: Path) -> dict[str, int]:

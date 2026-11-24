@@ -1,0 +1,14 @@
+why: reports a cascade tag the code does not confirm, though a reader may see a cascade the code does not
+expect: NVDA:2026-11-12 is tagged cascade with no bad_derivation
+before: new (F07a)
+--- a/src/tradingresearch/taxonomy.py
++++ b/src/tradingresearch/taxonomy.py
+@@ -147,7 +147,7 @@
+         for name in CODE_FINDS:
+             if row["item"] in found[name] and name not in listed:
+                 out["code"].append(f"{row['item']}: +{name}")
+-            elif name != "cascade" and name in listed and row["item"] not in found[name]:
++            elif name in listed and row["item"] not in found[name]:
+                 out["code"].append(f"{row['item']}: -{name}")
+     out["counts"] = [f"{name}: table {n}, labels {counts.get(name, 0)}" for name, n in table.items()
+                      if n != counts.get(name, 0)]

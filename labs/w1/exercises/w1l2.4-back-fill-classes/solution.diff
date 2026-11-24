@@ -41,3 +41,33 @@
 +an_7871ad7042e44b48,UNH:2026-11-13,c2,"window names in c2, c6, c7; c10 says the close is closer to low_20 but 407.46 is above the 407.27 midpoint of 388 and 426.55; c9 names sma_50, ema_9, ema_21 uncited",window_name;other;inference_wider;judgement_in_fact;cascade
 +an_f756e90de7cf4c58,XOM:2026-11-12,c6,"c6 ""20-day high""; c11 opinion cites claims; inferences otherwise grounded",window_name;opinion_cites;judgement_in_fact;cascade
 +an_7e73146eb3634e5c,XOM:2026-11-13,c2,"c7 writes 188.5 USD and c9 writes 1.76 USD in prose; c10 steps quote revenue 85294000000 and 113164000000 that no parent cites; c11 label in {value}; c5 names sma_50 uncited",window_name;number_outside_value;label_in_value;inference_wider;opinion_cites;judgement_in_fact;cascade
+--- a/src/tradingresearch/taxonomy.py
++++ b/src/tradingresearch/taxonomy.py
+@@ -134,9 +134,24 @@
+                   (cascade is checked one way only: a reader may see a cascade the code does not)
+       counts:     "name: table N, labels M" for a table row whose Analyses is not class_counts(labels)[name] (0 if absent)
+     """
+-    # TODO(w1l2.4) read both files and code_classes(run); check each row against the table and the code, then the
+-    #   table's Analyses against class_counts.
+-    return {}
++    with Path(labels).open(newline="") as fh:
++        rows = list(csv.DictReader(fh))
++    table = {row["name"]: row["analyses"] for row in table_rows(taxonomy)}
++    found, counts = code_classes(run), class_counts(labels)
++    out: dict[str, list[str]] = {"unlabelled": [], "unknown": [], "code": [], "counts": []}
++    for row in rows:
++        listed = {name.strip() for name in (row["classes"] or "").split(";")} - {""}
++        if row["first_failure"] != "-" and not listed - TAGS:
++            out["unlabelled"].append(row["item"])
++        out["unknown"] += [f"{row['item']}: {name}" for name in listed - TAGS - set(table)]
++        for name in CODE_FINDS:
++            if row["item"] in found[name] and name not in listed:
++                out["code"].append(f"{row['item']}: +{name}")
++            elif name != "cascade" and name in listed and row["item"] not in found[name]:
++                out["code"].append(f"{row['item']}: -{name}")
++    out["counts"] = [f"{name}: table {n}, labels {counts.get(name, 0)}" for name, n in table.items()
++                     if n != counts.get(name, 0)]
++    return {key: sorted(value) for key, value in out.items()}
+ 
+ 
+ # ---------- the command ----------

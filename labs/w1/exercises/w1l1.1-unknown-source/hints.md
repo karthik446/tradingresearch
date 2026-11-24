@@ -3,9 +3,9 @@
 ## Hint 1
 
 `values` is the SOURCES table as a dict: source id to number. "In the table" means "a key of `values`". Collect the
-cited ids that are not keys, keep their order, and return early if there are any.
+cited ids that are not keys, in the order they are cited, and reject the claim if there are any.
 
 ## Hint 2
 
-The check must come before the `tag == "fact"` block: that block reads `values[s]`, which is the KeyError you see.
-Three lines: a list comprehension over `cited`, an `if`, and a return of `("unknown_source", ", ".join(...))`.
+Order matters: the fact branch below reads `values` with every cited id, which is the KeyError you see. Your check
+has to run before anything looks a cited id up. The detail is the unknown ids, comma-separated.

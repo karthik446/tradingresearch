@@ -1,0 +1,17 @@
+why: looks recordings up by arm name, not by prompt
+expect: replay returned {} for a config with one arm
+before: new (F07a)
+--- a/src/tradingresearch/replay.py
++++ b/src/tradingresearch/replay.py
+@@ -95,9 +95,9 @@
+     graders = registry(list(cfg.graders))
+     out: dict[str, dict[str, float]] = {}
+     for arm in cfg.arms:
+-        if arm.prompt not in recorded:
++        if arm.name not in recorded:
+             continue
+-        rows = [row for row in load_rows(recorded[arm.prompt]) if row["item"] in items]
++        rows = [row for row in load_rows(recorded[arm.name]) if row["item"] in items]
+         means = {}
+         for grader in graders:
+             values = [v for v in (score(grader, row) for row in rows) if v is not None]

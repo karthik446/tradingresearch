@@ -1,6 +1,8 @@
-"""w1l2.4 back-fill: every note gets the taxonomy classes it shows, and the table's counts come from them.
+"""w1l2.4 back-fill: backfill_todo in src/tradingresearch/taxonomy.py, then every note gets the taxonomy classes it
+shows and the table's counts come from them.
 
-Checks `evals/labels.csv` against `evals/taxonomy.md` in your repo, and the cascade tag against the recorded run.
+The first tests call backfill_todo on small files written here; the rest check `evals/labels.csv` against
+`evals/taxonomy.md` in your repo, and the cascade tag against the recorded run.
 """
 
 import csv
@@ -11,12 +13,79 @@ from pathlib import Path
 
 import tradingresearch
 from tradingresearch.analyze import validate_claims
-from tradingresearch.taxonomy import TAGS, class_counts
+from tradingresearch.taxonomy import TAGS, backfill_todo, class_counts
 
 DATA = Path(os.environ.get("TR_LAB_DATA") or Path(__file__).resolve().parents[2] / "data")
 REPO = Path(tradingresearch.__file__).resolve().parents[2]
+RUN = DATA / "observe.jsonl"
 REQUIRED = ("window_name", "inference_wider", "opinion_cites", "label_in_value")  # read by w1l3.6 and w1l4.1
 WINDOW = re.compile(r"\b\d+-day\b", re.IGNORECASE)
+KEYS = {"unlabelled", "unknown", "code", "counts"}
+
+
+def files(tmp_path: Path, rows: dict[str, str], table: dict[str, int]) -> tuple[Path, Path]:
+    """labels.csv with one row per item -> classes (first_failure c1, or - when classes is '-'), and a table."""
+    ids = {r["item"]: r["analysis_id"] for r in map(json.loads, RUN.open())}
+    labels, md = tmp_path / "labels.csv", tmp_path / "taxonomy.md"
+    with labels.open("w", newline="") as fh:
+        out = csv.writer(fh)
+        out.writerow(["analysis_id", "item", "first_failure", "note", "classes"])
+        for item, listed in rows.items():
+            out.writerow([ids[item], item, "-" if listed == "-" else "c1", "c1 is a note long enough to keep",
+                          "" if listed == "-" else listed])
+    md.write_text("| # | Class | Claims | Analyses | Caught today by | Example |\n|---|---|---|---|---|---|\n" + "".join(
+        f"| {n} | {name}: a class | {count} | {count} | nothing | JPM 11-12 c2 |\n"
+        for n, (name, count) in enumerate(table.items(), 1)))
+    return labels, md
+
+
+def todo(tmp_path: Path, rows: dict[str, str], table: dict[str, int]) -> dict[str, list[str]]:
+    got = backfill_todo(*files(tmp_path, rows, table), RUN)
+    assert got and KEYS <= set(got), (
+        f"backfill_todo returned {got!r} for labels {rows} and a table with {', '.join(table)}. It should return "
+        f"the lists {', '.join(sorted(KEYS))}: e.g. a failing row with no classes (AAPL:2026-11-12 here) goes under "
+        "unlabelled."
+    )
+    return got
+
+
+def test_a_failing_row_without_classes_is_unlabelled(tmp_path):
+    got = todo(tmp_path, {"AAPL:2026-11-12": "", "KO:2026-11-13": "-", "AMZN:2026-11-13": "cascade"},
+               {"inference_wider": 1})
+    assert got["unlabelled"] == ["AAPL:2026-11-12", "AMZN:2026-11-13"], (
+        f"unlabelled should be AAPL:2026-11-12 (a failure, no classes) and AMZN:2026-11-13 (a failure, only the "
+        f"cascade tag, which is no class); KO:2026-11-13 is clean. Got {got['unlabelled']}"
+    )
+
+
+def test_a_class_that_is_no_row_of_the_table_is_unknown(tmp_path):
+    got = todo(tmp_path, {"AMZN:2026-11-13": "uncited_names;inference_wider;cascade"}, {"inference_wider": 1})
+    assert got["unknown"] == ["AMZN:2026-11-13: uncited_names"], (
+        "AMZN:2026-11-13 lists uncited_names, which is no row of the table (rows: inference_wider); cascade is a tag "
+        f"and needs no row. unknown should be ['AMZN:2026-11-13: uncited_names']; got {got['unknown']}"
+    )
+
+
+def test_rows_are_checked_against_what_the_code_finds(tmp_path):
+    rows = {"AAPL:2026-11-12": "inference_wider", "AMZN:2026-11-13": "window_name;inference_wider",
+            "NVDA:2026-11-12": "window_name;label_in_value;cascade"}
+    got = todo(tmp_path, rows, {"window_name": 2, "label_in_value": 1, "inference_wider": 2})
+    want = ["AAPL:2026-11-12: +cascade", "AAPL:2026-11-12: +window_name", "AMZN:2026-11-13: -window_name"]
+    assert got["code"] == want, (
+        f"code should be {want}; got {got['code']}. AAPL:2026-11-12 has claims rejected as bad_derivation and as a "
+        "window name, and its row lists neither. AMZN:2026-11-13 lists window_name, but the code rejects no claim of "
+        "it for that. NVDA:2026-11-12 is tagged cascade with no bad_derivation: a reader may see a cascade the code "
+        "does not, so a cascade tag the code does not confirm is not reported."
+    )
+
+
+def test_counts_cover_every_row_of_the_table(tmp_path):
+    got = todo(tmp_path, {"AAPL:2026-11-12": "window_name;other;cascade"},
+               {"window_name": 1, "inference_wider": 15, "other": 1})
+    assert got["counts"] == ["inference_wider: table 15, labels 0"], (
+        "the table says inference_wider is in 15 analyses and no row lists it, so counts should be "
+        f"['inference_wider: table 15, labels 0'] (window_name and other agree at 1); got {got['counts']}"
+    )
 
 
 def taxonomy() -> dict[str, int]:
@@ -49,7 +118,7 @@ def test_every_failing_analysis_has_classes():
 
 
 def test_cascade_marks_every_analysis_with_a_bad_derivation():
-    items = {r["item"]: r for r in map(json.loads, (DATA / "observe.jsonl").open())}
+    items = {r["item"]: r for r in map(json.loads, RUN.open())}
     for row in labels():
         item = items[row["item"]]
         _, rejected = validate_claims(item["output_parsed"], item["values"], "an_lab")
@@ -69,7 +138,7 @@ def test_the_fixed_class_ids_label_the_analyses_that_show_them():
         "counts the analyses labelled inference_wider and w1l4.1 writes rules for the others, so a renamed class "
         "breaks them. Keep these names in labels.csv and taxonomy.md."
     )
-    items = {r["item"]: r for r in map(json.loads, (DATA / "observe.jsonl").open())}
+    items = {r["item"]: r for r in map(json.loads, RUN.open())}
     shown = {}  # item -> class -> claims the code rejects for that class
     for row in rows:
         item = items[row["item"]]

@@ -1,6 +1,7 @@
-"""w1l2.1 open coding: one note per analysis of the observe run, naming the first failure.
+"""w1l2.1 open coding: tally_notes in src/tradingresearch/taxonomy.py, then one note per analysis in evals/labels.csv.
 
-Checks `evals/labels.csv` in your repo against the recorded observe run (run_c40caab0968e44a3).
+The first tests call tally_notes on small CSVs written here; the rest check your evals/labels.csv against the
+recorded observe run (run_c40caab0968e44a3).
 """
 
 import csv
@@ -11,14 +12,90 @@ from pathlib import Path
 
 import tradingresearch
 from tradingresearch.analyze import validate_claims
+from tradingresearch.taxonomy import tally_notes
 
 DATA = Path(os.environ.get("TR_LAB_DATA") or Path(__file__).resolve().parents[2] / "data")
 REPO = Path(tradingresearch.__file__).resolve().parents[2]
+RUN = DATA / "observe.jsonl"
 HEADER = ["analysis_id", "item", "first_failure", "note", "classes"]
+KEYS = {"missed", "caught", "clean", "missing", "unknown"}
 
 
 def pack() -> dict[str, dict]:
-    return {row["item"]: row for row in map(json.loads, (DATA / "observe.jsonl").open())}
+    return {row["item"]: row for row in map(json.loads, RUN.open())}
+
+
+def rejected(item: str) -> list[str]:
+    row = pack()[item]
+    return [x.claim for x in validate_claims(row["output_parsed"], row["values"], "an_lab")[1]]
+
+
+def notes(tmp_path: Path, *rows: tuple[str, str]) -> Path:
+    """A labels.csv with one row per (item, first_failure), each with that item's real analysis_id."""
+    path = tmp_path / "labels.csv"
+    with path.open("w", newline="") as fh:
+        out = csv.writer(fh)
+        out.writerow(HEADER)
+        for item, first in rows:
+            out.writerow([pack()[item]["analysis_id"], item, first, f"{first} is what a reader objects to here", ""])
+    return path
+
+
+def tally(tmp_path: Path, *rows: tuple[str, str]) -> dict[str, list[str]]:
+    got = tally_notes(notes(tmp_path, *rows), RUN)
+    assert got and KEYS <= set(got), (
+        f"tally_notes returned {got!r} for a labels.csv with notes on {', '.join(i for i, _ in rows)}. It should "
+        f"return the lists {', '.join(sorted(KEYS))}: e.g. a note 'AMZN:2026-11-13 c4' goes under missed (the code "
+        "checks keep c4), and each of the 20 analyses without a note goes under missing."
+    )
+    return got
+
+
+def test_a_clean_note_is_clean(tmp_path):
+    got = tally(tmp_path, ("KO:2026-11-13", "-"))
+    assert got["clean"] == ["KO:2026-11-13"] and not got["missed"] and not got["caught"], (
+        f"a note on KO:2026-11-13 with first_failure '-' (nothing wrong) should be listed under clean and nowhere "
+        f"else; got clean={got['clean']}, missed={got['missed']}, caught={got['caught']}"
+    )
+
+
+def test_caught_is_about_the_first_failure_itself(tmp_path):
+    got = tally(tmp_path, ("HD:2026-11-13", "c4"), ("UNH:2026-11-13", "c2"))
+    assert got["missed"] == ["HD:2026-11-13 c4"], (
+        f"HD:2026-11-13 c4 should be under missed; got missed={got['missed']}, caught={got['caught']}. The code "
+        f"checks reject other claims of that analysis ({', '.join(rejected('HD:2026-11-13'))}) but keep c4, the "
+        "claim the note names."
+    )
+    assert got["caught"] == ["UNH:2026-11-13 c2"], (
+        f"UNH:2026-11-13 c2 is a claim the code checks reject, so it belongs under caught; got caught={got['caught']}"
+    )
+
+
+def test_a_note_belongs_to_the_trace_with_its_analysis_id(tmp_path):
+    path = notes(tmp_path, ("AMZN:2026-11-13", "c4"))
+    text = path.read_text().replace(pack()["AMZN:2026-11-13"]["analysis_id"], "an_0000000000000000")
+    path.write_text(text)
+    got = tally_notes(path, RUN)
+    assert got.get("unknown") == ["AMZN:2026-11-13"] and "AMZN:2026-11-13" in got.get("missing", []), (
+        f"a row with item AMZN:2026-11-13 and analysis_id an_0000000000000000 (no trace of the run has that id) "
+        f"should be listed under unknown, and AMZN:2026-11-13 should stay under missing; got "
+        f"unknown={got.get('unknown')}, missed={got.get('missed')}. The same item can be analysed in many runs; "
+        "only the id says which trace a note is about."
+    )
+
+
+def test_the_four_starting_notes(tmp_path):
+    stub = Path(__file__).resolve().parent / "stub" / "evals" / "labels.csv"
+    with stub.open(newline="") as fh:
+        rows = [(r["item"], r["first_failure"]) for r in csv.DictReader(fh)]
+    got = tally(tmp_path, *rows)
+    noted = {item for item, _ in rows}
+    want = {"missed": ["AMZN:2026-11-13 c4", "HD:2026-11-13 c4"], "caught": ["UNH:2026-11-13 c2"],
+            "clean": ["KO:2026-11-13"], "missing": [i for i in pack() if i not in noted], "unknown": []}
+    for key, value in want.items():
+        assert got[key] == value, (
+            f"for the 4 notes the stub starts with, {key} should be {value} (in the run's order); got {got[key]}"
+        )
 
 
 def labels() -> list[dict]:
@@ -35,7 +112,8 @@ def test_one_row_per_analysis():
     missing = sorted(set(items) - {r["item"] for r in rows})
     assert not missing, (
         f"labels.csv has {len(rows)} rows; the observe run has {len(items)} analyses. Missing: {', '.join(missing)}. "
-        "Read each trace (`jq -r .item labs/w1/data/observe.jsonl` lists them) and write one note per analysis."
+        "Read each trace and write one note per analysis; `uv run python -m tradingresearch.taxonomy notes` lists "
+        "the ones with no note yet."
     )
     extra = [r["item"] for r in rows if r["item"] not in items]
     assert not extra, f"rows for items that are not in the observe run: {extra}"
@@ -65,8 +143,8 @@ def test_first_failure_is_a_real_claim_and_not_a_cascade():
             f"{r['item']}: first_failure {first!r} is not a claim of that analysis (claims: {', '.join(sorted(ids))}); "
             "use a claim id, or - for a clean analysis"
         )
-        _, rejected = validate_claims(row["output_parsed"], row["values"], "an_lab")
-        reason = {x.claim: x.reason for x in rejected}.get(first)
+        _, bad = validate_claims(row["output_parsed"], row["values"], "an_lab")
+        reason = {x.claim: x.reason for x in bad}.get(first)
         assert reason != "bad_derivation", (
             f"{r['item']}: first_failure {first} was rejected only as bad_derivation, which means a parent failed. "
             "Note the parent's failure instead (week-1.md §3, traps)."
@@ -87,14 +165,9 @@ def test_notes_quote_claim_ids():
 
 
 def test_some_note_finds_what_the_checks_missed():
-    items = pack()
-    missed = []
-    for r in labels():
-        row = items[r["item"]]
-        _, rejected = validate_claims(row["output_parsed"], row["values"], "an_lab")
-        if r["first_failure"] != "-" and r["first_failure"] not in {x.claim for x in rejected}:
-            missed.append(r["item"])
-    assert missed, (
-        "every first_failure is a claim the code checks already reject. Write what a reader would object to: the "
-        "author found 6 analyses whose first failure no check catches (week-1.md §3, done when)."
+    got = tally_notes(REPO / "evals" / "labels.csv", RUN)
+    assert got["missed"], (
+        "every first_failure is a claim the code checks already reject (tally_notes lists none under missed). "
+        "Write what a reader would object to: the author found 6 analyses whose first failure no check catches "
+        "(week-1.md §3, done when)."
     )

@@ -2,10 +2,11 @@
 
 ## Hint 1
 
-Find every `{...}` in the text as a set (`re.findall(r"\{[^}]*\}", text)`). Two checks follow: is anything in the set
-other than `{value}`, and is `{value}` in the set while `value` is `None`.
+Find every `{...}` in the text and treat them as a set. Two checks follow: is anything in the set other than
+`{value}`, and is `{value}` in the set while `value` is `None`.
 
 ## Hint 2
 
-Set difference does the first check: `placeholders - {"{value}"}`; join `sorted(...)` of it for the detail. Do the
-bad_placeholder check before the empty_placeholder one, so `{label}` with a null value reports `{label}`.
+The first check is what is left of the set once the one allowed placeholder is taken out; sort it for the
+detail. Run the bad_placeholder check before the empty_placeholder one, so `{label}` with a null value reports
+`{label}`.
