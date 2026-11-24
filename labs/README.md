@@ -1,21 +1,30 @@
 # Labs
 
-Labs spike v3, not published. Each week of the AI engineering track comes as labs of short exercises on this repo. An exercise is a change to one or two files, checked by pytest on your machine. No key, no model call, no network. `tr lab` runs the loop: it installs the exercise's starting file, runs the check, unlocks hints, and commits each green exercise.
+Labs are optional hands-on practice for the [AI engineering track](https://scout.edgelab.one/learn/ai-engineering/). The chapters stand alone: you can read a week without doing its labs. Each week's labs are short exercises on this repo. An exercise is a change to one or two files, checked by pytest on your machine. It costs $0: no key, no model call, no network. `tr lab` runs the loop: it installs the exercise's starting file, runs the check, unlocks hints, and commits each green exercise.
 
 | Week | Labs | Pages |
 |---|---|---|
 | 1 | w1l1 claim checks (4 exercises), w1l2 open and axial coding (4), w1l3 a code grader (6), w1l4 a paired experiment (5) | [labs/w1/pages/index.md](w1/pages/index.md) |
 
+Week 1 is here; the labs for weeks 2-9 are added week by week.
+
 ## Start
 
-From the root of your clone at `week-1-start`, after `uv sync`:
+You need Python 3.12 and [uv](https://docs.astral.sh/uv/); the [setup page](https://scout.edgelab.one/learn/ai-engineering/setup/) covers the rest of the setup. No key is needed for the labs.
 
 ```bash
-uv run tr lab list          # every lab and exercise: done, current, start here or locked
-uv run tr lab start w1l1    # switch to branch `lab`, install the first exercise's stub
+git clone https://github.com/karthik446/tradingresearch.git && cd tradingresearch
+git checkout labs
+uv sync
+.venv/bin/tr lab list          # every lab and exercise: done, current, start here or locked
+.venv/bin/tr lab start w1l1    # switch to branch `lab`, install the first exercise's stub
 ```
 
-With the virtualenv active (`source .venv/bin/activate`), `tr lab ...` is enough; the rest of this page drops the `uv run`. Then, for each exercise:
+Bare `tr` can resolve to another program on some systems (macOS and Linux ship a `tr` text tool). Use `.venv/bin/tr`, or activate the virtualenv (`source .venv/bin/activate`) so that `tr` is this repo's; the rest of this page writes `tr lab ...` for short.
+
+The `labs` branch starts at the tag `week-1-start` and adds `tr lab` and this folder. `master` is the author's working branch; the tags `week-N-start` and `week-N-end` mark where each chapter starts and ends, and `week-1-end` holds the reference answer for week 1.
+
+Then, for each exercise:
 
 1. Read the exercise on its lab page. `start` and `next` print the file to edit and its `TODO(<id>)` tag.
 2. `tr lab verify` runs the check. Red prints the teaching message from the failing test; edit and run it again.
@@ -55,11 +64,11 @@ A failed run is a red `tr lab verify` of the current exercise. A check that cann
 
 The numbers live in one place, the week's `lab.toml` ([labs/w1/lab.toml](w1/lab.toml)): `[unlock] hints = [2, 5]` and `solution = 10`. A lab can override them with its own `[labs.<lab>.unlock]` table. `tr lab reset` zeroes the count of the current exercise.
 
-The labs are an honor system. They run on your machine against files you can edit, and `tr lab` does not verify that the tests, the exercise metadata or the recorded data under `labs/` are the ones the course shipped: a rewritten test or a `check` of `python -c pass` will turn an exercise green. A green only means something if you leave those files alone. `tr lab next` lists files outside the exercise's `touches`, and `git diff` against the branch you started from shows any change to course files. The solution diffs are in the repo for the same reason: opening them early costs you the exercise, not anyone else.
+The labs are an honor system: they are for you. They run on your machine against files you can edit, and `tr lab` does not verify that the tests, the exercise metadata or the recorded data under `labs/` are the ones the course shipped: a rewritten test or a `check` of `python -c pass` will turn an exercise green. A green only means something if you leave those files alone. `tr lab next` lists files outside the exercise's `touches`, and `git diff` against the branch you started from shows any change to course files. The solution diffs are in the repo for the same reason: opening them early costs you the exercise, not anyone else.
 
 ## Your work and git
 
-- `start` works on a branch `lab`, so your `main` is untouched.
+- `start` works on a branch `lab`, so the branch you started from (`labs`) is untouched.
 - `next` commits every change in the repo (`git add -A`) as `lab <id>: green` and prints the files that commit holds. A changed file outside the exercise's `touches` (a stray edit) gets a `note:` line that names it; new files are listed but not flagged. `git show --stat HEAD` shows the commit.
 - A stub is the reference state of the earlier exercises plus one new TODO, not your own file. Before `start`, `next`, `reset` or `solution --apply` overwrite a file that holds your work, they copy it to `.tr-lab/backup/<exercise>-<time>/` and print one line per file:
   - a version a `lab <id>: green` commit holds: ``w1l3.4 starts from the reference version of w1l3.3 in src/tradingresearch/evals.py; your version is in commit <sha> (`lab w1l3.3: green`) and in .tr-lab/backup/...``. `start w1l3` prints this for `analyze.py`, which lab w1l1 committed and the w1l3.1 stub replaces.
@@ -85,4 +94,4 @@ The labs are an honor system. They run on your machine against files you can edi
 
 ## For authors
 
-The layout of a week, the old-to-new id mapping and how to re-run the proof: [labs/w1/README.md](w1/README.md). `tr lab`'s own tests: `tests/test_lab.py` (plain `pytest`, no network). The runner: `src/tradingresearch/lab.py`.
+The layout of a week and how to re-run the proof: [labs/w1/README.md](w1/README.md). `tr lab`'s own tests: `tests/test_lab.py` (plain `pytest`, no network). The runner: `src/tradingresearch/lab.py`.
