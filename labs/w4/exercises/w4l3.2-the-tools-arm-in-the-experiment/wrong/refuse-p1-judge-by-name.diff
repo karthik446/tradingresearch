@@ -1,5 +1,5 @@
 why: refuses p1_judge by name, so any other model grader runs beside a tools arm
-expect: graded by parsed and lab_judge
+expect: graded by parsed and lab_rater
 before: GREEN (independent break pass)
 --- a/src/tradingresearch/experiment.py
 +++ b/src/tradingresearch/experiment.py

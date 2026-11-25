@@ -1,5 +1,6 @@
 """w4l3.1 the tools arm is a Run: run_tools plans the budget on every item's first request before any call, reserves
-every call, grades only succeeded samples (CannotGrade leaves no score), and counts spend and calls from model calls.
+every call, grades every succeeded sample, parsed or not (CannotGrade leaves no score, any other error stops the run),
+and counts spend and calls from the model calls of every sample, a failed one's too.
 
 The items are FAKEA and copies of it under other tickers (fakea.other), so each has its own tools prompt. The replies
 are the recording or edits of it (tools/fakea.py `answer`): `turn1` asks for get_sources (not one of TOOLS, so the loop
@@ -19,6 +20,7 @@ from gigai_core.budget import BudgetExceeded  # noqa: E402
 from gigai_core.graders.protocol import CannotGrade, Score  # noqa: E402
 
 from tradingresearch import analyze as an  # noqa: E402
+from tradingresearch import evals  # noqa: E402
 from tradingresearch import experiment as ex  # noqa: E402
 
 PLAN_2 = 0.081384  # the first requests of FAKEA and FAKEB, as CallBudget estimates them
@@ -30,8 +32,9 @@ def contexts(n: int) -> list:
     return [fakea.context(), fakea.other(fakea.context(extra=True)), fakea.other(ticker="FAKEC")][:n]
 
 
-def run_tools(tmp_path, replies, n=2, max_usd=1.0, graders=(), edit=None, cycle=False):
-    """run_tools over the first n contexts: (run or the exception it raised, request bodies sent, trace lines)."""
+def run_tools(tmp_path, replies, n=2, max_usd=1.0, graders=(), edit=None, cycle=False, raises=False):
+    """run_tools over the first n contexts: (run or the exception it raised, request bodies sent, trace lines).
+    With `raises`, an exception other than BudgetExceeded propagates."""
     sent: list[dict] = []
     provider = fakea.replaying(sent, replies, cycle=cycle, edit=edit)
     ctxs = contexts(n)
@@ -45,6 +48,8 @@ def run_tools(tmp_path, replies, n=2, max_usd=1.0, graders=(), edit=None, cycle=
     except BudgetExceeded as exc:
         result = exc
     except Exception as exc:  # noqa: BLE001 - reported here
+        if raises:
+            raise
         raise AssertionError(f"run_tools raised {exc!r} with the replies {replies}: a failed call or a model that "
                              f"cannot finish is a failed sample in the run, not an exception") from None
     files = sorted((tmp_path / "traces").glob("*.jsonl"))
@@ -81,6 +86,22 @@ class Refusing:
 
     def grade(self, sample, expected) -> Score:
         raise CannotGrade("this grader grades nothing")
+
+
+class Broken:
+    """A code grader with a bug: it raises ValueError, which is not CannotGrade."""
+
+    id, version, kind = "broken", "1", "code"
+
+    def grade(self, sample, expected) -> Score:
+        raise ValueError("a bug in the grader")
+
+
+def not_json(n: int, body: dict) -> dict:
+    """A final reply (one that asks for no tool) whose text is not JSON."""
+    if not body["choices"][0]["message"].get("tool_calls"):
+        body["choices"][0]["message"]["content"] = "I think FAKEA looks fine."
+    return body
 
 
 def test_each_item_runs_the_loop_on_its_own_tools_prompt(tmp_path):
@@ -150,6 +171,29 @@ def test_a_failed_item_is_never_graded_and_cannot_grade_leaves_no_score(tmp_path
         f"expected values differ from FAKEA's, and a sample is graded against its own item")
 
 
+def test_a_succeeded_reply_that_is_not_json_is_graded_too(tmp_path):
+    run, _, _ = run_tools(tmp_path, ("turn1", "turn2"), graders=evals.graders(["parsed"]), edit=not_json, cycle=True)
+    run = done(run, "both items answer in prose")
+    ends = [(s.outcome, s.parse_status) for s in run.samples]
+    got = [(sc.grader_id, sc.value) for sc in run.scores]
+    assert got == [("parsed", 0.0)] * 2, (
+        f"both items' final replies are prose, not JSON (samples {ends}), and the scores are {got}; expected parsed "
+        f"0.0 for each: the call succeeded, so the sample is graded, and a reply that does not parse is exactly what "
+        f"the parsed grader scores 0")
+
+
+def test_a_grader_that_raises_another_error_stops_the_run(tmp_path):
+    try:
+        run, _, _ = run_tools(tmp_path, ("turn1", "turn2"), graders=(Broken(),), cycle=True, raises=True)
+    except ValueError:
+        return
+    assert False, (
+        f"a grader raised ValueError('a bug in the grader') and run_tools "
+        f"{'raised ' + str(run) if isinstance(run, BudgetExceeded) else f'finished with {len(run.scores)} scores'}; "
+        f"only CannotGrade means no score. Any other exception is a bug in the grader: core run lets it through, so "
+        f"a broken grader cannot pass as a run with fewer scores")
+
+
 def test_the_record_counts_every_model_call_and_its_cost(tmp_path):
     replies = ("turn1", "one_more", "turn2", "turn1", "turn2")
     run, sent, lines = run_tools(tmp_path, replies)
@@ -165,6 +209,19 @@ def test_the_record_counts_every_model_call_and_its_cost(tmp_path):
         f"{kinds.count('trial')} trial spans; expected 5, 3 and 2: every span of both samples, in one file per run")
     assert Path(record.trace_path).read_text().count("\n") == len(lines), "the record names another trace file"
     assert record.tag == "week4-lab:tools:analyze-1", f"tag {record.tag!r}: experiment name, arm name, prompt"
+    run, _, _ = run_tools(tmp_path / "failed", ("turn1", "failed", "turn1", "turn2"))
+    run = done(run, "FAKEA's second call fails, FAKEB in 2 calls")
+    spent = round(2 * fakea.cost_of("turn1") + fakea.cost_of("turn2"), 6)
+    assert (run.record.calls_made, run.record.spent_usd) == (4, spent), (
+        f"FAKEA's first call (${fakea.cost_of('turn1')}) asked for a tool and its second got an HTTP 400; FAKEB took "
+        f"2 calls. The record says {run.record.calls_made} calls and ${run.record.spent_usd}; expected 4 and "
+        f"${spent}: a sample that failed still made its calls, and the ones that answered were paid for")
+    run, _, _ = run_tools(tmp_path / "costless", ("turn1", "turn2"), edit=fakea.costless, cycle=True)
+    run = done(run, "replies with no reported cost")
+    assert (run.record.calls_made, run.record.spent_usd) == (4, 0.0), (
+        f"the 4 replies report no cost and the record says {run.record.calls_made} calls and "
+        f"${run.record.spent_usd}; expected 4 and $0.0: the spend is what the calls report, while what the budget "
+        f"holds for them is its estimate, reserved before each call went out")
 
 
 def test_a_model_that_never_stops_fails_each_item_at_the_cap(tmp_path):

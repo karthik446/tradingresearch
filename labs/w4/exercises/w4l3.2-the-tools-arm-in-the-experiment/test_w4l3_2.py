@@ -1,5 +1,6 @@
-"""w4l3.2 the tools arm in the experiment: run_arms runs a mode = tools arm through run_tools, refuses a model grader
-beside it before any call, stores each parsed item, and stores the route of the exchange's first user turn.
+"""w4l3.2 the tools arm in the experiment: run_arms runs a mode = tools arm through run_tools on the arm's provider
+(its pin too), refuses a grader that is not code beside it before any call, stores each parsed item, and stores the
+route of the exchange's first user turn.
 
 Two items, FAKEA and FAKEB (fakea.other: the same context under another ticker). The replies are the recording or
 edits of it (tools/fakea.py `answer`): `turn1` asks for a tool, `turn2` is the final JSON. A config with two arms
@@ -40,11 +41,17 @@ def served_by(*hosts: str):
     return edit
 
 
-def run_arms(tmp_path, modes, replies, graders=("parsed",), cycle=False, edit=None, tickers=("FAKEA", "FAKEB")):
-    """run_arms on FAKEA and FAKEB: (results or the SystemExit raised, request bodies sent, stored analyses)."""
+def run_arms(tmp_path, modes, replies, graders=("parsed",), cycle=False, edit=None, tickers=("FAKEA", "FAKEB"),
+             pin=None):
+    """run_arms on FAKEA and FAKEB: (results or the SystemExit raised, request bodies sent, stored analyses). With
+    `pin`, the last arm gets `[arms.provider] only = [pin]`."""
     sent: list[dict] = []
     provider = fakea.replaying(sent, replies, cycle=cycle, edit=edit)
     config = fakea.experiment(tmp_path / "arms.toml", graders=graders, modes=modes, tickers=tickers)
+    if pin:
+        with (tmp_path / "arms.toml").open("a") as fh:
+            fh.write(f'[arms.provider]\nonly = ["{pin}"]\n')
+        config = ex.load(tmp_path / "arms.toml")
     conn = journal.connect(tmp_path / "journal.db")
     try:
         result = ex.run_arms(conn, config, [fakea.context(), fakea.other()], provider, fakea.prices(), tmp_path)
@@ -107,25 +114,46 @@ def test_each_item_is_stored_with_the_route_of_its_own_exchange(tmp_path):
         f"item's tools prompt, not the item's dataset prompt (asking for that one gives openrouter:unknown)")
 
 
-class LabJudge:
+def test_a_pinned_tools_arm_sends_its_pin_on_every_call(tmp_path):
+    result, sent, stored = run_arms(tmp_path, ("tools",), ("turn1", "turn2"), cycle=True, pin="azure")
+    finished(result, "one tools arm pinned to azure")
+    pins = [body.get("provider") for body in sent]
+    assert len(sent) == 4 and all((p or {}).get("only") == ["azure"] for p in pins), (
+        f"the tools arm has [arms.provider] only = [\"azure\"] and its {len(sent)} requests carried provider {pins}; "
+        f"expected only ['azure'] in every one: an arm's pin holds for the provider it runs on, so a pinned tools "
+        f"arm sends it on each call of the loop, as a pinned fixed arm does")
+
+
+class LabRater:
     """A grader of kind model that is not p1_judge."""
 
-    id, version, kind = "lab_judge", "1", "model"
+    id, version, kind = "lab_rater", "1", "model"
 
     def grade(self, sample, expected):
-        raise CannotGrade("a lab judge grades nothing")
+        raise CannotGrade("a lab rater grades nothing")
+
+
+class LabLabels:
+    """A grader of kind human: a person's labels."""
+
+    id, version, kind = "lab_labels", "1", "human"
+
+    def grade(self, sample, expected):
+        raise CannotGrade("no labels yet")
 
 
 @pytest.mark.parametrize("modes,judge", [(("tools",), "p1_judge"), (("fixed", "tools"), "p1_judge"),
-                                         (("tools",), "lab_judge")],
-                         ids=["tools-arm", "tools-arm-second", "another-model-grader"])
+                                         (("tools",), "lab_rater"), (("tools",), "lab_labels")],
+                         ids=["tools-arm", "tools-arm-second", "another-model-grader", "a-human-grader"])
 def test_a_model_grader_beside_a_tools_arm_is_refused_before_any_call(tmp_path, monkeypatch, modes, judge):
-    monkeypatch.setitem(evals.GRADERS, "lab_judge", LabJudge)
+    monkeypatch.setitem(evals.GRADERS, "lab_rater", LabRater)
+    monkeypatch.setitem(evals.GRADERS, "lab_labels", LabLabels)
     result, sent, stored = run_arms(tmp_path, modes, ("turn2",), graders=("parsed", judge), tickers=TEN)
     assert isinstance(result, SystemExit) and sent == [], (
-        f"arms {list(modes)} graded by parsed and {judge} (kind model): run_arms "
-        f"{'refused' if isinstance(result, SystemExit) else 'ran'} after {len(sent)} requests. A model grader cannot "
-        f"read a tool loop, so the config is refused (SystemExit) before the first arm, with no request sent")
+        f"arms {list(modes)} graded by parsed and {judge} (kind {evals.GRADERS[judge].kind}): run_arms "
+        f"{'refused' if isinstance(result, SystemExit) else 'ran'} after {len(sent)} requests. A tools arm is graded "
+        f"by code only, so a config with any other grader is refused (SystemExit) before the first arm, with no "
+        f"request sent")
     assert stored == [], f"a refused config stored {len(stored)} analyses"
 
 

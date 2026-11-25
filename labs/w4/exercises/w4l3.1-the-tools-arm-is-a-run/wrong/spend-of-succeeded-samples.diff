@@ -1,0 +1,14 @@
+why: counts the calls and spend of the succeeded samples only, so a sample that failed after paid calls is free
+expect: The record says 2 calls and $0.022888; expected 4 and $0.026834
+before: GREEN (independent read)
+--- a/src/tradingresearch/experiment.py
++++ b/src/tradingresearch/experiment.py
+@@ -168,7 +168,7 @@
+                 scores.extend(graded(sample, item, graders))
+     finally:
+         trace.close()
+-    calls = [span.call for sample in samples for span in sample.model_spans]
++    calls = [span.call for sample in samples if sample.outcome == "succeeded" for span in sample.model_spans]
+     record = RunRecord(run_id=run_id, dataset=dataset.ref, settings=settings, provider=provider.identity,
+                        created_at=created_at, completed_at=datetime.now(UTC), prereg=None, trace_path=trace.path,
+                        spent_usd=round(sum(call.cost_usd or 0.0 for call in calls), 6), calls_made=len(calls),

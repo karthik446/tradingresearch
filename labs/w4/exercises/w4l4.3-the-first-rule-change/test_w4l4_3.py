@@ -114,9 +114,11 @@ def test_the_challenger_store_keeps_the_trend_and_rejects_the_rest():
 
 def test_the_entry_is_a_reviewed_filter_on_the_champion_prompt():
     rule = entry()
-    assert rule.description.strip() and not rule.description.lower().startswith("example"), (
-        f"the {KEY!r} description is {rule.description!r}; expected the change's own words, not empty and not an "
-        f"example's: the description is what a reviewer reads before the challenger runs")
+    words = rule.description.lower().split()
+    assert len(words) >= 3 and not {"tbd", "todo", "fixme", "placeholder"} & set(words) and not (
+            rule.description.lower().startswith("example")), (
+        f"the {KEY!r} description is {rule.description!r}; expected the change's own words, not a placeholder and "
+        f"not an example's: the description is what a reviewer reads before the challenger runs")
     assert rules.prompt_of(rule) == th.DEFAULT_PROMPT, (
         f"prompt_of({KEY!r}) = {rules.prompt_of(rule)!r}; expected {th.DEFAULT_PROMPT!r}: a filter keeps the champion "
         f"prompt, so the arms differ only by the rule")

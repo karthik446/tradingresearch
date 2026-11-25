@@ -1,0 +1,16 @@
+why: refuses with an assert, which python -O skips, so the record is built there
+expect: expected a ValueError: an assert is skipped
+before: GREEN (independent read)
+--- a/src/tradingresearch/records.py
++++ b/src/tradingresearch/records.py
+@@ -37,8 +37,8 @@
+ 
+ def _trainable_route(terms_class: str, route: str) -> None:
+     """A trainable record (the teacher arm) is refused when its route lost provenance (unknown or mixed)."""
+-    if terms_class == "trainable" and not clean_route(route):
+-        raise ValueError(f"a trainable record needs one known provider route, got {route!r}")
++    assert terms_class != "trainable" or clean_route(route), (
++        f"a trainable record needs one known provider route, got {route!r}")
+ 
+ 
+ class SourceRef(CoreModel):

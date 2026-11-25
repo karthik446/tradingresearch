@@ -1,0 +1,14 @@
+why: catches every exception a grader raises, so a grader with a bug looks like one that could not grade
+expect: a grader raised ValueError('a bug in the grader') and run_tools finished with 0 scores
+before: GREEN (independent read)
+--- a/src/tradingresearch/experiment.py
++++ b/src/tradingresearch/experiment.py
+@@ -183,7 +183,7 @@
+     for grader in graders:
+         try:
+             score = grader.grade(sample, item.expected)
+-        except CannotGrade:
++        except Exception:
+             continue
+         found.append(ScoreRecord(score_id=new_id("score"), trace_id=sample.trace_id, grader_id=grader.id,
+                                  grader_version=grader.version, kind=grader.kind, value=score.value,

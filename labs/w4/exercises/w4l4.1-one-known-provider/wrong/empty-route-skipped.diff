@@ -1,0 +1,14 @@
+why: skips the check for an empty route, so a trainable record that names no route at all is built
+expect: route '' was built
+before: GREEN (independent read)
+--- a/src/tradingresearch/records.py
++++ b/src/tradingresearch/records.py
+@@ -37,7 +37,7 @@
+ 
+ def _trainable_route(terms_class: str, route: str) -> None:
+     """A trainable record (the teacher arm) is refused when its route lost provenance (unknown or mixed)."""
+-    if terms_class == "trainable" and not clean_route(route):
++    if terms_class == "trainable" and route and not clean_route(route):
+         raise ValueError(f"a trainable record needs one known provider route, got {route!r}")
+ 
+ 

@@ -1,0 +1,14 @@
+why: runs the tools arm on the unpinned provider, so a pinned arm's loop goes out with no provider pin
+expect: its 4 requests carried provider [None, None, None, None]
+before: GREEN (independent read)
+--- a/src/tradingresearch/experiment.py
++++ b/src/tradingresearch/experiment.py
+@@ -122,7 +122,7 @@
+     for arm in config.arms:
+         routed = provider.routed(arm.provider) if arm.provider else provider
+         if arm.mode == "tools":
+-            run = run_tools(config, arm, dataset, by_item, routed, graders, prices, data_dir)
++            run = run_tools(config, arm, dataset, by_item, provider, graders, prices, data_dir)
+         else:
+             run = run_eval(dataset, routed, graders, settings=an.call_settings(arm.model),
+                            budget=CallBudget(max_usd=config.max_usd_per_arm, prices=prices),

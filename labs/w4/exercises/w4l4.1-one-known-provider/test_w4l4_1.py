@@ -63,7 +63,7 @@ def build(kind: str, **fields):
 
 @pytest.mark.parametrize("kind", BUILD)
 @pytest.mark.parametrize("route", ["openrouter:unknown", "openrouter:mixed(Azure+Google)", "openrouter:Unknown",
-                                   "openrouter:"])
+                                   "openrouter:", "openrouter", "unknown", ""])
 def test_a_trainable_record_with_a_route_that_is_not_clean_is_refused(kind, route):
     record, text = build(kind, terms_class="trainable", provider_route=route)
     assert record is None, (
@@ -75,6 +75,9 @@ def test_a_trainable_record_with_a_route_that_is_not_clean_is_refused(kind, rout
     assert "one known provider" in text, (
         f"{kind} with route {route!r} was refused with {text!r}; expected the words 'one known provider', which "
         f"tests/test_route.py (the chapter's Done-when) matches")
+    assert text.startswith("Value error"), (
+        f"{kind} with route {route!r} was refused with {text!r}; expected a ValueError: an assert is skipped when "
+        f"Python runs with -O, and then the record is built")
 
 
 @pytest.mark.parametrize("kind", BUILD)

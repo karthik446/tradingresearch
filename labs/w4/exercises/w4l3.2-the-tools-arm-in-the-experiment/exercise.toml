@@ -1,11 +1,11 @@
 id = "w4l3.2"
 title = "Wire the tools arm into the experiment"
 effect = "Observe's tools arm goes from NotImplementedError to a run of 4 calls with FAKEA and FAKEB stored under openrouter:Azure, the host that answered each tools prompt, and a config with the model grader p1_judge beside it goes from NotImplementedError to refused before any request."
-goal = "Run a mode = tools arm through run_tools inside run_arms: a model grader beside a tools arm is refused before any call, each parsed item is stored, and its route is the route of the exchange's first user turn, the tools prompt."
-what_tested = "run_arms on replayed replies over FAKEA and FAKEB: a tools arm runs the loop and stores both items; a fixed and a tools arm side by side; each stored route is the host that answered that item's tools prompt; a model grader beside a tools arm, first or second arm, is refused with no request sent, and allowed on a fixed-only config; a model that never stops."
+goal = "Run a mode = tools arm through run_tools inside run_arms: a grader that is not code beside a tools arm is refused before any call, each parsed item is stored, and its route is the route of the exchange's first user turn, the tools prompt."
+what_tested = "run_arms over FAKEA and FAKEB: a tools arm runs the loop and stores both items; a fixed and a tools arm side by side; each stored route is the host that answered that item's tools prompt; a pinned tools arm's pin on every call; a model or human grader beside a tools arm, first or second arm, refused with no request sent; a model grader on a fixed-only config runs; a model that never stops."
 writes = [
   "In run_arms: before any arm runs, refuse a config whose graders include one that is not code when any arm is in tools mode (SystemExit).",
-  "Run a tools arm through run_tools with the same graders; a fixed arm stays on core run.",
+  "Run a tools arm through run_tools on the arm's own provider, its pin included, with the same graders; a fixed arm stays on core run.",
   "Store each parsed item with the route of its exchange's first user turn: in tools mode the item's tools prompt.",
 ]
 show_tests = ["test_a_model_grader_beside_a_tools_arm_is_refused_before_any_call", "test_each_item_is_stored_with_the_route_of_its_own_exchange"]

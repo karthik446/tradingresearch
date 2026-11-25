@@ -142,6 +142,8 @@ def test_arguments_that_are_not_json_are_graded_too():
     passes(sample_of(clean("", name="get_levels")), "a model may send empty arguments; one such call is clean")
     fails_with(sample_of(clean("", "", name="get_levels")), "repeated_call",
                "the same tool sent the same empty arguments twice")
+    passes(sample_of(clean('{"names": [close]}', '{"names": [rsi_14]}')),
+           "two calls whose arguments are both broken JSON but ask for different rows are not the same call")
     graded(sample_of(clean("", "{}", name="get_levels")))  # the same request, which the chapter does not call a repeat
 
 
