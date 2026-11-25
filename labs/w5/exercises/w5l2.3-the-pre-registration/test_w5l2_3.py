@@ -73,14 +73,21 @@ def test_the_rule_says_when_a_section_stays_and_when_it_goes():
         f"names is the one its interval decides on, and that is the primary metric")
 
 
+def fixes_the_side(clause: str) -> bool:
+    """Whether a clause (lower-cased) says a section stays with the whole interval on the losing side of 0: `stays`
+    with `below`, `under`, `beneath`, `less than` or `<` and `0` or `zero`, or with `negative`."""
+    words = set(re.findall(r"[\w%-]+", clause))
+    under = words & {"below", "under", "beneath"} or "less than" in clause or "<" in clause
+    return "stays" in words and (bool(under and words & {"0", "zero"}) or "negative" in words)
+
+
 def test_the_rule_fixes_its_boundary_and_its_guard_before_the_data():
     rule = (items()["Rule:"] or [""])[0]
-    clauses = [set(re.findall(r"[\w%-]+", clause.lower())) for clause in re.split(r"[.;:]", rule)]
-    bounded = any("stays" in c and (("below" in c and c & {"0", "zero"}) or "negative" in c) for c in clauses)
+    bounded = any(fixes_the_side(clause.lower()) for clause in re.split(r"[.;]", rule))
     assert bounded, (
-        f"the rule ({rule[:200]!r}) fixes no boundary for staying; expected a clause saying a section stays when "
-        f"dropping it lowers the primary metric with the whole 95% interval below 0 (negative): the line is drawn "
-        f"before the data, in the direction a loss shows, not after the results or by taste")
+        f"the rule ({rule[:200]!r}) fixes no boundary for staying; expected a clause with `stays` that fixes which "
+        f"side of 0 the whole 95% interval must lie on: the line is drawn before the data, in the direction a loss "
+        f"shows, not after the results or by taste")
     words = set(re.findall(r"[\w%-]+", rule.lower()))
     assert words & {"guard", "parsed"} and words & {"tokens", "cost"}, (
         f"the rule ({rule[:200]!r}) ignores the guard or the cost; expected a section to go only when the guard "

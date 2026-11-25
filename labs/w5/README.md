@@ -8,20 +8,20 @@ This folder holds week 5 of the AI engineering track, run by `tr lab` on this re
 |---|---|---|---|
 | [w5l1.1](exercises/w5l1.1-the-claims-that-cite-a-section/) | Score the share of the claims citing a section that the validator keeps | `evals.py` | 24 |
 | [w5l1.2](exercises/w5l1.2-not-cited-and-not-parsed/) | Give no score to a section no claim cites or a reply that did not parse; explain a failing section | `evals.py` | 20 |
-| [w5l1.3](exercises/w5l1.3-four-graders-and-the-drop/) | Hand the grader its arm's drop; register one code grader per section | `evals.py` | 16 |
+| [w5l1.3](exercises/w5l1.3-four-graders-and-the-drop/) | Hand the grader its arm's drop; register one code grader per section | `evals.py` | 17 |
 | [w5l2.1](exercises/w5l2.1-three-arms/) | Write three analyze-3 arms that differ only in what they drop | `experiments/context-ablation.toml` | 19 |
 | [w5l2.2](exercises/w5l2.2-graders-and-cluster/) | Name the seven code graders once each; write the cluster out | `experiments/context-ablation.toml` | 13 |
 | [w5l2.3](exercises/w5l2.3-the-pre-registration/) | Write the primary metric, the guard and the rule above the first key | `experiments/context-ablation.toml` | 25 |
 | [w5l3.1](exercises/w5l3.1-the-graders-both-arms-scored/) | Compare on the graders both runs scored on a common item, skip the rest, refuse with `no_shared_metric` when none is left | `experiment.py` | 21 |
 | [w5l3.2](exercises/w5l3.2-why-and-how-many/) | Say why each grader was skipped and how many items each run scored; name every skipped grader in the refusal | `experiment.py` | 22 |
-| [w5l4.1](exercises/w5l4.1-the-embargo-floor/) | Derive the embargo floor (entry window 2 + longest hold 20) and refuse a split under it with the reason | `records.py` | 18 |
+| [w5l4.1](exercises/w5l4.1-the-embargo-floor/) | Derive the embargo floor (entry window 2 + longest hold 20) and refuse a split under it with the reason | `records.py` | 19 |
 | [w5l4.2](exercises/w5l4.2-register-once/) | Register a split stamped in New York time under a content-addressed id, stored once | `split.py` | 22 |
-| [w5l4.3](exercises/w5l4.3-a-cutoff-still-ahead/) | Refuse a cutoff whose session has opened, by now or by the pre-registration, before writing a row | `split.py` | 20 |
+| [w5l4.3](exercises/w5l4.3-a-cutoff-still-ahead/) | Refuse a cutoff whose session has opened, by now or by the pre-registration, before writing a row | `split.py` | 21 |
 | [w5l4.4](exercises/w5l4.4-the-derived-sets/) | The embargo window from the NYSE calendar; train/val, embargoed and test derived from the journal's sessions | `split.py` | 26 |
 
 ### Part A
 
-117 wrong fixes: 60 in w5l1, 57 in w5l2.
+118 wrong fixes: 61 in w5l1, 57 in w5l2.
 
 46 are `before: RED (author)`, written with the exercise (w5l1 8, 9, 7; w5l2 7, 6, 9).
 
@@ -33,13 +33,15 @@ This folder holds week 5 of the AI engineering track, run by `tr lab` on this re
 
 14 come from an independent Codex review of the finished labs and passed the checks as they then stood; each now has a test (`before: GREEN (Codex week 5)`; w5l1 3, 3, 3; w5l2 1, 0, 4): in w5l1, duplicated claim ids, upper-cased citation ids and a cap on the claims counted; in w5l2, a pre-registration that cannot be falsified or reverses the decision, and one that ignores the guard or is written after the results.
 
+1 comes from an independent read of the Codex fixes (`before: GREEN (reader week 5)`; w5l1.3): the drop applied to the grader's own section or the first dropped one, so a claim that cites a second dropped section is never graded as dropped.
+
 Every wrong fix is red with its `expect:` and passes the earlier exercises of its lab, so its own check is the one that catches it (checked in a scratch clone; `prove.py` checks the first part, not the second). Four w5l2.2 wrong fixes were dropped rather than kept: a misspelt grader, `cluster = "session"`, the cluster as a list and a capitalised cluster all make the loader refuse the whole file, so w5l2.1's check fails on them first. To let w5l2.2's wrong fixes reach their own check, w5l2.1's replay grades with `parsed` alone: it checks what each arm sends, and what the arms are graded with is w5l2.2.
 
-Alternatives that are right but not the reference, each green: w5l1.1 2, w5l1.2 3, w5l1.3 3, w5l2.1 3 (the full arm with no drop key, the model set on each arm, the arms in another order), w5l2.2 2 (the graders in another order, the cluster after the graders), w5l2.3 2 (items with no bullets, the rule in other words).
+Alternatives that are right but not the reference, each green: w5l1.1 2, w5l1.2 3, w5l1.3 3, w5l2.1 3 (the full arm with no drop key, the model set on each arm, the arms in another order), w5l2.2 2 (the graders in another order, the cluster after the graders), w5l2.3 5 (items with no bullets, the rule in other words, `under 0`, `less than 0`, a colon after `stays`).
 
 ### Part B
 
-129 wrong fixes: 43 in w5l3, 86 in w5l4.
+131 wrong fixes: 43 in w5l3, 88 in w5l4.
 
 65 are `before: RED (author)`, written with the exercise (w5l3 11, 10; w5l4 8, 11, 12, 13).
 
@@ -50,6 +52,8 @@ Alternatives that are right but not the reference, each green: w5l1.1 2, w5l1.2 
 - w5l4.3: writing the row before refusing first failed on the chained `Refused` (the row count was asserted inside `except`). The row count is now asserted after the `try`.
 
 22 come from the same Codex review (`before: GREEN (Codex week 5)`; w5l3 4, 4; w5l4 4, 4, 2, 4): in w5l3, asked graders counted once or capped at eight and an unknown drop prefix; in w5l4, a floor capped at 47 or a negative embargo, a fixed summer offset and rounded registration seconds, a holiday list for 2026 only, and a window capped at 27 sessions or dropping future years.
+
+2 come from an independent read of the Codex fixes (`before: GREEN (reader week 5)`; w5l4.1, w5l4.3): a floor that ignores the day hold, and a pre-registration refused by its New York date instead of by the open.
 
 Dropped rather than kept: in w5l3.2 the skipped graders as a set (red or green by `PYTHONHASHSEED`); in w5l4.2 the real clock (its first failing line moves with the date). Not saved as wrong because they are right: in w5l4.1 the cutoff rule checked before the floor; in w5l4.2 the pre-registration dumped in Python mode (its fields dump the same). Not observable: in w5l4.3 the embargo checked after the lookup (a stored split cannot have an embargo under 22).
 

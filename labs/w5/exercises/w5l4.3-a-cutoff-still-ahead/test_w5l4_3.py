@@ -6,7 +6,8 @@
      (2026-10-30): a split is registered before its test period starts`;
   4. now, then the Prereg's registered_at, at or after the cutoff session's open (sessions.open_close):
      `now 2026-11-02T14:30:00+00:00 is not before the cutoff session opens (2026-11-02T14:30:00+00:00)`, and the same
-     with `prereg registered_at` in place of `now`. Times print with isoformat().
+     with `prereg registered_at` in place of `now`. Times print with isoformat(). For the Prereg the open is the
+     line, not the date: one registered at 07:30 New York on the cutoff morning is still before it, and stored.
 A split already stored is returned as stored even once its cutoff has opened.
 
 The journal is in memory; the dates are real NYSE sessions, Thanksgiving 2026-11-26 closed and 11-27 open, Good Friday
@@ -53,10 +54,15 @@ def rows(conn) -> int:
     return conn.execute("SELECT count(*) FROM training_split").fetchone()[0]
 
 
+def call(cutoff: date, embargo: int, now: datetime, prereg_at: datetime | None = None) -> str:
+    """The register call a FAIL message names."""
+    return f"register(cutoff {cutoff}, embargo {embargo}, now {now.isoformat()}" + (
+        f", prereg registered {prereg_at.isoformat()})" if prereg_at else ")")
+
+
 def refusal(conn, cutoff: date, embargo: int, now: datetime, prereg_at: datetime | None = None) -> str:
     """register's Refused message; a FAIL when it stored, raised something else, or wrote a row."""
-    asked = f"register(cutoff {cutoff}, embargo {embargo}, now {now.isoformat()}" + (
-        f", prereg registered {prereg_at.isoformat()})" if prereg_at else ")")
+    asked = call(cutoff, embargo, now, prereg_at)
     try:
         got = split.register(conn, cutoff, embargo, split.gate_prereg(prereg_at or now), now)
     except split.Refused as exc:
@@ -70,12 +76,13 @@ def refusal(conn, cutoff: date, embargo: int, now: datetime, prereg_at: datetime
     return message
 
 
-def stored(conn, cutoff: date, now: datetime) -> split.TrainingSplit:
+def stored(conn, cutoff: date, now: datetime, prereg_at: datetime | None = None) -> split.TrainingSplit:
+    asked = call(cutoff, 22, now, prereg_at)
     try:
-        return split.register(conn, cutoff, 22, split.gate_prereg(now), now)
+        return split.register(conn, cutoff, 22, split.gate_prereg(prereg_at or now), now)
     except Exception as exc:
-        raise AssertionError(f"register(cutoff {cutoff}, embargo 22, now {now.isoformat()}) raised "
-                             f"{type(exc).__name__}: {str(exc).splitlines()[0]}; that cutoff is still ahead") from None
+        raise AssertionError(f"{asked} raised {type(exc).__name__}: {str(exc).splitlines()[0]}; that cutoff is still "
+                             "ahead") from None
 
 
 @pytest.mark.parametrize("embargo", [21, 20])
@@ -118,8 +125,7 @@ def test_now_and_then_the_prereg_must_come_before_the_cutoff_session_opens(conn,
     opens = "2026-11-02T14:30:00+00:00" if cutoff == date(2026, 11, 2) else "2026-12-01T14:30:00+00:00"
     got = refusal(conn, cutoff, 22, now, prereg_at)
     want = f"{what} {at} is not before the cutoff session opens ({opens})"
-    asked = f"register(cutoff {cutoff}, embargo 22, now {now.isoformat()}" + (
-        f", prereg registered {prereg_at.isoformat()})" if prereg_at else ")")
+    asked = call(cutoff, 22, now, prereg_at)
     assert got == want, (f"{asked} was refused with {got!r}; expected {want!r}: the open is 09:30 New York, 14:30 "
                          "UTC, and a time at the open is not before it, for now and for the prereg alike")
 
@@ -135,19 +141,22 @@ def test_the_first_reason_in_order_is_the_one_given(conn, cutoff, embargo, now, 
                                  f"first in order is {want!r}"
 
 
-@pytest.mark.parametrize(("cutoff", "now"), [
-    (date(2026, 11, 27), NOW),  # the day after Thanksgiving is open
-    (CUTOFF, datetime(2026, 11, 30, 22, 0, tzinfo=UTC)),  # the evening the session before the cutoff closed
-    (date(2026, 11, 3), datetime(2026, 11, 3, 2, 0, tzinfo=UTC)),  # 21:00 New York, UTC already says 11-03
-    (date(2026, 11, 11), NOW),  # Veterans Day, a federal holiday: the exchange is open
-    (date(2028, 1, 3), NOW),  # the first session of 2028
+@pytest.mark.parametrize(("cutoff", "now", "prereg_at"), [
+    (date(2026, 11, 27), NOW, None),  # the day after Thanksgiving is open
+    (CUTOFF, datetime(2026, 11, 30, 22, 0, tzinfo=UTC), None),  # the evening the session before the cutoff closed
+    (date(2026, 11, 3), datetime(2026, 11, 3, 2, 0, tzinfo=UTC), None),  # 21:00 New York, UTC already says 11-03
+    (date(2026, 11, 11), NOW, None),  # Veterans Day, a federal holiday: the exchange is open
+    (date(2028, 1, 3), NOW, None),  # the first session of 2028
+    # the prereg at 07:30 New York on the cutoff morning, two hours before the open; now the evening before
+    (CUTOFF, datetime(2026, 11, 30, 22, 0, tzinfo=UTC), datetime(2026, 12, 1, 12, 30, tzinfo=UTC)),
 ], ids=["after-thanksgiving", "the-evening-before-the-cutoff", "an-evening-utc-calls-the-next-day", "veterans-day",
-        "a-cutoff-in-2028"])
-def test_a_cutoff_still_ahead_is_stored(conn, cutoff, now):
-    got = stored(conn, cutoff, now)
+        "a-cutoff-in-2028", "the-prereg-on-the-cutoff-morning"])
+def test_a_cutoff_still_ahead_is_stored(conn, cutoff, now, prereg_at):
+    got = stored(conn, cutoff, now, prereg_at)
+    asked = call(cutoff, 22, now, prereg_at)
     assert got.cutoff_session == cutoff and rows(conn) == 1, (
-        f"register(cutoff {cutoff}, embargo 22, now {now.isoformat()}) returned cutoff {got.cutoff_session} with "
-        f"{rows(conn)} row(s); expected the split stored once: that cutoff is still ahead")
+        f"{asked} returned cutoff {got.cutoff_session} with {rows(conn)} row(s); expected the split stored once: that "
+        "cutoff is still ahead, and a prereg before the cutoff session's open is in time whatever its date")
 
 
 def test_a_stored_split_is_returned_even_once_its_cutoff_has_opened(conn):

@@ -2,7 +2,7 @@ id = "w5l2.3"
 title = "The pre-registration"
 effect = "Observe's pre-registration lines above the first key go from (none) to three: the primary metric naming claims_valid, the guard naming parsed, and the rule that says by the 95% interval when a dropped section stays and when it goes. The replay's table does not move."
 goal = "Write the pre-registration in the comment block above the config's first key, before any paid run: a primary metric naming claims_valid, a guard metric naming parsed, and a rule that says, by the primary metric's 95% interval, when a dropped section stays and when it goes."
-what_tested = "Above the first key, in comments: one Primary metric:, one Guard metric: and one Rule: item, each label starting its line; the primary item and the rule name claims_valid first, the guard parsed; the rule says stays, goes, interval and 95%, its stays clause draws the line at below 0 (negative), and it names the guard (parsed) and tokens (cost). An item ends at a blank comment, bullet or label."
+what_tested = "Above the first key, in comments: one Primary metric:, one Guard metric: and one Rule: item, each label starting its line; the primary item and the rule name claims_valid first, the guard parsed; the rule says stays, goes, interval and 95%, a clause of it (split at . and ;) says stays with below/under/beneath/less than/< 0 (zero) or negative, and it names the guard (parsed) and tokens (cost)."
 writes = [
   "Replace the TODO comment in the header with three items, each a comment line starting with its label and a colon, before the name key.",
   "Primary metric: the per-claim rate, and why the whole-analysis score cannot separate arms; Guard metric: the parse rate must not drop.",

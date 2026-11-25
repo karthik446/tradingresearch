@@ -2,7 +2,7 @@ id = "w5l4.1"
 title = "The embargo floor"
 effect = "records.py names the embargo floor and why: MIN_EMBARGO 22, the swing entry window of 2 plus the longest hold of 20, and a TrainingSplit with 21 is refused with that reason instead of being accepted."
 goal = "Write records.py's embargo floor: SWING_ENTRY_SESSIONS, MIN_EMBARGO from it and the longest hold in HOLD_RANGE, EMBARGO_WHY, and the TrainingSplit rule that refuses an embargo under the floor and says why."
-what_tested = "The three constants. TrainingSplit accepts 22, 23, 40, 48 and 252 and refuses 21 down to -1, and -22, with the floor and the reason, word for word. A registration on the cutoff day is still refused. A copy of records.py with a 45-session swing hold has floor 47; with a 60-session short hold, 62. A FAIL shows where a swing thesis exits with the shorter embargo, on the cutoff 2026-12-29."
+what_tested = "The three constants. TrainingSplit accepts 22, 23, 40, 48 and 252 and refuses 21 down to -1, and -22, with floor and reason, word for word. Registering on the cutoff day is still refused. A copy of records.py with a 45-session swing hold has floor 47; a 60-session short hold, 62; a 30-session day hold, 32. A FAIL shows where a swing thesis exits with the shorter embargo, on cutoff 2026-12-29."
 writes = [
   "SWING_ENTRY_SESSIONS, the entry window of 2 sessions; MIN_EMBARGO, it plus the longest hold in HOLD_RANGE; EMBARGO_WHY, `entry window 2 + longest hold 20`, built from both.",
   "TrainingSplit: an embargo under MIN_EMBARGO raises ValueError `embargo_sessions must be >= 22 (entry window 2 + longest hold 20)`.",

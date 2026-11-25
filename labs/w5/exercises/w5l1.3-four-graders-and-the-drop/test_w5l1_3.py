@@ -113,7 +113,8 @@ def test_the_recorded_reply_in_each_arm():
 ALL = tuple(masking.SECTIONS)
 
 
-@pytest.mark.parametrize("drop", [*((s,) for s in ALL), ALL[:3], ALL], ids=lambda d: "+".join(d))
+@pytest.mark.parametrize("drop", [*((s,) for s in ALL), ("edgar", "headlines"), ALL[:3], ALL],
+                         ids=lambda d: "+".join(d))
 def test_any_section_can_be_dropped(drop):
     claims = CLAIMS + [fakea.fact("l1", "level_hvn_1")]
     citing = {"indicators": 2, "levels": 1, "edgar": 1, "headlines": 2}  # i1 and x1; l1; e1; x1 and h1
@@ -122,3 +123,13 @@ def test_any_section_can_be_dropped(drop):
         scores(section, claims, drop, (0.0, f"dropped_source: {k} of {k} claims citing {section} fail"),
                f"every claim citing a {section} row fails in an arm that dropped the {section} section, whichever "
                f"and however many sections the arm drops")
+    for section in [s for s in ALL if s not in drop]:
+        n = citing[section]
+        other = {"indicators": "headlines", "headlines": "indicators"}.get(section)  # x1 cites a row of each
+        if other in drop:
+            scores(section, claims, drop, ((n - 1) / n, f"dropped_source: 1 of {n} claims citing {section} fail"),
+                   f"x1 also cites a {other} row this arm never saw, so it fails in the {section} grader the arm "
+                   f"kept, whichever other sections the arm drops")
+        else:
+            scores(section, claims, drop, (1.0, None),
+                   f"no claim citing a {section} row cites a row of a dropped section")

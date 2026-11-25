@@ -5,7 +5,7 @@ record refuses every embargo under MIN_EMBARGO, negative ones included, with a V
 be >= 22 (entry window 2 + longest hold 20)`, and accepts any embargo at or above it; the rule that a split is
 registered before its cutoff session stays. The floor and its reason follow the longest hold in HOLD_RANGE, whichever
 horizon has it: a copy of records.py whose swing hold runs to 45 sessions has MIN_EMBARGO 47, refusing 46 and taking
-47, and one whose short hold runs to 60 has MIN_EMBARGO 62.
+47, one whose short hold runs to 60 has MIN_EMBARGO 62, and one whose day hold runs to 30 has MIN_EMBARGO 32.
 
 The dates are real NYSE sessions (tradingresearch.sessions); the cutoff 2026-12-29 is the chapter's example, its
 window crossing Thanksgiving and Christmas.
@@ -24,7 +24,8 @@ from pydantic import ValidationError
 
 from tradingresearch import records, sessions
 
-HOLDS = [("swing", (5, 45), 47), ("short", (2, 60), 62)]  # (horizon, its hold in a copy of records.py, the floor)
+# (horizon, its hold in a copy of records.py, the floor): the longest hold can sit on any of the three horizons
+HOLDS = [("swing", (5, 45), 47), ("short", (2, 60), 62), ("day", (0, 30), 32)]
 
 NOW = datetime(2026, 10, 30, 22, 0, tzinfo=UTC)  # after the 2026-10-30 close
 CUTOFF = date(2026, 12, 29)

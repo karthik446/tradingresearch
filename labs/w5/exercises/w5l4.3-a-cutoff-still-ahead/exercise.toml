@@ -2,7 +2,7 @@ id = "w5l4.3"
 title = "A cutoff still ahead"
 effect = "split.register refuses, writing nothing, an embargo under the floor and a cutoff that is not an NYSE session or not still ahead of now and of the Prereg, while a split already stored is still returned."
 goal = "Add split.register's refusals: the embargo floor before the lookup, then for a new split a cutoff that is not an NYSE session, one not after the last completed session, and one whose session opens no later than now or the Prereg's registered_at."
-what_tested = "Embargo 21 and 20; Thanksgiving, a Saturday, Good Friday, a Saturday and a holiday in 2028; the last completed session and the one before; now at and after the open; a Prereg after and exactly at the open; a late now: each refused, word for word, with 0 rows. Rules broken at once give the first. Five cutoffs still ahead (one in 2028) are stored; a stored split is returned once its cutoff opened."
+what_tested = "Embargo 21 and 20; Thanksgiving, Good Friday, two Saturdays, a 2028 holiday; the last completed session and the one before; now at and after the open; a Prereg after and at the open; a late now: each refused, word for word, 0 rows. Rules broken at once give the first. Six cutoffs still ahead (one in 2028, one with its Prereg on the cutoff morning) are stored; a stored split is returned once open."
 writes = [
   "register: before the lookup, Refused for an embargo under MIN_EMBARGO, with EMBARGO_WHY in the message.",
   "register, after the lookup: Refused when sessions.is_session is false, the cutoff <= sessions.last_completed(now), or now or the Prereg's registered_at >= the cutoff's open.",

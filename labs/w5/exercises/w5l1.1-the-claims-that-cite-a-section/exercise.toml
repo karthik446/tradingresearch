@@ -8,7 +8,7 @@ writes = [
   "In grade: run validate_claims once on the whole reply, so an inference sees the claims it derives from, and note which claim ids it rejected.",
   "Score the share of the citing claims whose id was not rejected; keep no count on the instance from one sample to the next.",
 ]
-show_tests = ["test_a_claim_citing_two_sections_counts_in_both", "test_only_the_claims_own_source_ids_cite", "test_claims_sharing_an_id_each_count"]
+show_tests = ["test_a_claim_citing_two_sections_counts_in_both", "test_only_the_claims_own_source_ids_cite"]
 lab = "w5l1"
 concepts = ["section-grounding", "cites-a-section"]
 touches = ["src/tradingresearch/evals.py"]

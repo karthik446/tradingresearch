@@ -1,0 +1,15 @@
+why: refuses on the New York date of now and of the Prereg, not on the cutoff session's open, so a Prereg registered on the cutoff morning before the open is turned away with the reference message
+expect: prereg registered 2026-12-01T12:30:00+00:00) raised Refused: prereg registered_at 2026-12-01T07:30:00-05:00 is not before the cutoff session opens
+before: GREEN (reader week 5)
+diff --git a/src/tradingresearch/split.py b/src/tradingresearch/split.py
+--- a/src/tradingresearch/split.py
++++ b/src/tradingresearch/split.py
+@@ -101,7 +101,7 @@ def register(conn: sqlite3.Connection, cutoff_session: date, embargo_sessions: i
+     opens = sessions.open_close(cutoff_session)[0]
+     for what, at in (("now", now), ("prereg registered_at", prereg.registered_at)):
+-        if at >= opens:
++        if at.astimezone(sessions.NY).date() >= cutoff_session:
+             raise Refused(f"{what} {at.isoformat()} is not before the cutoff session opens ({opens.isoformat()})")
+     record = TrainingSplit(split_id=split_id, cutoff_session=cutoff_session, embargo_sessions=embargo_sessions,
+                            prereg=prereg, registered_at=now.astimezone(sessions.NY))
+     journal.add(conn, record)

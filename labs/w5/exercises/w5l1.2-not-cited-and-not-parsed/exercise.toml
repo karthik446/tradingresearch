@@ -6,7 +6,7 @@ what_tested = "not_cited: no citing claim, an empty, missing or malformed claims
 writes = [
   "Before anything else: a sample whose parse_status is not ok cannot be graded; raise CannotGrade saying the output did not parse.",
   "When no claim cites the section, raise CannotGrade whose message starts with not_cited and names the section; a missing or malformed claims list cites nothing.",
-  "When some citing claims fail, explain the score as their distinct reasons sorted and joined by a comma and a space, then a colon and `F of N claims citing <section> fail`; when none fails, `N of N claims citing <section> pass`.",
+  "When some citing claims fail, explain the score as their distinct reasons sorted, joined by a comma and a space, then a colon and `F of N claims citing <section> fail`; when none fail, `N of N claims ... pass`.",
 ]
 show_tests = ["test_a_reply_that_did_not_parse_cannot_be_graded", "test_the_explanation_names_sorted_distinct_reasons_and_the_count"]
 lab = "w5l1"

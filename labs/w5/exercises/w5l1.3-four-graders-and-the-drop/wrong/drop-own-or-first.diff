@@ -1,0 +1,15 @@
+why: hides this grader's own section when it is dropped, else only the first dropped section
+expect: indicators_grounded with drop ['edgar', 'headlines'] gave (1.0
+before: GREEN (reader week 5)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -148,7 +148,8 @@
+         if not citing:
+             raise CannotGrade(f"not_cited: no claim cites a {self.section} row")
+         _, rejected = validate_claims(sample.output_parsed, expected["values"], "an_grade",
+-                                      hidden_of(expected, self.drop))
++                                      hidden_of(expected, (self.section,) if self.section in self.drop
++                                                else self.drop[:1]))
+         reasons = {r.claim: r.reason for r in rejected}
+         failed = [reasons[claim] for claim in citing if claim in reasons]
+         n = len(citing)
