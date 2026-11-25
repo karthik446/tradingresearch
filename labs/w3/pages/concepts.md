@@ -6,7 +6,7 @@ One entry per term: what it means, where to read it in the [week 3 chapter](http
 |---|---|---|
 | [LLM judge](#llm-judge) | a model that grades a text against a written rubric, used where no code can decide | w3l1.1 to w3l4.3 |
 | [Verdict format](#verdict-format) | the rubric's rule for the reply: reasoning first, then one JSON object, the last in the reply | w3l1.1 to w3l1.3 |
-| [Abstain](#abstain) | the judge's "unknown": stored as `fail` with a reason that starts `unknown:`, left out of κ and counted | w3l1.2, w3l3.2 |
+| [Abstain](#abstain) | the judge's "unknown": stored as `fail` with a reason that starts `unknown:`, left out of Cohen's kappa and counted | w3l1.2, w3l3.2 |
 | [CannotGrade](#cannotgrade) | gigai-core's exception for "no verdict to store": not a fail, not an abstain | w3l1.3, w3l3.1 to w3l3.3 |
 | [Judge prompt](#judge-prompt) | the frame file with the rubric in it, the thesis as OUTPUT and the evidence as INPUT | w3l2.1, w3l2.2 |
 | [Evidence, not bars](#evidence-not-bars) | the judge sees the cited claims and the code-written summary, never the price path | w3l2.2 |
@@ -29,7 +29,7 @@ The last section of `evals/rubrics/p1_thesis_quality.md`: reason it through firs
 
 ### Abstain
 
-When the summary cannot decide (the reason names something code did not measure), the honest answer is "unknown". gigai-core's `JudgeVerdict` is binary, so the rubric writes unknown as `fail` with an explanation that starts `unknown:`. The `judge_verdict` table takes only `pass` or `fail`; the prefix is what lets §7 leave abstains out of Cohen's κ and count them instead. A judge that writes `"verdict": "unknown"` anyway gets the same reading: `fail`, with `unknown:` put in front of its explanation once. Read [§7 Blind labels and Cohen's κ](https://scout.edgelab.one/learn/ai-engineering/week-3/#7-blind-labels-and-cohens-κ-1-h-0-now).
+When the summary cannot decide (the reason names something code did not measure), the honest answer is "unknown". gigai-core's `JudgeVerdict` is binary, so the rubric writes unknown as `fail` with an explanation that starts `unknown:`. The `judge_verdict` table takes only `pass` or `fail`; the prefix is what lets §7 leave abstains out of Cohen's kappa and count them instead. A judge that writes `"verdict": "unknown"` anyway gets the same reading: `fail`, with `unknown:` put in front of its explanation once. Read [§7 Blind labels and Cohen's kappa](https://scout.edgelab.one/learn/ai-engineering/week-3/#7-blind-labels-and-cohens-κ-1-h-0-now).
 
 ### CannotGrade
 

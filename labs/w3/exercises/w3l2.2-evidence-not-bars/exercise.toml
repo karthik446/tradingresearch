@@ -1,7 +1,7 @@
 id = "w3l2.2"
 title = "Show the judge the cited claims and the code-written summary, never the bars"
 effect = "Observe's judge run: INPUT goes from 0 to the recorded 12 lines, the same as the recording, the prompt from 5158 to 5925 chars, and the raw bar values in the prompt stay at 0/5."
-goal = "Give the judge evidence, not the price path: the claims the thesis cited and the post-trade summary code wrote, under their headings, the same lines the operator reads with tr label show. With the bars the judge could grade by hindsight."
+goal = "Give the judge evidence, not the price path: the claims the thesis cited and the post-trade summary code wrote, under their headings, the same lines you read with tr label show. With the bars the judge could grade by hindsight."
 what_tested = "p1_judge on the FAKEA trade: no opening, high, low or post-exit close of the trade's bars appears in the prompt, INPUT equals the recorded 12 lines (cited claims, blank line, summary), and with a thesis that cites only one of its analysis's two claims INPUT shows only that claim and the summary label.summary writes for that thesis."
 writes = [
   "In p1_judge, the INPUT text: a heading line for the cited claims, then the claims the thesis cites from its own analysis, one per line.",

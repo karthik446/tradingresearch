@@ -7,7 +7,7 @@ writes = [
   "In p1_judge, the run from run_eval is saved under data_dir/runs with analyze's save, right after the call, before its reply is read.",
   "A sample whose outcome is not succeeded raises CannotGrade with the error code the run recorded and the path of the run file.",
 ]
-show_tests = ["test_the_call_lands_in_one_run_file_with_its_cost", "test_a_failed_call_is_cannot_grade_naming_its_run_file"]
+show_tests = ["test_the_call_lands_in_one_run_file_with_its_cost", "test_cannot_grade_names_the_code_this_run_recorded"]
 lab = "w3l3"
 concepts = ["run-file", "cannotgrade", "replayed-reply"]
 touches = ["src/tradingresearch/evals.py"]
