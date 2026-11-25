@@ -1,0 +1,19 @@
+why: ends on a failed call but keeps no span for it
+expect: the sample's model spans have errors
+before: RED (break pass)
+--- a/src/tradingresearch/analyze.py
++++ b/src/tradingresearch/analyze.py
+@@ -403,11 +403,11 @@
+     for _ in range(max_turns):
+         span = _model_span(provider, ModelRequest(settings=call_settings(model), turns=tuple(turns), tools=TOOLS),
+                            trial_id)
+-        sink.write(span)
+-        spans.append(span)
+         if span.error is not None:
+             error = span.error
+             break
++        sink.write(span)
++        spans.append(span)
+         text = span.text
+         if not span.tool_calls:
+             break

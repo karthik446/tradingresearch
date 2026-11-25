@@ -1,0 +1,25 @@
+why: calls run_tool itself, so the right answers go back but no tool span is kept
+expect: the trace has tool spans for
+before: RED (break pass)
+--- a/src/tradingresearch/analyze.py
++++ b/src/tradingresearch/analyze.py
+@@ -390,7 +390,7 @@
+     Call with TOOLS, run every tool call and answer it as a `tool` turn, until a reply asks for no tool (that reply
+     is parsed) or `max_turns` calls went by (a failed sample). A ProviderError fails the sample as in core `run`; a
+     BudgetExceeded propagates. Each span goes to `trace` when it ends, the trial span last."""
+-    from .tools import TOOLS  # tools.py imports this module
++    from .tools import TOOLS, run_tool  # tools.py imports this module
+     if max_turns < 1:
+         raise ValueError(f"max_turns must be at least 1, got {max_turns}")
+     item = item or item_for(ctx)
+@@ -412,9 +412,7 @@
+             break
+         turns.append(Turn(role="assistant", content=span.text, tool_calls=span.tool_calls))
+         for call in span.tool_calls:
+-            tool_span, content = _tool_span(ctx, call, trial_id)
+-            sink.write(tool_span)
+-            spans.append(tool_span)
++            content = run_tool(ctx, call.name, call.arguments)
+             turns.append(Turn(role="tool", content=content, tool_call_id=call.id))
+     parsed = parse_json_text(text) if error is None else None
+     completed = datetime.now(UTC)

@@ -1,0 +1,14 @@
+why: get_fundamentals allows any argument beside metrics
+expect: get_fundamentals's schema is open: it does not set
+before: RED (author)
+--- a/src/tradingresearch/tools.py
++++ b/src/tradingresearch/tools.py
+@@ -57,7 +57,7 @@
+                     "description": "Only these metrics. Omit for every metric.",
+                 },
+             },
+-            "additionalProperties": False,
++            "additionalProperties": True,
+         },
+     ),
+ )

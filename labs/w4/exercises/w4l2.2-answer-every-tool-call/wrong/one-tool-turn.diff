@@ -1,0 +1,20 @@
+why: answers every call in one tool turn under the first call's id
+expect: the reply asked for [('toolu_lab_1', 'get_indicators'),
+before: RED (author)
+--- a/src/tradingresearch/analyze.py
++++ b/src/tradingresearch/analyze.py
+@@ -411,11 +411,13 @@
+         if not span.tool_calls:
+             break
+         turns.append(Turn(role="assistant", content=span.text, tool_calls=span.tool_calls))
++        answers = []
+         for call in span.tool_calls:
+             tool_span, content = _tool_span(ctx, call, trial_id)
+             sink.write(tool_span)
+             spans.append(tool_span)
+-            turns.append(Turn(role="tool", content=content, tool_call_id=call.id))
++            answers.append(content)
++        turns.append(Turn(role="tool", content="\n".join(answers), tool_call_id=span.tool_calls[0].id))
+     parsed = parse_json_text(text) if error is None else None
+     completed = datetime.now(UTC)
+     outcome = "failed" if error is not None else "succeeded"

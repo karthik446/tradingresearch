@@ -1,0 +1,13 @@
+why: names is typed but not described: the model guesses what goes in it
+expect: get_indicators's argument 'names' has no description: the model sees
+before: RED (author)
+--- a/src/tradingresearch/tools.py
++++ b/src/tradingresearch/tools.py
+@@ -28,7 +28,6 @@
+             "properties": {
+                 "names": {
+                     "type": "array", "minItems": 1, "items": {"type": "string"},
+-                    "description": "Only these row names, e.g. [\"close\", \"rsi_14\"]. Omit for every row.",
+                 },
+             },
+             "additionalProperties": False,

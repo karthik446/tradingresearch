@@ -1,0 +1,14 @@
+why: an empty list passes as a value
+expect: run_tool('get_indicators', '{"names": []}') answered with 21 rows:
+before: RED (break pass)
+--- a/src/tradingresearch/tools.py
++++ b/src/tradingresearch/tools.py
+@@ -99,7 +99,7 @@
+         allowed = ", ".join(properties) or "none"
+         raise ToolError(f"{spec.name}: unknown argument(s) {', '.join(unknown)}; allowed: {allowed}")
+     for key, value in args.items():
+-        if not isinstance(value, list) or not value or not all(isinstance(v, str) for v in value):
++        if not isinstance(value, list) or not all(isinstance(v, str) for v in value):
+             raise ToolError(f"{spec.name}: {key} must be a non-empty list of strings, got {json.dumps(value)}")
+     return args
+ 

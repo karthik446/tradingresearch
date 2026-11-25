@@ -1,0 +1,20 @@
+id = "w4l1.1"
+title = "Close every tool's schema and describe every argument"
+effect = "Observe's tools rows go from closed False and described 0/0 on all three tools to closed True and every argument described, and each tool now refuses the recorded call to the capture's get_sources."
+goal = "Write the parameters of the three tools as closed JSON schemas: an object whose properties are exactly the arguments its handler reads, each one described, and nothing else allowed, so the model sees the shape of a good call before it makes one."
+what_tested = "TOOLS on its own and against the handlers: three unique valid names, each served by a handler; every schema an object with additionalProperties false and a described property per argument; every call the handler serves passes the schema (names, metrics, nothing) and the recorded {\"groups\": [...]} call, an empty list, an unknown metric fail it."
+writes = [
+  "The parameters of get_indicators, get_levels and get_fundamentals in src/tradingresearch/tools.py: type object, the properties the handler reads, additionalProperties false.",
+  "A description on every property, saying what it picks and what leaving it out does.",
+  "A list argument is a non-empty list of strings; the metrics list allows only the four metrics the fundamentals rows have.",
+]
+show_tests = ["test_every_schema_is_closed_and_every_argument_described", "test_each_schema_refuses_what_its_handler_cannot_serve"]
+lab = "w4l1"
+concepts = ["closed-schema"]
+touches = ["src/tradingresearch/tools.py"]
+check = "python -m pytest -q -x -p no:cacheprovider -m lab labs/w4/exercises/w4l1.1-closed-schemas/test_w4l1_1.py"
+observe = "python labs/w4/tools/observe.py tools"
+paid = false
+fixtures = ["data/fakea.context.json", "data/turn1.reply.json"]
+origin = "rebuild of week-4-end tools.py; reference = the tag's own code"
+red_expect = "get_indicators's schema is open"

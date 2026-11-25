@@ -1,0 +1,15 @@
+why: keeps a failed call's span but carries on as if it answered
+expect: with the replies ('failed',) the sample ends succeeded, error None;
+before: RED (author)
+--- a/src/tradingresearch/analyze.py
++++ b/src/tradingresearch/analyze.py
+@@ -405,9 +405,6 @@
+                            trial_id)
+         sink.write(span)
+         spans.append(span)
+-        if span.error is not None:
+-            error = span.error
+-            break
+         text = span.text
+         if not span.tool_calls:
+             break

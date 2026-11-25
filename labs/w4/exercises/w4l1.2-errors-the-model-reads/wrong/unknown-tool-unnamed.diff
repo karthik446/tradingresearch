@@ -1,0 +1,14 @@
+why: says the tool is unknown without naming the real ones
+expect: the error for the recorded call to 'get_sources' is "unknown tool
+before: RED (author)
+--- a/src/tradingresearch/tools.py
++++ b/src/tradingresearch/tools.py
+@@ -81,7 +81,7 @@
+ def _lookup(name: str) -> tuple[ToolSpec, Callable[[Context, dict], list[Row]]]:
+     spec = next((s for s in TOOLS if s.name == name), None)
+     if spec is None:
+-        raise ToolError(f"unknown tool {name!r}; the tools are {', '.join(NAMES)}")
++        raise ToolError(f"unknown tool {name!r}")
+     return spec, HANDLERS[name]
+ 
+ 

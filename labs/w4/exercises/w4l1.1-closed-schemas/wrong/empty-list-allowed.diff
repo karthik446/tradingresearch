@@ -1,0 +1,14 @@
+why: names may be an empty list, which asks for no row
+expect: get_indicators's schema accepts {"names": []}: an empty list asks for
+before: RED (break pass)
+--- a/src/tradingresearch/tools.py
++++ b/src/tradingresearch/tools.py
+@@ -27,7 +27,7 @@
+             "type": "object",
+             "properties": {
+                 "names": {
+-                    "type": "array", "minItems": 1, "items": {"type": "string"},
++                    "type": "array", "items": {"type": "string"},
+                     "description": "Only these row names, e.g. [\"close\", \"rsi_14\"]. Omit for every row.",
+                 },
+             },

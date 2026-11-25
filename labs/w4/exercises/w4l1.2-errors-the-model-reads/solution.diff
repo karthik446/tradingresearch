@@ -1,0 +1,48 @@
+--- a/src/tradingresearch/tools.py
++++ b/src/tradingresearch/tools.py
+@@ -70,14 +70,40 @@
+ 
+ def run_tool(ctx: Context, name: str, arguments: str) -> str:
+     """One tool call on `ctx` as JSON text; every mistake in the call is an {"error": ...} result, never raised."""
+-    # TODO(w4l1.2) every mistake in a call comes back as {"error": "<what was wrong, how to call again>"}, never
+-    #   raised: a name that is not a tool (the message names every tool), argument text that is not a JSON object (an
+-    #   empty text is no arguments), an argument the tool's schema does not list, a value that is not a non-empty list
+-    #   of strings, and the ToolError a handler raises.
+-    rows = HANDLERS[name](ctx, json.loads(arguments))
++    try:
++        spec, handler = _lookup(name)
++        rows = handler(ctx, _arguments(spec, arguments))
++    except ToolError as exc:
++        return json.dumps({"error": str(exc)})
+     return json.dumps({"rows": [_shown(row) for row in rows]})
+ 
+ 
++def _lookup(name: str) -> tuple[ToolSpec, Callable[[Context, dict], list[Row]]]:
++    spec = next((s for s in TOOLS if s.name == name), None)
++    if spec is None:
++        raise ToolError(f"unknown tool {name!r}; the tools are {', '.join(NAMES)}")
++    return spec, HANDLERS[name]
++
++
++def _arguments(spec: ToolSpec, raw: str) -> dict:
++    """The model's raw argument text checked against the tool's closed schema (every property is a string list)."""
++    try:
++        args = json.loads(raw) if raw.strip() else {}
++    except json.JSONDecodeError as exc:
++        raise ToolError(f"{spec.name}: arguments are not valid JSON ({exc.msg}); send a JSON object") from None
++    if not isinstance(args, dict):
++        raise ToolError(f"{spec.name}: arguments must be a JSON object, got {type(args).__name__}")
++    properties = spec.parameters["properties"]
++    unknown = sorted(set(args) - set(properties))
++    if unknown:
++        allowed = ", ".join(properties) or "none"
++        raise ToolError(f"{spec.name}: unknown argument(s) {', '.join(unknown)}; allowed: {allowed}")
++    for key, value in args.items():
++        if not isinstance(value, list) or not value or not all(isinstance(v, str) for v in value):
++            raise ToolError(f"{spec.name}: {key} must be a non-empty list of strings, got {json.dumps(value)}")
++    return args
++
++
+ def _shown(row: Row) -> dict:
+     """A row as the model sees it: the value rounded the way the fixed-context table shows it."""
+     # TODO(w4l1.3) a row as the model cites it: its source_id, name and unit, the regime row's label when it has one,

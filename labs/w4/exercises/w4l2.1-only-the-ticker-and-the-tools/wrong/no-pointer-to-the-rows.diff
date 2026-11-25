@@ -1,0 +1,14 @@
+why: the ticker, the session and the answer's form, with no word on where the rows are
+expect: the turn does not say where the rows are: the fixed turn has a
+before: RED (break pass)
+--- a/src/tradingresearch/analyze.py
++++ b/src/tradingresearch/analyze.py
+@@ -376,8 +376,6 @@
+     """The tools-mode user turn: the ticker and session only, so every number the model cites came through a tool."""
+     return "\n".join([
+         f"TICKER: {ctx.ticker}", f"SESSION: {ctx.session.isoformat()} (the last completed NYSE session)", "",
+-        "The SOURCES table is not included. Ask for the rows you need with the tools; every row they return "
+-        "carries the source_id to cite.", "",
+         "Write the claims as JSON with the key \"claims\".",
+     ])
+ 

@@ -1,0 +1,14 @@
+why: answers only the first call of a reply
+expect: the reply asked for [('toolu_lab_1', 'get_indicators'),
+before: RED (author)
+--- a/src/tradingresearch/analyze.py
++++ b/src/tradingresearch/analyze.py
+@@ -411,7 +411,7 @@
+         if not span.tool_calls:
+             break
+         turns.append(Turn(role="assistant", content=span.text, tool_calls=span.tool_calls))
+-        for call in span.tool_calls:
++        for call in span.tool_calls[:1]:
+             tool_span, content = _tool_span(ctx, call, trial_id)
+             sink.write(tool_span)
+             spans.append(tool_span)

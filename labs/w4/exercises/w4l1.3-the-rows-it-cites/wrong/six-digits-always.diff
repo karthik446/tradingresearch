@@ -1,0 +1,14 @@
+why: six significant digits for every value, so a revenue in the billions loses its last digits
+expect: get_fundamentals returns revenue_CY2026Q2 as 1820020000.0; the fixed
+before: RED (break pass)
+--- a/src/tradingresearch/tools.py
++++ b/src/tradingresearch/tools.py
+@@ -109,7 +109,7 @@
+     shown: dict = {"source_id": row.source_id, "name": row.name, "unit": row.unit}
+     if row.label is not None:
+         shown["label"] = row.label
+-    shown["value"] = None if row.value is None else float(plain(row.value))
++    shown["value"] = None if row.value is None else float(f"{row.value:.6g}")
+     return shown
+ 
+ 

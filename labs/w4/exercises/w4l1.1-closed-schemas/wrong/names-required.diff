@@ -1,0 +1,13 @@
+why: names is required, so the call for every row is refused
+expect: get_indicators's schema refuses {} (arguments has no 'names', which
+before: RED (break pass)
+--- a/src/tradingresearch/tools.py
++++ b/src/tradingresearch/tools.py
+@@ -31,6 +31,7 @@
+                     "description": "Only these row names, e.g. [\"close\", \"rsi_14\"]. Omit for every row.",
+                 },
+             },
++            "required": ["names"],
+             "additionalProperties": False,
+         },
+     ),

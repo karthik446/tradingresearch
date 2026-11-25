@@ -1,0 +1,13 @@
+why: leaves out the source ids but still lists every row's value
+expect: tools_prompt's turn holds 0 of the 38 source rows and 32 of their
+before: RED (author)
+--- a/src/tradingresearch/analyze.py
++++ b/src/tradingresearch/analyze.py
+@@ -378,6 +378,7 @@
+         f"TICKER: {ctx.ticker}", f"SESSION: {ctx.session.isoformat()} (the last completed NYSE session)", "",
+         "The SOURCES table is not included. Ask for the rows you need with the tools; every row they return "
+         "carries the source_id to cite.", "",
++        *(f"{r.name}: {plain(r.value)}" for r in ctx.rows if r.value is not None), "",
+         "Write the claims as JSON with the key \"claims\".",
+     ])
+ 

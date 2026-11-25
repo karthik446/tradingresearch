@@ -1,0 +1,20 @@
+id = "w4l2.2"
+title = "Answer every tool call, then call again"
+effect = "Observe's recorded exchange goes from 1 request ending not_json to 2 requests ending succeeded with 11 claims, and the three-calls run sends three tool turns with ids toolu_lab_1 to toolu_lab_3 and keeps three tool spans."
+goal = "Answer a reply that asks for tools: send it back as the assistant turn, then one tool turn per call, in the order asked, with the call's id and run_tool's text, keep each tool call's span, and call the model again until a reply asks for none."
+what_tested = "analyze_with_tools on replayed replies: the recorded exchange's second request equals turn2.request.json but for the user turn and the tool turn, which is run_tool's answer; a reply with three calls gets three tool turns in order with their ids and run_tool results and three tool spans; three, one more, then the final JSON makes 3 calls and a parsed sample."
+writes = [
+  "In analyze_with_tools' loop: append the reply as an assistant turn with its text and its tool calls.",
+  "For each call, in order: run it through _tool_span, write its span to the sink and keep it, append a tool turn with the call's id and the content.",
+  "Then go round again: the loop ends at the first reply with no tool call.",
+]
+show_tests = ["test_each_call_gets_its_own_tool_turn_and_span_in_order", "test_the_loop_calls_again_until_a_reply_asks_for_no_tool"]
+lab = "w4l2"
+concepts = ["tool-loop", "replayed-reply"]
+touches = ["src/tradingresearch/analyze.py"]
+check = "python -m pytest -q -x -p no:cacheprovider -m lab labs/w4/exercises/w4l2.2-answer-every-tool-call/test_w4l2_2.py"
+observe = "python labs/w4/tools/observe.py loop"
+paid = false
+fixtures = ["data/turn1.reply.json", "data/turn2.request.json", "data/turn2.reply.json", "data/fakea.context.json"]
+origin = "rebuild of week-4-end analyze.py; reference = the tag's own code"
+red_expect = "1 request was sent: the recorded first reply asks for get_sources"

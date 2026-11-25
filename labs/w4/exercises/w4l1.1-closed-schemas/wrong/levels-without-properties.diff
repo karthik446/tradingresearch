@@ -1,0 +1,14 @@
+why: get_levels is closed but lists no properties object
+expect: get_levels's schema has no properties object: list the arguments its
+before: RED (break pass)
+--- a/src/tradingresearch/tools.py
++++ b/src/tradingresearch/tools.py
+@@ -41,7 +41,7 @@
+                      "with its distance in ATR (dist_level_*_atr), and the congestion zone (congestion_low, "
+                      "congestion_high, congestion_sessions, congestion_range_atr) when there is one. Returns "
+                      f"{{\"rows\": [...]}}; {ROW_FORMAT}. Cite a row by source_id."),
+-        parameters={"type": "object", "properties": {}, "additionalProperties": False},
++        parameters={"type": "object", "additionalProperties": False},
+     ),
+     ToolSpec(
+         name="get_fundamentals",

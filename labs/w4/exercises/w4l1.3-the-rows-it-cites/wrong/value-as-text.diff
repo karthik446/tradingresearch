@@ -1,0 +1,14 @@
+why: the table's digits as a string instead of a number
+expect: get_indicators returns close's value as '101.401', a str: a value is
+before: RED (break pass)
+--- a/src/tradingresearch/tools.py
++++ b/src/tradingresearch/tools.py
+@@ -109,7 +109,7 @@
+     shown: dict = {"source_id": row.source_id, "name": row.name, "unit": row.unit}
+     if row.label is not None:
+         shown["label"] = row.label
+-    shown["value"] = None if row.value is None else float(plain(row.value))
++    shown["value"] = None if row.value is None else plain(row.value)
+     return shown
+ 
+ 

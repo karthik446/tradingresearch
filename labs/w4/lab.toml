@@ -1,0 +1,62 @@
+# Week 4 labs: the base, titles, pages, the unlock policy and the suite gate `tr lab` uses.
+#
+# base: the first `tr lab start` of this week makes the repo's files equal to the author's code at this tag (labs/
+# and the runner's own files excepted) and commits it as `lab: week 4 base (week-4-start)`.
+#
+# [unlock] counts FAILED runs of `tr lab verify` on the current exercise. A run where the check could not start
+# (syntax or import error, no tests collected) is not a failed run and does not count.
+#   hints = [2, 5]   hint 1 unlocks after 2 failed runs, hint 2 after 5.
+#   solution = 10    `tr lab solution` unlocks after 10 failed runs, or as soon as the check is green.
+#
+# [suite] deselect: tests/test_week4.py covers the whole chapter, so the repo suite is red until the week ends. The
+# end-of-lab gate (`tr lab next` on a lab's last exercise) passes these node ids to pytest as --deselect (a node id
+# without its [param] deselects every case), plus the ids in that lab's own [labs.<id>.suite]. Plain
+# `python -m pytest -q` still runs them.
+base = "week-4-start"
+
+[unlock]
+hints = [2, 5]
+solution = 10
+
+[suite]
+deselect = [
+    # The tools arm in the experiment runner, the tool_calls_ok grader and the tools-vs-fixed experiment (chapter
+    # sections 3 and 4): not in these labs yet.
+    "tests/test_week4.py::test_a_tools_arm_runs_through_run_arms",
+    "tests/test_week4.py::test_a_tools_arm_that_never_stops_makes_no_more_than_the_cap",
+    "tests/test_week4.py::test_tool_calls_ok_is_a_registered_code_grader_with_a_call_cap",
+    "tests/test_week4.py::test_tool_calls_ok",
+    "tests/test_week4.py::test_tool_calls_ok_fails_one_call_over_the_cap",
+    "tests/test_week4.py::test_the_tools_vs_fixed_experiment_has_two_arms_that_differ_only_in_mode",
+    # Written by hand from the chapter (sections 4 and 6), not in these labs.
+    "tests/test_week4.py::test_adr_005_records_the_decision_a_measured_table_and_the_consequences",
+    "tests/test_week4.py::test_the_first_rule_change_is_preregistered_by_the_book",
+    "tests/test_week4.py::test_the_first_rule_change_names_a_real_challenger_and_registers",
+]
+
+[labs.w4l1]
+title = "Three tools the model can use"
+page = "pages/w4l1.md"
+goal = "Write the three tools over the FAKEA context: closed schemas with every argument described, every bad call answered with an error the model can read, and rows that carry what a claim cites, with the numbers the fixed arm's table shows."
+section = [2]
+
+# After w4l1, tools.py is complete and analyze.py is still the base's: the tests of analyze_with_tools are lab w4l2.
+[labs.w4l1.suite]
+deselect = ["tests/test_week4.py::test_the_first_request_sends_the_tools_and_no_source_rows",
+            "tests/test_week4.py::test_the_second_request_answers_each_tool_call_with_its_run_tool_result",
+            "tests/test_week4.py::test_the_loop_stops_at_the_final_json_and_returns_a_parsed_sample",
+            "tests/test_week4.py::test_every_model_call_and_tool_call_is_in_the_trace",
+            "tests/test_week4.py::test_the_turn_cap_returns_a_failed_sample_without_raising"]
+
+# After w4l2, the only tests in tests/test_week4.py still red are the ones in [suite], so w4l2 has no list.
+[labs.w4l2]
+title = "The tool loop"
+page = "pages/w4l2.md"
+goal = "Write analyze_with_tools: a user turn with no source row, the tools offered on every call, every tool call answered in order, at most max_turns model calls, and every model and tool call in the trace as it ends."
+section = [3]
+
+# What labs/tools/prove.py checks after the last exercise: these files must equal the tag byte for byte (the runner
+# ignores this table). They are every file these labs write: tools.py (w4l1) and analyze.py (w4l2).
+[end]
+tag = "week-4-end"
+files = ["src/tradingresearch/tools.py", "src/tradingresearch/analyze.py"]

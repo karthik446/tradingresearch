@@ -1,0 +1,14 @@
+why: lets one call more than max_turns through
+expect: with max_turns=3 the loop made 4 calls: every reply asks for a tool,
+before: RED (author)
+--- a/src/tradingresearch/analyze.py
++++ b/src/tradingresearch/analyze.py
+@@ -400,7 +400,7 @@
+     turns = list(first)
+     spans: list[ModelSpan | ToolSpan] = []
+     text, error = "", None
+-    for _ in range(max_turns):
++    for _ in range(max_turns + 1):
+         span = _model_span(provider, ModelRequest(settings=call_settings(model), turns=tuple(turns), tools=TOOLS),
+                            trial_id)
+         sink.write(span)

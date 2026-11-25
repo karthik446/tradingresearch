@@ -1,0 +1,15 @@
+why: a label key on every row, null on all but the regime
+expect: "label": null
+before: RED (break pass)
+--- a/src/tradingresearch/tools.py
++++ b/src/tradingresearch/tools.py
+@@ -107,8 +107,7 @@
+ def _shown(row: Row) -> dict:
+     """A row as the model sees it: the value rounded the way the fixed-context table shows it."""
+     shown: dict = {"source_id": row.source_id, "name": row.name, "unit": row.unit}
+-    if row.label is not None:
+-        shown["label"] = row.label
++    shown["label"] = row.label
+     shown["value"] = None if row.value is None else float(plain(row.value))
+     return shown
+ 

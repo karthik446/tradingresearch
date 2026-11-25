@@ -1,0 +1,34 @@
+--- a/src/tradingresearch/tools.py
++++ b/src/tradingresearch/tools.py
+@@ -106,9 +106,11 @@
+ 
+ def _shown(row: Row) -> dict:
+     """A row as the model sees it: the value rounded the way the fixed-context table shows it."""
+-    # TODO(w4l1.3) a row as the model cites it: its source_id, name and unit, the regime row's label when it has one,
+-    #   and its value as a JSON number written exactly as the fixed SOURCES table (analyze.render) writes it.
+-    return {"name": row.name, "value": row.value}
++    shown: dict = {"source_id": row.source_id, "name": row.name, "unit": row.unit}
++    if row.label is not None:
++        shown["label"] = row.label
++    shown["value"] = None if row.value is None else float(plain(row.value))
++    return shown
+ 
+ 
+ def _edgar_ids(ctx: Context) -> set[str]:
+@@ -118,9 +120,13 @@
+ def indicators(ctx: Context, args: dict) -> list[Row]:
+     edgar = _edgar_ids(ctx)
+     rows = [r for r in ctx.rows if r.source_id not in edgar and not r.name.startswith(LEVEL_PREFIXES)]
+-    # TODO(w4l1.3) `names` keeps only the rows with those exact names; a name with no row here is a ToolError that
+-    #   lists every name there is, so the model can ask again.
+-    return rows
++    wanted = args.get("names")
++    if wanted is None:
++        return rows
++    missing = [w for w in wanted if w not in {r.name for r in rows}]
++    if missing:
++        raise ToolError(f"get_indicators: no row named {', '.join(missing)}; names: {', '.join(r.name for r in rows)}")
++    return [r for r in rows if r.name in wanted]
+ 
+ 
+ def levels(ctx: Context, args: dict) -> list[Row]:

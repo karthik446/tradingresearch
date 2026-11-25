@@ -1,0 +1,15 @@
+why: checks the argument names but not their values
+expect: run_tool('get_indicators', '{"names": "close"}') answered with 21
+before: RED (break pass)
+--- a/src/tradingresearch/tools.py
++++ b/src/tradingresearch/tools.py
+@@ -98,9 +98,6 @@
+     if unknown:
+         allowed = ", ".join(properties) or "none"
+         raise ToolError(f"{spec.name}: unknown argument(s) {', '.join(unknown)}; allowed: {allowed}")
+-    for key, value in args.items():
+-        if not isinstance(value, list) or not value or not all(isinstance(v, str) for v in value):
+-            raise ToolError(f"{spec.name}: {key} must be a non-empty list of strings, got {json.dumps(value)}")
+     return args
+ 
+ 

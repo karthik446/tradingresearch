@@ -1,0 +1,15 @@
+why: raises when the cap is reached instead of failing the sample
+expect: analyze_with_tools raised RuntimeError('no final reply after 3 model
+before: RED (author)
+--- a/src/tradingresearch/analyze.py
++++ b/src/tradingresearch/analyze.py
+@@ -418,8 +418,7 @@
+             spans.append(tool_span)
+             turns.append(Turn(role="tool", content=content, tool_call_id=call.id))
+     else:
+-        error = CallError(code="max_tool_turns", message=f"no final reply after {max_turns} model calls",
+-                          retryable=False)
++        raise RuntimeError(f"no final reply after {max_turns} model calls")
+     parsed = parse_json_text(text) if error is None else None
+     completed = datetime.now(UTC)
+     outcome = "failed" if error is not None else "succeeded"

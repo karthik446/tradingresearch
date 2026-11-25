@@ -1,0 +1,14 @@
+why: shows the unrounded value the context holds
+expect: get_indicators returns close as 101.40124722000002; the fixed SOURCES
+before: RED (author)
+--- a/src/tradingresearch/tools.py
++++ b/src/tradingresearch/tools.py
+@@ -109,7 +109,7 @@
+     shown: dict = {"source_id": row.source_id, "name": row.name, "unit": row.unit}
+     if row.label is not None:
+         shown["label"] = row.label
+-    shown["value"] = None if row.value is None else float(plain(row.value))
++    shown["value"] = row.value
+     return shown
+ 
+ 

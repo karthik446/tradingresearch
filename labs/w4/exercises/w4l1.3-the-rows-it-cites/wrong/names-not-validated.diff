@@ -1,0 +1,15 @@
+why: filters by names but answers an unknown name with fewer rows, silently
+expect: get_indicators with {"names": ["rsi"]} returns {"rows": []}: no row
+before: RED (author)
+--- a/src/tradingresearch/tools.py
++++ b/src/tradingresearch/tools.py
+@@ -123,9 +123,6 @@
+     wanted = args.get("names")
+     if wanted is None:
+         return rows
+-    missing = [w for w in wanted if w not in {r.name for r in rows}]
+-    if missing:
+-        raise ToolError(f"get_indicators: no row named {', '.join(missing)}; names: {', '.join(r.name for r in rows)}")
+     return [r for r in rows if r.name in wanted]
+ 
+ 

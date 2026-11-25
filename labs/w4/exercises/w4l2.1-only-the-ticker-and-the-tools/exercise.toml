@@ -1,0 +1,19 @@
+id = "w4l2.1"
+title = "Send only the ticker and the session, and offer the tools"
+effect = "Observe's tools_prompt goes from 2095 chars with 38 of 38 source rows to about 250 chars with 0, and the recorded exchange's first request now differs from turn1.request.json only in the user turn."
+goal = "Write the tools-mode user turn and the first request: the ticker and the session as the fixed turn writes them, a line saying the rows are not here and the tools return them, the answer's form, no source row, and the three tools offered on every call."
+what_tested = "tools_prompt on the FAKEA context: no source id or row value, the first two and the last line of render's turn, a word on SOURCES and the tools; the first request of the recorded exchange equals turn1.request.json but for the user turn, which is tools_prompt's; the request offers your three TOOLS as the adapter sends them."
+writes = [
+  "tools_prompt in src/tradingresearch/analyze.py: render's TICKER and SESSION lines, a sentence that the SOURCES table is not included and the tools return the rows to cite, render's last line.",
+  "analyze_with_tools: every model call's request carries TOOLS.",
+]
+show_tests = ["test_the_user_turn_is_the_ticker_the_session_and_where_the_rows_are", "test_the_request_offers_your_three_tools"]
+lab = "w4l2"
+concepts = ["tools-prompt", "replayed-reply"]
+touches = ["src/tradingresearch/analyze.py"]
+check = "python -m pytest -q -x -p no:cacheprovider -m lab labs/w4/exercises/w4l2.1-only-the-ticker-and-the-tools/test_w4l2_1.py"
+observe = "python labs/w4/tools/observe.py loop"
+paid = false
+fixtures = ["data/turn1.request.json", "data/turn1.reply.json", "data/turn2.reply.json", "data/fakea.context.json"]
+origin = "rebuild of week-4-end analyze.py; reference = the tag's own code"
+red_expect = "tools_prompt's turn holds 38 of the 38 source rows"

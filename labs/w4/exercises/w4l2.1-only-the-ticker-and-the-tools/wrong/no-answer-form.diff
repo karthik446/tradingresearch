@@ -1,0 +1,15 @@
+why: drops the line that says what the answer is
+expect: the turn ends ['The SOURCES table is not included. Ask for the rows
+before: RED (author)
+--- a/src/tradingresearch/analyze.py
++++ b/src/tradingresearch/analyze.py
+@@ -377,8 +377,7 @@
+     return "\n".join([
+         f"TICKER: {ctx.ticker}", f"SESSION: {ctx.session.isoformat()} (the last completed NYSE session)", "",
+         "The SOURCES table is not included. Ask for the rows you need with the tools; every row they return "
+-        "carries the source_id to cite.", "",
+-        "Write the claims as JSON with the key \"claims\".",
++        "carries the source_id to cite.",
+     ])
+ 
+ 

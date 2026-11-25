@@ -1,0 +1,126 @@
+{
+  "model": "anthropic/claude-sonnet-5.5",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are an equity research assistant. You write short, checkable claims about one US stock on one\ntrading day. You never compute numbers: every number you use is in the SOURCES table, computed by code.\n\nRules for every claim:\n- tag \"fact\": restates one or more sources. source_ids lists them; derived_from is empty; steps is null.\n  If the claim has a number, put it in \"value\" and \"unit\" exactly as in the cited source.\n- tag \"inference\": a conclusion drawn from earlier claims. derived_from lists their ids; steps says how in one\n  sentence; source_ids is empty. value is null unless the number appears in a cited source.\n- tag \"opinion\": a judgement. value is null and the text contains no digits.\n- Write numbers ONLY in \"value\". In \"text\", refer to it as {value}. Name indicators by their table name\n  (sma_200, high_20, rsi_14). Dates as YYYY-MM-DD are allowed.\n- Use only the source_ids in the table. Do not invent sources, news or events.\nWrite 6 to 12 claims. Ids are c1, c2, ... in order; an inference may only derive from earlier ids.\nThis is educational research, not investment advice. Do not recommend buying or selling."
+    },
+    {
+      "role": "user",
+      "content": "TICKER: FAKEA\nSESSION: 2026-11-13 (the last completed NYSE session)\n\nThe SOURCES table is not included here: fetch the rows you need with the get_sources tool.\n\nWrite the claims as JSON with the key \"claims\"."
+    }
+  ],
+  "max_tokens": 4000,
+  "response_format": {
+    "type": "json_schema",
+    "json_schema": {
+      "name": "output",
+      "strict": true,
+      "schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "claims"
+        ],
+        "properties": {
+          "claims": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "id",
+                "tag",
+                "text",
+                "value",
+                "unit",
+                "source_ids",
+                "derived_from",
+                "steps"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "tag": {
+                  "type": "string",
+                  "enum": [
+                    "fact",
+                    "inference",
+                    "opinion"
+                  ]
+                },
+                "text": {
+                  "type": "string"
+                },
+                "value": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "unit": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "source_ids": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "derived_from": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "steps": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "get_sources",
+        "description": "Rows of the SOURCES table for this ticker and session, one per line as `source_id | name | value | unit`. Ask for every group you need in one call. Cite the source_id of every row a claim uses.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "groups": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string",
+                "enum": [
+                  "price_and_indicators",
+                  "levels_and_congestion",
+                  "regime",
+                  "fundamentals"
+                ]
+              },
+              "description": "Which rows: price_and_indicators (close, moving averages, RSI, ATR, volume, 20-day range), levels_and_congestion (volume and pivot levels, congestion box), regime (SPY regime), fundamentals (EDGAR revenue, net income, EPS)."
+            }
+          },
+          "required": [
+            "groups"
+          ],
+          "additionalProperties": false
+        }
+      }
+    }
+  ],
+  "tool_choice": "auto"
+}

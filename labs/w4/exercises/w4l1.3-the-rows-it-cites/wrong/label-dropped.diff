@@ -1,0 +1,14 @@
+why: the regime row comes back with neither value nor label
+expect: "name": "regime_spy", "unit": null, "value": null}
+before: RED (break pass)
+--- a/src/tradingresearch/tools.py
++++ b/src/tradingresearch/tools.py
+@@ -107,8 +107,6 @@
+ def _shown(row: Row) -> dict:
+     """A row as the model sees it: the value rounded the way the fixed-context table shows it."""
+     shown: dict = {"source_id": row.source_id, "name": row.name, "unit": row.unit}
+-    if row.label is not None:
+-        shown["label"] = row.label
+     shown["value"] = None if row.value is None else float(plain(row.value))
+     return shown
+ 

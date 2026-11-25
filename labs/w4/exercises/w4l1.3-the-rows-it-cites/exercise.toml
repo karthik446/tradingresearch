@@ -1,0 +1,19 @@
+id = "w4l1.3"
+title = "Return the rows a claim cites, with the numbers the table shows"
+effect = "Observe's rows gain source_id and unit, and on the context with extra digits get_indicators goes from 0 of 21 rows matching the SOURCES table to 21 of 21; an unknown name is an error listing the names."
+goal = "Return rows the model can cite: each with its source_id, name, unit, the regime's label, and the value as the fixed arm's SOURCES table shows it, so a claim made through the tools checks against the same numbers. names picks rows by exact name; an unknown name is an error."
+what_tested = "get_indicators, get_levels and get_fundamentals on the FAKEA context and on the same rows with extra digits (fakea.context(extra=True)): every row has source_id, name, unit and value, the regime row its label, every value equals what render's SOURCES table shows (close 101.401, not 101.40124722000002), names returns those rows, an unknown name an error listing them."
+writes = [
+  "shown in src/tradingresearch/tools.py: a row as the model cites it, with source_id, name and unit, the label when the row has one, and the value as a number rounded the way the table rounds it.",
+  "get_indicators' names keeps only the rows with exactly those names; a name with no row is a ToolError listing the names there are.",
+]
+show_tests = ["test_each_row_carries_what_a_claim_cites", "test_each_value_is_the_number_the_sources_table_shows"]
+lab = "w4l1"
+concepts = ["cited-row"]
+touches = ["src/tradingresearch/tools.py"]
+check = "python -m pytest -q -x -p no:cacheprovider -m lab labs/w4/exercises/w4l1.3-the-rows-it-cites/test_w4l1_3.py"
+observe = "python labs/w4/tools/observe.py tools"
+paid = false
+fixtures = ["data/fakea.context.json"]
+origin = "rebuild of week-4-end tools.py; reference = the tag's own code"
+red_expect = "Lacking ['source_id', 'unit']"

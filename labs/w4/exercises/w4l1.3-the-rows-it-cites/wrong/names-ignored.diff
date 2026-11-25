@@ -1,0 +1,20 @@
+why: accepts names and answers with every row anyway
+expect: get_indicators with {"names": ["close", "rsi_14"]} returns 21 rows
+before: RED (author)
+--- a/src/tradingresearch/tools.py
++++ b/src/tradingresearch/tools.py
+@@ -120,13 +120,7 @@
+ def indicators(ctx: Context, args: dict) -> list[Row]:
+     edgar = _edgar_ids(ctx)
+     rows = [r for r in ctx.rows if r.source_id not in edgar and not r.name.startswith(LEVEL_PREFIXES)]
+-    wanted = args.get("names")
+-    if wanted is None:
+-        return rows
+-    missing = [w for w in wanted if w not in {r.name for r in rows}]
+-    if missing:
+-        raise ToolError(f"get_indicators: no row named {', '.join(missing)}; names: {', '.join(r.name for r in rows)}")
+-    return [r for r in rows if r.name in wanted]
++    return rows
+ 
+ 
+ def levels(ctx: Context, args: dict) -> list[Row]:

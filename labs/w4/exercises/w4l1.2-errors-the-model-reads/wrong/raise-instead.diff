@@ -1,0 +1,19 @@
+why: finds every mistake but raises it instead of returning it
+expect: raised ToolError("unknown tool 'get_sources'
+before: RED (author)
+--- a/src/tradingresearch/tools.py
++++ b/src/tradingresearch/tools.py
+@@ -70,11 +70,8 @@
+ 
+ def run_tool(ctx: Context, name: str, arguments: str) -> str:
+     """One tool call on `ctx` as JSON text; every mistake in the call is an {"error": ...} result, never raised."""
+-    try:
+-        spec, handler = _lookup(name)
+-        rows = handler(ctx, _arguments(spec, arguments))
+-    except ToolError as exc:
+-        return json.dumps({"error": str(exc)})
++    spec, handler = _lookup(name)
++    rows = handler(ctx, _arguments(spec, arguments))
+     return json.dumps({"rows": [_shown(row) for row in rows]})
+ 
+ 

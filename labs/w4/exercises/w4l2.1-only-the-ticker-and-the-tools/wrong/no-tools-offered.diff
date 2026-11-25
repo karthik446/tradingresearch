@@ -1,0 +1,14 @@
+why: the user turn is right but the request offers no tool
+expect: the first request differs from the recorded one in tool_choice,
+before: RED (author)
+--- a/src/tradingresearch/analyze.py
++++ b/src/tradingresearch/analyze.py
+@@ -403,7 +403,7 @@
+     # TODO(w4l2.3) at most max_turns model calls: a model that keeps asking for tools ends in a failed sample whose
+     # error has the code max_tool_turns, never in an exception and never with one call more.
+     while True:
+-        span = _model_span(provider, ModelRequest(settings=call_settings(model), turns=tuple(turns), tools=TOOLS),
++        span = _model_span(provider, ModelRequest(settings=call_settings(model), turns=tuple(turns)),
+                            trial_id)
+         # TODO(w4l2.3) the call's span goes to the sink as soon as it ends, and into spans; a call that failed ends the
+         # loop, and the sample fails with the span's error.

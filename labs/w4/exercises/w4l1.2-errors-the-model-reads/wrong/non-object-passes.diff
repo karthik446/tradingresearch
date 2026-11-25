@@ -1,0 +1,14 @@
+why: valid JSON that is not an object reaches the handler
+expect: run_tool('get_indicators', '[]') raised AttributeError("'list' object
+before: RED (break pass)
+--- a/src/tradingresearch/tools.py
++++ b/src/tradingresearch/tools.py
+@@ -91,8 +91,6 @@
+         args = json.loads(raw) if raw.strip() else {}
+     except json.JSONDecodeError as exc:
+         raise ToolError(f"{spec.name}: arguments are not valid JSON ({exc.msg}); send a JSON object") from None
+-    if not isinstance(args, dict):
+-        raise ToolError(f"{spec.name}: arguments must be a JSON object, got {type(args).__name__}")
+     properties = spec.parameters["properties"]
+     unknown = sorted(set(args) - set(properties))
+     if unknown:

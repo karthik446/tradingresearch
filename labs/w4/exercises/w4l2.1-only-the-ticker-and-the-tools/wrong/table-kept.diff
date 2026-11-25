@@ -1,0 +1,16 @@
+why: keeps the SOURCES table in the turn and adds the tools on top
+expect: tools_prompt's turn holds 38 of the 38 source rows and 33 of their
+before: RED (author)
+--- a/src/tradingresearch/analyze.py
++++ b/src/tradingresearch/analyze.py
+@@ -376,8 +376,8 @@
+     """The tools-mode user turn: the ticker and session only, so every number the model cites came through a tool."""
+     return "\n".join([
+         f"TICKER: {ctx.ticker}", f"SESSION: {ctx.session.isoformat()} (the last completed NYSE session)", "",
+-        "The SOURCES table is not included. Ask for the rows you need with the tools; every row they return "
+-        "carries the source_id to cite.", "",
++        "Ask for any row you need with the tools.", "",
++        *render(ctx).splitlines()[3:-2], "",
+         "Write the claims as JSON with the key \"claims\".",
+     ])
+ 

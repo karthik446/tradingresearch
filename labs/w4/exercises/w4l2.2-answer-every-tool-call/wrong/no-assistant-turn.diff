@@ -1,0 +1,13 @@
+why: sends the tool turns without the reply that asked for them
+expect: the turn after the user turn is [{"role": "tool", "content":
+before: RED (author)
+--- a/src/tradingresearch/analyze.py
++++ b/src/tradingresearch/analyze.py
+@@ -410,7 +410,6 @@
+         text = span.text
+         if not span.tool_calls:
+             break
+-        turns.append(Turn(role="assistant", content=span.text, tool_calls=span.tool_calls))
+         for call in span.tool_calls:
+             tool_span, content = _tool_span(ctx, call, trial_id)
+             sink.write(tool_span)

@@ -1,0 +1,57 @@
+--- a/src/tradingresearch/tools.py
++++ b/src/tradingresearch/tools.py
+@@ -16,9 +16,6 @@
+ LEVEL_PREFIXES = ("level_", "dist_level_", "congestion_")
+ ROW_FORMAT = "each row is {source_id, name, value, unit}; the regime row has a label instead of a value"
+ 
+-# TODO(w4l1.1) each tool's parameters: a closed JSON schema (an object that allows no property beyond the ones it
+-#   lists) whose properties are exactly the arguments its handler below reads, each typed and described, so the model
+-#   is shown what it may send and nothing else.
+ TOOLS: tuple[ToolSpec, ...] = (
+     ToolSpec(
+         name="get_indicators",
+@@ -26,7 +23,16 @@
+                      "(sma_20/50/200, ema_9/21), rsi_14, atr_14 and atr_pct, rel_volume, the 20-session range "
+                      "(high_20, low_20), gap_pct, nr7, vwap_session, distances in ATR (dist_*_atr), and regime_spy "
+                      f"(the SPY market regime). Returns {{\"rows\": [...]}}; {ROW_FORMAT}. Cite a row by source_id."),
+-        parameters={"type": "object"},
++        parameters={
++            "type": "object",
++            "properties": {
++                "names": {
++                    "type": "array", "minItems": 1, "items": {"type": "string"},
++                    "description": "Only these row names, e.g. [\"close\", \"rsi_14\"]. Omit for every row.",
++                },
++            },
++            "additionalProperties": False,
++        },
+     ),
+     ToolSpec(
+         name="get_levels",
+@@ -35,7 +41,7 @@
+                      "with its distance in ATR (dist_level_*_atr), and the congestion zone (congestion_low, "
+                      "congestion_high, congestion_sessions, congestion_range_atr) when there is one. Returns "
+                      f"{{\"rows\": [...]}}; {ROW_FORMAT}. Cite a row by source_id."),
+-        parameters={"type": "object"},
++        parameters={"type": "object", "properties": {}, "additionalProperties": False},
+     ),
+     ToolSpec(
+         name="get_fundamentals",
+@@ -43,7 +49,16 @@
+                      "(last 4 quarters) and revenue_annual (last 2 years), one row per period named "
+                      f"<metric>_<frame> (e.g. revenue_CY2026Q3). Returns {{\"rows\": [...]}}; {ROW_FORMAT}. "
+                      "Cite a row by source_id."),
+-        parameters={"type": "object"},
++        parameters={
++            "type": "object",
++            "properties": {
++                "metrics": {
++                    "type": "array", "minItems": 1, "items": {"type": "string", "enum": list(METRICS)},
++                    "description": "Only these metrics. Omit for every metric.",
++                },
++            },
++            "additionalProperties": False,
++        },
+     ),
+ )
+ NAMES = tuple(spec.name for spec in TOOLS)

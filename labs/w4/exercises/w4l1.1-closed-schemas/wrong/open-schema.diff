@@ -1,0 +1,13 @@
+why: lists and describes get_indicators's argument but leaves the schema open
+expect: get_indicators's schema is open: it does not set additionalProperties
+before: RED (author)
+--- a/src/tradingresearch/tools.py
++++ b/src/tradingresearch/tools.py
+@@ -31,7 +31,6 @@
+                     "description": "Only these row names, e.g. [\"close\", \"rsi_14\"]. Omit for every row.",
+                 },
+             },
+-            "additionalProperties": False,
+         },
+     ),
+     ToolSpec(

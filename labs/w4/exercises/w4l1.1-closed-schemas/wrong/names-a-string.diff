@@ -1,0 +1,14 @@
+why: names as one string instead of a list of names
+expect: get_indicators's schema refuses {"names": ["close"]} (arguments.names
+before: RED (author)
+--- a/src/tradingresearch/tools.py
++++ b/src/tradingresearch/tools.py
+@@ -27,7 +27,7 @@
+             "type": "object",
+             "properties": {
+                 "names": {
+-                    "type": "array", "minItems": 1, "items": {"type": "string"},
++                    "type": "string",
+                     "description": "Only these row names, e.g. [\"close\", \"rsi_14\"]. Omit for every row.",
+                 },
+             },

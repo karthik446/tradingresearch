@@ -1,0 +1,20 @@
+why: turns a spending cap's refusal into one failed sample
+expect: Failed: the cap refused the second call and analyze_with_tools
+before: RED (break pass)
+--- a/src/tradingresearch/analyze.py
++++ b/src/tradingresearch/analyze.py
+@@ -401,8 +401,12 @@
+     spans: list[ModelSpan | ToolSpan] = []
+     text, error = "", None
+     for _ in range(max_turns):
+-        span = _model_span(provider, ModelRequest(settings=call_settings(model), turns=tuple(turns), tools=TOOLS),
+-                           trial_id)
++        try:
++            span = _model_span(provider, ModelRequest(settings=call_settings(model), turns=tuple(turns), tools=TOOLS),
++                               trial_id)
++        except Exception as exc:  # noqa: BLE001
++            error = CallError(code=getattr(exc, "code", "error"), message=str(exc), retryable=False)
++            break
+         sink.write(span)
+         spans.append(span)
+         if span.error is not None:

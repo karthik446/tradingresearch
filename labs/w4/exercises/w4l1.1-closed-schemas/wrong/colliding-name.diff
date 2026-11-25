@@ -1,0 +1,14 @@
+why: get_levels is offered under get_indicators's name
+expect: two tools in TOOLS are named 'get_indicators': the model calls a tool
+before: RED (break pass)
+--- a/src/tradingresearch/tools.py
++++ b/src/tradingresearch/tools.py
+@@ -35,7 +35,7 @@
+         },
+     ),
+     ToolSpec(
+-        name="get_levels",
++        name="get_indicators",
+         description=("Support and resistance levels at the session close: high-volume nodes (level_hvn_N), pivot "
+                      "highs and lows (level_pivot_high_N, level_pivot_low_N), numbered from the lowest price up, each "
+                      "with its distance in ATR (dist_level_*_atr), and the congestion zone (congestion_low, "

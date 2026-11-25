@@ -1,0 +1,20 @@
+id = "w4l1.2"
+title = "Turn every bad call into an error the model can read"
+effect = "Observe's run_tool rows for an unknown tool, text that is not JSON and an unknown metric go from a raised exception to an {\"error\": ...} line that says what was wrong and how to call again."
+goal = "Make run_tool answer every call with JSON text: the rows, or one error object that says what was wrong and how to call again. An unknown tool, arguments that are not a JSON object, an unknown or ill-typed argument are all answers the model reads, never exceptions."
+what_tested = "run_tool on the FAKEA context: the recorded get_sources call answers an error naming the three tools; for every tool, text that is not JSON, a non-object, an unknown argument, a string or empty list each answer one error naming the tool; empty text and {} return every row of the tool."
+writes = [
+  "run_tool in src/tradingresearch/tools.py: look the tool up by name and check the raw arguments against its schema before the handler runs.",
+  "Every ToolError becomes {\"error\": \"<message>\"} as JSON text; the message names the tool and what a good call looks like (the tools, the allowed arguments).",
+  "Empty argument text means no arguments.",
+]
+show_tests = ["test_an_unknown_tool_is_an_error_that_names_every_tool", "test_every_bad_call_is_an_error_for_every_tool"]
+lab = "w4l1"
+concepts = ["tool-error"]
+touches = ["src/tradingresearch/tools.py"]
+check = "python -m pytest -q -x -p no:cacheprovider -m lab labs/w4/exercises/w4l1.2-errors-the-model-reads/test_w4l1_2.py"
+observe = "python labs/w4/tools/observe.py tools"
+paid = false
+fixtures = ["data/fakea.context.json", "data/turn1.reply.json"]
+origin = "rebuild of week-4-end tools.py; reference = the tag's own code"
+red_expect = "raised KeyError('get_sources')"

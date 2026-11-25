@@ -1,0 +1,35 @@
+why: writes every span to the trace after the loop, in the right order
+expect: after the refusal the trace holds []: the first call and its three
+before: GREEN (break pass)
+--- a/src/tradingresearch/analyze.py
++++ b/src/tradingresearch/analyze.py
+@@ -403,18 +403,17 @@
+     for _ in range(max_turns):
+         span = _model_span(provider, ModelRequest(settings=call_settings(model), turns=tuple(turns), tools=TOOLS),
+                            trial_id)
+-        sink.write(span)
+-        spans.append(span)
+         if span.error is not None:
++            spans.append(span)
+             error = span.error
+             break
++        spans.append(span)
+         text = span.text
+         if not span.tool_calls:
+             break
+         turns.append(Turn(role="assistant", content=span.text, tool_calls=span.tool_calls))
+         for call in span.tool_calls:
+             tool_span, content = _tool_span(ctx, call, trial_id)
+-            sink.write(tool_span)
+             spans.append(tool_span)
+             turns.append(Turn(role="tool", content=content, tool_call_id=call.id))
+     else:
+@@ -425,6 +424,8 @@
+     outcome = "failed" if error is not None else "succeeded"
+     trial = TrialSpan(span_id=trial_id, turn=0, started_at=started, completed_at=completed, item_id=item.id,
+                       repeat_index=0, outcome=outcome, error=error)
++    for span in spans:
++        sink.write(span)
+     sink.write(trial)
+     return Sample(trace_id=new_id("trace"), run_id=run_id or new_id("run"), item_id=item.id,
+                   item_version=item.version, cluster_id=item.cluster_id, repeat_index=0, input=first,

@@ -1,0 +1,29 @@
+--- a/src/tradingresearch/analyze.py
++++ b/src/tradingresearch/analyze.py
+@@ -374,9 +374,12 @@
+ 
+ def tools_prompt(ctx: Context) -> str:
+     """The tools-mode user turn: the ticker and session only, so every number the model cites came through a tool."""
+-    # TODO(w4l2.1) the ticker and the session as render writes them, then where the rows are: not in this turn, the
+-    # model asks the tools for the ones it needs and cites the source_id each comes with; then the answer's form.
+-    return render(ctx)
++    return "\n".join([
++        f"TICKER: {ctx.ticker}", f"SESSION: {ctx.session.isoformat()} (the last completed NYSE session)", "",
++        "The SOURCES table is not included. Ask for the rows you need with the tools; every row they return "
++        "carries the source_id to cite.", "",
++        "Write the claims as JSON with the key \"claims\".",
++    ])
+ 
+ 
+ def analyze_with_tools(ctx: Context, provider, *, model: str, prompt_version: str, max_turns: int = MAX_TOOL_TURNS,
+@@ -400,8 +403,8 @@
+     # TODO(w4l2.3) at most max_turns model calls: a model that keeps asking for tools ends in a failed sample whose
+     # error has the code max_tool_turns, never in an exception and never with one call more.
+     while True:
+-        # TODO(w4l2.1) offer the model the tools
+-        span = _model_span(provider, ModelRequest(settings=call_settings(model), turns=tuple(turns)), trial_id)
++        span = _model_span(provider, ModelRequest(settings=call_settings(model), turns=tuple(turns), tools=TOOLS),
++                           trial_id)
+         # TODO(w4l2.3) the call's span goes to the sink as soon as it ends, and into spans; a call that failed ends the
+         # loop, and the sample fails with the span's error.
+         text = span.text

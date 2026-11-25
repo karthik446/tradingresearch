@@ -1,0 +1,16 @@
+why: an argument the schema does not list is passed on and ignored
+expect: answered with 21 rows: the recorded model's argument 'groups'
+before: RED (author)
+--- a/src/tradingresearch/tools.py
++++ b/src/tradingresearch/tools.py
+@@ -94,10 +94,6 @@
+     if not isinstance(args, dict):
+         raise ToolError(f"{spec.name}: arguments must be a JSON object, got {type(args).__name__}")
+     properties = spec.parameters["properties"]
+-    unknown = sorted(set(args) - set(properties))
+-    if unknown:
+-        allowed = ", ".join(properties) or "none"
+-        raise ToolError(f"{spec.name}: unknown argument(s) {', '.join(unknown)}; allowed: {allowed}")
+     for key, value in args.items():
+         if not isinstance(value, list) or not value or not all(isinstance(v, str) for v in value):
+             raise ToolError(f"{spec.name}: {key} must be a non-empty list of strings, got {json.dumps(value)}")

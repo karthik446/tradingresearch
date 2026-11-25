@@ -1,0 +1,14 @@
+why: rounds every value to two decimals instead of the table's digits
+expect: get_indicators returns close as 101.4; the fixed SOURCES table shows
+before: RED (author)
+--- a/src/tradingresearch/tools.py
++++ b/src/tradingresearch/tools.py
+@@ -109,7 +109,7 @@
+     shown: dict = {"source_id": row.source_id, "name": row.name, "unit": row.unit}
+     if row.label is not None:
+         shown["label"] = row.label
+-    shown["value"] = None if row.value is None else float(plain(row.value))
++    shown["value"] = None if row.value is None else round(row.value, 2)
+     return shown
+ 
+ 

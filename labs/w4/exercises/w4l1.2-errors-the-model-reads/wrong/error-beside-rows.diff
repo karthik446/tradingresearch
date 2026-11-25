@@ -1,0 +1,14 @@
+why: returns the error beside an empty rows list
+expect: answered with 0 rows
+before: RED (break pass)
+--- a/src/tradingresearch/tools.py
++++ b/src/tradingresearch/tools.py
+@@ -74,7 +74,7 @@
+         spec, handler = _lookup(name)
+         rows = handler(ctx, _arguments(spec, arguments))
+     except ToolError as exc:
+-        return json.dumps({"error": str(exc)})
++        return json.dumps({"error": str(exc), "rows": []})
+     return json.dumps({"rows": [_shown(row) for row in rows]})
+ 
+ 
