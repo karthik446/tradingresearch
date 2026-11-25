@@ -1,0 +1,14 @@
+why: looks for the word unknown anywhere in the reply instead of reading the verdict, so a pass that mentions it becomes an abstain
+expect: pass_mentions_unknown: the judge answered
+before: GREEN (independent break pass)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -211,7 +211,7 @@
+     # TODO(w3l1.3) a reply with no pass, fail or unknown verdict cannot be graded: raise CannotGrade, quoting the reply.
+     explanation = last_json_object(reply, "explanation")
+     reason = explanation if isinstance(explanation, str) else ""
+-    if verdict == "unknown":
++    if "unknown" in reply.lower():
+         return "fail", reason if reason.startswith("unknown:") else f"unknown: {reason}"
+     return verdict, reason
+ 

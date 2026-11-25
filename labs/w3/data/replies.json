@@ -1,0 +1,235 @@
+{
+ "about": "Judge replies for w3l1. Only `recorded` is model output (the one recorded openai/gpt-6-sol reply; the author's journal holds no other p1_judge verdicts). The rest are reply shapes from tests/test_week3.py, gigai-core's judge tests, or built for these labs; `source` says which. `expect` is the rubric's reading: [verdict, reason] for p1_verdict, or CannotGrade.",
+ "replies": [
+  {
+   "id": "recorded",
+   "exercise": "w3l1.1",
+   "source": "recorded: openai/gpt-6-sol on the FAKEA trade, run_54953ec7ce484649 (judge_reply.json)",
+   "reply": "The reason names a break above both the congestion top and the 20-day high at 100.5 that holds after the fill. The summary shows both closes above 100.5.\n\n{\"verdict\":\"pass\",\"explanation\":\"Both reported closes stayed above the 100.5 congestion top and 20-day high, so the named break held.\"}",
+   "expect": [
+    "pass",
+    "Both reported closes stayed above the 100.5 congestion top and 20-day high, so the named break held."
+   ]
+  },
+  {
+   "id": "pass",
+   "exercise": "w3l1.1",
+   "source": "tests/test_week3.py (PARSE_CASES and the no-verdict cases; hand-built, not model output)",
+   "reply": "Closes held above 100.5 on 2 of 2 sessions.\n{\"verdict\": \"pass\", \"explanation\": \"the level held on every close\"}",
+   "expect": [
+    "pass",
+    "the level held on every close"
+   ]
+  },
+  {
+   "id": "last_json_wins",
+   "exercise": "w3l1.1",
+   "source": "tests/test_week3.py (PARSE_CASES and the no-verdict cases; hand-built, not model output)",
+   "reply": "The format is {\"verdict\": \"pass\", \"explanation\": \"one sentence\"}.\nCloses fell to 99.\n{\"verdict\": \"fail\", \"explanation\": \"closes fell back below the level\"}",
+   "expect": [
+    "fail",
+    "closes fell back below the level"
+   ]
+  },
+  {
+   "id": "nested_object",
+   "exercise": "w3l1.1",
+   "source": "shape of a gigai-core tests/test_judge_validation.py reply, in P1 words (an object nested in the answer)",
+   "reply": "At first I wrote {\"verdict\": \"fail\"} but both closes are above 100.5.\nFinal: {\"verdict\": \"pass\", \"explanation\": \"both closes held above 100.5\", \"checked\": {\"closes\": 2}}",
+   "expect": [
+    "pass",
+    "both closes held above 100.5"
+   ]
+  },
+  {
+   "id": "quoted_words",
+   "exercise": "w3l1.1",
+   "source": "hand-built for these labs (escaped quotes inside the explanation)",
+   "reply": "The reason says the break \"holds\".\n{\"verdict\": \"pass\", \"explanation\": \"the \\\"break above 100.5\\\" held on 2 of 2 closes\"}",
+   "expect": [
+    "pass",
+    "the \"break above 100.5\" held on 2 of 2 closes"
+   ]
+  },
+  {
+   "id": "fenced_block",
+   "exercise": "w3l1.1",
+   "source": "hand-built for these labs (the object pretty-printed in a ```json fence, not on the last line)",
+   "reply": "The reason names a hold above 100.5; the summary shows a close at 99.8.\n```json\n{\n  \"verdict\": \"fail\",\n  \"explanation\": \"a close fell back below 100.5\"\n}\n```",
+   "expect": [
+    "fail",
+    "a close fell back below 100.5"
+   ]
+  },
+  {
+   "id": "no_explanation",
+   "exercise": "w3l1.1",
+   "source": "shape of a gigai-core tests/test_judge_validation.py reply, in P1 words",
+   "reply": "{\"verdict\": \"fail\"}",
+   "expect": [
+    "fail",
+    ""
+   ]
+  },
+  {
+   "id": "null_explanation",
+   "exercise": "w3l1.1",
+   "source": "hand-built for these labs",
+   "reply": "Both closes held.\n{\"verdict\": \"pass\", \"explanation\": null}",
+   "expect": [
+    "pass",
+    ""
+   ]
+  },
+  {
+   "id": "list_explanation",
+   "exercise": "w3l1.1",
+   "source": "hand-built for these labs (an explanation that is JSON but not text)",
+   "reply": "Both closes held above 100.5.\n{\"verdict\": \"pass\", \"explanation\": [\"close 1 held\", \"close 2 held\"]}",
+   "expect": [
+    "pass",
+    ""
+   ]
+  },
+  {
+   "id": "fail_unknown_kept",
+   "exercise": "w3l1.2",
+   "source": "tests/test_week3.py (PARSE_CASES and the no-verdict cases; hand-built, not model output)",
+   "reply": "Short covering is not in the summary.\n{\"verdict\": \"fail\", \"explanation\": \"unknown: short covering is not measured\"}",
+   "expect": [
+    "fail",
+    "unknown: short covering is not measured"
+   ]
+  },
+  {
+   "id": "unknown_becomes_fail",
+   "exercise": "w3l1.2",
+   "source": "tests/test_week3.py (PARSE_CASES and the no-verdict cases; hand-built, not model output)",
+   "reply": "Sector rotation is not measured.\n{\"verdict\": \"unknown\", \"explanation\": \"the summary does not measure sector rotation\"}",
+   "expect": [
+    "fail",
+    "unknown: the summary does not measure sector rotation"
+   ]
+  },
+  {
+   "id": "unknown_prefixed",
+   "exercise": "w3l1.2",
+   "source": "hand-built for these labs (an unknown verdict whose explanation already starts with unknown:)",
+   "reply": "The CPI reaction is not in the summary.\n{\"verdict\": \"unknown\", \"explanation\": \"unknown: the summary does not measure the CPI reaction\"}",
+   "expect": [
+    "fail",
+    "unknown: the summary does not measure the CPI reaction"
+   ]
+  },
+  {
+   "id": "unknown_bare",
+   "exercise": "w3l1.2",
+   "source": "hand-built for these labs (an unknown verdict with no explanation)",
+   "reply": "{\"verdict\": \"unknown\"}",
+   "expect": [
+    "fail",
+    "unknown: "
+   ]
+  },
+  {
+   "id": "unknown_tight_prefix",
+   "exercise": "w3l1.2",
+   "source": "hand-built for these labs (an explanation that starts with unknown: and no space after it)",
+   "reply": "Volume is not in the summary.\n{\"verdict\": \"unknown\", \"explanation\": \"unknown:the summary has no volume\"}",
+   "expect": [
+    "fail",
+    "unknown:the summary has no volume"
+   ]
+  },
+  {
+   "id": "unknown_capital_prefix",
+   "exercise": "w3l1.2",
+   "source": "hand-built for these labs (an explanation that starts with Unknown:, which is not the prefix)",
+   "reply": "The gap fill is not measured.\n{\"verdict\": \"unknown\", \"explanation\": \"Unknown: the summary does not measure the gap fill\"}",
+   "expect": [
+    "fail",
+    "unknown: Unknown: the summary does not measure the gap fill"
+   ]
+  },
+  {
+   "id": "pass_mentions_unknown",
+   "exercise": "w3l1.2",
+   "source": "hand-built for these labs (a pass whose text uses the word unknown)",
+   "reply": "The rubric's Unknown section does not apply: the summary measures every close the reason names.\n{\"verdict\": \"pass\", \"explanation\": \"both closes held above 100.5\"}",
+   "expect": [
+    "pass",
+    "both closes held above 100.5"
+   ]
+  },
+  {
+   "id": "no_json",
+   "exercise": "w3l1.3",
+   "source": "tests/test_week3.py (PARSE_CASES and the no-verdict cases; hand-built, not model output)",
+   "reply": "I cannot decide this one.",
+   "expect": "CannotGrade"
+  },
+  {
+   "id": "no_verdict",
+   "exercise": "w3l1.3",
+   "source": "tests/test_week3.py (PARSE_CASES and the no-verdict cases; hand-built, not model output)",
+   "reply": "{\"answer\": \"pass\"}",
+   "expect": "CannotGrade"
+  },
+  {
+   "id": "maybe",
+   "exercise": "w3l1.3",
+   "source": "shape of a gigai-core tests/test_judge_validation.py reply, in P1 words",
+   "reply": "The summary is mixed.\n{\"verdict\": \"maybe\", \"explanation\": \"one close held, one did not\"}",
+   "expect": "CannotGrade"
+  },
+  {
+   "id": "capitalised",
+   "exercise": "w3l1.3",
+   "source": "hand-built for these labs (the rubric asks for the verdict in lower case)",
+   "reply": "Both closes held above 100.5.\n{\"verdict\": \"Pass\", \"explanation\": \"the level held on every close\"}",
+   "expect": "CannotGrade"
+  },
+  {
+   "id": "null_verdict",
+   "exercise": "w3l1.3",
+   "source": "hand-built for these labs",
+   "reply": "{\"verdict\": null, \"explanation\": \"the summary has no close after the fill\"}",
+   "expect": "CannotGrade"
+  },
+  {
+   "id": "answer_then_notes",
+   "exercise": "w3l1.3",
+   "source": "hand-built for these labs (a later object without a verdict wins over the answer)",
+   "reply": "{\"verdict\": \"pass\", \"explanation\": \"the level held\"}\nNotes: {\"closes_above\": 2}",
+   "expect": "CannotGrade"
+  },
+  {
+   "id": "cut_off",
+   "exercise": "w3l1.3",
+   "source": "hand-built for these labs (a reply cut off by max_tokens inside its JSON)",
+   "reply": "Both closes held above 100.5, so the break held.\n{\"verdict\": \"pa",
+   "expect": "CannotGrade"
+  },
+  {
+   "id": "list_verdict",
+   "exercise": "w3l1.3",
+   "source": "hand-built for these labs (a verdict that is JSON but not text)",
+   "reply": "{\"verdict\": [\"pass\"], \"explanation\": \"the level held\"}",
+   "expect": "CannotGrade"
+  },
+  {
+   "id": "padded_verdict",
+   "exercise": "w3l1.3",
+   "source": "hand-built for these labs (a verdict with a space before it)",
+   "reply": "Both closes held above 100.5.\n{\"verdict\": \" pass\", \"explanation\": \"the level held\"}",
+   "expect": "CannotGrade"
+  },
+  {
+   "id": "hedged",
+   "exercise": "w3l1.3",
+   "source": "hand-built for these labs (a verdict that names two of the words)",
+   "reply": "One close held and one fell back.\n{\"verdict\": \"pass/fail\", \"explanation\": \"one close held, one did not\"}",
+   "expect": "CannotGrade"
+  }
+ ]
+}

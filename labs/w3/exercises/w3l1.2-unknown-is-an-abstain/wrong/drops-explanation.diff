@@ -1,0 +1,14 @@
+why: stores the abstain as the bare word, losing what the summary could not measure
+expect: The judge answered '{"verdict": "unknown"
+before: RED (author)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -212,7 +212,7 @@
+     explanation = last_json_object(reply, "explanation")
+     reason = explanation if isinstance(explanation, str) else ""
+     if verdict == "unknown":
+-        return "fail", reason if reason.startswith("unknown:") else f"unknown: {reason}"
++        return "fail", "unknown:"
+     return verdict, reason
+ 
+ 

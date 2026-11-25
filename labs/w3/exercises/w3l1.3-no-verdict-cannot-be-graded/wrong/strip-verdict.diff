@@ -1,0 +1,13 @@
+why: strips spaces off the verdict before checking it, accepting ' pass', which the rubric does not define
+expect: padded_verdict: '{"verdict": " pass"
+before: GREEN (independent break pass)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -208,6 +208,7 @@
+     """(verdict, reason) by the rubric's "Verdict format": the last JSON object wins, `unknown` becomes `fail` with
+     `unknown: ` (ADR-003). A reply with no verdict is CannotGrade, not an abstain."""
+     verdict = last_json_object(reply, "verdict")
++    verdict = verdict.strip() if isinstance(verdict, str) else verdict
+     if verdict not in ("pass", "fail", "unknown"):
+         raise CannotGrade(f"the judge's reply has no pass/fail/unknown verdict: {reply[:200]!r}")
+     explanation = last_json_object(reply, "explanation")

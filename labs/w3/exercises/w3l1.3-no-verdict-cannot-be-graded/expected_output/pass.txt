@@ -1,0 +1,31 @@
+PASS w3l1.3: Refuse a reply with no verdict: CannotGrade, not a fail
+observe: python labs/w3/tools/observe.py verdicts
+  |   reply                   ex      ok  yours -> the rubric's reading
+  |   recorded                w3l1.1  1   ('pass', 'Both reported closes stayed above the 100.5
+  | congestion top …
+  |   pass                    w3l1.1  1   ('pass', 'the level held on every close')
+  |   last_json_wins          w3l1.1  1   ('fail', 'closes fell back below the level')
+  |   nested_object           w3l1.1  1   ('pass', 'both closes held above 100.5')
+  |   quoted_words            w3l1.1  1   ('pass', 'the "break above 100.5" held on 2 of 2 closes')
+  |   fenced_block            w3l1.1  1   ('fail', 'a close fell back below 100.5')
+  |   no_explanation          w3l1.1  1   ('fail', '')
+  |   null_explanation        w3l1.1  1   ('pass', '')
+  |   list_explanation        w3l1.1  1   ('pass', '')
+  |   fail_unknown_kept       w3l1.2  1   ('fail', 'unknown: short covering is not measured')
+  |   unknown_becomes_fail    w3l1.2  1   ('fail', 'unknown: the summary does not measure sector
+  | rotation')
+  |   unknown_prefixed        w3l1.2  1   ('fail', 'unknown: the summary does not measure the CPI
+  | reaction')
+  |   unknown_bare            w3l1.2  1   ('fail', 'unknown: ')
+  |   unknown_tight_prefix    w3l1.2  1   ('fail', 'unknown:the summary has no volume')
+  |   unknown_capital_prefix  w3l1.2  1   ('fail', 'unknown: Unknown: the summary does not measure
+  | the gap fill…
+  |   pass_mentions_unknown   w3l1.2  1   ('pass', 'both closes held above 100.5')
+  |   no_json                 w3l1.3  1   CannotGrade
+  |   no_verdict              w3l1.3  1   CannotGrade
+  |   maybe                   w3l1.3  1   CannotGrade
+  |   capitalised             w3l1.3  1   CannotGrade
+  |   null_verdict            w3l1.3  1   CannotGrade
+  |   answer_then_notes       w3l1.3  1   CannotGrade
+  |   cut_off                 w3l1.3  1   CannotGrade
+[... 7 more lines not shown]

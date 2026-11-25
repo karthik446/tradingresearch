@@ -1,0 +1,20 @@
+PASS w3l2.3: One call, bounded in tokens and capped in dollars
+observe: python labs/w3/tools/observe.py judge
+  | p1_judge ended with: NotImplementedError: part B (lab w3l3): save run run_<id>, read its
+  | verdict, store it with its ScoreRecord, return the Score
+  | requests sent: 1 (recorded: 1)
+  | model: openai/gpt-6-sol (recorded: openai/gpt-6-sol)
+  | max_tokens: 4000 (recorded: 4000)
+  | prompt chars: 5925 (recorded: 5925)
+  | rubric sections: 7/7; {rubric} placeholder left: False
+  | INPUT: 12 lines (recorded: 12), same: True
+  | OUTPUT: 3 lines (recorded: 3), same: True
+  | raw bar values in the prompt: 0/5
+  | same body as the recording: True
+  | under max_usd=0.001: 0 request(s) sent, ended with BudgetExceeded: $0.042964 does not fit the
+  | remaining $0.001000 of max_usd=0.001
+  | p1_verdict on the recorded reply: ('pass', 'Both reported closes stayed above the 100.5
+  | congestion top and 20-day high, so the named break held.')
+  | The reply is the recording: it says pass whatever you send. It is evidence for your prompt only
+  | when the body is the recorded one.
+next: `tr lab next` commits it and moves on; `tr lab solution` shows the reference to compare

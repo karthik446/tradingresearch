@@ -1,0 +1,20 @@
+id = "w3l1.2"
+title = "Store unknown as an abstain: fail with unknown:"
+effect = "Observe's w3l1.2 matches go from 2 of 7 replies to 7 of 7: every unknown verdict now reads fail with one unknown: prefix, which journal.abstained counts as an abstain."
+goal = "Store the judge's unknown the way ADR-003 says: the journal's verdict is binary, so unknown becomes fail with a reason that starts unknown:, which §7 leaves out of Cohen's κ and counts instead."
+what_tested = "p1_verdict on the unknown replies of labs/w3/data/replies.json: unknown reads ('fail', 'unknown: ' + explanation), an explanation that already starts with unknown: keeps one prefix, Unknown: is not the prefix, every abstain passes journal.abstained, and a pass or fail keeps its explanation even when its text says unknown."
+writes = [
+  "In p1_verdict, a verdict of unknown returns fail, with unknown: and a space before the explanation.",
+  "An explanation that already starts with lower-case unknown: is kept as it is, so the prefix is never doubled.",
+  "pass and fail return unchanged: the verdict decides, not a word in the text.",
+]
+show_tests = ["test_the_prefix_is_never_doubled", "test_every_abstain_is_one_journal_abstained_counts"]
+lab = "w3l1"
+concepts = ["llm-judge", "abstain", "verdict-format"]
+touches = ["src/tradingresearch/evals.py"]
+check = "python -m pytest -q -x -p no:cacheprovider -m lab labs/w3/exercises/w3l1.2-unknown-is-an-abstain/test_w3l1_2.py"
+observe = "python labs/w3/tools/observe.py verdicts"
+paid = false
+fixtures = ["data/replies.json"]
+origin = "rebuild of week-3-end evals.py; reference = the tag's own p1_verdict"
+red_expect = "The judge answered '{\"verdict\": \"unknown\""

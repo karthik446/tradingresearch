@@ -1,0 +1,6 @@
+week 3 starts from the author's code at week-3-start: 155 files changed, committed as `lab: week 3 base (week-3-start)`
+your earlier commits stay in the history of `lab`
+started lab w3l1 (Reading the verdict) on branch `lab`; read labs/w3/pages/w3l1.md
+exercise w3l1.1: Read the verdict from the last JSON object in the reply
+edit: src/tradingresearch/evals.py (look for TODO(w3l1.1))
+then: tr lab verify

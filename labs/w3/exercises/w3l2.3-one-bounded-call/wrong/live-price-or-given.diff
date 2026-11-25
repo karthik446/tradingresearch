@@ -1,0 +1,17 @@
+why: tries a live price lookup and swallows the error offline: the attempt still reaches for the network
+expect: The code under test tried httpx.HTTPTransport.handle_request and caught the error
+before: RED (author)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -238,6 +238,11 @@
+                        "post-trade summary (code-written)", label.summary(conn, bars, t, g)])
+     rubric = (RUBRICS / "p1_judge_prompt.txt").read_text().replace("{rubric}",
+                                                                    (RUBRICS / "p1_thesis_quality.md").read_text())
++    from tradingresearch import openrouter
++    try:
++        prices = openrouter.prices([JUDGE_MODEL])  # today's price when online
++    except Exception:
++        pass  # offline: keep the table we were given
+     settings = CallSettings(model=JUDGE_MODEL, max_output_tokens=JUDGE_MAX_TOKENS)
+     judge = llm_judge(provider, rubric=rubric, settings=settings, grader_id=P1Judge.id)
+     item = DatasetItem(id=t.thesis_id, cluster_id=t.ticker, prompt=judge.render(judged_sample(t, shown), None),

@@ -1,0 +1,16 @@
+why: falls back to the last object that has a verdict, not the last object
+expect: answer_then_notes:
+before: RED (author)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -207,7 +207,9 @@
+ def p1_verdict(reply: str) -> tuple[str, str]:
+     """(verdict, reason) by the rubric's "Verdict format": the last JSON object wins, `unknown` becomes `fail` with
+     `unknown: ` (ADR-003). A reply with no verdict is CannotGrade, not an abstain."""
+-    verdict = last_json_object(reply, "verdict")
++    import json
++    verdicts = [json.loads(m)["verdict"] for m in re.findall(r"\{[^{}]*\}", reply) if '"verdict"' in m]
++    verdict = last_json_object(reply, "verdict") or (verdicts[-1] if verdicts else None)
+     if verdict not in ("pass", "fail", "unknown"):
+         raise CannotGrade(f"the judge's reply has no pass/fail/unknown verdict: {reply[:200]!r}")
+     explanation = last_json_object(reply, "explanation")

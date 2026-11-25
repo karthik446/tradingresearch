@@ -1,0 +1,7 @@
+FAIL w3l2.2 (try 1): Show the judge the cited claims and the code-written summary, never the bars
+  [BEGIN INPUT] has 0 lines, the recorded request's 12; they differ at line 1: yours '(end of
+  block)', recorded 'cited claims (claim_id | tag | text)'. INPUT is the cited claims under their
+  heading, a blank line, then the post-trade summary under its heading, as label.cited and
+  label.summary write them.
+  hint 1 unlocks after 2 failed runs; hint 2 unlocks after 5 failed runs; the solution unlocks after
+  10 failed runs or when the check is green

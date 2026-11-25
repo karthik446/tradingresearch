@@ -1,0 +1,14 @@
+why: turns a missing explanation into the text 'None'
+expect: no_explanation: '{"verdict": "fail"}' has a verdict and no usable explanation
+before: RED (author)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -210,7 +210,7 @@
+     verdict = last_json_object(reply, "verdict")
+     # TODO(w3l1.3) a reply with no pass, fail or unknown verdict cannot be graded: raise CannotGrade, quoting the reply.
+     explanation = last_json_object(reply, "explanation")
+-    reason = explanation if isinstance(explanation, str) else ""
++    reason = str(explanation)
+     # TODO(w3l1.2) a verdict of unknown is an abstain: fail, with "unknown: " before its explanation (ADR-003).
+     return verdict, reason
+ 

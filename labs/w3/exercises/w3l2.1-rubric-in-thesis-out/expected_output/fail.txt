@@ -1,0 +1,8 @@
+FAIL w3l2.1 (try 1): Fill the judge's frame: the rubric in, the thesis as the graded output
+  The judge's instructions are 967 chars, the recorded request's 4574; the {rubric} line is still in
+  the prompt, rubric sections missing: ['Question', 'Inputs', 'Met', 'Not met', 'Unknown',
+  'Hindsight', 'Verdict format']; first differing line 8: '{rubric}'. Without p1_thesis_quality.md
+  the judge never sees when a mechanism is met, not met or unknown, nor the Verdict format
+  p1_verdict reads.
+  hint 1 unlocks after 2 failed runs; hint 2 unlocks after 5 failed runs; the solution unlocks after
+  10 failed runs or when the check is green

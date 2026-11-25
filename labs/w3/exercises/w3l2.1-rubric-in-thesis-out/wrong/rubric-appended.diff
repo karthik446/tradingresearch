@@ -1,0 +1,15 @@
+why: appends the rubric after the prompt file, leaving the {rubric} line in the instructions
+expect: the {rubric} line is still in the prompt
+before: RED (author)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -237,8 +237,7 @@
+     #   analysis) and the code-written post-trade summary (label.summary), each under its heading line, a blank line
+     #   between them. Never the bars themselves.
+     shown = ""
+-    rubric = (RUBRICS / "p1_judge_prompt.txt").read_text().replace("{rubric}",
+-                                                                   (RUBRICS / "p1_thesis_quality.md").read_text())
++    rubric = (RUBRICS / "p1_judge_prompt.txt").read_text() + (RUBRICS / "p1_thesis_quality.md").read_text()
+     # TODO(w3l2.3) bound the reply: ADR-003's JUDGE_MAX_TOKENS, not CallSettings' default.
+     settings = CallSettings(model=JUDGE_MODEL)
+     judge = llm_judge(provider, rubric=rubric, settings=settings, grader_id=P1Judge.id)

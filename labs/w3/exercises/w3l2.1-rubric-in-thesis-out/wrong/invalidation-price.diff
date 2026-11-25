@@ -1,0 +1,14 @@
+why: adds the invalidation price to the invalidation_text line, which the thesis text does not say
+expect: [BEGIN OUTPUT] holds
+before: RED (author)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -221,7 +221,7 @@
+     """What `llm_judge` renders: INPUT is the cited claims and the summary, OUTPUT the thesis text (prompt file)."""
+     return Sample(trace_id=f"tr_{t.thesis_id}", run_id=P1Judge.id, item_id=t.thesis_id, item_version="1",
+                   cluster_id=t.ticker, repeat_index=0, input=(Turn(role="user", content=shown),),
+-                  output_text=f"prediction: {t.prediction}\nreason: {t.reason}\ninvalidation_text: {t.invalidation_text}",
++                  output_text=f"prediction: {t.prediction}\nreason: {t.reason}\ninvalidation_text: {t.invalidation_text} ({t.invalidation_price})",
+                   output_parsed=None, parse_status="not_parsed", outcome="succeeded", error=None,
+                   recorded_at=datetime.now(UTC))
+ 

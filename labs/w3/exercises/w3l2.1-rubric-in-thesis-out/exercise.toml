@@ -1,0 +1,19 @@
+id = "w3l2.1"
+title = "Fill the judge's frame: the rubric in, the thesis as the graded output"
+effect = "Observe's judge run: the prompt grows from 1336 to 5158 of the recorded 5925 chars, the rubric's sections from 0/7 to 7/7 with no {rubric} placeholder left, and OUTPUT holds the thesis's 3 labelled lines, the same as the recording."
+goal = "Fill the judge's frame. p1_judge_prompt.txt says what the judge decides and holds a {rubric} line where the P1 rubric goes; the text being graded is the thesis itself, one labelled line each for prediction, reason and invalidation_text."
+what_tested = "p1_judge on the synthetic FAKEA trade, its reply replayed for $0: the judge's instructions equal the recorded request's (the frame with the rubric in place of {rubric}), OUTPUT is the thesis's three labelled lines exactly, and with the thesis reworded OUTPUT follows the new text."
+writes = [
+  "In judged_sample, the sample's output text: prediction:, reason: and invalidation_text: of the thesis being judged, one per line, in that order.",
+  "In p1_judge, the judge's instructions: the frame file with its {rubric} line replaced by the P1 rubric file's text.",
+]
+show_tests = ["test_output_holds_the_thesis_one_labelled_line_each", "test_output_follows_the_thesis_it_judges"]
+lab = "w3l2"
+concepts = ["llm-judge", "judge-prompt", "replayed-reply"]
+touches = ["src/tradingresearch/evals.py"]
+check = "python -m pytest -q -x -p no:cacheprovider -m lab labs/w3/exercises/w3l2.1-rubric-in-thesis-out/test_w3l2_1.py"
+observe = "python labs/w3/tools/observe.py judge"
+paid = false
+fixtures = ["data/judge_reply.json", "data/judge_request.json", "data/models.json"]
+origin = "rebuild of week-3-end evals.py; reference = the tag's judged_sample and p1_judge up to its call (part B finishes it)"
+red_expect = "The judge's instructions are"

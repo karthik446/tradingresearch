@@ -1,0 +1,7 @@
+FAIL w3l1.1 (try 1): Read the verdict from the last JSON object in the reply
+  The one recorded judge reply (run_54953ec7ce484649) thinks aloud, then ends with
+  '{"verdict":"pass","explanation":"Both reported closes stayed above the 100.5 congestion to'...;
+  p1_verdict returned ('fail', ''). The verdict is that object's "verdict", the reason its
+  "explanation".
+  hint 1 unlocks after 2 failed runs; hint 2 unlocks after 5 failed runs; the solution unlocks after
+  10 failed runs or when the check is green

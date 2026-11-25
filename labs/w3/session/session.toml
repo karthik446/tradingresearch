@@ -1,0 +1,90 @@
+# The walked-through session on the w3 lab pages. labs/tools/capture.py runs every step in a fresh scratch clone
+# (one clone per part) and writes what each `run` printed to the step's `output` file next to this one. `prove.py`
+# re-runs it and fails when an output file no longer matches.
+
+diagram = """
+ tr lab start w3l1     first command of the week: commits the author's code at week-3-start
+         |             as `lab: week 3 base (week-3-start)`, then puts the w3l1.1 stub in place
+         v
+   edit the TODO  <------------------------------------------------+
+         |                                                         |
+         v                                                         |
+ tr lab verify  --> FAIL (try N): what the check expected and got -+
+         |
+         v
+   PASS, then labs/w3/tools/observe.py: your reading of every judge reply, or your request against the recorded one
+         |
+         v
+ tr lab next    commits `lab <id>: green`, puts the next stub in place
+"""
+
+[[part]]
+id = "p1"
+title = "The start of week 3: the base commit and exercise w3l1.1"
+intro = """A fresh clone of the labs repo, as in weeks 1 and 2. Every command below ran in a scratch clone when this \
+page was built, and the text under it is what it printed; the clone's path shows as <repo> and commit hashes as \
+<sha>. Where you would write the code, the capture applies the reference solution instead, so the steps after it \
+have real output. Nothing in week 3's labs calls a model: the judge's one recorded reply is replayed, for $0."""
+
+[[part.step]]
+title = "Start the week"
+run = "tr lab start w3l1"
+shown = ".venv/bin/tr lab start w3l1"
+output = "01-start.txt"
+explain = """Week 3 starts from the author's code at the tag week-3-start, not from your week-2 code: `start` makes \
+the tree equal to that tag (labs/ and the runner's own files excepted) and commits it. Your week-2 commits stay in \
+the history of `lab`, under the base commit. If the tag is missing, `git fetch --tags` gets it; if pyproject.toml or \
+uv.lock change, `start` tells you to run `uv sync`."""
+
+[[part.step]]
+title = "Where you are: branch, changed files, commits"
+run = "git branch --show-current; git status --short; git log --oneline -3"
+shown = "git branch --show-current; git status --short; git log --oneline -3"
+output = "02-where.txt"
+explain = """The base is one commit on `lab`. The stub is not part of it: src/tradingresearch/evals.py exists at \
+week-3-start with the draft P1 judge of week 2, so the w3l1.1 stub shows as a change to it. The stub brings in the \
+week's evals.py with p1_verdict cut down to a `TODO(w3l1.1)` and a placeholder return."""
+
+[[part.step]]
+title = "Verify the stub: FAIL"
+run = "tr lab verify"
+shown = ".venv/bin/tr lab verify"
+output = "03-verify-fail.txt"
+explain = """The stub's p1_verdict returns a fail with no reason for every reply, so the first check fails on the one \
+judge reply recorded from a real model, which says pass. The message shows the reply's last line and what the \
+rubric reads there."""
+
+[[part.step]]
+title = "Write the reader"
+apply = "solution"
+explain = """Here you write the part of p1_verdict the `TODO(w3l1.1)` comment describes: the verdict and the \
+explanation from the last JSON object in the reply. The capture applies the reference solution instead."""
+
+[[part.step]]
+title = "Verify again: PASS"
+run = "tr lab verify"
+shown = ".venv/bin/tr lab verify"
+output = "04-verify-pass.txt"
+explain = """PASS, then the observe command of lab w3l1, `python labs/w3/tools/observe.py verdicts`. It runs your \
+p1_verdict on every reply in labs/w3/data/replies.json: the one recorded reply and 25 shapes, each with the \
+exercise whose rule decides it. The w3l1.1 rows now all read 1. The unknown and no-verdict rows still read 0, with \
+the rubric's reading under each: they wait for w3l1.2 and w3l1.3."""
+
+[[part.step]]
+title = "Move on"
+run = "tr lab next"
+shown = ".venv/bin/tr lab next"
+output = "05-next.txt"
+explain = """`next` re-runs the check, commits your file as `lab w3l1.1: green` and puts the w3l1.2 stub in place: \
+evals.py with the reference reader in it. Here that equals the file just committed, so nothing changes. Had you \
+written the reader differently, the stub would replace your file and `next` would name the copy it kept in \
+.tr-lab/backup/."""
+
+[[part.step]]
+title = "The commit"
+run = "git log --oneline -3; git status --short"
+shown = "git log --oneline -3; git status --short"
+output = "06-after-next.txt"
+explain = """Your green commit sits on the base commit, and the base on the repo you cloned. What week 3 adds to the \
+loop of weeks 1 and 2 is the base commit and a data file of judge replies; the rest of the week's labs run the same \
+way, and the w3l2 exercises compare the request your p1_judge sends with the recorded one."""

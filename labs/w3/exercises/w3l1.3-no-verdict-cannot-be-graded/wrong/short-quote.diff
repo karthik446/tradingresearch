@@ -1,0 +1,14 @@
+why: quotes only the first 20 characters of the reply, so a short reply is cut in the refusal
+expect: p1_verdict on 'I cannot decide this one.' returned CannotGrade
+before: RED (author)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -209,7 +209,7 @@
+     `unknown: ` (ADR-003). A reply with no verdict is CannotGrade, not an abstain."""
+     verdict = last_json_object(reply, "verdict")
+     if verdict not in ("pass", "fail", "unknown"):
+-        raise CannotGrade(f"the judge's reply has no pass/fail/unknown verdict: {reply[:200]!r}")
++        raise CannotGrade(f"the judge's reply has no pass/fail/unknown verdict: {reply[:20]!r}")
+     explanation = last_json_object(reply, "explanation")
+     reason = explanation if isinstance(explanation, str) else ""
+     if verdict == "unknown":

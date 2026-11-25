@@ -1,0 +1,14 @@
+why: strips the rubric file before putting it in the prompt, so the text differs from the recorded request by its last newline
+expect: The judge's instructions are 4573 chars, the recorded request's 4574
+before: RED (author)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -238,7 +238,7 @@
+     #   between them. Never the bars themselves.
+     shown = ""
+     rubric = (RUBRICS / "p1_judge_prompt.txt").read_text().replace("{rubric}",
+-                                                                   (RUBRICS / "p1_thesis_quality.md").read_text())
++                                                                   (RUBRICS / "p1_thesis_quality.md").read_text().strip())
+     # TODO(w3l2.3) bound the reply: ADR-003's JUDGE_MAX_TOKENS, not CallSettings' default.
+     settings = CallSettings(model=JUDGE_MODEL)
+     judge = llm_judge(provider, rubric=rubric, settings=settings, grader_id=P1Judge.id)

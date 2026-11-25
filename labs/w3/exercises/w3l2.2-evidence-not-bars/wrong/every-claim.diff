@@ -1,0 +1,14 @@
+why: shows every claim of the analysis, not the claims the thesis cited
+expect: The same trade, its thesis citing only ['cl_fakea_high']
+before: GREEN (independent break pass)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -234,7 +234,7 @@
+     call or a reply with no verdict is CannotGrade after it: the cost is in the run file, nothing is stored."""
+     t, g = label.labelable(conn, thesis_id)
+     analysis = journal.get(conn, Analysis, t.analysis_id)
+-    shown = "\n".join(["cited claims (claim_id | tag | text)", *label.cited(analysis, t.evidence), "",
++    shown = "\n".join(["cited claims (claim_id | tag | text)", *label.cited(analysis, tuple(c.claim_id for c in analysis.claims)), "",
+                        "post-trade summary (code-written)", label.summary(conn, bars, t, g)])
+     rubric = (RUBRICS / "p1_judge_prompt.txt").read_text().replace("{rubric}",
+                                                                    (RUBRICS / "p1_thesis_quality.md").read_text())

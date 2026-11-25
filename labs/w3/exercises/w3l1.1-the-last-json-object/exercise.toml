@@ -1,0 +1,19 @@
+id = "w3l1.1"
+title = "Read the verdict from the last JSON object in the reply"
+effect = "Observe's w3l1.1 matches go from 1 of 9 replies to 9 of 9: the recorded reply reads pass with its explanation, and so do the replies that quote the format example or a draft verdict first."
+goal = "Start p1_verdict, the reader of the P1 judge's reply, with the rubric's Verdict format: the reply ends with one JSON object, and the last JSON object is the answer, whatever the reasoning above it quotes."
+what_tested = "p1_verdict on the one recorded judge reply and on reply shapes in labs/w3/data/replies.json: the recorded reply reads ('pass', its explanation), the last object wins over a format example or a draft verdict quoted earlier, a fenced or nested object still reads, and a missing, null or non-text explanation reads as \"\"."
+writes = [
+  "p1_verdict in src/tradingresearch/evals.py: read the verdict and the explanation from the last JSON object in the reply, with the parser the judge library already has for that.",
+  "The reason is text: an explanation that is missing, null or not a string becomes \"\".",
+]
+show_tests = ["test_the_last_object_wins_over_one_quoted_earlier", "test_a_missing_null_or_non_text_explanation_reads_empty"]
+lab = "w3l1"
+concepts = ["llm-judge", "verdict-format"]
+touches = ["src/tradingresearch/evals.py"]
+check = "python -m pytest -q -x -p no:cacheprovider -m lab labs/w3/exercises/w3l1.1-the-last-json-object/test_w3l1_1.py"
+observe = "python labs/w3/tools/observe.py verdicts"
+paid = false
+fixtures = ["data/replies.json"]
+origin = "rebuild of week-3-end evals.py; reference = the tag's own p1_verdict"
+red_expect = "The one recorded judge reply"

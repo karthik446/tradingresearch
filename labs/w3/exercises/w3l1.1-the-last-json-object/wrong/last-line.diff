@@ -1,0 +1,22 @@
+why: parses the reply's last line as JSON: right for the recorded reply, wrong when the object is not alone on the last line
+expect: nested_object: the reply shows a draft verdict
+before: RED (author)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -207,9 +207,14 @@
+ def p1_verdict(reply: str) -> tuple[str, str]:
+     """(verdict, reason) by the rubric's "Verdict format": the last JSON object wins, `unknown` becomes `fail` with
+     `unknown: ` (ADR-003). A reply with no verdict is CannotGrade, not an abstain."""
+-    verdict = last_json_object(reply, "verdict")
++    import json
++    try:
++        last = json.loads(reply.strip().splitlines()[-1])
++    except ValueError:
++        last = {}
++    verdict = last.get("verdict")
+     # TODO(w3l1.3) a reply with no pass, fail or unknown verdict cannot be graded: raise CannotGrade, quoting the reply.
+-    explanation = last_json_object(reply, "explanation")
++    explanation = last.get("explanation")
+     reason = explanation if isinstance(explanation, str) else ""
+     # TODO(w3l1.2) a verdict of unknown is an abstain: fail, with "unknown: " before its explanation (ADR-003).
+     return verdict, reason

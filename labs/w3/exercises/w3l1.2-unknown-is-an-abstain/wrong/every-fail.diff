@@ -1,0 +1,14 @@
+why: treats every fail as an abstain, so a plain not-met leaves kappa
+expect: last_json_wins: the judge answered
+before: RED (author)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -211,7 +211,7 @@
+     # TODO(w3l1.3) a reply with no pass, fail or unknown verdict cannot be graded: raise CannotGrade, quoting the reply.
+     explanation = last_json_object(reply, "explanation")
+     reason = explanation if isinstance(explanation, str) else ""
+-    if verdict == "unknown":
++    if verdict in ("unknown", "fail"):
+         return "fail", reason if reason.startswith("unknown:") else f"unknown: {reason}"
+     return verdict, reason
+ 

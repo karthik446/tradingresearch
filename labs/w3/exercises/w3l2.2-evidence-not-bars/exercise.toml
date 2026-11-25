@@ -1,0 +1,20 @@
+id = "w3l2.2"
+title = "Show the judge the cited claims and the code-written summary, never the bars"
+effect = "Observe's judge run: INPUT goes from 0 to the recorded 12 lines, the same as the recording, the prompt from 5158 to 5925 chars, and the raw bar values in the prompt stay at 0/5."
+goal = "Give the judge evidence, not the price path: the claims the thesis cited and the post-trade summary code wrote, under their headings, the same lines the operator reads with tr label show. With the bars the judge could grade by hindsight."
+what_tested = "p1_judge on the FAKEA trade: no opening, high or post-exit close of the trade's bars appears in the prompt, INPUT equals the recorded 12 lines (cited claims, blank line, summary), and with a thesis that cites only one of its analysis's two claims INPUT shows only that claim."
+writes = [
+  "In p1_judge, the INPUT text: a heading line for the cited claims, then the claims the thesis cites from its own analysis, one per line.",
+  "Then a blank line, a heading for the post-trade summary, and the summary code writes from the bars.",
+  "No bar rows: the judge sees what the summary measured, never the price path.",
+]
+show_tests = ["test_input_is_the_cited_claims_then_the_summary", "test_input_follows_the_thesis_it_judges"]
+lab = "w3l2"
+concepts = ["llm-judge", "judge-prompt", "evidence-not-bars", "replayed-reply"]
+touches = ["src/tradingresearch/evals.py"]
+check = "python -m pytest -q -x -p no:cacheprovider -m lab labs/w3/exercises/w3l2.2-evidence-not-bars/test_w3l2_2.py"
+observe = "python labs/w3/tools/observe.py judge"
+paid = false
+fixtures = ["data/judge_reply.json", "data/judge_request.json", "data/models.json"]
+origin = "rebuild of week-3-end evals.py; reference = the tag's judged_sample and p1_judge up to its call (part B finishes it)"
+red_expect = "[BEGIN INPUT] has 0 lines"

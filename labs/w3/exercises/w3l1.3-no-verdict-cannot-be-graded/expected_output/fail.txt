@@ -1,0 +1,6 @@
+FAIL w3l1.3 (try 1): Refuse a reply with no verdict: CannotGrade, not a fail
+  no_json: 'I cannot decide this one.' holds no verdict; p1_verdict returned (None, ''). That is not
+  a fail and not an abstain: storing it would count a reply nobody can read as the judge's answer.
+  Raise CannotGrade.
+  hint 1 unlocks after 2 failed runs; hint 2 unlocks after 5 failed runs; the solution unlocks after
+  10 failed runs or when the check is green

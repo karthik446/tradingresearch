@@ -1,0 +1,7 @@
+FAIL w3l2.3 (try 1): One call, bounded in tokens and capped in dollars
+  The request asks for at most 1024 output tokens; the recorded request asked for 4000
+  (JUDGE_MAX_TOKENS, ADR-003: about 500 per trade expected, 4000 bounds a runaway reply). 1024 is
+  CallSettings' default, and a reply cut short there can end before its verdict (w3l1.3's cut_off
+  reply).
+  hint 1 unlocks after 2 failed runs; hint 2 unlocks after 5 failed runs; the solution unlocks after
+  10 failed runs or when the check is green

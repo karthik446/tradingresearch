@@ -1,0 +1,14 @@
+why: treats Unknown: as the prefix already there, so the stored reason starts with a capital journal.abstained does not count
+expect: unknown_capital_prefix: p1_verdict returned ('fail', 'Unknown:
+before: GREEN (independent break pass)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -212,7 +212,7 @@
+     explanation = last_json_object(reply, "explanation")
+     reason = explanation if isinstance(explanation, str) else ""
+     if verdict == "unknown":
+-        return "fail", reason if reason.startswith("unknown:") else f"unknown: {reason}"
++        return "fail", reason if reason.lower().startswith("unknown:") else f"unknown: {reason}"
+     return verdict, reason
+ 
+ 

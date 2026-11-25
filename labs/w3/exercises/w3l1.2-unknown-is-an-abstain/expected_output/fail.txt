@@ -1,0 +1,8 @@
+FAIL w3l1.2 (try 1): Store unknown as an abstain: fail with unknown:
+  The judge answered '{"verdict": "unknown", "explanation": "the summary does not measure sector
+  rotation"}'; p1_verdict returned ('unknown', 'the summary does not measure sector rotation'),
+  expected ('fail', 'unknown: the summary does not measure sector rotation'). judge_verdict.verdict
+  accepts only 'pass' or 'fail' (journal.py), so an unknown is stored as fail with 'unknown: '
+  before the explanation: an abstain kappa leaves out, not a not-met.
+  hint 1 unlocks after 2 failed runs; hint 2 unlocks after 5 failed runs; the solution unlocks after
+  10 failed runs or when the check is green

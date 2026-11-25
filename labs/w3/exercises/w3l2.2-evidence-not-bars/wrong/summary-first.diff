@@ -1,0 +1,16 @@
+why: puts the summary before the cited claims
+expect: they differ at line 1
+before: RED (author)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -234,8 +234,8 @@
+     call or a reply with no verdict is CannotGrade after it: the cost is in the run file, nothing is stored."""
+     t, g = label.labelable(conn, thesis_id)
+     analysis = journal.get(conn, Analysis, t.analysis_id)
+-    shown = "\n".join(["cited claims (claim_id | tag | text)", *label.cited(analysis, t.evidence), "",
+-                       "post-trade summary (code-written)", label.summary(conn, bars, t, g)])
++    shown = "\n".join(["post-trade summary (code-written)", label.summary(conn, bars, t, g), "",
++                       "cited claims (claim_id | tag | text)", *label.cited(analysis, t.evidence)])
+     rubric = (RUBRICS / "p1_judge_prompt.txt").read_text().replace("{rubric}",
+                                                                    (RUBRICS / "p1_thesis_quality.md").read_text())
+     # TODO(w3l2.3) bound the reply: ADR-003's JUDGE_MAX_TOKENS, not CallSettings' default.

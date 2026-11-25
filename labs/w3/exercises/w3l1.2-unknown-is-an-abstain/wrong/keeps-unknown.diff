@@ -1,0 +1,14 @@
+why: prefixes the reason but keeps unknown as the verdict, which judge_verdict's CHECK refuses
+expect: The judge answered '{"verdict": "unknown"
+before: RED (author)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -212,7 +212,7 @@
+     explanation = last_json_object(reply, "explanation")
+     reason = explanation if isinstance(explanation, str) else ""
+     if verdict == "unknown":
+-        return "fail", reason if reason.startswith("unknown:") else f"unknown: {reason}"
++        return "unknown", reason if reason.startswith("unknown:") else f"unknown: {reason}"
+     return verdict, reason
+ 
+ 

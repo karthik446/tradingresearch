@@ -1,0 +1,19 @@
+id = "w3l2.3"
+title = "One call, bounded in tokens and capped in dollars"
+effect = "Observe's judge run: max_tokens goes from 1024 to 4000, the body equals the recorded request, and under a $0.001 cap no request is sent: BudgetExceeded, $0.042964 does not fit."
+goal = "Bound the one judge call twice: in output tokens, with ADR-003's JUDGE_MAX_TOKENS instead of the 1024 default, and in dollars, with a budget that prices the call's worst case before sending and refuses when the caller's cap cannot cover it."
+what_tested = "p1_judge on the FAKEA trade: the request asks for at most 4000 tokens, a cap below the worst case sends nothing, the cap is the caller's to a tenth of a cent ($0.0435 sends, $0.0425 refuses, around a worst case of $0.042964), and with a $0.05 cap exactly one request goes out, byte for byte the recorded one."
+writes = [
+  "In p1_judge, the call settings ask the judge model for at most JUDGE_MAX_TOKENS output tokens.",
+  "The call runs under a CallBudget of the caller's max_usd and the price table p1_judge is given, so a call that may cost more than the cap is refused before it is sent.",
+]
+show_tests = ["test_a_cap_below_the_worst_case_refuses_before_sending", "test_the_cap_is_the_callers_to_the_last_tenth_of_a_cent"]
+lab = "w3l2"
+concepts = ["llm-judge", "call-budget", "replayed-reply"]
+touches = ["src/tradingresearch/evals.py"]
+check = "python -m pytest -q -x -p no:cacheprovider -m lab labs/w3/exercises/w3l2.3-one-bounded-call/test_w3l2_3.py"
+observe = "python labs/w3/tools/observe.py judge"
+paid = false
+fixtures = ["data/judge_reply.json", "data/judge_request.json", "data/models.json"]
+origin = "rebuild of week-3-end evals.py; reference = the tag's judged_sample and p1_judge up to its call (part B finishes it)"
+red_expect = "The request asks for at most 1024"

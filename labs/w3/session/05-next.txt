@@ -1,0 +1,4 @@
+committed `lab w3l1.1: green`: src/tradingresearch/evals.py
+exercise w3l1.2: Store unknown as an abstain: fail with unknown:
+edit: src/tradingresearch/evals.py (look for TODO(w3l1.2))
+then: tr lab verify

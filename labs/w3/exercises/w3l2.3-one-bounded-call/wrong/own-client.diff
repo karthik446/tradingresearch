@@ -1,0 +1,15 @@
+why: builds its own OpenRouter client instead of using the provider it was given, which would reach the network
+expect: it stopped with Blocked: httpx.HTTPTransport.handle_request is blocked
+before: RED (author)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -242,7 +242,8 @@
+     judge = llm_judge(provider, rubric=rubric, settings=settings, grader_id=P1Judge.id)
+     item = DatasetItem(id=t.thesis_id, cluster_id=t.ticker, prompt=judge.render(judged_sample(t, shown), None),
+                        expected=None)
+-    run = run_eval(Dataset.of(P1Judge.id, [item]), provider, [], settings=settings,
++    from tradingresearch.openrouter import OpenRouter
++    run = run_eval(Dataset.of(P1Judge.id, [item]), OpenRouter("sk-or-not-a-key"), [], settings=settings,
+                    budget=CallBudget(max_usd=max_usd, prices=prices), trace_dir=data_dir / "traces", tag=P1Judge.id)
+     raise NotImplementedError(f"part B (lab w3l3): save run {run.record.run_id}, read its verdict, store it with its "
+                               "ScoreRecord, return the Score")
