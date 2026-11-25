@@ -403,10 +403,10 @@ def analyze_with_tools(ctx: Context, provider, *, model: str, prompt_version: st
     # TODO(w4l2.3) at most max_turns model calls: a model that keeps asking for tools ends in a failed sample whose
     # error has the code max_tool_turns, never in an exception and never with one call more.
     while True:
-        span = _model_span(provider, ModelRequest(settings=call_settings(model), turns=tuple(turns), tools=TOOLS),
-                           trial_id)
         # TODO(w4l2.3) the call's span goes to the sink as soon as it ends, and into spans; a call that failed ends the
         # loop, and the sample fails with the span's error.
+        span = _model_span(provider, ModelRequest(settings=call_settings(model), turns=tuple(turns), tools=TOOLS),
+                           trial_id)
         text = span.text
         if not span.tool_calls:
             break
