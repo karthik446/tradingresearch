@@ -4,7 +4,7 @@ effect = "Observe's store table: the recorded reply goes from NotImplementedErro
 goal = "Finish p1_judge: read the reply with your p1_verdict, return the Score it earns, and store the verdict and the ScoreRecord it points at in one transaction, so a failure between the two writes leaves neither. A reply with no verdict stores nothing."
 what_tested = "p1_judge on the closed FAKEA trade: the recorded pass returns Score 1.0 with a JudgeNote (model, one call equal to the run file's span, finish_reason too) and stores a pass verdict with one ScoreRecord (same reason, 1091 chars whole); fail and unknown are stored as fail 0.0, the 'unknown: ' reason kept; a no-verdict reply raises CannotGrade, stores nothing; a failure in either write leaves none."
 writes = [
-  "The verdict and reason come from p1_verdict on the sample's reply; the Score is 1.0 for pass, 0.0 otherwise, with the verdict as answer, the reason as explanation and a JudgeNote (model, prompt sha256, the calls as the spans record them), unknown included.",
+  "The verdict and reason come from p1_verdict on the reply; the Score is 1.0 for pass, 0.0 otherwise, with the verdict as answer, the reason as explanation and a JudgeNote (model, prompt sha256, the calls as recorded).",
   "A ScoreRecord of kind model carries P1Judge's id and version, the judge model and prompt sha256, the sample's trace id and the ids of its model spans.",
   "The ScoreRecord and the verdict row pointing at it are written inside one transaction on the journal connection.",
 ]
