@@ -56,6 +56,16 @@ def test_only_the_three_lower_case_verdicts_count():
             f"the string pass or fail (or unknown), in lower case, nothing around it; anything else is a reply the "
             f"rubric does not define, so CannotGrade, not a guess at what the judge meant."
         )
+    # Words that sound like an abstain: the rubric's one word for an abstain is unknown (w3l1.2).
+    for word in ("abstain", "inconclusive", "neutral"):
+        reply = f'{{"verdict": "{word}", "explanation": "the closes neither held nor broke"}}'
+        got = read(reply)
+        assert isinstance(got, CannotGrade), (
+            f"p1_verdict returned {shown(got)} for {reply!r}, expected CannotGrade. {word} sounds like an abstain, but "
+            f"the rubric's word for an abstain is unknown (w3l1.2): {word} is a verdict the rubric does not define. "
+            f"Returned as a verdict, it reaches the journal, which refuses it only when it is stored, after the call "
+            f"was paid. Refuse it here, before anything is stored."
+        )
 
 
 def test_the_answer_is_the_last_object_or_nothing():

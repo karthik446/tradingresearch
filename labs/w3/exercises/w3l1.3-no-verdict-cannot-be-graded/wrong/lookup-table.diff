@@ -1,5 +1,5 @@
 why: looks each reply up in labs/w3/data/replies.json for CannotGrade instead of checking the verdict, so a reply in no row with no verdict is stored
-expect: '{"verdict": "PASS"
+expect: '{"verdict": "abstain"
 before: GREEN (independent reader)
 --- a/src/tradingresearch/evals.py
 +++ b/src/tradingresearch/evals.py

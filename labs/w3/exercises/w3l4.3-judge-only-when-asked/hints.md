@@ -2,9 +2,9 @@
 
 ## Hint 1
 
-Two places. In commands/grade.py, cmd_grade already has a helper for the judge's lines (`judge_lines`) that handles the
-dry run and the empty queue: it runs only when --judge is given, under the cap --judge-max-usd sets, and a dry run
-neither calls the judge nor looks anything up. In grade.py, render_judged's outcome lines and its summary need the money.
+Two places. In commands/grade.py, the judge's part of `tr grade` already exists further down the file, with the dry run,
+the empty queue and the cap --judge-max-usd sets: cmd_grade only has to reach it when the judge was asked for, and never
+otherwise, whatever other option is given. In grade.py, render_judged's outcome lines and its summary need the money.
 
 ## Hint 2
 

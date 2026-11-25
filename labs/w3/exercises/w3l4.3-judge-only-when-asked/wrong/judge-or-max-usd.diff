@@ -1,0 +1,14 @@
+why: also runs the judge when only --judge-max-usd is changed, so the one paid step runs without --judge
+expect: `tr grade --judge-max-usd 0.5` sent 2 judge request(s)
+before: GREEN (independent read)
+--- a/src/tradingresearch/commands/grade.py
++++ b/src/tradingresearch/commands/grade.py
+@@ -21,7 +21,7 @@
+             bars = reconcile_run.AlpacaBars(http, cfg.data_dir / "bars_1m", cfg.feed)
+             report = grade.run(conn, bars, day, dry_run=args.dry_run)
+     print("\n".join(grade.render(report)))
+-    if args.judge:
++    if args.judge or args.judge_max_usd != grade.JUDGE_MAX_USD:
+         print("\n".join(judge_lines(conn, args, cfg)))
+ 
+ 

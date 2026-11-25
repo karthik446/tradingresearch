@@ -1,0 +1,14 @@
+why: strips the 'unknown: ' prefix from the ScoreRecord's explanation, so the record reads an abstain as a plain fail
+expect: After an unknown the ScoreRecord's explanation is
+before: GREEN (independent read)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -257,7 +257,7 @@
+     score = Score(value=1.0 if verdict == "pass" else 0.0, explanation=reason, answer=verdict,
+                   judge=JudgeNote(model=JUDGE_MODEL, prompt_sha256=judge.prompt_sha256, calls=calls))
+     record = ScoreRecord(score_id=new_id("sc"), trace_id=sample.trace_id, grader_id=P1Judge.id,
+-                         grader_version=P1Judge.version, kind="model", value=score.value, explanation=reason,
++                         grader_version=P1Judge.version, kind="model", value=score.value, explanation=reason.removeprefix("unknown: "),
+                          judge_model=JUDGE_MODEL, judge_prompt_sha256=judge.prompt_sha256,
+                          judge_span_ids=tuple(span.span_id for span in spans), recorded_at=datetime.now(UTC))
+     with conn:  # the ScoreRecord and the verdict that points at it land in one transaction

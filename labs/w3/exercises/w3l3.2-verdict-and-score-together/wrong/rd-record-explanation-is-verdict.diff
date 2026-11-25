@@ -1,5 +1,5 @@
 why: stores the verdict word as the ScoreRecord's explanation
-expect: The ScoreRecord's explanation is 'pass'
+expect: After an unknown the ScoreRecord's explanation is 'fail'
 before: GREEN (independent reader)
 --- a/src/tradingresearch/evals.py
 +++ b/src/tradingresearch/evals.py

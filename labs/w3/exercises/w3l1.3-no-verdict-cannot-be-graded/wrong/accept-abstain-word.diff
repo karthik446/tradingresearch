@@ -1,0 +1,14 @@
+why: takes abstain as a fourth readable verdict, so the journal refuses it only at storage, after the call was paid
+expect: abstain sounds like an abstain
+before: GREEN (independent read)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -208,7 +208,7 @@
+     """(verdict, reason) by the rubric's "Verdict format": the last JSON object wins, `unknown` becomes `fail` with
+     `unknown: ` (ADR-003). A reply with no verdict is CannotGrade, not an abstain."""
+     verdict = last_json_object(reply, "verdict")
+-    if verdict not in ("pass", "fail", "unknown"):
++    if verdict not in ("pass", "fail", "unknown", "abstain"):
+         raise CannotGrade(f"the judge's reply has no pass/fail/unknown verdict: {reply[:200]!r}")
+     explanation = last_json_object(reply, "explanation")
+     reason = explanation if isinstance(explanation, str) else ""

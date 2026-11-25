@@ -42,12 +42,15 @@ def journal(data_dir: Path) -> tuple[list[str], list[str]]:
 
 def test_tr_grade_calls_the_judge_only_with_judge(tmp_path, monkeypatch):
     grade, _ = journal(tmp_path)
-    (plain, n_plain), (dry, n_dry), (judge_dry, n_judge_dry) = fakea.cli(
-        monkeypatch, tmp_path, [grade, [*grade, "--dry-run"], [*grade, "--judge", "--dry-run"]])
-    for argv, out, sent in (("tr grade", plain, n_plain), ("tr grade --dry-run", dry, n_dry)):
+    capped = [*grade, "--judge-max-usd", "0.5"]  # not the default $0.25, so a changed cap is a cap that was given
+    (plain, n_plain), (cap, n_cap), (dry, n_dry), (judge_dry, n_judge_dry) = fakea.cli(
+        monkeypatch, tmp_path, [grade, capped, [*grade, "--dry-run"], [*grade, "--judge", "--dry-run"]])
+    for argv, out, sent in (("tr grade", plain, n_plain), ("tr grade --judge-max-usd 0.5", cap, n_cap),
+                            ("tr grade --dry-run", dry, n_dry)):
         assert sent == 0 and not judge_part(out), (
             f"`{argv}` sent {sent} judge request(s) and printed: {shown(out)}. The judge is the one paid step of tr "
-            f"grade: it runs only with --judge (ADR-003: off by default), and without it there is nothing to show."
+            f"grade: it runs only with --judge (ADR-003: off by default), and without it there is nothing to show. "
+            f"--judge-max-usd only sets the cap of a judge run; given alone, it asks for none."
         )
     assert n_judge_dry == 0 and "would judge 2" in judge_dry, (
         f"`tr grade --judge --dry-run` sent {n_judge_dry} request(s) and printed: {shown(judge_dry)}. A dry run "
@@ -86,16 +89,18 @@ def test_each_line_shows_the_cost_it_is_given(tmp_path):
     """grade.render_judged on made-up outcomes and costs, so a cost copied from the recording cannot pass."""
     from tradingresearch import grade
 
-    conn, (champion, challenger), _ = fakea.journal_of(tmp_path, ("champion", "challenger"))
+    conn, (champion, challenger, free), _ = fakea.journal_of(tmp_path, ("champion", "challenger", "challenger"))
     conn.close()
     judged = [grade.Judged(champion, error="CannotGrade: a made-up failure", cost_usd=0.000123),
-              grade.Judged(challenger, verdict="pass", reason="a made-up reason", cost_usd=0.0024)]
+              grade.Judged(challenger, verdict="pass", reason="a made-up reason", cost_usd=0.0024),
+              grade.Judged(free, error="CannotGrade: refused before any call", cost_usd=0.0)]
     lines = grade.render_judged(judged, dry_run=False, max_usd=0.25)
-    want = ((champion, "$0.000123"), (challenger, "$0.002400"))
+    want = ((champion, "$0.000123"), (challenger, "$0.002400"), (free, "$0.000000"))
     ok = all(cost in costs(next((line for line in lines if t.thesis_id in line), "")) for t, cost in want)
     assert ok and "$0.002523" in costs(lines[-1]), (
-        f"render_judged printed {[fakea.masked(line) for line in lines]} for outcomes that cost $0.000123 (not judged) "
-        f"and $0.002400 (pass): each line shows its own cost_usd and the last line their sum, $0.002523."
+        f"render_judged printed {[fakea.masked(line) for line in lines]} for outcomes that cost $0.000123 (not "
+        f"judged), $0.002400 (pass) and $0.000000 (not judged, refused before any call): each line shows its own "
+        f"cost_usd, $0.000000 too (a missing cost reads as one nobody knows), and the last line their sum, $0.002523."
     )
 
 

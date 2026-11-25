@@ -8,21 +8,21 @@ This folder holds week 3 of the AI engineering track, 12 exercises run by `tr la
 |---|---|---|---|
 | [w3l1.1](exercises/w3l1.1-the-last-json-object/) | Read the verdict and the explanation from the last JSON object in the judge's reply | `evals.py` | 14 |
 | [w3l1.2](exercises/w3l1.2-unknown-is-an-abstain/) | Store an `unknown` verdict as an abstain: `fail`, with `unknown: ` before the explanation | `evals.py` | 16 |
-| [w3l1.3](exercises/w3l1.3-no-verdict-cannot-be-graded/) | Raise `CannotGrade` on a reply with no pass, fail or unknown verdict, never a quiet fail | `evals.py` | 18 |
+| [w3l1.3](exercises/w3l1.3-no-verdict-cannot-be-graded/) | Raise `CannotGrade` on a reply with no pass, fail or unknown verdict, never a quiet fail | `evals.py` | 19 |
 | [w3l2.1](exercises/w3l2.1-rubric-in-thesis-out/) | Fill the judge's frame: the rubric into the prompt, the thesis text as the graded output | `evals.py` | 13 |
 | [w3l2.2](exercises/w3l2.2-evidence-not-bars/) | Show the judge the cited claims and the code-written summary, never the raw bars | `evals.py` | 13 |
 | [w3l2.3](exercises/w3l2.3-one-bounded-call/) | Make the one call bounded in tokens and capped in dollars | `evals.py` | 16 |
 | [w3l3.1](exercises/w3l3.1-keep-the-run-file/) | Keep the judge's call in a run file, and turn a failed call into `CannotGrade` naming its run file and error | `evals.py` | 18 |
-| [w3l3.2](exercises/w3l3.2-verdict-and-score-together/) | Read the reply with `p1_verdict`, store the verdict and its ScoreRecord in one transaction, return the Score | `evals.py` | 23 |
+| [w3l3.2](exercises/w3l3.2-verdict-and-score-together/) | Read the reply with `p1_verdict`, store the verdict and its ScoreRecord in one transaction, return the Score | `evals.py` | 24 |
 | [w3l3.3](exercises/w3l3.3-refuse-before-the-call/) | Refuse a teacher or never-entered thesis before any call: `label.Refused` becomes `CannotGrade` | `evals.py` | 16 |
 | [w3l4.1](exercises/w3l4.1-what-waits-for-the-judge/) | List the graded champion and challenger theses with no verdict yet, oldest first | `grade.py` | 16 |
 | [w3l4.2](exercises/w3l4.2-one-cap-per-run/) | Judge every waiting thesis under one dollar cap for the run, counting what each call's run files say it spent | `grade.py` | 20 |
-| [w3l4.3](exercises/w3l4.3-judge-only-when-asked/) | Run the judge only with `--judge`, and print each call's cost and the run's total to the millionth | `grade.py`, `commands/grade.py` | 21 |
+| [w3l4.3](exercises/w3l4.3-judge-only-when-asked/) | Run the judge only with `--judge`, and print each call's cost and the run's total to the millionth | `grade.py`, `commands/grade.py` | 23 |
 
-204 wrong fixes in all: 90 in part A, 114 in part B. The counts are `ls exercises/*/wrong | wc -l`; `prove.py w3` runs
+208 wrong fixes in all: 91 in part A, 117 in part B. The counts are `ls exercises/*/wrong | wc -l`; `prove.py w3` runs
 every one.
 
-Part A: 90 wrong fixes. 26 of them passed the checks when first tried. 14 came from an independent break pass
+Part A: 91 wrong fixes. 26 of them passed the checks when first tried. 14 came from an independent break pass
 (`before: GREEN (independent break pass)`): an explanation or verdict that is JSON but not text, a capital or
 space-less `unknown:` prefix, a pass whose text says unknown, a padded or hedged verdict, a hard-coded thesis or INPUT,
 every claim instead of the cited ones, and a cap with a margin, rounded to cents or with a cent of slack. 12 came from
@@ -38,11 +38,13 @@ reason cut to 1000 characters, only the first two cited claims, and a cap held u
 decimals. 12 are its break pass (`outside-review break pass`, 6 green when first tried). The checks were hardened for
 each (padded explanations and JSON `true`, `false` and `{"value"` verdicts in the w3l1 checks, a line added to the
 prompt file of the rubric copy, a reason of over 1300 characters, a third cited claim, doubled prices, the cap also
-tested at the estimate itself and a millionth of a dollar under it), and all 22 are red now. The other 42 are
-`before: RED (author)`; three of them
+tested at the estimate itself and a millionth of a dollar under it), and all 22 are red now. 1 more came from a second
+independent read (`before: GREEN (independent read)`): a verdict of `abstain` taken as a fourth readable verdict. The
+w3l1.3 check now also refuses the verdicts `abstain`, `inconclusive` and `neutral`, and it is red now. The other 42
+are `before: RED (author)`; three of them
 (`own-client`, `live-price-lookup`, `live-price-or-given`) are red because of the offline guard below.
 
-Part B: 114 wrong fixes. 33 come from break passes and a finish review (12 of them written while the outside review
+Part B: 117 wrong fixes. 33 come from break passes and a finish review (12 of them written while the outside review
 below was fixed, `before: RED (independent break pass)`); 6 of those passed the checks when
 first tried: a ScoreRecord under its own grader version, or with the rubric's digest as the prompt's sha256
 (`bp-wrong-version`, `bp-rubric-digest`); the queue ordered by thesis id (`bp-id-order`); a run that counts a call's
@@ -68,8 +70,11 @@ read on a dry run, `--judge-max-usd` ignored, the key required for a dry run, ev
 checks were hardened for each (an HTTP 402 and a reply with no verdict kept in their run files, the digest compared
 whole, a challenger thesis and an injected file error, a second ticker and a plain `fail` verdict, made-up reply costs
 and a call that adds two run files, a count of `/models` lookups in `fakea.offline`, a $0.001 cap on the command line,
-`judge_lines` with no key, a fail given to `render_judged`). All 20 are red now. The other 45 are `before: RED
-(author)`.
+`judge_lines` with no key, a fail given to `render_judged`). All 20 are red now. 3 more came from a second independent
+read (`before: GREEN (independent read)`): an unknown's ScoreRecord without its `unknown: ` prefix, the judge run when
+only `--judge-max-usd` is given, and a not-judged line that hides a $0 cost. The checks were hardened for each (the
+unknown's ScoreRecord compared with its verdict row's reason, `tr grade --judge-max-usd 0.5` checked for no judge
+line, a $0.000000 outcome given to `render_judged`), and all 3 are red now. The other 45 are `before: RED (author)`.
 
 ## Layout
 

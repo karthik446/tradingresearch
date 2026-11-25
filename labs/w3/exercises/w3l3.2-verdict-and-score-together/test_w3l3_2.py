@@ -113,6 +113,11 @@ def test_unknown_is_stored_as_fail_with_value_zero(unknown):
         f"After an unknown the journal holds {held(row, scores)}, values {[s.value for s in scores]}; expected verdict "
         f"'fail' with an 'unknown:' reason and one ScoreRecord of value 0.0."
     )
+    assert scores[0].explanation == row["reason"], (
+        f"After an unknown the ScoreRecord's explanation is {scores[0].explanation[:30]!r}..., the verdict row's "
+        f"reason {row['reason'][:30]!r}.... The ScoreRecord backs that verdict: it keeps the same reason, 'unknown: ' "
+        f"prefix included, or a later audit reads the abstain as a plain fail."
+    )
 
 
 def test_a_reply_with_no_verdict_stores_nothing_and_keeps_its_run(no_verdict):

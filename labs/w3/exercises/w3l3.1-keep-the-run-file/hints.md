@@ -2,8 +2,8 @@
 
 ## Hint 1
 
-The run file is written by code the course already has: analyze's save (`an.save`) knows where runs live and gives back
-the path it wrote. Keep the file first, then decide what the call's outcome means; the order is the whole point. A
+The run file is written by code the course already has: analyze's save knows where runs live and tells you where it
+wrote the file. Keep the file first, then decide what the call's outcome means; the order is the whole point. A
 rejected request, an empty account and a reply with no verdict line are all calls on record, and some of them are paid.
 
 ## Hint 2
