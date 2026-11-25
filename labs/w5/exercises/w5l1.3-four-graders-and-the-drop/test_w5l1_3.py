@@ -108,3 +108,17 @@ def test_the_recorded_reply_in_each_arm():
     scores("headlines", claims, ("headlines",), (0.0, "dropped_source: 1 of 1 claims citing headlines fail"),
            "c9 cites a headline row the no-headlines arm never saw")
     scores("indicators", claims, ("headlines",), indicators, "no indicator claim cites a headline row")
+
+
+ALL = tuple(masking.SECTIONS)
+
+
+@pytest.mark.parametrize("drop", [*((s,) for s in ALL), ALL[:3], ALL], ids=lambda d: "+".join(d))
+def test_any_section_can_be_dropped(drop):
+    claims = CLAIMS + [fakea.fact("l1", "level_hvn_1")]
+    citing = {"indicators": 2, "levels": 1, "edgar": 1, "headlines": 2}  # i1 and x1; l1; e1; x1 and h1
+    for section in drop:
+        k = citing[section]
+        scores(section, claims, drop, (0.0, f"dropped_source: {k} of {k} claims citing {section} fail"),
+               f"every claim citing a {section} row fails in an arm that dropped the {section} section, whichever "
+               f"and however many sections the arm drops")

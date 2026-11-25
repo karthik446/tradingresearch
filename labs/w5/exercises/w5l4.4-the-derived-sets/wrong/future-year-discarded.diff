@@ -1,0 +1,15 @@
+why: drops journal days after 2027, so a 2028 session is in no set
+expect: partition(cutoff 2026-12-29, embargo 22, [2028-01-03]) put 2028-01-03 in no set
+before: GREEN (Codex week 5)
+diff --git a/src/tradingresearch/split.py b/src/tradingresearch/split.py
+--- a/src/tradingresearch/split.py
++++ b/src/tradingresearch/split.py
+@@ -152,7 +152,7 @@
+     """train/val = sessions before the embargo window; test = sessions on or after the cutoff; the window's sessions
+     are in neither (SPIKE §1.1)."""
+     window = embargo_window(split)
+-    ordered = sorted(set(days))
++    ordered = sorted(d for d in set(days) if d.year <= 2027)
+     return Split(train_val_sessions=tuple(d for d in ordered if d < window[0]),
+                  test_sessions=tuple(d for d in ordered if d >= split.cutoff_session),
+                  embargoed_sessions=tuple(d for d in ordered if window[0] <= d < split.cutoff_session),

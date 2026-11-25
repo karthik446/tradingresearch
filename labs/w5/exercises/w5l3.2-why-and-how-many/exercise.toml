@@ -2,7 +2,7 @@ id = "w5l3.2"
 title = "Why and how many"
 effect = "tr exp compare prints the chapter's skipped lines: full against no-edgar says edgar_grounded is not scored in both arms (n=6 vs 0) and levels_grounded has no item scored in both arms (n=1 vs 3), and a refusal names every grader it skipped."
 goal = "Finish experiment.compare: each skipped entry gives the reason and how many items each run scored, in the order asked, and the no_shared_metric refusal lists the entries, or says no grader was named."
-what_tested = "The skipped tuples of the author's runs in four directions over the config's seven graders. Hand-built runs: a grader in one run only (either run), in neither, on disjoint items, on one different item each, in the order asked. The refusal's full text: two skipped graders, an unknown one, none asked. tr exp compare's skipped lines for the chapter's two compares."
+what_tested = "The skipped tuples of the author's runs in four directions over the config's seven graders. Hand-built runs: a grader in one run only (either run), in neither, on disjoint items, on one different item each, in the order asked; twelve asked over 21 items, one twice, one named custom_. The refusal's full text: two skipped, an unknown one, none asked. tr exp compare's skipped lines."
 writes = [
   "Each skipped entry reads `<grader>: <why> (n=A vs B)`, A and B the items run a and run b scored with it.",
   "why is `not scored in both arms` when either run has no score for the grader, else `no item scored in both arms`.",

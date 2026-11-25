@@ -135,3 +135,34 @@ def test_tr_exp_compare_prints_the_chapters_skipped_lines(b, capsys):
     assert got == want, (
         f"tr exp compare {a} -> {b} printed the skipped lines {got}; the chapter's block (section 5) prints {want}, "
         f"graders in the order the runs first scored them")
+
+
+WIDE = tuple(f"T{i:02d}:2026-11-13" for i in range(21))
+NINE = tuple(f"grader_{k}" for k in range(1, 10))
+
+
+def wide(arm: str, graders: tuple[str, ...]):
+    """A hand-built arm over 21 items, each grader scored 1.0 on every item."""
+    rows = [(grader, "1", item, 1.0) for item in WIDE for grader in graders]
+    return runs.build(f"run_hand{arm:0<12}", f"ablation:{arm}:analyze-3", "openai/gpt-4.1-nano", runs.T0, runs.HAND,
+                      [(item, item.split(":")[0]) for item in WIDE], rows)
+
+
+def test_every_grader_asked_is_decided_and_counted_on_its_own_scores():
+    a, b = wide("a", ("parsed", "custom_score", *NINE)), wide("b", ("parsed", "custom_score", *NINE, "missing"))
+    asked = ("missing", "missing", "custom_score", *NINE, "parsed")
+    kept = ["custom_score", *NINE, "parsed"]
+    try:
+        got = experiment.compare(a, b, asked)
+    except Exception as exc:  # noqa: BLE001 - reported here
+        raise AssertionError(f"compare(wide a -> wide b, {list(asked)}) raised {exc!r}; expected {kept} compared "
+                             f"and missing skipped twice: 21 items are as fair as 10") from None
+    compared = [m.metric for m in got.comparison.metrics]
+    assert compared == kept, (
+        f"compare(wide a -> wide b, {list(asked)}) compared {compared}; expected {kept}: every grader asked that "
+        f"both runs scored on a common item is kept, in the order asked, however many are asked and whatever a grader "
+        f"is called")
+    want = (f"missing: {NOT} (n=0 vs 21)",) * 2
+    assert got.skipped == want, (
+        f"compare(wide a -> wide b) skipped {got.skipped!r}; expected {want!r}: one entry per time a grader is "
+        f"asked, and its counts are the items each run scored, 21 as readily as 20")

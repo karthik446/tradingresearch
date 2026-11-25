@@ -9,6 +9,7 @@ lists: the graders, the cluster and the pre-registration are w5l2.2 and w5l2.3.
 
 import re
 import sys
+import tomllib
 from dataclasses import replace
 from pathlib import Path
 
@@ -31,8 +32,9 @@ def test_three_arms_named_by_what_they_drop():
     arms = config().arms
     got = [(arm.name, list(arm.drop)) for arm in arms]
     assert len(arms) == 3 and {arm.name: arm.drop for arm in arms} == ARMS, (
-        f"the arms (name, drop) are {got}; expected exactly three: full drops nothing, no-headlines drops "
-        f"['headlines'], no-edgar drops ['edgar']")
+        f"the arms (name, drop) are {got}; expected exactly three, each named for what it drops: a full arm with an "
+        f"empty drop, and one no-<section> arm per section the ablation leaves out (the headlines; the EDGAR rows), "
+        f"dropping that section alone under its masking.SECTIONS name")
 
 
 def test_the_arms_differ_only_in_what_they_drop():
@@ -63,3 +65,11 @@ def test_the_replay_sends_each_arm_the_recorded_request_masked(tmp_path):
                 f"masked by its drop")
             assert body["messages"][0]["content"] == an.system_prompt("analyze-3"), (
                 f"arm {result.arm.name} sent a system prompt that is not analyze-3's")
+
+
+def test_every_arm_runs_the_model_at_the_top_of_the_file():
+    top = tomllib.loads(fakea.CONFIG.read_text()).get("model")
+    models = {arm.name: arm.model for arm in config().arms}
+    assert top and set(models.values()) == {top}, (
+        f"the file's top-level model is {top!r} and the arms run {models}; expected every arm to run the model the top "
+        f"of the file names: an arm with a model of its own is a model comparison, not a context ablation")

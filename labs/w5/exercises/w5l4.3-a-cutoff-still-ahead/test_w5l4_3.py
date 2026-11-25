@@ -10,18 +10,23 @@
 A split already stored is returned as stored even once its cutoff has opened.
 
 The journal is in memory; the dates are real NYSE sessions, Thanksgiving 2026-11-26 closed and 11-27 open, Good Friday
-2027-03-26 closed though no federal holiday, and Veterans Day 2026-11-11 open though a federal holiday.
+2027-03-26 closed though no federal holiday, Veterans Day 2026-11-11 open though a federal holiday, and 2028 checked
+like 2026: Saturday 2028-01-01 and Martin Luther King Day 2028-01-17 closed, Monday 2028-01-03 open. The NYSE calendar
+is pinned to 2020–2030 for that, whatever the day the check runs.
 """
 
 from datetime import UTC, date, datetime, timedelta
+from functools import cache
 
+import exchange_calendars as xcals
 import pytest
 
-from tradingresearch import journal, split
+from tradingresearch import journal, sessions, split
 
 NOW = datetime(2026, 10, 30, 22, 0, tzinfo=UTC)  # after the 2026-10-30 close: the last completed session is 10-30
 CUTOFF = date(2026, 12, 1)
 OPEN_1102 = datetime(2026, 11, 2, 14, 30, tzinfo=UTC)  # 09:30 New York
+OPEN_1201 = datetime(2026, 12, 1, 14, 30, tzinfo=UTC)
 LATE = datetime(2026, 12, 1, 15, 0, tzinfo=UTC)  # 10:00 New York on the cutoff
 WHY = "entry window 2 + longest hold 20"
 
@@ -31,6 +36,17 @@ def conn():
     c = journal.connect(":memory:")
     yield c
     c.close()
+
+
+@cache
+def calendar_2020_to_2030() -> xcals.ExchangeCalendar:
+    return xcals.get_calendar("XNYS", start="2020-01-01", end="2030-12-31")
+
+
+@pytest.fixture(autouse=True)
+def pinned_calendar(monkeypatch):
+    """sessions.xnys() spans 20 years back and one ahead of today; this check's dates run to 2028."""
+    monkeypatch.setattr(sessions, "xnys", calendar_2020_to_2030)
 
 
 def rows(conn) -> int:
@@ -64,15 +80,20 @@ def stored(conn, cutoff: date, now: datetime) -> split.TrainingSplit:
 
 @pytest.mark.parametrize("embargo", [21, 20])
 def test_an_embargo_under_the_floor_is_refused_with_its_reason(conn, embargo):
-    got = refusal(conn, CUTOFF, embargo, NOW)
-    assert got == f"embargo {embargo} < 22 sessions ({WHY})", got
+    got, want = refusal(conn, CUTOFF, embargo, NOW), f"embargo {embargo} < 22 sessions ({WHY})"
+    assert got == want, (f"register(cutoff {CUTOFF}, embargo {embargo}, now {NOW.isoformat()}) was refused with "
+                         f"{got!r}; expected {want!r}: the floor refusal names the embargo, the floor and EMBARGO_WHY, "
+                         "word for word")
 
 
-# Thanksgiving, a Saturday, Good Friday
-@pytest.mark.parametrize("cutoff", [date(2026, 11, 26), date(2026, 11, 28), date(2027, 3, 26)])
+# Thanksgiving, a Saturday, Good Friday, Saturday 2028-01-01, Martin Luther King Day 2028
+@pytest.mark.parametrize("cutoff", [date(2026, 11, 26), date(2026, 11, 28), date(2027, 3, 26), date(2028, 1, 1),
+                                    date(2028, 1, 17)])
 def test_a_cutoff_that_is_not_an_nyse_session_is_refused(conn, cutoff):
-    got = refusal(conn, cutoff, 22, NOW)
-    assert got == f"cutoff {cutoff} is not an NYSE session", f"{got}  ({cutoff:%A}, the exchange is closed)"
+    got, want = refusal(conn, cutoff, 22, NOW), f"cutoff {cutoff} is not an NYSE session"
+    assert got == want, (f"register(cutoff {cutoff}, embargo 22, now {NOW.isoformat()}) was refused with {got!r}; "
+                         f"expected {want!r}: {cutoff:%A}, the exchange is closed, and the calendar decides that in "
+                         "every year, before the clock is asked")
 
 
 @pytest.mark.parametrize("cutoff", [date(2026, 10, 30), date(2026, 10, 29)])
@@ -80,20 +101,27 @@ def test_a_cutoff_not_after_the_last_completed_session_is_refused(conn, cutoff):
     got = refusal(conn, cutoff, 22, NOW)
     want = (f"cutoff {cutoff} is not after the last completed session (2026-10-30): a split is registered before its "
             "test period starts")
-    assert got == want, f"{got}  (at {NOW}, 2026-10-30 closed 2 hours ago)"
+    assert got == want, (f"register(cutoff {cutoff}, embargo 22, now {NOW.isoformat()}) was refused with {got!r}; "
+                         f"expected {want!r}: at {NOW.isoformat()} the 2026-10-30 session closed 2 hours ago, so a "
+                         "cutoff on or before it is not ahead")
 
 
 @pytest.mark.parametrize(("now", "prereg_at", "what", "at"), [
     (OPEN_1102, None, "now", "2026-11-02T14:30:00+00:00"),
     (OPEN_1102 + timedelta(hours=1), None, "now", "2026-11-02T15:30:00+00:00"),
     (NOW, LATE, "prereg registered_at", "2026-12-01T10:00:00-05:00"),
+    (NOW, OPEN_1201, "prereg registered_at", "2026-12-01T09:30:00-05:00"),
     (LATE, LATE, "now", "2026-12-01T15:00:00+00:00"),
-], ids=["now-at-the-open", "now-after-the-open", "prereg-late", "both-late"])
+], ids=["now-at-the-open", "now-after-the-open", "prereg-late", "prereg-at-the-open", "both-late"])
 def test_now_and_then_the_prereg_must_come_before_the_cutoff_session_opens(conn, now, prereg_at, what, at):
     cutoff = now.date() if prereg_at is None else CUTOFF
     opens = "2026-11-02T14:30:00+00:00" if cutoff == date(2026, 11, 2) else "2026-12-01T14:30:00+00:00"
     got = refusal(conn, cutoff, 22, now, prereg_at)
-    assert got == f"{what} {at} is not before the cutoff session opens ({opens})", got
+    want = f"{what} {at} is not before the cutoff session opens ({opens})"
+    asked = f"register(cutoff {cutoff}, embargo 22, now {now.isoformat()}" + (
+        f", prereg registered {prereg_at.isoformat()})" if prereg_at else ")")
+    assert got == want, (f"{asked} was refused with {got!r}; expected {want!r}: the open is 09:30 New York, 14:30 "
+                         "UTC, and a time at the open is not before it, for now and for the prereg alike")
 
 
 @pytest.mark.parametrize(("cutoff", "embargo", "now", "want"), [
@@ -112,9 +140,14 @@ def test_the_first_reason_in_order_is_the_one_given(conn, cutoff, embargo, now, 
     (CUTOFF, datetime(2026, 11, 30, 22, 0, tzinfo=UTC)),  # the evening the session before the cutoff closed
     (date(2026, 11, 3), datetime(2026, 11, 3, 2, 0, tzinfo=UTC)),  # 21:00 New York, UTC already says 11-03
     (date(2026, 11, 11), NOW),  # Veterans Day, a federal holiday: the exchange is open
-], ids=["after-thanksgiving", "the-evening-before-the-cutoff", "an-evening-utc-calls-the-next-day", "veterans-day"])
+    (date(2028, 1, 3), NOW),  # the first session of 2028
+], ids=["after-thanksgiving", "the-evening-before-the-cutoff", "an-evening-utc-calls-the-next-day", "veterans-day",
+        "a-cutoff-in-2028"])
 def test_a_cutoff_still_ahead_is_stored(conn, cutoff, now):
-    assert stored(conn, cutoff, now).cutoff_session == cutoff and rows(conn) == 1
+    got = stored(conn, cutoff, now)
+    assert got.cutoff_session == cutoff and rows(conn) == 1, (
+        f"register(cutoff {cutoff}, embargo 22, now {now.isoformat()}) returned cutoff {got.cutoff_session} with "
+        f"{rows(conn)} row(s); expected the split stored once: that cutoff is still ahead")
 
 
 def test_a_stored_split_is_returned_even_once_its_cutoff_has_opened(conn):
@@ -124,4 +157,6 @@ def test_a_stored_split_is_returned_even_once_its_cutoff_has_opened(conn):
     except split.Refused as exc:
         raise AssertionError(f"asking for {first.split_id} again at {LATE.isoformat()} was refused: {exc}; the "
                              "lookup comes before the cutoff checks, so a stored split is returned as stored") from None
-    assert again == first and rows(conn) == 1
+    assert again == first and rows(conn) == 1, (
+        f"asking for {first.split_id} again at {LATE.isoformat()} returned {again.split_id}, registered "
+        f"{again.registered_at.isoformat()}, with {rows(conn)} row(s); expected the stored split and 1 row")

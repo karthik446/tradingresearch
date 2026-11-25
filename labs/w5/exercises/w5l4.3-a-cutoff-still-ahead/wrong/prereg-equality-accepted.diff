@@ -1,0 +1,15 @@
+why: refuses the prereg only after the open, so one registered exactly at the cutoff session's open is accepted
+expect: prereg registered 2026-12-01T14:30:00+00:00) stored sp_45eda73898d532af; expected split.Refused
+before: GREEN (Codex week 5)
+diff --git a/src/tradingresearch/split.py b/src/tradingresearch/split.py
+--- a/src/tradingresearch/split.py
++++ b/src/tradingresearch/split.py
+@@ -100,7 +100,7 @@
+                       "registered before its test period starts")
+     opens = sessions.open_close(cutoff_session)[0]
+     for what, at in (("now", now), ("prereg registered_at", prereg.registered_at)):
+-        if at >= opens:
++        if at > opens or (what == "now" and at == opens):
+             raise Refused(f"{what} {at.isoformat()} is not before the cutoff session opens ({opens.isoformat()})")
+     record = TrainingSplit(split_id=split_id, cutoff_session=cutoff_session, embargo_sessions=embargo_sessions,
+                            prereg=prereg, registered_at=now.astimezone(sessions.NY))

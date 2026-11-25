@@ -1,0 +1,14 @@
+why: hides only the edgar and headlines rows, the sections the shipped ablation drops, so an arm dropping indicators or levels hides nothing
+expect: indicators_grounded with drop ['indicators'] gave (1.0
+before: GREEN (Codex week 5)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -148,7 +148,7 @@
+         if not citing:
+             raise CannotGrade(f"not_cited: no claim cites a {self.section} row")
+         _, rejected = validate_claims(sample.output_parsed, expected["values"], "an_grade",
+-                                      hidden_of(expected, self.drop))
++                                      hidden_of(expected, tuple(d for d in self.drop if d in ("edgar", "headlines"))))
+         reasons = {r.claim: r.reason for r in rejected}
+         failed = [reasons[claim] for claim in citing if claim in reasons]
+         n = len(citing)

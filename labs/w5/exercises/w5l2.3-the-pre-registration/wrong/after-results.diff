@@ -1,0 +1,15 @@
+why: the rule defers its threshold until the results are in, which is no pre-registration
+expect: ('Rule: claims_valid: after seeing the results choose a threshold for the 95% interval; a section stays below it and goes otherwise.') fixes no boundary
+before: GREEN (Codex week 5)
+--- a/experiments/context-ablation.toml
++++ b/experiments/context-ablation.toml
+@@ -9,8 +9,7 @@
+ #   so it cannot separate arms. claims_valid is a rate with room on both sides (0.798 in week 4) and showed a
+ #   +/-0.085 interval at n=20, so it can see a moderate loss.
+ # - Guard metric: parsed must not drop in either drop arm.
+-# - Rule: a section stays if dropping it lowers claims_valid with the whole 95% interval below 0. It goes if the
+-#   interval is not wholly below 0, the guard holds and dropping it lowers the mean input tokens. Otherwise it stays.
++# - Rule: claims_valid: after seeing the results choose a threshold for the 95% interval; a section stays below it and goes otherwise.
+ # - Reported only, not deciding: all_claims_valid, the four <section>_grounded graders (their n differs by arm,
+ #   not-cited sections get no score), tokens, cost and latency per item.
+ name = "context-ablation"

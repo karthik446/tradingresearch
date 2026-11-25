@@ -1,0 +1,14 @@
+why: hides the rows of the last two dropped sections only, so an arm dropping three sections still sees the first
+expect: indicators_grounded with drop ['indicators', 'levels', 'edgar'] gave (1.0
+before: GREEN (Codex week 5)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -148,7 +148,7 @@
+         if not citing:
+             raise CannotGrade(f"not_cited: no claim cites a {self.section} row")
+         _, rejected = validate_claims(sample.output_parsed, expected["values"], "an_grade",
+-                                      hidden_of(expected, self.drop))
++                                      hidden_of(expected, self.drop[-2:]))
+         reasons = {r.claim: r.reason for r in rejected}
+         failed = [reasons[claim] for claim in citing if claim in reasons]
+         n = len(citing)

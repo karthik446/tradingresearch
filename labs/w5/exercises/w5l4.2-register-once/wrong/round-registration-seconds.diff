@@ -1,0 +1,24 @@
+why: drops the seconds and microseconds of now before storing registered_at
+expect: expected now, 2026-10-30T22:00:17.000123+00:00
+before: GREEN (Codex week 5)
+diff --git a/src/tradingresearch/split.py b/src/tradingresearch/split.py
+--- a/src/tradingresearch/split.py
++++ b/src/tradingresearch/split.py
+@@ -67,7 +67,7 @@
+             raise Refused("the hypothesis is given twice: --note and the prereg JSON's hypothesis")
+         fields["hypothesis"] = note
+     try:
+-        return Prereg.model_validate({**fields, "registered_at": now.astimezone(sessions.NY)})
++        return Prereg.model_validate({**fields, "registered_at": now.astimezone(sessions.NY).replace(second=0, microsecond=0)})
+     except ValidationError as e:
+         raise Refused(f"prereg JSON is not a gigai-core Prereg: {e}") from None
+ 
+@@ -94,7 +94,7 @@
+     if held is not None:
+         return held
+     record = TrainingSplit(split_id=split_id, cutoff_session=cutoff_session, embargo_sessions=embargo_sessions,
+-                           prereg=prereg, registered_at=now.astimezone(sessions.NY))
++                           prereg=prereg, registered_at=now.astimezone(sessions.NY).replace(second=0, microsecond=0))
+     journal.add(conn, record)
+     return record
+ 

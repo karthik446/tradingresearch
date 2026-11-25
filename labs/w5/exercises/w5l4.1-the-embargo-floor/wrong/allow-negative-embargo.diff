@@ -1,0 +1,15 @@
+why: checks the floor only for embargoes from 0 up, so a negative embargo slips through
+expect: TrainingSplit(embargo_sessions=-1) was accepted
+before: GREEN (Codex week 5)
+diff --git a/src/tradingresearch/records.py b/src/tradingresearch/records.py
+--- a/src/tradingresearch/records.py
++++ b/src/tradingresearch/records.py
+@@ -294,7 +294,7 @@
+ 
+     @model_validator(mode="after")
+     def _rules(self) -> Self:
+-        if self.embargo_sessions < MIN_EMBARGO:
++        if 0 <= self.embargo_sessions < MIN_EMBARGO:
+             raise ValueError(f"embargo_sessions must be >= {MIN_EMBARGO} ({EMBARGO_WHY})")
+         if self.registered_at.date() >= self.cutoff_session:
+             raise ValueError("a split is registered before its cutoff session")

@@ -1,0 +1,14 @@
+why: decides each distinct grader once, so a grader asked twice is skipped once; nothing in the shipped config asks twice
+expect: skipped ('missing: not scored in both arms (n=0 vs 21)',); expected
+before: GREEN (Codex week 5)
+--- a/src/tradingresearch/experiment.py
++++ b/src/tradingresearch/experiment.py
+@@ -328,7 +328,7 @@
+     its counts. With none left, refused as core refuses."""
+     kept: list[str] = []
+     skipped: list[str] = []
+-    for grader in graders:
++    for grader in dict.fromkeys(graders):
+         values_a, values_b = a.values(grader), b.values(grader)
+         counts = f"n={len(values_a)} vs {len(values_b)}"
+         if not values_a or not values_b:

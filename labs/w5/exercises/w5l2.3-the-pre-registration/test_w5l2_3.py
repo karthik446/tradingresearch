@@ -71,3 +71,17 @@ def test_the_rule_says_when_a_section_stays_and_when_it_goes():
     assert named(rule) == "claims_valid", (
         f"the rule decides on {named(rule)!r} ({rule[:200]!r}); expected claims_valid: the first grader the rule "
         f"names is the one its interval decides on, and that is the primary metric")
+
+
+def test_the_rule_fixes_its_boundary_and_its_guard_before_the_data():
+    rule = (items()["Rule:"] or [""])[0]
+    clauses = [set(re.findall(r"[\w%-]+", clause.lower())) for clause in re.split(r"[.;:]", rule)]
+    bounded = any("stays" in c and (("below" in c and c & {"0", "zero"}) or "negative" in c) for c in clauses)
+    assert bounded, (
+        f"the rule ({rule[:200]!r}) fixes no boundary for staying; expected a clause saying a section stays when "
+        f"dropping it lowers the primary metric with the whole 95% interval below 0 (negative): the line is drawn "
+        f"before the data, in the direction a loss shows, not after the results or by taste")
+    words = set(re.findall(r"[\w%-]+", rule.lower()))
+    assert words & {"guard", "parsed"} and words & {"tokens", "cost"}, (
+        f"the rule ({rule[:200]!r}) ignores the guard or the cost; expected a section to go only when the guard "
+        f"(parsed) holds and tokens fall: a drop that breaks parsing or saves nothing is not taken")

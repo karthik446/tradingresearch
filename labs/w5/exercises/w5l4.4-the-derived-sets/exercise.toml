@@ -2,7 +2,7 @@ id = "w5l4.4"
 title = "The derived sets"
 effect = "split.embargo_window counts the embargo back from the cutoff in NYSE sessions, and split.partition splits the journal's sessions into train/val, embargoed and test around it, so tr split show prints the sets a split derives."
 goal = "Write split.embargo_window and split.partition: the embargo_sessions NYSE sessions before the cutoff, oldest first; each distinct journal day once, in date order, in train/val, embargoed or test."
-what_tested = "The window for cutoffs 12-01 and 12-29 with embargo 22, and 12-01 with 27, pinned in full across Thanksgiving and Christmas. Two journals, one out of order with a day twice, split into the three sets. Days on each side of the window's first session and of the cutoff, one by one. A longer embargo moving days out of train/val. No day, or every day in one set: the others are ()."
+what_tested = "The window for cutoffs 12-01 and 12-29 with embargo 22, and 12-01 with 27 and 40, pinned in full across Thanksgiving and Christmas. Two journals, one out of order with a day twice, split into the three sets, the list left as given. Days on each side of the window's first session and of the cutoff, to 2028. A longer embargo moving days out of train/val. Empty sets. derive over analysis rows."
 writes = [
   "embargo_window: a tuple of the embargo_sessions NYSE sessions that end the session before the cutoff, oldest first.",
   "partition: the distinct days in date order; train/val before the window's first session, embargoed from it up to the cutoff, test on or after the cutoff; embargo_window = the window.",

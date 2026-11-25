@@ -1,0 +1,14 @@
+why: drops every grader whose id starts custom_ without a word, as if a name decided what both runs scored
+expect: compared ['grader_1', 'grader_2'
+before: GREEN (Codex week 5)
+--- a/src/tradingresearch/experiment.py
++++ b/src/tradingresearch/experiment.py
+@@ -329,6 +329,8 @@
+     kept: list[str] = []
+     skipped: list[str] = []
+     for grader in graders:
++        if grader.startswith("custom_"):
++            continue
+         values_a, values_b = a.values(grader), b.values(grader)
+         counts = f"n={len(values_a)} vs {len(values_b)}"
+         if not values_a or not values_b:

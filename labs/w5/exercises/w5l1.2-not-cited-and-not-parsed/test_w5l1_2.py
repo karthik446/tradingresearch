@@ -1,8 +1,9 @@
 """w5l1.2 not cited, not parsed, and the explanation. A section no claim cites raises CannotGrade with a message
 starting `not_cited` and naming the section: no score, so a mean never counts it as 1.0. A parsed reply with no
 claims list, or none that cite the section, is not cited. A reply that did not parse (parse_status other than "ok")
-raises CannotGrade for another reason. Below 1.0 the explanation is `<reasons>: <k> of <n> claims citing <section>
-fail`, the failed claims' rejection reasons sorted and each named once.
+raises CannotGrade for another reason, said in its message. Below 1.0 the explanation is `<reasons>: <k> of <n> claims
+citing <section> fail`, the failed claims' rejection reasons sorted and each named once; at 1.0 it is `<n> of <n>
+claims citing <section> pass`.
 
 The grader is built as in w5l1.1 (a SectionGrounded subclass that sets `section`); samples are about the FAKEA
 context (tools/fakea.py), the recorded analyze-3 reply among them.
@@ -87,6 +88,9 @@ def test_a_reply_that_did_not_parse_cannot_be_graded():
             f"indicators gave {shown} on a reply that did not parse (parse_status {status!r}, parsed "
             f"{fakea.describe(parsed)}); expected CannotGrade with another reason than not_cited: a reply that did "
             f"not parse is not graded at all, whatever it holds, and it is not a section nobody cited")
+        assert str(got).strip(), (
+            f"indicators gave CannotGrade('') on a reply that did not parse (parse_status {status!r}); expected a "
+            f"reason in the message, such as 'output did not parse': the run log shows it where a score would be")
 
 
 def test_the_explanation_names_sorted_distinct_reasons_and_the_count():
@@ -107,6 +111,17 @@ def test_the_explanation_names_sorted_distinct_reasons_and_the_count():
               "unsourced_number: 1 of 2 claims citing levels fail", 0.5)
     explained("headlines", [fakea.fact("h1", HEADLINE[0], text="Up 5 on the news.")],
               "number_in_text: 1 of 1 claims citing headlines fail", 0.0)
+    kept = [fakea.fact("i6", "sma_200"), fakea.fact("i7", "ema_9")]
+    failing = ([dict(unknown, id=f"u{k}") for k in range(3, 7)]
+               + [fakea.fact(f"w{k}", "close", value=1.0) for k in range(3)])
+    explained("indicators", claims + failing + kept, "empty_placeholder, number_in_text, unknown_source, "
+              "unsourced_number: 11 of 14 claims citing indicators fail", 3 / 14)
+
+
+def test_a_section_whose_citing_claims_all_pass_says_so():
+    explained("headlines", fakea.recorded()["claims"], "1 of 1 claims citing headlines pass", 1.0)
+    explained("indicators", [fakea.fact("i1", "close"), fakea.fact("i2", "sma_20"), fakea.fact("i3", "rsi_14"),
+                             fakea.fact("l1", "level_hvn_1", value=1.0)], "3 of 3 claims citing indicators pass", 1.0)
 
 
 def test_the_recorded_reply_explains_its_indicator_failure():

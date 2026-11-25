@@ -17,4 +17,4 @@ observe = "python labs/w5/tools/observe.py ablation"
 paid = false
 fixtures = ["data/fakea.context.json", "data/analyze3.request.json", "data/analyze3.reply.json", "data/models.json"]
 origin = "rebuild of week-5-end experiments/context-ablation.toml, its graders and cluster; reference = the tag's own file"
-red_expect = "graders = ['parsed']; expected each of"
+red_expect = "graders = ['parsed']; expected seven, each once"

@@ -1,0 +1,15 @@
+why: asks the calendar only for cutoffs before 2028, so a Saturday in 2028 reaches the open lookup and the calendar's own error
+expect: register(cutoff 2028-01-01, embargo 22, now 2026-10-30T22:00:00+00:00) raised NotSessionError
+before: GREEN (Codex week 5)
+diff --git a/src/tradingresearch/split.py b/src/tradingresearch/split.py
+--- a/src/tradingresearch/split.py
++++ b/src/tradingresearch/split.py
+@@ -92,7 +92,7 @@
+     held = find(conn, split_id)
+     if held is not None:
+         return held
+-    if not sessions.is_session(cutoff_session):
++    if cutoff_session.year < 2028 and not sessions.is_session(cutoff_session):
+         raise Refused(f"cutoff {cutoff_session} is not an NYSE session")
+     last = sessions.last_completed(now)
+     if cutoff_session <= last:

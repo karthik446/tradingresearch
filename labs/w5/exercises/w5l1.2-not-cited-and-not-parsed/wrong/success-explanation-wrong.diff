@@ -1,0 +1,14 @@
+why: explains a section whose citing claims all pass with a fixed text that says 0 claims passed
+expect: headlines gave 1.000 ('0 claims passed') on claims [c1
+before: GREEN (Codex week 5)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -152,7 +152,7 @@
+         failed = [reasons[claim] for claim in citing if claim in reasons]
+         n = len(citing)
+         if not failed:
+-            return Score(value=1.0, explanation=f"{n} of {n} claims citing {self.section} pass")
++            return Score(value=1.0, explanation="0 claims passed")
+         return Score(value=(n - len(failed)) / n,
+                      explanation=f"{', '.join(sorted(set(failed)))}: {len(failed)} of {n} claims citing "
+                                  f"{self.section} fail")

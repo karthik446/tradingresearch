@@ -2,7 +2,7 @@ id = "w5l3.1"
 title = "The graders both arms scored"
 effect = "tr exp compare stops raising NotImplementedError: it compares the graders both runs scored on a common item and lists each grader it left out on a skipped line, so full against no-headlines prints a table instead of core's metric_missing refusal."
 goal = "Write experiment.compare: keep each grader both runs scored on at least one common item, in the order asked, skip the rest with an entry naming the grader, hand core only the kept graders, and refuse no_shared_metric when none is kept."
-what_tested = "The author's three runs in all six directions over the config's seven graders. Hand-built runs: a grader sharing only the first or the last item, one scored 0.0 everywhere, one on disjoint items, one in a single run, one in neither, both ways round. The comparison equals core compare(a, b, kept). no_shared_metric with no grader named or none kept."
+what_tested = "The author's three runs in all six directions over the config's seven graders. Hand-built runs: a grader sharing only the first or the last item, one scored 0.0 everywhere, one on disjoint items, one in a single run, one in neither, both ways round; twelve asked over 21 items, one twice, one named custom_. The comparison equals core compare(a, b, kept). no_shared_metric when none is kept."
 writes = [
   "For each grader asked, in order: compare it when both runs scored it on at least one common item, else skip it with an entry starting `<grader>:`.",
   "Return Compared: core compare of b against a on the kept graders, and the skipped entries as a tuple.",

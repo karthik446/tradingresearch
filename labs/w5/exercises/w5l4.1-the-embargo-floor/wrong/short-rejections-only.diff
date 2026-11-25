@@ -1,0 +1,15 @@
+why: refuses a list of known-bad embargoes (0, 1, 20, 21) instead of every integer under the floor
+expect: TrainingSplit(embargo_sessions=19) was accepted
+before: GREEN (Codex week 5)
+diff --git a/src/tradingresearch/records.py b/src/tradingresearch/records.py
+--- a/src/tradingresearch/records.py
++++ b/src/tradingresearch/records.py
+@@ -294,7 +294,7 @@
+ 
+     @model_validator(mode="after")
+     def _rules(self) -> Self:
+-        if self.embargo_sessions < MIN_EMBARGO:
++        if self.embargo_sessions in (0, 1, 20, 21, MIN_EMBARGO - 1):
+             raise ValueError(f"embargo_sessions must be >= {MIN_EMBARGO} ({EMBARGO_WHY})")
+         if self.registered_at.date() >= self.cutoff_session:
+             raise ValueError("a split is registered before its cutoff session")

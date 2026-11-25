@@ -6,22 +6,22 @@ This folder holds week 5 of the AI engineering track, run by `tr lab` on this re
 
 | Exercise | What the learner does | Edits | Wrong fixes |
 |---|---|---|---|
-| [w5l1.1](exercises/w5l1.1-the-claims-that-cite-a-section/) | Score the share of the claims citing a section that the validator keeps | `evals.py` | 21 |
-| [w5l1.2](exercises/w5l1.2-not-cited-and-not-parsed/) | Give no score to a section no claim cites or a reply that did not parse; explain a failing section | `evals.py` | 17 |
-| [w5l1.3](exercises/w5l1.3-four-graders-and-the-drop/) | Hand the grader its arm's drop; register one code grader per section | `evals.py` | 13 |
-| [w5l2.1](exercises/w5l2.1-three-arms/) | Write three analyze-3 arms that differ only in what they drop | `experiments/context-ablation.toml` | 18 |
+| [w5l1.1](exercises/w5l1.1-the-claims-that-cite-a-section/) | Score the share of the claims citing a section that the validator keeps | `evals.py` | 24 |
+| [w5l1.2](exercises/w5l1.2-not-cited-and-not-parsed/) | Give no score to a section no claim cites or a reply that did not parse; explain a failing section | `evals.py` | 20 |
+| [w5l1.3](exercises/w5l1.3-four-graders-and-the-drop/) | Hand the grader its arm's drop; register one code grader per section | `evals.py` | 16 |
+| [w5l2.1](exercises/w5l2.1-three-arms/) | Write three analyze-3 arms that differ only in what they drop | `experiments/context-ablation.toml` | 19 |
 | [w5l2.2](exercises/w5l2.2-graders-and-cluster/) | Name the seven code graders once each; write the cluster out | `experiments/context-ablation.toml` | 13 |
-| [w5l2.3](exercises/w5l2.3-the-pre-registration/) | Write the primary metric, the guard and the rule above the first key | `experiments/context-ablation.toml` | 21 |
-| [w5l3.1](exercises/w5l3.1-the-graders-both-arms-scored/) | Compare on the graders both runs scored on a common item, skip the rest, refuse with `no_shared_metric` when none is left | `experiment.py` | 17 |
-| [w5l3.2](exercises/w5l3.2-why-and-how-many/) | Say why each grader was skipped and how many items each run scored; name every skipped grader in the refusal | `experiment.py` | 18 |
-| [w5l4.1](exercises/w5l4.1-the-embargo-floor/) | Derive the embargo floor (entry window 2 + longest hold 20) and refuse a split under it with the reason | `records.py` | 14 |
-| [w5l4.2](exercises/w5l4.2-register-once/) | Register a split stamped in New York time under a content-addressed id, stored once | `split.py` | 18 |
-| [w5l4.3](exercises/w5l4.3-a-cutoff-still-ahead/) | Refuse a cutoff whose session has opened, by now or by the pre-registration, before writing a row | `split.py` | 18 |
-| [w5l4.4](exercises/w5l4.4-the-derived-sets/) | The embargo window from the NYSE calendar; train/val, embargoed and test derived from the journal's sessions | `split.py` | 22 |
+| [w5l2.3](exercises/w5l2.3-the-pre-registration/) | Write the primary metric, the guard and the rule above the first key | `experiments/context-ablation.toml` | 25 |
+| [w5l3.1](exercises/w5l3.1-the-graders-both-arms-scored/) | Compare on the graders both runs scored on a common item, skip the rest, refuse with `no_shared_metric` when none is left | `experiment.py` | 21 |
+| [w5l3.2](exercises/w5l3.2-why-and-how-many/) | Say why each grader was skipped and how many items each run scored; name every skipped grader in the refusal | `experiment.py` | 22 |
+| [w5l4.1](exercises/w5l4.1-the-embargo-floor/) | Derive the embargo floor (entry window 2 + longest hold 20) and refuse a split under it with the reason | `records.py` | 18 |
+| [w5l4.2](exercises/w5l4.2-register-once/) | Register a split stamped in New York time under a content-addressed id, stored once | `split.py` | 22 |
+| [w5l4.3](exercises/w5l4.3-a-cutoff-still-ahead/) | Refuse a cutoff whose session has opened, by now or by the pre-registration, before writing a row | `split.py` | 20 |
+| [w5l4.4](exercises/w5l4.4-the-derived-sets/) | The embargo window from the NYSE calendar; train/val, embargoed and test derived from the journal's sessions | `split.py` | 26 |
 
 ### Part A
 
-103 wrong fixes: 51 in w5l1, 52 in w5l2.
+117 wrong fixes: 60 in w5l1, 57 in w5l2.
 
 46 are `before: RED (author)`, written with the exercise (w5l1 8, 9, 7; w5l2 7, 6, 9).
 
@@ -31,13 +31,15 @@ This folder holds week 5 of the AI engineering track, run by `tr lab` on this re
 
 10 come from an independent read of the finished lab and passed the checks as they then stood; each now has a test (`before: GREEN (independent read)`; w5l1.1 7, w5l1.2 2, w5l2.3 1).
 
+14 come from an independent Codex review of the finished labs and passed the checks as they then stood; each now has a test (`before: GREEN (Codex week 5)`; w5l1 3, 3, 3; w5l2 1, 0, 4): in w5l1, duplicated claim ids, upper-cased citation ids and a cap on the claims counted; in w5l2, a pre-registration that cannot be falsified or reverses the decision, and one that ignores the guard or is written after the results.
+
 Every wrong fix is red with its `expect:` and passes the earlier exercises of its lab, so its own check is the one that catches it (checked in a scratch clone; `prove.py` checks the first part, not the second). Four w5l2.2 wrong fixes were dropped rather than kept: a misspelt grader, `cluster = "session"`, the cluster as a list and a capitalised cluster all make the loader refuse the whole file, so w5l2.1's check fails on them first. To let w5l2.2's wrong fixes reach their own check, w5l2.1's replay grades with `parsed` alone: it checks what each arm sends, and what the arms are graded with is w5l2.2.
 
 Alternatives that are right but not the reference, each green: w5l1.1 2, w5l1.2 3, w5l1.3 3, w5l2.1 3 (the full arm with no drop key, the model set on each arm, the arms in another order), w5l2.2 2 (the graders in another order, the cluster after the graders), w5l2.3 2 (items with no bullets, the rule in other words).
 
 ### Part B
 
-107 wrong fixes: 35 in w5l3, 72 in w5l4.
+129 wrong fixes: 43 in w5l3, 86 in w5l4.
 
 65 are `before: RED (author)`, written with the exercise (w5l3 11, 10; w5l4 8, 11, 12, 13).
 
@@ -46,6 +48,8 @@ Alternatives that are right but not the reference, each green: w5l1.1 2, w5l1.2 
 - w5l3.1: missing in one run only and missing in both are the same at w5l3.1 (a run with no score has no common item); only the reason text differs, so that wrong fix lives in w5l3.2, and its w5l3.1 twin moved there too.
 - w5l4.2: storing the pre-registration's `registered_at` as the split's passed at first, because every probe's pre-registration was registered at now. The store test's pre-registration is now registered the day before.
 - w5l4.3: writing the row before refusing first failed on the chained `Refused` (the row count was asserted inside `except`). The row count is now asserted after the `try`.
+
+22 come from the same Codex review (`before: GREEN (Codex week 5)`; w5l3 4, 4; w5l4 4, 4, 2, 4): in w5l3, asked graders counted once or capped at eight and an unknown drop prefix; in w5l4, a floor capped at 47 or a negative embargo, a fixed summer offset and rounded registration seconds, a holiday list for 2026 only, and a window capped at 27 sessions or dropping future years.
 
 Dropped rather than kept: in w5l3.2 the skipped graders as a set (red or green by `PYTHONHASHSEED`); in w5l4.2 the real clock (its first failing line moves with the date). Not saved as wrong because they are right: in w5l4.1 the cutoff rule checked before the floor; in w5l4.2 the pre-registration dumped in Python mode (its fields dump the same). Not observable: in w5l4.3 the embargo checked after the lookup (a stored split cannot have an embargo under 22).
 
@@ -69,7 +73,7 @@ Alternatives that are right but not the reference, each green, kept out of the f
 ```
 labs/w5/
   lab.toml                      base = "week-5-start", lab titles, pages, goals and sections, [unlock], [suite] deselect, [labs.w5l1.suite] deselect, [end]
-  conftest.py                   marks every test in this folder `lab` (plain `pytest -q` never collects them) and installs the offline guard before any test module imports learner code
+  conftest.py                   marks every test in this folder `lab` (plain `pytest -q` does not run them) and installs the offline guard before any test module imports learner code
   data/fakea.context.json       the FAKEA ticker-day context: week 4's rows plus three invented headlines
   data/analyze3.request.json    one recorded analyze-3 request (claude-sonnet-5.5, 2026-11-17, $0.016048) and
   data/analyze3.reply.json        its reply: 11 claims, 7 citing indicator rows (one fails empty_placeholder), 1 citing a headline
@@ -120,7 +124,7 @@ labs/w5/
 
 The cases still red at the end of each lab are exactly these: 5 after w5l1, 2 after w5l2, w5l3 and w5l4 (at the end of w5l4: 664 passed, those 2 failing when not deselected). w5l3 and w5l4 need no suite list of their own. `tests/test_experiment_compare.py` and `tests/test_split.py`, which test what w5l3 and w5l4 build, are not in `week-5-start` and are not shipped; the pages tell the learner to run them from `week-5-end` once green (both pass on the reference).
 
-**End state.** `[end] tag = "week-5-end"`, and its `files` are the 15 files the labs write: `src/tradingresearch/evals.py`, `experiments/context-ablation.toml`, `experiment.py`, `commands/exp.py` and its help `exp.txt` and `exp_compare.txt`, `records.py`, `split.py`, `commands/split.py`, `commands/__init__.py`, `tests/test_cli.py`, and the help `split.txt`, `split_register.txt`, `split_show.txt` and `tr.txt`. After the last exercise every one equals the tag byte for byte.
+**End state.** `[end] tag = "week-5-end"`, and its `files` are the 15 files the labs write: `src/tradingresearch/evals.py`, `experiments/context-ablation.toml`, `experiment.py`, `commands/exp.py` and its help `exp.txt` and `exp_compare.txt`, `records.py`, `split.py`, `commands/split.py`, `commands/__init__.py`, `tests/test_cli.py`, and the help `split.txt`, `split_register.txt`, `split_show.txt` and `tr.txt`. After the last exercise with the reference solutions applied, every one equals the tag byte for byte; a valid solution of your own need not match it.
 
 ## What the labs do not cover
 
@@ -134,7 +138,7 @@ From the root of a clean clone (`uv sync` done):
 uv run python labs/tools/prove.py w5
 ```
 
-It copies the clone into temp folders and runs the chain (each stub red with `red_expect`, `solution.diff` green, earlier checks of the same lab still green, every `wrong/*.diff` red with its `expect:`), the end state (the 15 `[end]` files equal `week-5-end`), the hint guard, the captured output and the session. It copies committed files only, so commit the folder before proving it.
+It copies the clone into temp folders and runs the chain (each stub red with `red_expect`, `solution.diff` green, earlier checks of the same lab still green, every `wrong/*.diff` red with its `expect:`), the end state (the 15 `[end]` files equal `week-5-end`), the hint guard, the captured output and the session. It copies the files git tracks or has not ignored (`git ls-files -co --exclude-standard`), so a change you have not committed is proved too; untracked ignored files are not copied.
 
 The hint guard is a string match: it rejects a hint that repeats a `solution.diff` added line of 12 or more characters, or holds a code fence longer than one line. It does not judge whether prose dictates the answer; that is a reading job.
 

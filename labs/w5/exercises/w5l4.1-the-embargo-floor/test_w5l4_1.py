@@ -1,14 +1,17 @@
 """w5l4.1 the embargo floor. records.py names the floor a TrainingSplit's embargo cannot go under, and why:
 SWING_ENTRY_SESSIONS = 2 (a swing thesis enters on one of the two sessions after it is written), MIN_EMBARGO = that
 plus the longest hold in HOLD_RANGE (20 sessions), so 22, and EMBARGO_WHY = "entry window 2 + longest hold 20". The
-record refuses an embargo under MIN_EMBARGO with a ValueError saying `embargo_sessions must be >= 22 (entry window 2 +
-longest hold 20)`; the rule that a split is registered before its cutoff session stays. The floor and its reason follow
-HOLD_RANGE: a copy of records.py whose swing hold runs to 45 sessions has MIN_EMBARGO 47, refusing 46 and taking 47.
+record refuses every embargo under MIN_EMBARGO, negative ones included, with a ValueError saying `embargo_sessions must
+be >= 22 (entry window 2 + longest hold 20)`, and accepts any embargo at or above it; the rule that a split is
+registered before its cutoff session stays. The floor and its reason follow the longest hold in HOLD_RANGE, whichever
+horizon has it: a copy of records.py whose swing hold runs to 45 sessions has MIN_EMBARGO 47, refusing 46 and taking
+47, and one whose short hold runs to 60 has MIN_EMBARGO 62.
 
 The dates are real NYSE sessions (tradingresearch.sessions); the cutoff 2026-12-29 is the chapter's example, its
 window crossing Thanksgiving and Christmas.
 """
 
+import ast
 import sys
 import types
 from datetime import UTC, date, datetime
@@ -21,7 +24,7 @@ from pydantic import ValidationError
 
 from tradingresearch import records, sessions
 
-HOLD_20, HOLD_45 = '"swing": (5, 20)', '"swing": (5, 45)'
+HOLDS = [("swing", (5, 45), 47), ("short", (2, 60), 62)]  # (horizon, its hold in a copy of records.py, the floor)
 
 NOW = datetime(2026, 10, 30, 22, 0, tzinfo=UTC)  # after the 2026-10-30 close
 CUTOFF = date(2026, 12, 29)
@@ -51,24 +54,26 @@ def test_the_floor_is_the_swing_entry_window_plus_the_longest_hold():
     assert records.HOLD_RANGE["swing"] == (5, 20), "HOLD_RANGE is thesis rule 3, not this exercise's: leave it as it is"
 
 
-@pytest.mark.parametrize("embargo", [22, 23, 40])
+@pytest.mark.parametrize("embargo", [22, 23, 40, 48, 252])
 def test_the_record_accepts_an_embargo_at_or_above_the_floor(embargo):
     try:
         got = split(embargo)
     except ValidationError as exc:
         raise AssertionError(f"TrainingSplit(embargo_sessions={embargo}) was refused: "
-                             f"{exc.errors()[0]['msg']}; {leak(22)}, before the cutoff") from None
+                             f"{exc.errors()[0]['msg']}; {leak(22)}, before the cutoff; the floor is a lower bound, a "
+                             "longer embargo is a stricter split and is never refused") from None
     assert got.embargo_sessions == embargo
 
 
-@pytest.mark.parametrize("embargo", [21, 20, 1, 0])
+@pytest.mark.parametrize("embargo", [*range(21, -2, -1), -22])
 def test_the_record_refuses_an_embargo_under_the_floor_and_says_why(embargo):
     try:
         split(embargo)
     except ValidationError as exc:
         msg = exc.errors()[0]["msg"]
     else:
-        raise AssertionError(f"TrainingSplit(embargo_sessions={embargo}) was accepted; {leak(max(embargo, 1))}")
+        raise AssertionError(f"TrainingSplit(embargo_sessions={embargo}) was accepted; {leak(max(embargo, 1))}; the "
+                             "floor is a lower bound: every integer under 22 is refused, whatever its sign")
     want = f"embargo_sessions must be >= 22 ({WHY})"
     assert msg.endswith(want), f"TrainingSplit(embargo_sessions={embargo}) was refused with {msg!r}; expected {want!r}"
 
@@ -89,30 +94,46 @@ def test_a_split_is_still_registered_before_its_cutoff_session(registered_at):
         f"'a split is registered before its cutoff session'")
 
 
-def test_the_floor_and_its_reason_follow_the_longest_hold_in_hold_range():
-    source = Path(records.__file__).read_text()
-    assert source.count(HOLD_20) == 1, f"records.py should spell HOLD_RANGE's swing entry {HOLD_20} once"
-    name = "tradingresearch.records_with_a_45_session_hold"  # a throwaway copy; registered so pydantic resolves it
+def records_with(horizon: str, hold: tuple[int, int]) -> tuple[str, types.ModuleType]:
+    """A throwaway copy of records.py whose HOLD_RANGE gives `horizon` the hold `hold`, however the dict is spelled;
+    registered in sys.modules so pydantic resolves it. The caller deletes it."""
+    tree = ast.parse(Path(records.__file__).read_text(), records.__file__)
+    assignment = next((node for node in tree.body if isinstance(node, (ast.Assign, ast.AnnAssign))
+                       and any(isinstance(t, ast.Name) and t.id == "HOLD_RANGE"
+                               for t in getattr(node, "targets", [getattr(node, "target", None)]))), None)
+    assert assignment is not None, "records.py should assign HOLD_RANGE at module level: it is thesis rule 3, leave it"
+    assignment.value = ast.copy_location(ast.parse(repr({**records.HOLD_RANGE, horizon: hold}), mode="eval").body,
+                                         assignment.value)
+    name = f"tradingresearch.records_with_a_{hold[1]}_session_{horizon}_hold"
     copy = types.ModuleType(name)
     copy.__package__ = "tradingresearch"
     sys.modules[name] = copy
+    exec(compile(ast.fix_missing_locations(tree), records.__file__, "exec"), copy.__dict__)
+    return name, copy
+
+
+@pytest.mark.parametrize("horizon, hold, floor", HOLDS)
+def test_the_floor_and_its_reason_follow_the_longest_hold_in_hold_range(horizon, hold, floor):
+    name, copy = records_with(horizon, hold)
+    spelled = f'HOLD_RANGE "{horizon}": {hold}'
     try:
-        exec(compile(source.replace(HOLD_20, HOLD_45), records.__file__, "exec"), copy.__dict__)
         got = (copy.MIN_EMBARGO, copy.EMBARGO_WHY)
-        assert got == (47, "entry window 2 + longest hold 45"), (
-            f"a copy of records.py with HOLD_RANGE {HOLD_45} has (MIN_EMBARGO, EMBARGO_WHY) = {got}; expected "
-            "(47, 'entry window 2 + longest hold 45'): the floor is the entry window plus the longest hold in "
-            "HOLD_RANGE, so it moves when thesis rule 3 does")
+        want = (floor, f"entry window 2 + longest hold {hold[1]}")
+        assert got == want, (
+            f"a copy of records.py with {spelled} has (MIN_EMBARGO, EMBARGO_WHY) = {got}; expected {want}: the floor "
+            "is the entry window plus the longest hold in HOLD_RANGE, whichever horizon has it, so it moves when "
+            "thesis rule 3 does")
         made = {}
-        for embargo in (46, 47):
+        for embargo in (floor - 1, floor):
             try:
                 copy.TrainingSplit(split_id="sp_lab", cutoff_session=CUTOFF, embargo_sessions=embargo, prereg=PREREG,
                                    registered_at=NOW)
                 made[embargo] = "accepted"
             except ValidationError:
                 made[embargo] = "refused"
-        assert made == {46: "refused", 47: "accepted"}, (
-            f"with HOLD_RANGE {HOLD_45}, TrainingSplit embargo 46 was {made[46]} and 47 {made[47]}; expected 46 "
-            "refused and 47 accepted: the record checks against MIN_EMBARGO, not a written-in 22")
+        assert made == {floor - 1: "refused", floor: "accepted"}, (
+            f"with {spelled}, TrainingSplit embargo {floor - 1} was {made[floor - 1]} and {floor} {made[floor]}; "
+            f"expected {floor - 1} refused and {floor} accepted: the record checks against MIN_EMBARGO, not a "
+            "written-in 22")
     finally:
         del sys.modules[name]

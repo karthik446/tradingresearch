@@ -1,0 +1,14 @@
+why: counts distinct claim ids instead of claims, so two claims sharing an id make one, and the share can fall below zero
+expect: indicators scored 0.000 on claims [i1: ['sma_20']; i1: ['sma_50']
+before: GREEN (Codex week 5)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -148,7 +148,7 @@
+         _, rejected = validate_claims(sample.output_parsed, expected["values"], "an_grade")
+         reasons = {r.claim: r.reason for r in rejected}
+         failed = [reasons[claim] for claim in citing if claim in reasons]
+-        n = len(citing)
++        n = len(set(citing))
+         return Score(value=(n - len(failed)) / n)
+ 
+     def cites(self, claim: dict, names: dict[str, str]) -> bool:

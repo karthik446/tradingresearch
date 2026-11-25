@@ -1,0 +1,15 @@
+why: takes the longest hold from the swing horizon alone, so the floor stays put when another horizon's hold grows longer
+expect: a copy of records.py with HOLD_RANGE "short": (2, 60) has (MIN_EMBARGO, EMBARGO_WHY) = (22, 'entry window 2 + longest hold 20')
+before: GREEN (Codex week 5)
+diff --git a/src/tradingresearch/records.py b/src/tradingresearch/records.py
+--- a/src/tradingresearch/records.py
++++ b/src/tradingresearch/records.py
+@@ -29,7 +29,7 @@
+ # `exit_session`), so its outcome reads bars up to S + MIN_EMBARGO. With this embargo the last train/val session's
+ # latest exit is the session before the cutoff. thesis.py holds the window as code, not a constant, hence the name here.
+ SWING_ENTRY_SESSIONS = 2
+-MIN_EMBARGO = SWING_ENTRY_SESSIONS + max(hi for _, hi in HOLD_RANGE.values())
++MIN_EMBARGO = SWING_ENTRY_SESSIONS + HOLD_RANGE["swing"][1]
+ EMBARGO_WHY = f"entry window {SWING_ENTRY_SESSIONS} + longest hold {MIN_EMBARGO - SWING_ENTRY_SESSIONS}"
+ MAX_CONTEXT_TOKENS = 14_000
+ RULES_VERSION = "rules-1"  # the reconcile rules (SPIKE §6) a thesis or event is settled by; reconcile picks rules by it

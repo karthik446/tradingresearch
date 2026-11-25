@@ -1,0 +1,23 @@
+why: every arm names a model of its own, the same on all three, so the arms still match each other but no longer run the model the top of the file names
+expect: the file's top-level model is 'anthropic/claude-sonnet-5.5' and the arms run {'full': 'other/model'
+before: GREEN (Codex week 5)
+--- a/experiments/context-ablation.toml
++++ b/experiments/context-ablation.toml
+@@ -16,14 +16,17 @@
+ [[arms]]
+ name = "full"
+ prompt = "analyze-3"
++model = "other/model"
+ drop = []
+ 
+ [[arms]]
+ name = "no-headlines"
+ prompt = "analyze-3"
++model = "other/model"
+ drop = ["headlines"]
+ 
+ [[arms]]
+ name = "no-edgar"
+ prompt = "analyze-3"
++model = "other/model"
+ drop = ["edgar"]

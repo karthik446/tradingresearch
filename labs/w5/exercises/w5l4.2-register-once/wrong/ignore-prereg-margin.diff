@@ -1,0 +1,15 @@
+why: digests the prereg with its margin forced to the gate's 0.15, so a different margin is the same split
+expect: prereg margin 0.2 gives the same id as cutoff 2026-12-01, embargo 22
+before: GREEN (Codex week 5)
+diff --git a/src/tradingresearch/split.py b/src/tradingresearch/split.py
+--- a/src/tradingresearch/split.py
++++ b/src/tradingresearch/split.py
+@@ -77,7 +77,7 @@
+ def split_id_for(cutoff_session: date, embargo_sessions: int, prereg: Prereg) -> str:
+     """`sp_` + 16 hex of the split's parameters; `registered_at` is left out, so the same split has one id."""
+     body = {"cutoff_session": cutoff_session.isoformat(), "embargo_sessions": embargo_sessions,
+-            "prereg": prereg.model_dump(mode="json", exclude={"registered_at"})}
++            "prereg": prereg.model_copy(update={"margin": 0.15}).model_dump(mode="json", exclude={"registered_at"})}
+     return "sp_" + digest(body).removeprefix("sha256:")[:16]
+ 
+ 

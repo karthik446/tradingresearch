@@ -97,6 +97,9 @@ def test_an_id_that_is_no_row_cites_nothing():
            "section, whatever the id spells; i4 is the one claim citing an indicator row")
     expect("indicators", [fakea.fact("i4", "close"), spaced], 1.0, "w1's one id is the close row's with a space in "
            "front, and no row has that id, so w1 cites nothing")
+    upper = dict(unknown, id="c1", source_ids=[close.source_id.upper()])
+    expect("indicators", [fakea.fact("i4", "close"), upper], 1.0, "c1's one id is the close row's in upper case, "
+           "and no row has that id either: an id cites a row when it equals the row's, letter for letter")
 
 
 def test_an_inference_keeps_the_claim_of_another_section_it_derives_from():
@@ -144,3 +147,18 @@ def test_the_recorded_reply_scores_six_of_seven_indicators_and_its_headline():
     expect("indicators", claims, 6 / 7, "7 claims of the recorded reply cite indicator rows; validate_claims "
            "rejects c10 (empty_placeholder)")
     expect("headlines", claims, 1.0, "c9 is the one claim citing a headline row, and it is kept")
+
+
+def test_claims_sharing_an_id_each_count():
+    claims = [fakea.fact("i1", "sma_20", value=1.0), fakea.fact("i1", "sma_50", value=2.0), fakea.fact("i2", "close"),
+              fakea.fact("h1", HEADLINE[0]), fakea.fact("h1", HEADLINE[1])]
+    expect("indicators", claims, 1 / 3, "three claims cite indicator rows, two of them under the one id i1, and both "
+           "of those are rejected: the share counts claims, not distinct ids")
+    expect("headlines", claims, 1.0, "two claims cite headline rows under the one id h1, and both are kept")
+
+
+def test_a_long_reply_counts_every_citing_claim():
+    claims = ([fakea.fact(f"i{k}", "close") for k in range(36)]
+              + [fakea.fact(f"w{k}", "sma_20", value=1.0) for k in range(4)])
+    expect("indicators", claims, 0.9, "all 40 claims cite indicator rows and the last four are rejected: 36 of 40, "
+           "however long the reply")

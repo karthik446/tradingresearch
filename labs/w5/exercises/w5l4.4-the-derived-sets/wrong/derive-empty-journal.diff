@@ -1,0 +1,15 @@
+why: derive partitions an empty list instead of the journal's sessions, so every set is empty
+expect: derive(conn, sp_45eda73898d532af) over a journal with analyses on 12-02, 10-27 (two tickers), 10-29 and 12-01 = train/val (), embargoed (), test ()
+before: GREEN (Codex week 5)
+diff --git a/src/tradingresearch/split.py b/src/tradingresearch/split.py
+--- a/src/tradingresearch/split.py
++++ b/src/tradingresearch/split.py
+@@ -161,7 +161,7 @@
+ 
+ def derive(conn: sqlite3.Connection, split_id: str) -> Split:
+     """The split's sets over the journal's sessions today: a pure function of the row, the calendar and the journal."""
+-    return partition(governing(conn, split_id), journal_sessions(conn))
++    return partition(governing(conn, split_id), [])
+ 
+ 
+ def _days(days: tuple[date, ...]) -> str:

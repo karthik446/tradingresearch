@@ -1,0 +1,14 @@
+why: sorts the caller's list in place before copying it, so the journal's days come back reordered
+expect: partition(journal A, cutoff 12-01) changed the list it was given to
+before: GREEN (Codex week 5)
+diff --git a/src/tradingresearch/split.py b/src/tradingresearch/split.py
+--- a/src/tradingresearch/split.py
++++ b/src/tradingresearch/split.py
+@@ -152,6 +152,7 @@
+     """train/val = sessions before the embargo window; test = sessions on or after the cutoff; the window's sessions
+     are in neither (SPIKE §1.1)."""
+     window = embargo_window(split)
++    days.sort()
+     ordered = sorted(set(days))
+     return Split(train_val_sessions=tuple(d for d in ordered if d < window[0]),
+                  test_sessions=tuple(d for d in ordered if d >= split.cutoff_session),

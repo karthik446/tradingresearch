@@ -1,0 +1,14 @@
+why: raises CannotGrade with an empty message for a reply that did not parse, so the run log shows no reason
+expect: indicators gave CannotGrade('') on a reply that did not parse (parse_status 'not_json'); expected a reason in the message
+before: GREEN (Codex week 5)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -140,7 +140,7 @@
+ 
+     def grade(self, sample, expected) -> Score:
+         if sample.parse_status != "ok":
+-            raise CannotGrade("output did not parse")
++            raise CannotGrade("")
+         names: dict[str, str] = expected["names"]
+         items = sample.output_parsed.get("claims") if isinstance(sample.output_parsed, dict) else None
+         claims = [c for c in items if isinstance(c, dict)] if isinstance(items, list) else []

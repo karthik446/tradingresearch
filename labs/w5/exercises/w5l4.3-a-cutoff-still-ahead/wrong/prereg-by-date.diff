@@ -1,5 +1,5 @@
 why: compares the Prereg's date with the cutoff, not its time with the open
-expect: AssertionError: prereg registered on or after the cutoff
+expect: was refused with 'prereg registered on or after the cutoff'
 before: RED (break pass)
 diff --git a/src/tradingresearch/split.py b/src/tradingresearch/split.py
 index 3204c0f..b1de181 100644

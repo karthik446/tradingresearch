@@ -31,7 +31,12 @@ def config():
 
 def test_seven_code_graders_each_once():
     got = list(config().graders)
-    assert sorted(got) == GRADERS, f"graders = {got}; expected each of {GRADERS} once, in any order"
+    missing = len(set(GRADERS) - set(got))
+    unexpected = sorted(g for g in set(got) if g not in GRADERS or got.count(g) > 1)
+    assert sorted(got) == GRADERS, (
+        f"graders = {got}; expected seven, each once, in any order: the guard metric that the stub already lists, the "
+        f"primary metric, the whole-analysis metric, and the four registered <section>_grounded graders "
+        f"({missing} of the seven missing; not among them or listed twice: {unexpected})")
     kinds = {name: evals.GRADERS[name].kind for name in got}
     assert set(kinds.values()) == {"code"}, f"the graders' kinds are {kinds}; a drop arm is graded by code only"
 
@@ -39,8 +44,9 @@ def test_seven_code_graders_each_once():
 def test_the_cluster_is_written_out():
     raw = tomllib.loads(fakea.CONFIG.read_text())
     assert raw.get("cluster") == "ticker", (
-        f"the file sets cluster = {raw.get('cluster', '(nothing)')!r}; write cluster = \"ticker\": the arms are "
-        f"compared with intervals that resample tickers")
+        f"the file sets cluster = {raw.get('cluster', '(nothing)')!r}; write the cluster key out at the top of the "
+        f"file, set to the unit the paired intervals resample: the arms share their ticker-days, and the days of one "
+        f"ticker are not independent draws")
 
 
 def test_the_replay_grades_the_recorded_reply_per_arm(tmp_path):

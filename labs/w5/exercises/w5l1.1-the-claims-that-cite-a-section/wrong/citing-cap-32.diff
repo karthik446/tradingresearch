@@ -1,0 +1,13 @@
+why: counts at most 32 citing claims, so a long reply's share is over the wrong n
+expect: indicators scored 0.875 on claims [i0: ['close']
+before: GREEN (Codex week 5)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -148,6 +148,7 @@
+         _, rejected = validate_claims(sample.output_parsed, expected["values"], "an_grade")
+         reasons = {r.claim: r.reason for r in rejected}
+         failed = [reasons[claim] for claim in citing if claim in reasons]
++        citing = citing[:32]
+         n = len(citing)
+         return Score(value=(n - len(failed)) / n)
+ 

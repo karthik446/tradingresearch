@@ -1,0 +1,14 @@
+why: skips a grader run a scored on more than 20 items, as if the shipped 20 ticker-days were a ceiling
+expect: 'grader_8', 'grader_9', 'parsed']) refused no_shared_metric
+before: GREEN (Codex week 5)
+--- a/src/tradingresearch/experiment.py
++++ b/src/tradingresearch/experiment.py
+@@ -334,7 +334,7 @@
+         values_a, values_b = a.values(grader), b.values(grader)
+         if not values_a or not values_b:
+             skipped.append(f"{grader}: not scored in both arms")
+-        elif not values_a.keys() & values_b.keys():
++        elif not values_a.keys() & values_b.keys() or len(values_a) > 20:
+             skipped.append(f"{grader}: no item scored in both arms")
+         else:
+             kept.append(grader)

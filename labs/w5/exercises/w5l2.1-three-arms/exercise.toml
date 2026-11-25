@@ -2,7 +2,7 @@ id = "w5l2.1"
 title = "Three arms"
 effect = "Observe goes from experiment.load refusing the file (missing ['arms']) to three arms on one model, full, no-headlines and no-edgar, each analyze-3 in fixed mode, and a $0 replay that sends 30 requests, 10 per arm, each arm's user turn masked by its own drop."
 goal = "Write the three [[arms]] tables of experiments/context-ablation.toml: analyze-3 arms named full, no-headlines and no-edgar that run the config's model, routed the same way, and differ only in the sections they drop: nothing, the headlines, the EDGAR rows."
-what_tested = "experiment.load accepts the file; exactly three arms, each name with its drop: full nothing, no-headlines the headlines, no-edgar the EDGAR rows; every arm analyze-3 in fixed mode on one model and one route; the $0 replay sends each arm the recorded request masked by its drop, over one dataset, with analyze-3's system prompt."
+what_tested = "experiment.load accepts the file; exactly three arms, each name with its drop: full nothing, no-headlines the headlines, no-edgar the EDGAR rows; every arm analyze-3 in fixed mode on one model and one route, the model the top of the file names; the $0 replay sends each arm the recorded request masked by its drop, over one dataset, with analyze-3's system prompt."
 writes = [
   "Add three [[arms]] tables after the graders line, one per arm, each with a name, the analyze-3 prompt and a drop list.",
   "The full arm drops nothing (an empty list); no-headlines drops the headlines section; no-edgar drops the edgar section, by their names in masking.SECTIONS.",

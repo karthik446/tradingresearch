@@ -1,0 +1,15 @@
+why: caps the window at 27 sessions, so an embargo of 40 gets a 27-session window
+expect: embargo_window(cutoff 2026-12-01, embargo 40) is 27 days from 2026-10-22
+before: GREEN (Codex week 5)
+diff --git a/src/tradingresearch/split.py b/src/tradingresearch/split.py
+--- a/src/tradingresearch/split.py
++++ b/src/tradingresearch/split.py
+@@ -145,7 +145,7 @@
+ 
+ def embargo_window(split: TrainingSplit) -> tuple[date, ...]:
+     """The `embargo_sessions` NYSE sessions right before the cutoff."""
+-    return tuple(sessions.recent(split.embargo_sessions, sessions.previous(split.cutoff_session)))
++    return tuple(sessions.recent(min(27, split.embargo_sessions), sessions.previous(split.cutoff_session)))
+ 
+ 
+ def partition(split: TrainingSplit, days: list[date]) -> Split:

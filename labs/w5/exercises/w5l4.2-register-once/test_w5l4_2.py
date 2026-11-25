@@ -1,8 +1,9 @@
 """w5l4.2 register once. split.split_id_for(cutoff, embargo, prereg) is "sp_" + the first 16 hex of
 hashing.digest({"cutoff_session": the ISO date, "embargo_sessions": the number, "prereg": the Prereg as JSON without
-registered_at}), so the same split asked for later has the same id. split.register looks that id up first and
-returns the stored split, writing nothing; otherwise it stores a TrainingSplit whose registered_at is `now` in New
-York time (sessions.NY) and returns it. A different cutoff, embargo or Prereg is a new row.
+registered_at}), so the same split asked for later has the same id, and every other parameter, each of the Prereg's
+other fields included, gives a new one. split.register looks that id up first and returns the stored split, writing
+nothing; otherwise it stores a TrainingSplit whose registered_at is `now` in New York time (sessions.NY), to the
+microsecond and with New York's offset on that date, and returns it. A different cutoff, embargo or Prereg is a new row.
 
 The journal is in memory; the dates are real NYSE sessions. The refusals, and the split asked for again once its
 cutoff has opened, are w5l4.3's, so every split here is one register stores.
@@ -17,6 +18,10 @@ from tradingresearch import journal, sessions, split
 NOW = datetime(2026, 10, 30, 22, 0, tzinfo=UTC)  # after the 2026-10-30 close
 CUTOFF = date(2026, 12, 1)
 IDS = {(CUTOFF, 22): "sp_45eda73898d532af", (date(2026, 12, 29), 22): "sp_511d03d559bae169"}
+STEM = "the student arm is no worse than the base arm on claims_valid"  # two hypotheses that share it differ
+# (now, registered_at expected): New York is -04:00 until 2026-11-01 and -05:00 after; seconds and microseconds stay
+CLOCKS = [(NOW, "2026-10-30T18:00:00-04:00"), (datetime(2026, 11, 20, 22, 0, tzinfo=UTC), "2026-11-20T17:00:00-05:00"),
+          (NOW + timedelta(seconds=17, microseconds=123), "2026-10-30T18:00:17.000123-04:00")]
 
 
 @pytest.fixture
@@ -55,24 +60,32 @@ def test_the_same_split_asked_for_later_has_the_same_id_and_any_other_parameter_
     assert later == first, (
         f"the gate prereg registered 3 days later gives {later!r}, not {first!r}: registered_at says when, not which "
         "split, and the same split must have one id")
-    others = {"cutoff 2026-12-02": split.split_id_for(date(2026, 12, 2), 22, split.gate_prereg(NOW)),
-              "embargo 25": split.split_id_for(CUTOFF, 25, split.gate_prereg(NOW)),
+    gate = split.gate_prereg(NOW)
+    others = {"cutoff 2026-12-02": split.split_id_for(date(2026, 12, 2), 22, gate),
+              "embargo 25": split.split_id_for(CUTOFF, 25, gate),
               "a hypothesis": split.split_id_for(CUTOFF, 22, split.gate_prereg(NOW, "student no worse"))}
+    for field, value in (("primary_metric", "claims_cited"), ("pass_rule", "NoWorseThan(claims_valid) >= -0.10"),
+                         ("margin", 0.2), ("n_planned", 41), ("guard_metric", None)):
+        others[f"prereg {field} {value!r}"] = split.split_id_for(CUTOFF, 22, gate.model_copy(update={field: value}))
     same = [what for what, got in others.items() if got == first]
-    assert not same, f"{', '.join(same)} gives the same id as cutoff {CUTOFF}, embargo 22: {first}"
+    assert not same, (f"{', '.join(same)} gives the same id as cutoff {CUTOFF}, embargo 22 with the gate prereg: "
+                      f"{first}; every parameter but registered_at is part of the split, so each changes the id")
+    long = {split.split_id_for(CUTOFF, 22, split.gate_prereg(NOW, f"{STEM} {end}")) for end in ("today", "later")}
+    assert len(long) == 2, (f"two hypotheses that share their first {len(STEM) + 1} characters and differ after them "
+                            f"give one id, {long.pop()}: the whole hypothesis is in the digest, never a prefix")
 
 
-def test_register_stores_the_split_in_new_york_time_and_returns_it(conn):
-    prereg = split.gate_prereg(NOW - timedelta(days=1))  # pre-registered the day before the split
-    got = split.register(conn, CUTOFF, 22, prereg, NOW)
+@pytest.mark.parametrize(("now", "want"), CLOCKS)
+def test_register_stores_the_split_in_new_york_time_and_returns_it(conn, now, want):
+    prereg = split.gate_prereg(now - timedelta(days=1))  # pre-registered the day before the split
+    got = split.register(conn, CUTOFF, 22, prereg, now)
     assert (got.split_id, got.cutoff_session, got.embargo_sessions) == (IDS[CUTOFF, 22], CUTOFF, 22), (
         f"register returned ({got.split_id}, {got.cutoff_session}, {got.embargo_sessions})")
     # the instant and New York's offset at it, not the tzinfo object: a row read back has a fixed -04:00 tzinfo
-    in_new_york = NOW.astimezone(sessions.NY).utcoffset()
-    assert got.registered_at == NOW and got.registered_at.utcoffset() == in_new_york, (
+    assert got.registered_at == now and got.registered_at.isoformat() == want, (
         f"registered_at is {got.registered_at.isoformat()} in {got.registered_at.tzinfo}; expected now, "
-        "2026-10-30 22:00 UTC, in America/New_York: 2026-10-30T18:00:00-04:00, the date New York registers it on "
-        f"(the prereg was registered {prereg.registered_at.isoformat()})")
+        f"{now.isoformat()}, in America/New_York: {want}, the same instant to the microsecond, on the date and with "
+        f"the offset New York has then (the prereg was registered {prereg.registered_at.isoformat()})")
     assert ids(conn) == [got.split_id], f"the journal holds {ids(conn)} after one register; expected [{got.split_id}]"
     assert journal.get(conn, split.TrainingSplit, got.split_id) == got, "the stored row is not the split returned"
 
@@ -103,11 +116,12 @@ def test_other_parameters_are_new_rows_and_each_id_returns_its_own_split(conn):
         f"{rows(conn)} rows; expected {first.split_id} and 3 rows")
 
 
-def test_a_different_prereg_under_the_same_cutoff_and_embargo_is_a_new_split(conn):
+@pytest.mark.parametrize(("field", "value"), [("hypothesis", "a later, different hypothesis"), ("margin", 0.2)])
+def test_a_different_prereg_under_the_same_cutoff_and_embargo_is_a_new_split(conn, field, value):
     first = split.register(conn, CUTOFF, 22, split.gate_prereg(NOW), NOW)
-    when, note = NOW + timedelta(hours=1), "a later, different hypothesis"
-    other = split.register(conn, CUTOFF, 22, split.gate_prereg(when, note), when)
+    when = NOW + timedelta(hours=1)
+    other = split.register(conn, CUTOFF, 22, split.gate_prereg(when).model_copy(update={field: value}), when)
     assert other.split_id != first.split_id and ids(conn) == [first.split_id, other.split_id], (
-        f"a second Prereg (hypothesis {note!r}) under cutoff {CUTOFF}, embargo 22 returned {other.split_id} with "
+        f"a second Prereg ({field} {value!r}) under cutoff {CUTOFF}, embargo 22 returned {other.split_id} with "
         f"{rows(conn)} row(s); expected a new split and 2 rows: a different Prereg is a different split, so the lookup "
         "is by the id, not by the cutoff and the embargo")

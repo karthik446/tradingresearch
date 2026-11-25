@@ -164,3 +164,28 @@ def test_with_no_grader_left_it_refuses_no_shared_metric(which):
     assert refused.code == "no_shared_metric", (
         f"compare({which}) refused {refused.code}: {refused.reason}; with no grader scored on a common item in both "
         f"runs the code is no_shared_metric")
+
+
+WIDE = tuple(f"T{i:02d}:2026-11-13" for i in range(21))
+NINE = tuple(f"grader_{k}" for k in range(1, 10))
+
+
+def wide(arm: str, graders: tuple[str, ...]):
+    """A hand-built arm over 21 items, each grader scored 1.0 on every item."""
+    rows = [(grader, "1", item, 1.0) for item in WIDE for grader in graders]
+    return runs.build(f"run_hand{arm:0<12}", f"ablation:{arm}:analyze-3", "openai/gpt-4.1-nano", runs.T0, runs.HAND,
+                      [(item, item.split(":")[0]) for item in WIDE], rows)
+
+
+def test_every_grader_asked_is_decided_on_its_own_scores_whatever_its_name_or_count():
+    a, b = wide("a", ("parsed", "custom_score", *NINE)), wide("b", ("parsed", "custom_score", *NINE, "missing"))
+    asked = ("missing", "missing", "custom_score", *NINE, "parsed")
+    kept = ["custom_score", *NINE, "parsed"]
+    got = compared(a, b, asked, "wide a -> wide b")
+    assert metrics(got) == kept, (
+        f"compare(wide a -> wide b, {list(asked)}) compared {metrics(got)}; expected {kept}: every grader asked that "
+        f"both runs scored on a common item is kept, in the order asked, however many are asked, whatever a grader "
+        f"is called, and on 21 items as on 10")
+    assert [s.split(":")[0] for s in got.skipped] == ["missing", "missing"], (
+        f"compare(wide a -> wide b) skipped {got.skipped!r}; expected two entries starting 'missing:', one per time "
+        f"it was asked: a grader asked twice is decided twice")

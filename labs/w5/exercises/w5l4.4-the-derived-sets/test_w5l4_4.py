@@ -3,23 +3,39 @@
 - `split.embargo_window(split)`: the `embargo_sessions` NYSE sessions right before the cutoff session, a tuple, oldest
   first; the cutoff is not in it, and a holiday or weekend is not a session, so it is not counted.
 - `split.partition(split, days)`: a `Split` over the journal's sessions `days`, each distinct day once and in date
-  order whatever order `days` came in: `train_val_sessions` before the window's first session, `embargoed_sessions`
-  from the window's first session up to the cutoff, `test_sessions` on or after the cutoff (no end), and
-  `embargo_window` the window. Each day is in exactly one of the three sets; the window's sessions are in neither
-  train/val nor test.
+  order whatever order `days` came in, and `days` itself left as it was given: `train_val_sessions` before the
+  window's first session, `embargoed_sessions` from the window's first session up to the cutoff, `test_sessions` on
+  or after the cutoff (no end, 2028 included), and `embargo_window` the window. Each day is in exactly one of the
+  three sets; the window's sessions are in neither train/val nor test.
+- `split.derive(conn, split_id)`: `partition` of the stored split over the sessions the journal's `analysis` rows
+  hold, so what the journal says today decides the sets.
 
 The splits are registered on an in-memory journal at 2026-10-30 22:00 UTC. The dates are real NYSE sessions:
-Thanksgiving 2026-11-26, Christmas 2026-12-25 and New Year's Day 2027-01-01 are closed.
+Thanksgiving 2026-11-26, Christmas 2026-12-25 and New Year's Day 2027-01-01 are closed, Columbus Day 2026-10-12 open.
+The NYSE calendar is pinned to 2020–2030, whatever the day the check runs.
 """
 
 from datetime import UTC, date, datetime
+from functools import cache
 
+import exchange_calendars as xcals
 import pytest
 
-from tradingresearch import journal, split
+from tradingresearch import journal, sessions, split
 
 NOW = datetime(2026, 10, 30, 22, 0, tzinfo=UTC)
 DEC1, DEC29 = date(2026, 12, 1), date(2026, 12, 29)  # two cutoffs; 12-29 is the chapter's
+
+
+@cache
+def calendar_2020_to_2030() -> xcals.ExchangeCalendar:
+    return xcals.get_calendar("XNYS", start="2020-01-01", end="2030-12-31")
+
+
+@pytest.fixture(autouse=True)
+def pinned_calendar(monkeypatch):
+    """sessions.xnys() spans 20 years back and one ahead of today; this check's dates run to 2028."""
+    monkeypatch.setattr(sessions, "xnys", calendar_2020_to_2030)
 
 
 def d(text: str) -> date:
@@ -37,6 +53,9 @@ WINDOWS = {  # (cutoff, embargo): the NYSE sessions right before the cutoff, cou
                        "12-17 12-18 12-21 12-22 12-23 12-24 12-28"),
     (DEC1, 27): dates("10-22 10-23 10-26 10-27 10-28 10-29 10-30 11-02 11-03 11-04 11-05 11-06 11-09 11-10 11-11 "
                       "11-12 11-13 11-16 11-17 11-18 11-19 11-20 11-23 11-24 11-25 11-27 11-30"),
+    (DEC1, 40): dates("10-05 10-06 10-07 10-08 10-09 10-12 10-13 10-14 10-15 10-16 10-19 10-20 10-21 10-22 10-23 "
+                      "10-26 10-27 10-28 10-29 10-30 11-02 11-03 11-04 11-05 11-06 11-09 11-10 11-11 11-12 11-13 "
+                      "11-16 11-17 11-18 11-19 11-20 11-23 11-24 11-25 11-27 11-30"),
     # cutoffs whose calendar day before is not a session: a Sunday, Thanksgiving, and New Year's Day after a weekend
     (d("11-30"), 22): dates("10-28 10-29 10-30 11-02 11-03 11-04 11-05 11-06 11-09 11-10 11-11 11-12 11-13 11-16 "
                             "11-17 11-18 11-19 11-20 11-23 11-24 11-25 11-27"),
@@ -114,7 +133,11 @@ JOURNALS = {
 @pytest.mark.parametrize("which", JOURNALS)
 def test_each_journal_session_is_in_one_set_in_date_order(which):
     cutoff, embargo, days, want = JOURNALS[which]
-    got = parts(cutoff, embargo, list(days))
+    given = list(days)
+    got = parts(cutoff, embargo, given)
+    assert given == list(days), (
+        f"partition({which}) changed the list it was given to {shown(given)}; expected it as given, {shown(days)}: "
+        "partition reads the journal's days and leaves them as they were")
     for name, expected in zip(SETS, want):
         assert getattr(got, name) == expected, (
             f"partition({which}, embargo {embargo}) {name} = {shown(getattr(got, name))}; expected {shown(expected)}: "
@@ -134,6 +157,7 @@ def test_each_journal_session_is_in_one_set_in_date_order(which):
     (DEC29, d("11-24"), "train_val_sessions"), (DEC29, d("11-25"), "embargoed_sessions"),
     (DEC29, d("12-28"), "embargoed_sessions"), (DEC29, d("12-29"), "test_sessions"),
     (DEC29, d("12-30"), "test_sessions"), (DEC29, d("2027-06-01"), "test_sessions"),
+    (DEC29, d("2028-01-03"), "test_sessions"),
 ], ids=lambda v: str(v))
 def test_around_the_window_s_first_session_and_the_cutoff(cutoff, day, where):
     got = parts(cutoff, 22, [day])
@@ -173,3 +197,25 @@ def test_a_set_with_no_session_is_empty(days, want):
     assert got.embargo_window == WINDOWS[(DEC1, 22)], (
         f"partition(cutoff {DEC1}, embargo 22, {shown(days)}).embargo_window has {len(got.embargo_window)} sessions; "
         f"the window comes from the calendar, not the journal: 22 sessions, 10-29 to 11-30")
+
+
+def test_derive_partitions_the_journal_s_sessions_for_a_stored_split():
+    conn = journal.connect(":memory:")
+    try:
+        record = split.register(conn, DEC1, 22, split.gate_prereg(NOW), NOW)
+        for n, (ticker, day) in enumerate([("AAPL", d("12-02")), ("AAPL", d("10-27")), ("MSFT", d("10-27")),
+                                           ("AAPL", d("10-29")), ("AAPL", d("12-01"))]):
+            conn.execute("INSERT INTO analysis (analysis_id, ticker, session, arm, body, record_sha256, created_at) "
+                         "VALUES (?, ?, ?, 'main', '{}', '', ?)", (f"an_{n}", ticker, day.isoformat(), NOW.isoformat()))
+        try:
+            got = split.derive(conn, record.split_id)
+        except Exception as exc:  # noqa: BLE001 - reported here
+            raise AssertionError(f"split.derive(conn, {record.split_id}) raised {failed(exc)}") from None
+    finally:
+        conn.close()
+    want = (dates("10-27"), dates("10-29"), dates("12-01 12-02"))
+    assert tuple(getattr(got, name) for name in SETS) == want, (
+        f"derive(conn, {record.split_id}) over a journal with analyses on 12-02, 10-27 (two tickers), 10-29 and 12-01 "
+        f"= train/val {shown(got.train_val_sessions)}, embargoed {shown(got.embargoed_sessions)}, test "
+        f"{shown(got.test_sessions)}; expected {[shown(w) for w in want]}: derive partitions the stored split over the "
+        "sessions the journal holds analyses for, each once")

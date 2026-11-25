@@ -2,7 +2,7 @@ id = "w5l4.2"
 title = "Register once"
 effect = "tr split arrives, and split.register stores a training split once: the same cutoff, embargo and Prereg asked for again later return the stored split and write nothing, and its registered_at is New York time."
 goal = "Write split.split_id_for and the store half of split.register: the id is the digest of the split's parameters without registered_at, a stored id is returned as stored, and a new split is stored with registered_at in New York time."
-what_tested = "The ids of two splits, pinned. The same split pre-registered 3 days later keeps its id; another cutoff, embargo or hypothesis changes it. One register writes one row, read back equal, registered_at = now in New York though the Prereg is a day older. Asked again an hour and 3 days later: the stored split, 1 row. Three splits, three rows; the first asked again."
+what_tested = "The ids of two splits, pinned. The same split pre-registered 3 days later keeps its id; another cutoff, embargo or any other Prereg field changes it, and two 62-character hypotheses differing at the end differ. One register writes one row, registered_at = now in New York to the microsecond, in October (-04:00) and after the clocks go back (-05:00). Asked again later: the stored split, 1 row."
 writes = [
   "split_id_for: `sp_` + the first 16 hex of digest of cutoff_session (ISO), embargo_sessions and the Prereg as JSON without registered_at.",
   "register: return find(conn, id) when it holds the id; else journal.add a TrainingSplit with registered_at = now in sessions.NY, and return it.",
