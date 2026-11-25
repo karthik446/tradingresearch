@@ -8,8 +8,9 @@ Labs are optional hands-on practice for the [AI engineering track](https://scout
 | 2 | w2l1 P2 evidence (4 exercises), w2l2 P3 invalidation (2), w2l3 P4 levels (4), w2l4 graders and the draft judge (3) | [labs/w2/pages/index.md](w2/pages/index.md) |
 | 3 | w3l1 reading the verdict (3 exercises), w3l2 the judge prompt and the one call (3), w3l3 keeping what the judge said (3), w3l4 judging in tr grade (3) | [labs/w3/pages/index.md](w3/pages/index.md) |
 | 4 | w4l1 three tools the model can use (3 exercises), w4l2 the tool loop (3), w4l3 the tools arm in the experiment (3), w4l4 route provenance and the first rule change (3) | [labs/w4/pages/index.md](w4/pages/index.md) |
+| 5 | w5l1 per-section grounding graders (3 exercises), w5l2 the ablation config (3), w5l3 compare skips a grader (2), w5l4 a training split with an embargo (4) | [labs/w5/pages/index.md](w5/pages/index.md) |
 
-Weeks 1 to 4 are here; the labs for weeks 5-9 follow, week by week.
+Weeks 1 to 5 are here; the labs for weeks 6-9 follow, week by week.
 
 ## Start
 
@@ -105,6 +106,6 @@ The offline guard is part of the same honor system. From week 2 the checks insta
 
 ## For authors
 
-The layout of a week and how to re-run the proof: [labs/w1/README.md](w1/README.md) for week 1, [labs/w2/README.md](w2/README.md) for week 2, [labs/w3/README.md](w3/README.md) for week 3, [labs/w4/README.md](w4/README.md) for week 4; the proof tool is `labs/tools/prove.py <week>`. `tr lab`'s own tests: `tests/test_lab.py` (plain `pytest`, no network). The runner: `src/tradingresearch/lab.py`, reached through `src/tradingresearch/labmain.py`.
+The layout of a week and how to re-run the proof: [labs/w1/README.md](w1/README.md) for week 1, [labs/w2/README.md](w2/README.md) for week 2, [labs/w3/README.md](w3/README.md) for week 3, [labs/w4/README.md](w4/README.md) for week 4, [labs/w5/README.md](w5/README.md) for week 5; the proof tool is `labs/tools/prove.py <week>`. `tr lab`'s own tests: `tests/test_lab.py` (plain `pytest`, no network). The runner: `src/tradingresearch/lab.py`, reached through `src/tradingresearch/labmain.py`.
 
 The output the lab pages show (each exercise's first FAIL and its PASS, and a walked-through session) is captured from real `tr lab` runs by `labs/tools/capture.py <week> --write` into `labs/<week>/exercises/*/expected_output/` and `labs/<week>/session/`; `prove.py` fails when a captured file no longer matches what `tr lab` prints.
