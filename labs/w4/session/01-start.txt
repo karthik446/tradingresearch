@@ -1,0 +1,6 @@
+week 4 starts from the author's code at week-4-start: 174 files changed, committed as `lab: week 4 base (week-4-start)`
+your earlier commits stay in the history of `lab`
+started lab w4l1 (Three tools the model can use) on branch `lab`; read labs/w4/pages/w4l1.md
+exercise w4l1.1: Close every tool's schema and describe every argument
+edit: src/tradingresearch/tools.py (look for TODO(w4l1.1))
+then: tr lab verify

@@ -1,0 +1,4 @@
+committed `lab w4l1.1: green`: src/tradingresearch/tools.py
+exercise w4l1.2: Turn every bad call into an error the model can read
+edit: src/tradingresearch/tools.py (look for TODO(w4l1.2))
+then: tr lab verify

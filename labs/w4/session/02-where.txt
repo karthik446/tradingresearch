@@ -1,0 +1,4 @@
+lab
+?? src/tradingresearch/tools.py
+<sha> lab: week 4 base (week-4-start)
+<sha> the repo as you cloned it (capture scratch copy)
