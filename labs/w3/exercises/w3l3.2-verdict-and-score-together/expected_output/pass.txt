@@ -14,9 +14,9 @@ observe: python labs/w3/tools/observe.py store
   |   never_entered        0     0              none             none
   |     p1_judge raised Refused: th_<id> is PROPOSED with no grade: only a CLOSED thesis that …
   |   verdict write fails  1     1 $0.005163    none             none
-  |     p1_judge raised OperationalError: disk I/O error (injected into journal.add_judge_verd…
+  |     p1_judge raised IntegrityError: injected: no judge_verdict row can be written
   |   score write fails    1     1 $0.005163    none             none
-  |     p1_judge raised OperationalError: disk I/O error (injected into journal._insert_score)
+  |     p1_judge raised IntegrityError: injected: no score row can be written
   | The replies are the recording or edits of it: verdicts and a paid call's cost cannot move.
   | What moves is what p1_judge returns or raises, the run files it keeps and the rows it stores.
 next: `tr lab next` commits it and moves on; `tr lab solution` shows the reference to compare
