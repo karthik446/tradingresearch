@@ -6,20 +6,23 @@ This folder holds week 3 of the AI engineering track, 12 exercises run by `tr la
 
 | Exercise | What the learner does | Edits | Wrong fixes |
 |---|---|---|---|
-| [w3l1.1](exercises/w3l1.1-the-last-json-object/) | Read the verdict and the explanation from the last JSON object in the judge's reply | `evals.py` | 9 |
-| [w3l1.2](exercises/w3l1.2-unknown-is-an-abstain/) | Store an `unknown` verdict as an abstain: `fail`, with `unknown: ` before the explanation | `evals.py` | 8 |
-| [w3l1.3](exercises/w3l1.3-no-verdict-cannot-be-graded/) | Raise `CannotGrade` on a reply with no pass, fail or unknown verdict, never a quiet fail | `evals.py` | 12 |
-| [w3l2.1](exercises/w3l2.1-rubric-in-thesis-out/) | Fill the judge's frame: the rubric into the prompt, the thesis text as the graded output | `evals.py` | 8 |
-| [w3l2.2](exercises/w3l2.2-evidence-not-bars/) | Show the judge the cited claims and the code-written summary, never the raw bars | `evals.py` | 8 |
-| [w3l2.3](exercises/w3l2.3-one-bounded-call/) | Make the one call bounded in tokens and capped in dollars | `evals.py` | 11 |
-| [w3l3.1](exercises/w3l3.1-keep-the-run-file/) | Keep the judge's call in a run file, and turn a failed call into `CannotGrade` naming its run file and error | `evals.py` | 13 |
-| [w3l3.2](exercises/w3l3.2-verdict-and-score-together/) | Read the reply with `p1_verdict`, store the verdict and its ScoreRecord in one transaction, return the Score | `evals.py` | 17 |
-| [w3l3.3](exercises/w3l3.3-refuse-before-the-call/) | Refuse a teacher or never-entered thesis before any call: `label.Refused` becomes `CannotGrade` | `evals.py` | 12 |
-| [w3l4.1](exercises/w3l4.1-what-waits-for-the-judge/) | List the graded champion and challenger theses with no verdict yet, oldest first | `grade.py` | 11 |
-| [w3l4.2](exercises/w3l4.2-one-cap-per-run/) | Judge every waiting thesis under one dollar cap for the run, counting what each call's run files say it spent | `grade.py` | 15 |
-| [w3l4.3](exercises/w3l4.3-judge-only-when-asked/) | Run the judge only with `--judge`, and print each call's cost and the run's total to the millionth | `grade.py`, `commands/grade.py` | 14 |
+| [w3l1.1](exercises/w3l1.1-the-last-json-object/) | Read the verdict and the explanation from the last JSON object in the judge's reply | `evals.py` | 14 |
+| [w3l1.2](exercises/w3l1.2-unknown-is-an-abstain/) | Store an `unknown` verdict as an abstain: `fail`, with `unknown: ` before the explanation | `evals.py` | 16 |
+| [w3l1.3](exercises/w3l1.3-no-verdict-cannot-be-graded/) | Raise `CannotGrade` on a reply with no pass, fail or unknown verdict, never a quiet fail | `evals.py` | 18 |
+| [w3l2.1](exercises/w3l2.1-rubric-in-thesis-out/) | Fill the judge's frame: the rubric into the prompt, the thesis text as the graded output | `evals.py` | 13 |
+| [w3l2.2](exercises/w3l2.2-evidence-not-bars/) | Show the judge the cited claims and the code-written summary, never the raw bars | `evals.py` | 13 |
+| [w3l2.3](exercises/w3l2.3-one-bounded-call/) | Make the one call bounded in tokens and capped in dollars | `evals.py` | 16 |
+| [w3l3.1](exercises/w3l3.1-keep-the-run-file/) | Keep the judge's call in a run file, and turn a failed call into `CannotGrade` naming its run file and error | `evals.py` | 18 |
+| [w3l3.2](exercises/w3l3.2-verdict-and-score-together/) | Read the reply with `p1_verdict`, store the verdict and its ScoreRecord in one transaction, return the Score | `evals.py` | 23 |
+| [w3l3.3](exercises/w3l3.3-refuse-before-the-call/) | Refuse a teacher or never-entered thesis before any call: `label.Refused` becomes `CannotGrade` | `evals.py` | 16 |
+| [w3l4.1](exercises/w3l4.1-what-waits-for-the-judge/) | List the graded champion and challenger theses with no verdict yet, oldest first | `grade.py` | 16 |
+| [w3l4.2](exercises/w3l4.2-one-cap-per-run/) | Judge every waiting thesis under one dollar cap for the run, counting what each call's run files say it spent | `grade.py` | 20 |
+| [w3l4.3](exercises/w3l4.3-judge-only-when-asked/) | Run the judge only with `--judge`, and print each call's cost and the run's total to the millionth | `grade.py`, `commands/grade.py` | 21 |
 
-Part A: 68 wrong fixes. 26 of them passed the checks when first tried. 14 came from an independent break pass
+204 wrong fixes in all: 90 in part A, 114 in part B. The counts are `ls exercises/*/wrong | wc -l`; `prove.py w3` runs
+every one.
+
+Part A: 90 wrong fixes. 26 of them passed the checks when first tried. 14 came from an independent break pass
 (`before: GREEN (independent break pass)`): an explanation or verdict that is JSON but not text, a capital or
 space-less `unknown:` prefix, a pass whose text says unknown, a padded or hedged verdict, a hard-coded thesis or INPUT,
 every claim instead of the cited ones, and a cap with a margin, rounded to cents or with a cent of slack. 12 came from
@@ -28,10 +31,19 @@ a nested `{"verdict"` object, a stripped bare `unknown:`, the word unknown taken
 rubric copied from the recorded request, bar lows added to the instructions, a pasted summary, and $0.0004 of slack on
 the cap. The checks were hardened for each (new rows in `data/replies.json`, a reworded FAKEA thesis in
 `tools/fakea.py`, the cap tested a twentieth of a cent and a thousandth of a cent either side of the budget's estimate
-of one call's worst case), and all 26 are red now. The other 42 are `before: RED (author)`; three of them
+of one call's worst case), and all 26 are red now. 22 more came from an outside review. 10 of them passed the checks
+(`before: GREEN (outside review)`): a trimmed explanation or unknown reason, a JSON `true` read as pass, a `CannotGrade`
+returned instead of raised, the verdict taken from a `value` key, the rubric read from the working directory, the
+reason cut to 1000 characters, only the first two cited claims, and a cap held under $0.05 or rounded to five
+decimals. 12 are its break pass (`outside-review break pass`, 6 green when first tried). The checks were hardened for
+each (padded explanations and JSON `true`, `false` and `{"value"` verdicts in the w3l1 checks, a line added to the
+prompt file of the rubric copy, a reason of over 1300 characters, a third cited claim, doubled prices, the cap also
+tested at the estimate itself and a millionth of a dollar under it), and all 22 are red now. The other 42 are
+`before: RED (author)`; three of them
 (`own-client`, `live-price-lookup`, `live-price-or-given`) are red because of the offline guard below.
 
-Part B: 82 wrong fixes. 21 come from an independent break pass and a finish review; 6 of those passed the checks when
+Part B: 114 wrong fixes. 33 come from break passes and a finish review (12 of them written while the outside review
+below was fixed, `before: RED (independent break pass)`); 6 of those passed the checks when
 first tried: a ScoreRecord under its own grader version, or with the rubric's digest as the prompt's sha256
 (`bp-wrong-version`, `bp-rubric-digest`); the queue ordered by thesis id (`bp-id-order`); a run that counts a call's
 cost only when it got a verdict (`bp-spent-only-on-verdict`); the judge part shown on a plain `--dry-run`
@@ -46,7 +58,18 @@ run's spend set to the last call's, a bars error that stops the run, a capped th
 costs to seven decimals, and the judge run before grading. The checks were hardened for each (`Judging.raised`, an HTTP
 402 and a plain `fail` reply in `tools/fakea.py`, the refusal compared with `label.Refused`'s own text, a journal read
 that fails, theses graded in reverse order, a $0.05 cap, bars that fail once, costs read whole, the order `tr grade`
-grades and judges in). All 22 are red now. The other 45 are `before: RED (author)`.
+grades and judges in). All 22 are red now. 20 more came from an outside review; 18 of them passed the checks when first
+tried (`before: GREEN (outside review)`, and one `outside-review break pass`): an out-of-credits error stored as a
+fail, a run file cut to its header, the verdict read before the run file is kept, or a reply that holds no verdict
+deleting it; a prompt digest cut to 12 characters, the reply emptied in the ScoreRecord's note; a file error turned
+into a refusal, every thesis refused; a FAKEA-only queue, a plain fail judged again, teachers left in the queue; every
+call priced at the recording, only the dearest run file counted, a dry run that judges; and in `tr grade`, prices
+read on a dry run, `--judge-max-usd` ignored, the key required for a dry run, every verdict printed as a pass. The
+checks were hardened for each (an HTTP 402 and a reply with no verdict kept in their run files, the digest compared
+whole, a challenger thesis and an injected file error, a second ticker and a plain `fail` verdict, made-up reply costs
+and a call that adds two run files, a count of `/models` lookups in `fakea.offline`, a $0.001 cap on the command line,
+`judge_lines` with no key, a fail given to `render_judged`). All 20 are red now. The other 45 are `before: RED
+(author)`.
 
 ## Layout
 
@@ -82,7 +105,7 @@ labs/w3/
 
 **Part B's journals.** For labs w3l3 and w3l4, `fakea.replaying` answers request i with `answer(replies[i])`: `recorded`, the recording ending in `unknown`, with no verdict line, or an HTTP 400 (no reply). The edits keep the recorded usage, so every paid reply costs the same $0.0051635 (shown as $0.005163) and an HTTP 400 costs $0. `fakea.offline` also answers Alpaca's daily FAKEA bars and the `/models` row, `closed_trade` and `journal_of` build fresh journals of closed FAKEA theses (one per arm asked for, graded on `SESSION` = 2026-11-19 unless told otherwise), and `cli` runs `tr` on such a journal with fake keys.
 
-**The offline guard.** The labs claim $0 and no network, so `tools/offline.py` enforces it: `conftest.py` installs it before any test module imports learner code, and `observe.py` before it imports `fakea`. Socket connections, DNS lookups, subprocesses, os spawns and the real httpx transports (sync and async) raise `Blocked` and are recorded; the `httpx.MockTransport` the checks use is not touched. A test whose code tried a guarded call fails even when the code swallowed the error, with `The code under test tried ... and caught the error`. Observe prints a `note: your code tried ...: blocked` line instead.
+**The offline guard.** The labs claim $0 and no network, so `tools/offline.py` enforces it: `conftest.py` installs it before any test module imports learner code, and `observe.py` before it imports `fakea`. Socket connections, DNS lookups, subprocesses, os spawns and the real httpx transports (sync and async) raise `Blocked` and are recorded; the `httpx.MockTransport` the checks use is not touched. A test whose code tried a guarded call fails even when the code swallowed the error, with `The code under test tried ... and caught the error`. Observe prints a `note: your code tried ...: blocked` line instead. The guard catches mistakes; it is not a sandbox. C extension modules, `ctypes` and libraries that reach the network outside the entry points it patches are not covered, and code that hides or clears the guard's record passes. Like the rest of the labs, it relies on the honor system ([labs/README.md](../README.md#hints-and-the-solution)).
 
 ## Observe
 
@@ -114,7 +137,7 @@ At `week-3-start`, before the w3l1.1 stub, `evals.py` has no `p1_verdict`, so ev
 | `test_the_judge_sends_one_request_with_the_adr_003_model_the_rubric_and_the_summary`, `test_the_judge_prompt_holds_no_raw_bar_rows`, `test_the_judge_returns_a_score_and_stores_its_verdict_and_score`, `test_the_judge_call_and_its_cost_land_in_a_run_file` | `[labs.w3l1.suite]`, `[labs.w3l2.suite]` | they call `p1_judge` to the end and check its Score, its stored verdict and its run file; after w3l2.3 `p1_judge` raises `NotImplementedError` after its call (lab w3l3) |
 | `test_teacher_and_never_entered_theses_are_never_judged` (2 cases) | `[labs.w3l1.suite]`, `[labs.w3l2.suite]` | the refusal of a teacher or never-entered thesis is w3l3.3 |
 | `test_tr_grade_judge_is_off_by_default_then_judges_once_and_prints_the_cost` | `[labs.w3l1.suite]` to `[labs.w3l3.suite]` | `tr grade --judge` is lab w3l4 |
-| `test_adr_004_names_what_never_enters_a_trace`, `test_the_slo_review_has_four_slos_and_the_injected_breach`, `test_measured_costs_has_a_row_per_step_with_its_run_id` (4 cases) | `[suite]` (every lab) | they read documents the learner writes by hand from the chapter (§2, §5, §6); no exercise writes prose |
+| `test_adr_004_names_what_never_enters_a_trace`, `test_the_slo_review_has_four_slos_and_the_injected_breach`, `test_measured_costs_has_a_row_per_step_with_its_run_id` (6 cases: ADR-004, the SLO review and 4 measured-costs cases) | `[suite]` (every lab) | they read documents the learner writes by hand from the chapter (§2, §5, §6); no exercise writes prose |
 
 The cases still red at the end of each lab are exactly these: 13 after w3l1 and w3l2, 7 after w3l3, 6 after w3l4. The first two judge tests check the request, which the w3l2 checks already pin byte for byte; they stay deselected in part A because they run `p1_judge` to its end.
 

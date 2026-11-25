@@ -1,5 +1,5 @@
 why: skips the prefix when the explanation starts with the word unknown, colon or not, so journal.abstained misses it
-expect: The judge answered '{"verdict": "unknown", "explanation": "unknown whether
+expect: for the judge's answer '{"verdict": "unknown", "explanation": "unknown whether
 before: GREEN (independent reader)
 --- a/src/tradingresearch/evals.py
 +++ b/src/tradingresearch/evals.py

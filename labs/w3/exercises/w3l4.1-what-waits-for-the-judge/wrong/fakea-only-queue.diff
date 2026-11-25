@@ -1,0 +1,14 @@
+why: lists only the FAKEA theses: every other ticker is never judged
+expect: With a graded FAKEA champion thesis and then a graded FAKEB one, to_judge lists ['champion (written 1st)']
+before: GREEN (outside review)
+--- a/src/tradingresearch/grade.py
++++ b/src/tradingresearch/grade.py
+@@ -378,7 +378,7 @@
+ def to_judge(conn) -> list[Thesis]:
+     """Graded champion and challenger theses with no judge verdict yet, oldest first."""
+     rows = conn.execute("SELECT t.body FROM thesis t JOIN grade g USING (thesis_id) "
+-                        "WHERE t.arm IN ('champion', 'challenger') "
++                        "WHERE t.ticker = 'FAKEA' AND t.arm IN ('champion', 'challenger') "
+                         "AND NOT EXISTS (SELECT 1 FROM judge_verdict v WHERE v.thesis_id = t.thesis_id) "
+                         "ORDER BY t.rowid")
+     return [Thesis.model_validate_json(body) for (body,) in rows]

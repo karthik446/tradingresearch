@@ -1,0 +1,14 @@
+why: refuses every thesis that is not a champion's, so challengers are never judged
+expect: On a closed, graded challenger thesis p1_judge ended with CannotGrade
+before: RED (independent break pass)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -236,6 +236,8 @@
+         t, g = label.labelable(conn, thesis_id)
+     except label.Refused as exc:
+         raise CannotGrade(str(exc)) from None
++    if t.arm != "champion":
++        raise CannotGrade(f"{t.thesis_id} is a {t.arm} thesis")
+     analysis = journal.get(conn, Analysis, t.analysis_id)
+     shown = "\n".join(["cited claims (claim_id | tag | text)", *label.cited(analysis, t.evidence), "",
+                        "post-trade summary (code-written)", label.summary(conn, bars, t, g)])

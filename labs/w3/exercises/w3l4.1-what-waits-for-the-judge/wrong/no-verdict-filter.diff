@@ -1,5 +1,5 @@
 why: lists graded theses whether or not they have a verdict
-expect: With the champion's verdict stored (fail, an unknown)
+expect: With the champion's verdict stored (fail, 'unknown: the summary cannot tell')
 before: RED (author)
 --- a/src/tradingresearch/grade.py
 +++ b/src/tradingresearch/grade.py

@@ -1,0 +1,14 @@
+why: stores a fail verdict when the account is out of credits
+expect: After the HTTP 402 the journal holds verdict 'fail'
+before: GREEN (outside review)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -250,6 +250,8 @@
+     run_path = an.save(run, data_dir)
+     sample = run.samples[0]
+     if sample.outcome != "succeeded":
++        if sample.error and sample.error.code == "insufficient_credits":
++            journal.add_judge_verdict(conn, t.thesis_id, "fail", "out of credits")
+         raise CannotGrade(f"judge call failed: {sample.error.code if sample.error else '?'} (run {run_path})")
+     # TODO(w3l3.2) read the reply with your p1_verdict and return the Score it earns: 1.0 for pass, else 0.0, the
+     #   verdict as its answer, the reason as its explanation, a JudgeNote of the judge model, the prompt's sha256 and

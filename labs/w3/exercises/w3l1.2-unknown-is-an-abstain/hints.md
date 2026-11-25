@@ -10,4 +10,5 @@ very start of the reason, nothing else.
 
 Decide from the verdict, never from words in the reply: a pass whose text mentions the rubric's Unknown section is still
 a pass. Put the prefix in front only when the explanation does not already begin with it; an explanation that begins
-with unknown: and no space is already marked, one that begins with a capital U is not.
+with unknown: and no space is already marked, one that begins with a capital U is not, and neither is one that begins
+with spaces. The explanation is kept as the judge wrote it, spaces and newlines included.

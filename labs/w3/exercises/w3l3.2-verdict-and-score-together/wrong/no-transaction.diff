@@ -1,5 +1,5 @@
 why: writes both rows without a transaction of its own
-expect: journal.add_judge_verdict failed (injected) and the journal still holds
+expect: With journal.add_judge_verdict raising the journal holds no verdict row and 1 p1_judge ScoreRecord(s)
 before: RED (author)
 --- a/src/tradingresearch/evals.py
 +++ b/src/tradingresearch/evals.py

@@ -1,0 +1,14 @@
+why: shows only the thesis's first two cited claims
+expect: INPUT's claim lines are ['cl_fakea_high | fact | The 20-day high was 100.5 USD.', 'cl_fakea_top | fact | The 7-session congestion topped at 100.5 USD.'] (p1_judge
+before: GREEN (outside review)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -234,7 +234,7 @@
+     call or a reply with no verdict is CannotGrade after it: the cost is in the run file, nothing is stored."""
+     t, g = label.labelable(conn, thesis_id)
+     analysis = journal.get(conn, Analysis, t.analysis_id)
+-    shown = "\n".join(["cited claims (claim_id | tag | text)", *label.cited(analysis, t.evidence), "",
++    shown = "\n".join(["cited claims (claim_id | tag | text)", *label.cited(analysis, t.evidence[:2]), "",
+                        "post-trade summary (code-written)", label.summary(conn, bars, t, g)])
+     rubric = (RUBRICS / "p1_judge_prompt.txt").read_text().replace("{rubric}",
+                                                                    (RUBRICS / "p1_thesis_quality.md").read_text())

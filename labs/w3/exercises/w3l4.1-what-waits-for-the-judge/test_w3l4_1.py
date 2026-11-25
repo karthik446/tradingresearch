@@ -8,6 +8,8 @@ closes but gets no Grade). No request is sent here.
 import sys
 from pathlib import Path
 
+import pytest
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools"))
 import fakea  # noqa: E402
 
@@ -19,6 +21,16 @@ def labels(listed: list, theses: list) -> list[str]:
     order = {t.thesis_id: n for n, t in enumerate(theses)}
     return [f"{t.arm} (written {ORDINAL[order[t.thesis_id]]})" if t.thesis_id in order else fakea.masked(t.thesis_id)
             for t in listed]
+
+
+def graded_copy(conn, t, name: str, **update):
+    """A copy of thesis t written after it, with its own id and a copy of its Grade, stored as `tr grade` stores them."""
+    from tradingresearch import journal, label
+
+    _, g = label.labelable(conn, t.thesis_id)
+    copy = t.model_copy(update={"thesis_id": f"th_{name}", **update})
+    journal.add(conn, copy, g.model_copy(update={"grade_id": f"gr_{name}", "thesis_id": copy.thesis_id}))
+    return copy
 
 
 def test_graded_champion_and_challenger_theses_wait_oldest_first(tmp_path):
@@ -52,15 +64,16 @@ def test_a_thesis_without_a_grade_does_not_wait(tmp_path):
         )
 
 
-def test_a_thesis_with_a_verdict_is_not_judged_again(tmp_path):
+@pytest.mark.parametrize("reason", ["unknown: the summary cannot tell", "the cited level broke"])
+def test_a_thesis_with_a_verdict_is_not_judged_again(tmp_path, reason):
     from tradingresearch import grade, journal
 
     conn, theses, _ = fakea.journal_of(tmp_path, ("champion", "challenger"))
-    journal.add_judge_verdict(conn, theses[0].thesis_id, "fail", "unknown: the summary cannot tell (stored by hand)")
+    journal.add_judge_verdict(conn, theses[0].thesis_id, "fail", f"{reason} (stored by hand)")
     got = labels(grade.to_judge(conn), theses)
     want = labels(theses[1:], theses)
     assert got == want, (
-        f"With the champion's verdict stored (fail, an unknown) and the challenger's not, to_judge lists {got}; it "
+        f"With the champion's verdict stored (fail, {reason!r}) and the challenger's not, to_judge lists {got}; it "
         f"should list {want}. Any stored verdict, pass or fail, means that thesis was judged and paid for once."
     )
     journal.add_judge_verdict(conn, theses[1].thesis_id, "pass", "the break held (stored by hand)")
@@ -78,4 +91,31 @@ def test_the_order_is_the_order_written_not_the_order_graded(tmp_path):
         f"With three theses written in the order {want} and graded in the reverse order, to_judge lists {got}; it "
         f"should list all three as written. Oldest first is the order the theses were written, not the order "
         f"`tr grade` happened to grade them, and every waiting thesis is listed (the cap, not the list, stops a run)."
+    )
+
+
+def test_a_thesis_on_another_ticker_waits_too(tmp_path):
+    from tradingresearch import grade
+
+    conn, (t,), _ = fakea.journal_of(tmp_path, ("champion",))
+    theses = [t, graded_copy(conn, t, "other_ticker", ticker="FAKEB")]
+    got = labels(grade.to_judge(conn), theses)
+    want = labels(theses, theses)
+    assert got == want, (
+        f"With a graded FAKEA champion thesis and then a graded FAKEB one, to_judge lists {got}; it should list "
+        f"{want}. The queue is every graded champion and challenger thesis with no verdict, whatever its ticker."
+    )
+
+
+def test_a_teacher_thesis_never_waits_even_with_a_grade(tmp_path):
+    from tradingresearch import grade
+
+    conn, (t,), _ = fakea.journal_of(tmp_path, ("champion",))
+    theses = [t, graded_copy(conn, t, "graded_teacher", arm="teacher")]
+    got = labels(grade.to_judge(conn), theses)
+    want = labels(theses[:1], theses)
+    assert got == want, (
+        f"With a graded champion thesis and then a teacher thesis that also has a Grade, to_judge lists {got}; it "
+        f"should list {want}. A teacher thesis is never judged (ADR-003), Grade or not: `tr grade` gives teachers "
+        f"none, but the queue does not lean on that."
     )

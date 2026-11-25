@@ -1,0 +1,14 @@
+why: treats a failing journal read as a refusal: the storage error becomes CannotGrade
+expect: With the journal's reads failing (an injected disk I/O error) p1_judge ended with CannotGrade
+before: RED (independent break pass)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -234,7 +234,7 @@
+     call or a reply with no verdict is CannotGrade after it: the cost is in the run file, nothing is stored."""
+     try:
+         t, g = label.labelable(conn, thesis_id)
+-    except label.Refused as exc:
++    except (label.Refused, sqlite3.Error) as exc:
+         raise CannotGrade(str(exc)) from None
+     analysis = journal.get(conn, Analysis, t.analysis_id)
+     shown = "\n".join(["cited claims (claim_id | tag | text)", *label.cited(analysis, t.evidence), "",

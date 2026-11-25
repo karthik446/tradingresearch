@@ -78,3 +78,33 @@ def test_the_summary_follows_the_thesis_it_judges(tmp_path):
         f"label.summary for that thesis writes {want!r}. The summary measures the closes against the levels this "
         f"thesis's cited claims name, so it is written for the thesis being judged, not copied from the recorded trade."
     )
+
+
+def test_input_shows_every_cited_claim(tmp_path, monkeypatch):
+    import test_week3
+
+    made_analysis, made_thesis = test_week3.analysis, test_week3.thesis
+
+    def analysis(*args, **kwargs):  # the FAKEA analysis with a third claim, an inference from the other two
+        a = made_analysis(*args, **kwargs)
+        third = a.claims[0].model_copy(update={
+            "claim_id": "cl_fakea_both", "tag": "inference", "text": "The two levels meet at {value} USD.",
+            "source_ids": (), "derived_from": ("cl_fakea_high", "cl_fakea_top"), "steps": "high_20 = congestion_high"})
+        return a.model_copy(update={"claims": (*a.claims, third)})
+
+    def thesis(*args, **kwargs):  # its thesis citing all three
+        t = made_thesis(*args, **kwargs)
+        return t.model_copy(update={"evidence": (*t.evidence, "cl_fakea_both")})
+
+    monkeypatch.setattr(test_week3, "analysis", analysis)
+    monkeypatch.setattr(test_week3, "thesis", thesis)
+    got, sent, t = fakea.judge(tmp_path)
+    mine = fakea.block(fakea.prompt_of(sent[0]), "INPUT") if sent else []
+    claims = mine[1:mine.index("")] if "" in mine else []
+    third = "cl_fakea_both | inference | The two levels meet at 100.5 USD. (steps: high_20 = congestion_high)"
+    assert [line.split(" | ")[0] for line in claims] == list(t.evidence) and claims[-1:] == [third], (
+        f"INPUT's claim lines are {claims!r} (p1_judge ended with {fakea.shown(got)}); the thesis cites "
+        f"{list(t.evidence)}, the last shown as {third!r}. The FAKEA analysis here has a third claim, an inference, "
+        f"and the thesis cites all three: every cited claim is shown as label.cited writes it, steps included, or "
+        f"the judge checks the reason against part of its evidence."
+    )

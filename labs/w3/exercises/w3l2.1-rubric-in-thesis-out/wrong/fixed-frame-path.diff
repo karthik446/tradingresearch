@@ -1,0 +1,14 @@
+why: reads the prompt file from evals/rubrics under the working directory, not from RUBRICS
+expect: do not hold the added line(s) ['A line this check added to the start of the prompt file.']
+before: GREEN (outside review)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -237,7 +237,7 @@
+     #   analysis) and the code-written post-trade summary (label.summary), each under its heading line, a blank line
+     #   between them. Never the bars themselves.
+     shown = ""
+-    rubric = (RUBRICS / "p1_judge_prompt.txt").read_text().replace("{rubric}",
++    rubric = (Path("evals/rubrics") / "p1_judge_prompt.txt").read_text().replace("{rubric}",
+                                                                    (RUBRICS / "p1_thesis_quality.md").read_text())
+     # TODO(w3l2.3) bound the reply: ADR-003's JUDGE_MAX_TOKENS, not CallSettings' default.
+     settings = CallSettings(model=JUDGE_MODEL)

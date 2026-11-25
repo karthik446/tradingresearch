@@ -1,0 +1,14 @@
+why: keeps one thesis per analysis, so a second thesis from the same analysis never waits
+expect: to_judge lists ['champion (written 1st)']
+before: RED (independent break pass)
+--- a/src/tradingresearch/grade.py
++++ b/src/tradingresearch/grade.py
+@@ -380,7 +380,7 @@
+     rows = conn.execute("SELECT t.body FROM thesis t JOIN grade g USING (thesis_id) "
+                         "WHERE t.arm IN ('champion', 'challenger') "
+                         "AND NOT EXISTS (SELECT 1 FROM judge_verdict v WHERE v.thesis_id = t.thesis_id) "
+-                        "ORDER BY t.rowid")
++                        "GROUP BY t.analysis_id ORDER BY t.rowid")
+     return [Thesis.model_validate_json(body) for (body,) in rows]
+ 
+ 

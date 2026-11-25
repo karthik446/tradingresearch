@@ -1,0 +1,14 @@
+why: judges on a dry run too: the dry-run flag no longer skips the call
+expect: grade.judge with dry_run=True sent 3 request(s)
+before: GREEN (outside review)
+--- a/src/tradingresearch/grade.py
++++ b/src/tradingresearch/grade.py
+@@ -398,7 +398,7 @@
+     out: list[Judged] = []
+     spent, capped = 0.0, False
+     for t in to_judge(conn):
+-        if dry_run or capped:
++        if capped:
+             out.append(Judged(t, error=f"the ${max_usd:.2f} cap is spent; next run" if capped else None))
+             continue
+         before = run_files(data_dir)

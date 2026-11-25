@@ -43,7 +43,8 @@ def test_a_pass_is_a_score_of_one_stored_with_its_score_record(recorded):
     from tradingresearch import evals
 
     got = recorded.got
-    _, reason = evals.p1_verdict(fakea.load("judge_reply")["choices"][0]["message"]["content"])
+    reply = fakea.load("judge_reply")["choices"][0]["message"]["content"]
+    _, reason = evals.p1_verdict(reply)
     assert isinstance(got, Score), (
         f"On the recorded reply (verdict pass) p1_judge ended with {fakea.shown(got)}; it returns the Score the "
         f"reply earns."
@@ -55,6 +56,11 @@ def test_a_pass_is_a_score_of_one_stored_with_its_score_record(recorded):
     assert got.judge is not None and got.judge.model == evals.JUDGE_MODEL and len(got.judge.calls) == 1, (
         f"The Score's judge note is {fakea.shown(got.judge)}: it names the judge model ({evals.JUDGE_MODEL}) and "
         f"holds the one call, so a score says which model gave it."
+    )
+    text = got.judge.calls[0].text
+    assert text == reply, (
+        f"The judge note's call holds {len(text)} chars of text ({text[:40]!r}), expected the reply as it came back "
+        f"({len(reply)} chars, {reply[:40]!r}...). The note is what a later audit reads of the call."
     )
     row, scores = fakea.stored(recorded.conn, recorded.thesis.thesis_id)
     assert row is not None and len(scores) == 1, (
@@ -75,17 +81,20 @@ def test_a_pass_is_a_score_of_one_stored_with_its_score_record(recorded):
         f"judge's pass is kind 'model', value 1.0, judge_model {evals.JUDGE_MODEL!r}"
     )
     sha = fakea.judge_prompt_sha256()
-    says = (record.grader_version, got.judge.prompt_sha256[:12], (record.judge_prompt_sha256 or "None")[:12])
-    assert says == (evals.P1Judge.version, sha[:12], sha[:12]), (
-        "The ScoreRecord has grader_version {!r}; the Score's judge note gives prompt sha256 {}... and the "
-        "ScoreRecord {}.... A score names the grader version (P1Judge's {!r}) and the judge's prompt "
-        "({}...), so a change to either shows in the scores it gave.".format(*says, evals.P1Judge.version, sha[:12])
+    says = (record.grader_version, got.judge.prompt_sha256, record.judge_prompt_sha256 or "None")
+    assert says == (evals.P1Judge.version, sha, sha), (
+        "The ScoreRecord has grader_version {0!r}; the Score's judge note gives prompt sha256 {1} and the ScoreRecord "
+        "{2}. A score names the grader version (P1Judge's {4!r}) and the judge's whole prompt sha256 ({3}), so a "
+        "change to either shows in the scores it gave.".format(says[0], *(f"{s[:12]}...{s[-8:]}" for s in
+                                                                          (*says[1:], sha)), evals.P1Judge.version)
     )
     spans = fakea.model_spans(recorded.data_dir)
     pointed = [(record.trace_id, span) for span in record.judge_span_ids]
     assert pointed and sorted(pointed) == sorted(spans), (
         f"The ScoreRecord points at {fakea.masked(str(pointed))}; the run file's model spans are "
-        f"{fakea.masked(str(spans))}. A judge's ScoreRecord points at the trace and spans of the call it scores."
+        f"{fakea.masked(str(spans))} (same trace id: {set(t for t, _ in pointed) == set(t for t, _ in spans)}, same "
+        f"span ids: {sorted(s for _, s in pointed) == sorted(s for _, s in spans)}). A judge's ScoreRecord points at "
+        f"the trace and spans of the call it scores."
     )
 
 
@@ -95,16 +104,14 @@ def test_unknown_is_stored_as_fail_with_value_zero(unknown):
     got = unknown.got
     assert isinstance(got, Score), f"On a reply whose verdict is unknown, p1_judge ended with {fakea.shown(got)}"
     assert (got.value, got.answer) == (0.0, "fail") and got.explanation.startswith("unknown:"), (
-        f"On a reply whose verdict is unknown the Score has value {got.value}, answer {got.answer!r}, explanation "
-        f"{got.explanation[:30]!r}...; unknown is an abstain the rubric stores as fail: value 0.0, answer 'fail', the "
-        f"reason starting 'unknown:' (as your p1_verdict reads it)."
+        f"On an unknown reply the Score has value {got.value}, answer {got.answer!r}, explanation "
+        f"{got.explanation[:30]!r}...; unknown is an abstain stored as fail: 0.0, answer 'fail', reason 'unknown:...'."
     )
     row, scores = fakea.stored(unknown.conn, unknown.thesis.thesis_id)
     stored_ok = row is not None and row["verdict"] == "fail" and row["reason"].startswith("unknown:")
     assert stored_ok and len(scores) == 1 and scores[0].value == 0.0, (
-        f"After an unknown the journal holds {held(row, scores)}"
-        f"{'' if not scores else f', value {scores[0].value}'}; it should hold verdict 'fail' with an 'unknown:' "
-        f"reason and one ScoreRecord of value 0.0."
+        f"After an unknown the journal holds {held(row, scores)}, values {[s.value for s in scores]}; expected verdict "
+        f"'fail' with an 'unknown:' reason and one ScoreRecord of value 0.0."
     )
 
 
@@ -132,17 +139,20 @@ def test_a_reply_with_no_verdict_stores_nothing_and_keeps_its_run(no_verdict):
     )
 
 
-@pytest.mark.parametrize("broken", ["add_judge_verdict", "_insert_score"])
-def test_a_failure_between_the_two_writes_leaves_neither(tmp_path, broken):
-    j = fakea.judging(tmp_path, broken=broken)
-    assert isinstance(j.got, sqlite3.OperationalError), (
-        f"With journal.{broken} failing, p1_judge ended with {fakea.shown(j.got)}; the storage error should reach the "
-        f"caller."
+@pytest.mark.parametrize("failing", ["judge_verdict", "score", "journal.add_judge_verdict"])
+def test_a_failure_between_the_two_writes_leaves_neither(tmp_path, failing):
+    j = fakea.judging(tmp_path, failing=failing)
+    if not j.tripped:
+        pytest.skip(f"p1_judge never calls {failing}; the two table cases check the writes however they are made")
+    assert isinstance(j.got, sqlite3.Error) and j.raised, (
+        f"With {j.failure}, p1_judge ended with {fakea.shown(j.got)}; a storage error must reach the caller, raised."
     )
     row, scores = fakea.stored(j.conn, j.thesis.thesis_id)
-    assert row is None and not scores, (
-        f"journal.{broken} failed (injected) and the journal still holds {held(row, scores)}. The verdict and the "
-        f"ScoreRecord it points at land in one transaction: a failure between the two writes leaves neither."
+    committed = fakea.committed(tmp_path, j.thesis.thesis_id)
+    assert row is None and not scores and committed == (None, []), (
+        f"With {j.failure} the journal holds {held(row, scores)}, {held(*committed)} committed, expected neither. "
+        f"The verdict and the ScoreRecord it points at land in one transaction: a failure in either write leaves "
+        f"neither."
     )
 
 

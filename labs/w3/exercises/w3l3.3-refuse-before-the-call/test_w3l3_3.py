@@ -26,7 +26,7 @@ def test_a_thesis_the_judge_may_not_take_is_refused_before_any_call(tmp_path, ar
     j = fakea.judging(tmp_path, arm=arm)
     assert isinstance(j.got, CannotGrade), (
         f"On {WHAT[arm]} p1_judge ended with {fakea.shown(j.got)}, after {len(j.sent)} request(s). A grader that "
-        f"will not grade raises CannotGrade: the one error `tr grade --judge` keeps on a thesis before it goes on."
+        f"will not grade raises CannotGrade: the error that says this thesis cannot be graded, and why."
     )
     assert j.raised, (
         f"p1_judge returned {fakea.shown(j.got)} instead of raising it. A returned CannotGrade is a value: the "
@@ -62,10 +62,36 @@ def test_the_refusal_keeps_its_own_words(tmp_path, arm):
     )
 
 
+def test_a_thesis_the_judge_may_take_is_still_judged(tmp_path):
+    from gigai_core.score import Score
+
+    j = fakea.judging(tmp_path, arm="challenger")
+    assert isinstance(j.got, Score) and j.got.answer == "pass" and len(j.sent) == 1, (
+        f"On a closed, graded challenger thesis p1_judge ended with {fakea.shown(j.got)} after {len(j.sent)} "
+        f"request(s), expected Score 1.0 (pass) after 1. Only label.labelable's refusals are refused: a thesis it "
+        f"accepts goes to the judge, or the refusal costs every thesis its verdict."
+    )
+
+
 def test_a_storage_error_is_not_a_refusal(tmp_path):
-    j = fakea.judging(tmp_path, broken="get")
+    j = fakea.judging(tmp_path, failing="journal.get")
     assert isinstance(j.got, sqlite3.OperationalError) and j.raised, (
         f"With the journal's reads failing (an injected disk I/O error) p1_judge ended with {fakea.shown(j.got)}. "
         f"Only label.Refused is a refusal; a storage error says nothing about the thesis, and it should reach the "
         f"caller as it is, not as CannotGrade (which `tr grade --judge` reports as the thesis's outcome and goes on)."
+    )
+
+
+def test_a_file_error_is_not_a_refusal(tmp_path, monkeypatch):
+    from tradingresearch import label
+
+    def unreadable(*args, **kwargs):
+        raise OSError("disk read failed (injected into label.labelable)")
+
+    monkeypatch.setattr(label, "labelable", unreadable)
+    j = fakea.judging(tmp_path)
+    assert isinstance(j.got, OSError) and j.raised, (
+        f"With label.labelable failing on a file read (an injected OSError) p1_judge ended with {fakea.shown(j.got)}. "
+        f"Only label.Refused is a refusal; any other error says nothing about the thesis and reaches the caller as "
+        f"it is."
     )

@@ -90,10 +90,15 @@ def test_replies_in_no_data_row_follow_the_same_rule():
          ("pass", "no mechanism is unknown: both closes held")),
         ('{"verdict": "fail", "explanation": "unknown sector rotation aside, a close fell under 98"}',
          ("fail", "unknown sector rotation aside, a close fell under 98")),
+        ('{"verdict": "unknown", "explanation": "  no level the reason names\\n"}',
+         ("fail", "unknown:   no level the reason names\n")),
+        ('{"verdict": "unknown", "explanation": "  unknown: no volume in the summary"}',
+         ("fail", "unknown:   unknown: no volume in the summary")),
     ):
         got = read(reply)
         assert got == want, (
-            f"The judge answered {reply!r}; p1_verdict returned {got!r}, expected {want!r}. This reply is in no row of "
-            f"replies.json. Only the verdict unknown is an abstain, whatever words its explanation holds or starts "
-            f"with; an unknown's explanation gets 'unknown: ' in front unless it already starts with exactly 'unknown:'."
+            f"p1_verdict returned {got!r}, expected {want!r}, for the judge's answer {reply!r}. This reply is in no "
+            f"row of replies.json. Only the verdict unknown is an abstain, whatever words its explanation holds or "
+            f"starts with; an unknown's explanation, as written, gets 'unknown: ' in front unless it already starts "
+            f"with exactly 'unknown:'."
         )

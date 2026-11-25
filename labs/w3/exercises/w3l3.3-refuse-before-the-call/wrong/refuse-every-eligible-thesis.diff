@@ -1,0 +1,13 @@
+why: refuses every thesis, also the ones label.labelable accepts
+expect: On a closed, graded challenger thesis p1_judge ended with CannotGrade
+before: GREEN (outside review)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -236,6 +236,7 @@
+         t, g = label.labelable(conn, thesis_id)
+     except label.Refused as exc:
+         raise CannotGrade(str(exc)) from None
++    raise CannotGrade("not eligible")
+     analysis = journal.get(conn, Analysis, t.analysis_id)
+     shown = "\n".join(["cited claims (claim_id | tag | text)", *label.cited(analysis, t.evidence), "",
+                        "post-trade summary (code-written)", label.summary(conn, bars, t, g)])

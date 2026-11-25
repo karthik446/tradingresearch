@@ -71,14 +71,32 @@ def test_the_instructions_follow_the_rubric_file(tmp_path, monkeypatch):
     from tradingresearch import evals
 
     rubrics, added = tmp_path / "rubrics", "A line this check added to the end of the rubric file."
+    frame = "A line this check added to the start of the prompt file."
     shutil.copytree(evals.RUBRICS, rubrics)
     (rubrics / "p1_thesis_quality.md").write_text((evals.RUBRICS / "p1_thesis_quality.md").read_text() + added + "\n")
+    (rubrics / "p1_judge_prompt.txt").write_text(frame + "\n" + (evals.RUBRICS / "p1_judge_prompt.txt").read_text())
     monkeypatch.setattr(evals, "RUBRICS", rubrics)
     got, sent, _ = fakea.judge(tmp_path)
     mine = fakea.rubric_part(fakea.prompt_of(sent[0])) if sent else ""
-    assert added in mine, (
-        f"With RUBRICS pointing at a copy of evals/rubrics whose p1_thesis_quality.md ends with {added!r}, the judge's "
-        f"instructions ({len(mine)} chars; p1_judge ended with {fakea.shown(got)}) do not hold that line. The rubric "
-        f"is read from its file in RUBRICS on every call, so an edit to the rubric changes what the judge is told; a "
-        f"copy of the recorded request's text grades every later trade by the rubric as it was on 2026-11-17."
+    missing = [line for line in (frame, added) if line not in mine]
+    assert not missing, (
+        f"The judge's instructions ({len(mine)} chars; p1_judge ended with {fakea.shown(got)}) do not hold the added "
+        f"line(s) {missing!r}. RUBRICS points at a copy of evals/rubrics whose p1_judge_prompt.txt starts with "
+        f"{frame!r} and whose p1_thesis_quality.md ends with {added!r}. Both files are read from RUBRICS on every "
+        f"call, so an edit to either changes what the judge is told; a copy of the recorded request's text, or a "
+        f"path of its own, grades every later trade by the files as they were on 2026-11-17."
+    )
+
+
+def test_a_long_reason_reaches_the_judge_whole(tmp_path, monkeypatch):
+    reason = " ".join(["The 20-day high at 100.5 gave way and closes held over it; volume rose on each close."] * 15)
+    monkeypatch.setitem(fakea.REWORDED, "reason", reason)
+    got, sent, _ = fakea.judge(tmp_path, reworded=True)
+    mine = fakea.block(fakea.prompt_of(sent[0]), "OUTPUT") if sent else []
+    held = next((line for line in mine if line.startswith("reason: ")), "")
+    assert held == f"reason: {reason}", (
+        f"[BEGIN OUTPUT]'s reason line is {len(held)} chars (p1_judge ended with {fakea.shown(got)}); the thesis's "
+        f"reason is {len(reason)} chars, so the line should be {len('reason: ' + reason)}. The judge lists the "
+        f"mechanisms the whole reason names: a cut reason hides the ones at its end, and the verdict grades a "
+        f"thesis nobody wrote."
     )

@@ -1,0 +1,14 @@
+why: names the error's message instead of the code the run recorded
+expect: it should name the error the run recorded for the call (http_400)
+before: RED (outside-review break pass)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -250,7 +250,7 @@ def p1_judge(conn: sqlite3.Connection, bars: BarSource, thesis_id: str, provider
+     run_path = an.save(run, data_dir)
+     sample = run.samples[0]
+     if sample.outcome != "succeeded":
+-        raise CannotGrade(f"judge call failed: {sample.error.code if sample.error else '?'} (run {run_path})")
++        raise CannotGrade(f"judge call failed: {sample.error.message if sample.error else '?'} (run {run_path})")
+     # TODO(w3l3.2) read the reply with your p1_verdict and return the Score it earns: 1.0 for pass, else 0.0, the
+     #   verdict as its answer, the reason as its explanation, a JudgeNote of the judge model, the prompt's sha256 and
+     #   the calls below. Store a ScoreRecord of it (P1Judge's id and version, kind "model", the judge's trace and span

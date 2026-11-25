@@ -1,5 +1,5 @@
 why: takes a thesis off the list only once it has a pass, so an unknown is paid again
-expect: With the champion's verdict stored (fail, an unknown)
+expect: With the champion's verdict stored (fail, 'unknown: the summary cannot tell')
 before: RED (author)
 --- a/src/tradingresearch/grade.py
 +++ b/src/tradingresearch/grade.py

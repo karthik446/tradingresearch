@@ -1,5 +1,5 @@
 why: writes the verdict before its ScoreRecord, so the verdict's own commit lands alone
-expect: journal._insert_score failed (injected) and the journal still holds
+expect: With every insert into the score table failing the journal holds verdict row 'pass'
 before: RED (author)
 --- a/src/tradingresearch/evals.py
 +++ b/src/tradingresearch/evals.py

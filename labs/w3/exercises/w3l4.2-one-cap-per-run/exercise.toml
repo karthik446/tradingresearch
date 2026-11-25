@@ -2,7 +2,7 @@ id = "w3l4.2"
 title = "One cap for the whole run"
 effect = "Observe's judge runs: under $0.25 the four theses go from not judged yet with nothing sent to pass, no verdict and pass at $0.005163 each and the HTTP 400 at $0; under $0.05 two are judged, the third does not fit and the fourth waits for the next run."
 goal = "Write the loop of grade.judge: judge each waiting thesis once under what is left of one dollar cap for the whole run, keep why a thesis was not judged without stopping the run, and charge each thesis what its run files say it spent."
-what_tested = "grade.judge on closed theses: under $0.045 one request goes out, the second thesis keeps the budget's refusal at $0 and the third waits; under $0.05 two go out; a no-verdict reply, an HTTP 400 and bars that fail stay on their thesis while the rest are tried; costs are $0.005163, $0 and $0.005163."
+what_tested = "grade.judge on closed theses: under $0.045 one request goes out, the second thesis keeps the budget's refusal at $0 and the third is not tried; under $0.05 two go out; a no-verdict reply, an HTTP 400 and failing bars stay on their thesis; a cost is what the run files its call added say, summed; a dry run calls nothing."
 writes = [
   "Each thesis gets p1_judge with the cap minus what the run has spent so far, and its verdict and reason on success.",
   "BudgetExceeded marks the run as capped and keeps the refusal on the thesis; any other exception is kept on the thesis and the loop goes on.",

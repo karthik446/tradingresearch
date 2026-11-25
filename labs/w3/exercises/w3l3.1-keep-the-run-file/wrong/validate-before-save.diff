@@ -1,0 +1,14 @@
+why: reads the verdict before the run file is kept, so an unreadable reply leaves none
+expect: A reply with reasoning and no verdict line left 0 run file(s)
+before: GREEN (outside review)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -247,6 +247,8 @@
+                        expected=None)
+     run = run_eval(Dataset.of(P1Judge.id, [item]), provider, [], settings=settings,
+                    budget=CallBudget(max_usd=max_usd, prices=prices), trace_dir=data_dir / "traces", tag=P1Judge.id)
++    if run.samples[0].outcome == "succeeded":
++        p1_verdict(run.samples[0].output_text)
+     run_path = an.save(run, data_dir)
+     sample = run.samples[0]
+     if sample.outcome != "succeeded":

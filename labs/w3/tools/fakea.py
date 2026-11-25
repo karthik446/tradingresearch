@@ -87,10 +87,10 @@ def replaying(sent: list[dict], replies: tuple[str, ...] = ("recorded",)):
     return provider
 
 
-def offline(monkeypatch, replies: tuple[str, ...] = ("recorded",)) -> list[dict]:
+def offline(monkeypatch, replies: tuple[str, ...] = ("recorded",), looked_up: list[str] | None = None) -> list[dict]:
     """test_week3.offline with these replies: every httpx client answers here, Alpaca's daily FAKEA bars, the recorded
     /models row, and chat request i gets `answer(replies[i])` (the last one again once they run out). Anything else is
-    an error. Returns the chat request bodies sent."""
+    an error. Returns the chat request bodies sent; each /models lookup is added to `looked_up` when given."""
     import test_week3 as w
 
     sent: list[dict] = []
@@ -100,6 +100,8 @@ def offline(monkeypatch, replies: tuple[str, ...] = ("recorded",)) -> list[dict]
         if (url.host, url.path) == ("data.alpaca.markets", "/v2/stocks/bars"):
             return httpx.Response(200, json=w.alpaca_daily(url.params))
         if (url.host, url.path) == ("openrouter.ai", "/api/v1/models"):
+            if looked_up is not None:
+                looked_up.append(str(url))
             return httpx.Response(200, json=load("models"))
         if (url.host, url.path) == ("openrouter.ai", "/api/v1/chat/completions"):
             kind = replies[min(len(sent), len(replies) - 1)]
@@ -116,10 +118,11 @@ def offline(monkeypatch, replies: tuple[str, ...] = ("recorded",)) -> list[dict]
 SESSION = "2026-11-19"  # test_grade's D3: the session journal_of grades on, so `tr grade` output does not move by date
 
 
-def cli(monkeypatch, data_dir: Path, argvs: list[list[str]], replies: tuple[str, ...] = ("recorded",)
-        ) -> list[tuple[str, int]]:
+def cli(monkeypatch, data_dir: Path, argvs: list[list[str]], replies: tuple[str, ...] = ("recorded",),
+        price_lookups: list[int] | None = None) -> list[tuple[str, int]]:
     """`tr <argv>` for each argv in turn on data_dir's journal, with fake keys and `offline`: (what it printed, how
-    many judge requests it sent). An exception from `tr` propagates."""
+    many judge requests it sent). How many /models lookups each argv made is added to `price_lookups` when given.
+    An exception from `tr` propagates."""
     import contextlib
     import io
 
@@ -130,13 +133,16 @@ def cli(monkeypatch, data_dir: Path, argvs: list[list[str]], replies: tuple[str,
                     "APCA_API_SECRET_KEY=not-a-real-secret\n")
     monkeypatch.setenv("TR_DATA_DIR", str(data_dir))
     monkeypatch.setenv("TR_ENV_FILE", str(keys))
-    sent = offline(monkeypatch, replies)
+    looked_up: list[str] = []
+    sent = offline(monkeypatch, replies, looked_up)
     out = []
     for argv in argvs:
-        before, printed = len(sent), io.StringIO()
+        before, looked, printed = len(sent), len(looked_up), io.StringIO()
         with contextlib.redirect_stdout(printed):
             main(argv)
         out.append((printed.getvalue(), len(sent) - before))
+        if price_lookups is not None:
+            price_lookups.append(len(looked_up) - looked)
     return out
 
 
@@ -214,14 +220,18 @@ class Judging:
     conn: sqlite3.Connection  # the journal p1_judge wrote through, still open (uncommitted rows show here)
     data_dir: Path
     raised: bool = False  # got was raised, not returned (a returned exception is a value no caller sees as an error)
+    failure: str = ""  # what `failing` made fail, in words ("" when nothing was made to fail)
+    tripped: bool = False  # that failure was met: the function was called, or the table's trigger was in place
 
 
 def judging(data_dir: Path, *, arm: str = "champion", replies: tuple[str, ...] = ("recorded",),
-            max_usd: float = MAX_USD, reworded: bool = False, broken: str | None = None) -> Judging:
+            max_usd: float = MAX_USD, reworded: bool = False, failing: str | None = None) -> Judging:
     """p1_judge on one FAKEA thesis: the closed, graded one (arm "champion", "challenger"), the closed teacher thesis
     (no Grade), or "never_entered" (PROPOSED, never filled). Whatever it returns or raises is kept, so a check can say
-    what happened instead of crashing. `broken` names a journal function that raises sqlite3.OperationalError while
-    p1_judge runs (after the trade is built, which writes through the journal too)."""
+    what happened instead of crashing. `failing` makes the journal fail while p1_judge runs (after the trade is built,
+    which writes through the journal too): "journal.<function>" raises sqlite3.OperationalError whenever that function
+    is called; a table name makes every insert into that table raise sqlite3.IntegrityError (a temporary trigger),
+    however the code writes it."""
     import test_week3 as w
     from tradingresearch import evals, journal
 
@@ -231,22 +241,34 @@ def judging(data_dir: Path, *, arm: str = "champion", replies: tuple[str, ...] =
     else:
         conn, t, bars = closed_trade(data_dir, arm, reworded=reworded)
     sent: list[dict] = []
-    kept = getattr(journal, broken) if broken else None
+    name = failing.removeprefix("journal.") if failing and failing.startswith("journal.") else None
+    kept = getattr(journal, name) if name else None
+    tripped: list[bool] = []
 
     def fails(*args, **kwargs):
-        raise sqlite3.OperationalError(f"disk I/O error (injected into journal.{broken})")
+        tripped.append(True)
+        raise sqlite3.OperationalError(f"disk I/O error (injected into journal.{name})")
 
-    if broken:
-        setattr(journal, broken, fails)
+    if name:
+        setattr(journal, name, fails)
+        failure = f"journal.{name} raising"
+    elif failing:
+        conn.execute(f"CREATE TEMP TRIGGER labs_failing BEFORE INSERT ON {failing} "
+                     f"BEGIN SELECT RAISE(ABORT, 'injected: no {failing} row can be written'); END")
+        failure, tripped = f"every insert into the {failing} table failing", [True]
+    else:
+        failure = ""
     try:
         got, raised = evals.p1_judge(conn, bars, t.thesis_id, replaying(sent, replies), prices=prices(),
                                      data_dir=data_dir, max_usd=max_usd), False
     except Exception as exc:  # shown as a result
         got, raised = exc, True
     finally:
-        if broken:
-            setattr(journal, broken, kept)
-    return Judging(got, sent, t, conn, data_dir, raised)
+        if name:
+            setattr(journal, name, kept)
+        elif failing:
+            conn.execute("DROP TRIGGER labs_failing")
+    return Judging(got, sent, t, conn, data_dir, raised, failure, bool(tripped))
 
 
 def judge(data_dir: Path, *, max_usd: float = MAX_USD, reworded: bool = False) -> tuple[object, list[dict], object]:
@@ -275,6 +297,13 @@ def stored(conn: sqlite3.Connection, thesis_id: str) -> tuple[dict | None, list]
 
     return (journal.judge_verdict(conn, thesis_id),
             [r for r in journal.scores_for(conn, thesis_id) if r.grader_id == "p1_judge"])
+
+
+def committed(data_dir: Path, thesis_id: str) -> tuple[dict | None, list]:
+    """`stored`, read through a second connection to data_dir/journal.db: only what was committed."""
+    from tradingresearch import journal
+
+    return stored(journal.connect(data_dir / "journal.db"), thesis_id)
 
 
 def run_files(data_dir: Path) -> list[Path]:

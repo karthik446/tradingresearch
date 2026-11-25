@@ -1,13 +1,14 @@
 # Labs
 
-Labs are optional hands-on practice for the [AI engineering track](https://scout.edgelab.one/learn/ai-engineering/). The chapters stand alone: you can read a week without doing its labs. Each week's labs are short exercises on this repo. An exercise is a change to one or two files, checked by pytest on your machine. It costs $0: no key, no model call, no network. `tr lab` runs the loop: it installs the exercise's starting file, runs the check, unlocks hints, and commits each green exercise.
+Labs are optional hands-on practice for the [AI engineering track](https://scout.edgelab.one/learn/ai-engineering/). The chapters stand alone: you can read a week without doing its labs. Each week's labs are short exercises on this repo. An exercise is a change to one or two files, checked by pytest on your machine. It costs $0: no key, no model call, no network (from week 2 an offline guard enforces this in the checks; it catches mistakes and is not a sandbox, see [Hints and the solution](#hints-and-the-solution)). `tr lab` runs the loop: it installs the exercise's starting file, runs the check, unlocks hints, and commits each green exercise.
 
 | Week | Labs | Pages |
 |---|---|---|
 | 1 | w1l1 claim checks (4 exercises), w1l2 open and axial coding (4), w1l3 a code grader (6), w1l4 a paired experiment (5) | [labs/w1/pages/index.md](w1/pages/index.md) |
 | 2 | w2l1 P2 evidence (4 exercises), w2l2 P3 invalidation (2), w2l3 P4 levels (4), w2l4 graders and the draft judge (3) | [labs/w2/pages/index.md](w2/pages/index.md) |
+| 3 | w3l1 reading the verdict (3 exercises), w3l2 the judge prompt and the one call (3), w3l3 keeping what the judge said (3), w3l4 judging in tr grade (3) | [labs/w3/pages/index.md](w3/pages/index.md) |
 
-Weeks 1 and 2 are here; the labs for weeks 3-9 are added week by week.
+Weeks 1 to 3 are here; the labs for weeks 4-9 follow, week by week.
 
 ## Start
 
@@ -73,6 +74,8 @@ The last exercise of a lab also runs the repo's own suite and wants it green. A 
 
 The labs are an honor system: they are for you. They run on your machine against files you can edit, and `tr lab` does not verify that the tests, the exercise metadata or the recorded data under `labs/` are the ones the course shipped: a rewritten test or a `check` of `python -c pass` will turn an exercise green. A green only means something if you leave those files alone. `tr lab next` lists files outside the exercise's `touches`, and `git diff` against the branch you started from shows any change to course files. The solution diffs are in the repo for the same reason: opening them early costs you the exercise, not anyone else.
 
+The offline guard is part of the same honor system. From week 2 the checks install it (`labs/<week>/tools/offline.py`) before your code is imported: socket connections, DNS, subprocesses and the real httpx transports raise, and a test whose code tried one fails. It catches an accidental network call; it is not a sandbox. C extension modules, `ctypes` and libraries that reach the network outside the entry points it patches are not covered, and code that hides or clears the guard's record will pass.
+
 ## Your work and git
 
 - `start` works on a branch `lab`, so the branch you started from (`labs`) is untouched.
@@ -101,6 +104,6 @@ The labs are an honor system: they are for you. They run on your machine against
 
 ## For authors
 
-The layout of a week and how to re-run the proof: [labs/w1/README.md](w1/README.md) for week 1, [labs/w2/README.md](w2/README.md) for week 2; the proof tool is `labs/tools/prove.py <week>`. `tr lab`'s own tests: `tests/test_lab.py` (plain `pytest`, no network). The runner: `src/tradingresearch/lab.py`, reached through `src/tradingresearch/labmain.py`.
+The layout of a week and how to re-run the proof: [labs/w1/README.md](w1/README.md) for week 1, [labs/w2/README.md](w2/README.md) for week 2, [labs/w3/README.md](w3/README.md) for week 3; the proof tool is `labs/tools/prove.py <week>`. `tr lab`'s own tests: `tests/test_lab.py` (plain `pytest`, no network). The runner: `src/tradingresearch/lab.py`, reached through `src/tradingresearch/labmain.py`.
 
 The output the lab pages show (each exercise's first FAIL and its PASS, and a walked-through session) is captured from real `tr lab` runs by `labs/tools/capture.py <week> --write` into `labs/<week>/exercises/*/expected_output/` and `labs/<week>/session/`; `prove.py` fails when a captured file no longer matches what `tr lab` prints.

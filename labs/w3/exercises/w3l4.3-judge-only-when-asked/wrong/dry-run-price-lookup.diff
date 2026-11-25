@@ -1,0 +1,14 @@
+why: looks up model prices on a dry run, which calls no model
+expect: `tr grade --judge --dry-run`, then `--judge` twice, looked up model prices [1,
+before: GREEN (outside review)
+--- a/src/tradingresearch/commands/grade.py
++++ b/src/tradingresearch/commands/grade.py
+@@ -28,6 +28,8 @@
+ def judge_lines(conn, args, cfg) -> list[str]:
+     """`--judge`: the key, prices and bars are read only when a thesis waits and this is not a dry run."""
+     cap = args.judge_max_usd
++    if args.dry_run:
++        openrouter.prices([evals.JUDGE_MODEL])
+     if args.dry_run or not grade.to_judge(conn):
+         judged = grade.judge(conn, None, None, prices={}, data_dir=cfg.data_dir, max_usd=cap, dry_run=args.dry_run)
+         return grade.render_judged(judged, dry_run=args.dry_run, max_usd=cap)

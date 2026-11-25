@@ -10,6 +10,7 @@ on made-up outcomes and costs.
 import re
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools"))
 import fakea  # noqa: E402
@@ -110,4 +111,53 @@ def test_tr_grade_grades_before_it_judges(tmp_path, monkeypatch):
     assert sent == 2 and events[:1] == ["grade"], (
         f"`tr grade --judge` did, in order: {events}. It grades first: a thesis that closes today gets its Grade in "
         f"this run, and the judge, which reads only graded theses, takes it in the same run instead of the next one."
+    )
+
+
+def test_a_run_that_calls_nothing_reads_no_prices(tmp_path, monkeypatch):
+    grade, _ = journal(tmp_path)
+    lookups: list[int] = []
+    fakea.cli(monkeypatch, tmp_path, [[*grade, "--judge", "--dry-run"], [*grade, "--judge"], [*grade, "--judge"]],
+              price_lookups=lookups)
+    assert lookups[0] == 0 and lookups[2] == 0, (
+        f"`tr grade --judge --dry-run`, then `--judge` twice, looked up model prices {lookups} time(s). A run that "
+        f"calls no model (a dry run, or the third run, with nothing left to judge) reads no prices: it needs no "
+        f"network and costs nothing."
+    )
+
+
+def test_the_cap_given_on_the_command_line_is_the_cap(tmp_path, monkeypatch):
+    grade, _ = journal(tmp_path)
+    (out, sent), = fakea.cli(monkeypatch, tmp_path, [[*grade, "--judge", "--judge-max-usd", "0.001"]])
+    assert sent == 0, (
+        f"`tr grade --judge --judge-max-usd 0.001` sent {sent} request(s) and printed: {shown(out)}. One call's worst "
+        f"case is about $0.043, so a $0.001 cap covers none: the cap is the one given, not the default $0.25."
+    )
+
+
+def test_a_dry_run_needs_no_key(tmp_path):
+    from tradingresearch.commands.grade import judge_lines
+
+    conn, _, _ = fakea.journal_of(tmp_path, ("champion",))
+    args, cfg = SimpleNamespace(dry_run=True, judge_max_usd=0.25), SimpleNamespace(openrouter_key=None, data_dir=tmp_path)
+    try:
+        out = "\n".join(judge_lines(conn, args, cfg))
+    except (Exception, SystemExit) as exc:  # `require` exits when a key is missing
+        out = f"raised {fakea.shown(exc)}"
+    assert "would judge 1" in out, (
+        f"With no OpenRouter key, judge_lines for `tr grade --judge --dry-run` gave {fakea.masked(out)[:200]!r}. A dry "
+        f"run calls nothing, so it needs no key: it lists what the judge would take."
+    )
+
+
+def test_a_fail_verdict_prints_as_fail(tmp_path):
+    from tradingresearch import grade
+
+    conn, (champion,), _ = fakea.journal_of(tmp_path, ("champion",))
+    conn.close()
+    judged = [grade.Judged(champion, verdict="fail", reason="The cited level broke.", cost_usd=0.0001)]
+    line = grade.render_judged(judged, dry_run=False, max_usd=0.25)[0]
+    assert "P1 fail" in line and "The cited level broke." in line, (
+        f"render_judged printed {fakea.masked(line)!r} for a fail verdict with the reason 'The cited level broke.'. "
+        f"Each line shows the verdict the judge gave, fail as well as pass, and its reason."
     )

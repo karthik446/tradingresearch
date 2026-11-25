@@ -1,0 +1,14 @@
+why: queues only the ticker of the first thesis written, as if a journal held one ticker
+expect: With a graded FAKEA champion thesis and then a graded FAKEB one
+before: RED (independent break pass)
+--- a/src/tradingresearch/grade.py
++++ b/src/tradingresearch/grade.py
+@@ -378,7 +378,7 @@
+ def to_judge(conn) -> list[Thesis]:
+     """Graded champion and challenger theses with no judge verdict yet, oldest first."""
+     rows = conn.execute("SELECT t.body FROM thesis t JOIN grade g USING (thesis_id) "
+-                        "WHERE t.arm IN ('champion', 'challenger') "
++                        "WHERE t.arm IN ('champion', 'challenger') AND t.ticker = (SELECT ticker FROM thesis ORDER BY rowid LIMIT 1) "
+                         "AND NOT EXISTS (SELECT 1 FROM judge_verdict v WHERE v.thesis_id = t.thesis_id) "
+                         "ORDER BY t.rowid")
+     return [Thesis.model_validate_json(body) for (body,) in rows]

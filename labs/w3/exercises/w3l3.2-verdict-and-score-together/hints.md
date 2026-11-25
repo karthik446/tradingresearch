@@ -2,13 +2,13 @@
 
 ## Hint 1
 
-Your p1_verdict already does the reading, unknown and no-verdict included: let its CannotGrade pass through. Every field
-the Score and the ScoreRecord need is in scope (the judge, the sample, the spans, P1Judge, JUDGE_MODEL), and evals.py
-already imports `new_id` for a fresh score id ("sc" prefix).
+Your p1_verdict already reads the reply, unknown and no-verdict included: let its CannotGrade reach the caller. Every
+field the Score and its ScoreRecord need is already in scope in p1_judge: the judge, the sample and its spans, P1Judge,
+JUDGE_MODEL. Each score gets a fresh id (`new_id`), and the reply text the Score keeps is the reply as it came back.
 
 ## Hint 2
 
-A sqlite3 connection is a context manager: inside `with conn:` everything commits together at the end, or rolls back
-if anything raises. `journal._insert_score` does not commit on its own; `add_judge_verdict` opens its own `with conn:`,
-which commits when it ends: what was written before it lands with it, what comes after it is on its own. The verdict
-row names the score id, too.
+The verdict and the ScoreRecord are one fact: both rows land or neither does. Look at which journal writes commit on
+their own and which do not. A write that commits on its own ends a transaction: whatever was written before it lands
+with it, whatever comes after it is on its own. Counterexample: the second write fails after the first committed, and
+the journal holds a verdict with no score, a thesis w3l4.1 never queues again. The verdict row names the score id, too.

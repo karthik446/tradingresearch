@@ -1,5 +1,5 @@
 why: scores an unknown 0.5, between pass and fail
-expect: On a reply whose verdict is unknown the Score has value 0.5
+expect: On an unknown reply the Score has value 0.5
 before: RED (author)
 --- a/src/tradingresearch/evals.py
 +++ b/src/tradingresearch/evals.py

@@ -48,6 +48,27 @@ def test_the_call_lands_in_one_run_file_with_its_cost(recorded):
     )
 
 
+def test_the_run_file_holds_the_call_not_only_its_header(recorded):
+    files, spans = fakea.run_files(recorded.data_dir), fakea.model_spans(recorded.data_dir)
+    lines = len(files[0].read_text().splitlines()) if files else 0
+    assert files and spans, (
+        f"The run file holds {lines} line(s) and {len(spans)} model span(s), expected the header and the sample with "
+        f"the judge's model_call span (p1_judge ended with {fakea.shown(recorded.got)}). The judge's ScoreRecord points "
+        f"at that span (w3l3.2), and the sample is the only record of what the judge was sent and answered: a file "
+        f"with its header alone keeps the cost and loses the call."
+    )
+
+
+def test_a_reply_with_no_verdict_still_leaves_its_run_file(tmp_path):
+    j = fakea.judging(tmp_path, replies=("no_verdict",))
+    files = fakea.run_files(j.data_dir)
+    assert len(files) == 1, (
+        f"A reply with reasoning and no verdict line left {len(files)} run file(s) under data_dir/runs, expected 1 "
+        f"(p1_judge ended with {fakea.shown(j.got)}). The reply came back and was paid for whatever it says: the run "
+        f"file is kept before anything reads the reply, so a reply that cannot be read is still on record."
+    )
+
+
 def test_a_failed_call_is_cannot_grade_naming_its_run_file(failed):
     from tradingresearch.evals import CannotGrade
 
@@ -92,4 +113,9 @@ def test_cannot_grade_names_the_code_this_run_recorded(tmp_path):
     assert "insufficient_credits" in str(j.got), (
         f"On an HTTP 402 (out of credits) CannotGrade says {fakea.shown(j.got)!r}. It should name the error code this "
         f"run recorded for the call (insufficient_credits, in its run file), not a code written into the message."
+    )
+    verdict, scores = fakea.stored(j.conn, j.thesis.thesis_id)
+    assert verdict is None and not scores, (
+        f"After the HTTP 402 the journal holds verdict {verdict and verdict['verdict']!r} and {len(scores)} p1_judge "
+        f"ScoreRecord(s), expected none. Out of credits is an outage, not a judgement of the thesis."
     )

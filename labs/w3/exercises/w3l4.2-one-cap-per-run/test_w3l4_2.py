@@ -7,9 +7,11 @@ The budget's estimate of one call's worst case is about $0.043 (4000 output toke
 $0.005163, as its run file says.
 """
 
+import shutil
 import sys
 from pathlib import Path
 
+import httpx
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools"))
@@ -73,7 +75,7 @@ def test_one_cap_covers_the_whole_run(tmp_path):
         f"The second thesis: {outcome(second)}; the budget refused its call (BudgetExceeded: its worst-case estimate "
         f"does not fit what is left), and its outcome should say so."
     )
-    assert third.verdict is None and "next run" in str(third.error) and third.cost_usd == 0, (
+    assert third.verdict is None and third.error and third.cost_usd == 0, (
         f"The third thesis: {outcome(third)}. Once the cap cannot cover a call, every later thesis waits for the next "
         f"run without trying (the capped branch of the loop)."
     )
@@ -141,4 +143,75 @@ def test_a_refused_call_costs_nothing(tmp_path):
     assert second.cost_usd == 0, (
         f"The second thesis: {outcome(second)}. The budget refused its call, so it sent nothing and added no run "
         f"file: its cost is $0. A thesis's cost is what the run files its own call added say, not the newest file's."
+    )
+
+
+def test_after_the_cap_refuses_a_call_no_later_thesis_is_tried(tmp_path, monkeypatch):
+    from tradingresearch import evals
+
+    judge, tried = evals.p1_judge, []
+
+    def counted(*args, **kwargs):
+        tried.append(args[2])
+        return judge(*args, **kwargs)
+
+    monkeypatch.setattr(evals, "p1_judge", counted)
+    out, _, _ = run(tmp_path, ("recorded",), max_usd=0.045)
+    assert len(tried) == 2, (
+        f"Under a $0.045 cap grade.judge called p1_judge {len(tried)} time(s): {[outcome(j) for j in out]}. Once the "
+        f"budget refuses a call (the second thesis), every later thesis waits for the next run without trying: a "
+        f"later, shorter prompt could fit what is left and jump the queue."
+    )
+
+
+def test_the_cost_is_what_the_run_file_says(tmp_path, monkeypatch):
+    recorded = fakea.answer
+
+    def dearer(kind: str = "recorded") -> httpx.Response:  # the same reply, priced at $0.012345 by the provider
+        reply = recorded(kind)
+        body = reply.json()
+        if reply.status_code == 200:
+            body["usage"]["cost"] = 0.012345
+        return httpx.Response(reply.status_code, json=body)
+
+    monkeypatch.setattr(fakea, "answer", dearer)
+    out, _, _ = run(tmp_path, ("recorded",), max_usd=0.25)
+    costs = [round(j.cost_usd, 6) for j in out]
+    assert costs == [0.012345] * 3, (
+        f"With every reply costing $0.012345, the three costs are {costs}; the run files say [0.012345] * 3. A "
+        f"thesis's cost is what its call's run file says was spent (trace.header), not a fixed figure."
+    )
+
+
+def test_every_run_file_a_call_adds_is_counted(tmp_path, monkeypatch):
+    from tradingresearch import evals
+
+    judge = evals.p1_judge
+
+    def filed_twice(*args, **kwargs):  # the call leaves two run files, each saying what one reply cost
+        before = set(fakea.run_files(tmp_path))
+        try:
+            return judge(*args, **kwargs)
+        finally:
+            for path in set(fakea.run_files(tmp_path)) - before:
+                shutil.copyfile(path, path.with_name(f"run_copy_{path.name}"))
+
+    monkeypatch.setattr(evals, "p1_judge", filed_twice)
+    out, _, _ = run(tmp_path, ("recorded",), max_usd=0.25)
+    assert round(out[0].cost_usd, 6) == round(2 * PAID, 6), (
+        f"The first call added two run files, each saying ${PAID}; its thesis shows {outcome(out[0])}. A call's "
+        f"cost is what every run file it added says, summed: ${2 * PAID:.6f}."
+    )
+
+
+def test_a_dry_run_calls_nothing(tmp_path):
+    from tradingresearch import grade
+
+    conn, _, bars = fakea.journal_of(tmp_path, ARMS)
+    sent: list[dict] = []
+    out = grade.judge(conn, bars, fakea.replaying(sent), prices=fakea.prices(), data_dir=tmp_path, dry_run=True)
+    files = fakea.run_files(tmp_path)
+    assert (len(sent), len(files), [j.verdict for j in out]) == (0, 0, [None] * 3), (
+        f"grade.judge with dry_run=True sent {len(sent)} request(s), wrote {len(files)} run file(s) and gave "
+        f"{[outcome(j) for j in out]}. A dry run lists every waiting thesis and calls nothing."
     )

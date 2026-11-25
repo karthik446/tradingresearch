@@ -1,5 +1,5 @@
 why: copies the instructions out of the recorded request, so an edit to the rubric file never reaches the judge
-expect: do not hold that line
+expect: do not hold the added line(s)
 before: GREEN (independent reader)
 --- a/src/tradingresearch/evals.py
 +++ b/src/tradingresearch/evals.py

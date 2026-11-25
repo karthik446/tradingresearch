@@ -1,0 +1,16 @@
+why: prices the call from the judge model's prices written into the code, not the table it is given
+expect: At twice the recorded prices, p1_judge sent 1 request(s) under max_usd=0.1 (it ended with
+before: GREEN (outside-review break pass)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -243,7 +243,9 @@ def p1_judge(conn: sqlite3.Connection, bars: BarSource, thesis_id: str, provider
+     item = DatasetItem(id=t.thesis_id, cluster_id=t.ticker, prompt=judge.render(judged_sample(t, shown), None),
+                        expected=None)
+     run = run_eval(Dataset.of(P1Judge.id, [item]), provider, [], settings=settings,
+-                   budget=CallBudget(max_usd=max_usd, prices=prices), trace_dir=data_dir / "traces", tag=P1Judge.id)
++                   budget=CallBudget(max_usd=max_usd, prices={JUDGE_MODEL: Price(
++                       model=JUDGE_MODEL, prompt_usd_per_token=0.000002, completion_usd_per_token=0.00001,
++                       fetched_at=datetime(2026, 11, 17, tzinfo=UTC), source="openrouter")}), trace_dir=data_dir / "traces", tag=P1Judge.id)
+     raise NotImplementedError(f"part B (lab w3l3): save run {run.record.run_id}, read its verdict, store it with its "
+                               "ScoreRecord, return the Score")
+ 

@@ -1,5 +1,5 @@
 why: looks each reply up in labs/w3/data/replies.json instead of turning unknown into an abstain, so an unknown in no row stays unknown
-expect: The judge answered '{"verdict": "unknown", "explanation": "unknown whether
+expect: for the judge's answer '{"verdict": "unknown", "explanation": "unknown whether
 before: GREEN (independent reader)
 --- a/src/tradingresearch/evals.py
 +++ b/src/tradingresearch/evals.py

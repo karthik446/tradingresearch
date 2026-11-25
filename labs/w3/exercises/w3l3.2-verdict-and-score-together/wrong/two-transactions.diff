@@ -1,5 +1,5 @@
 why: commits the ScoreRecord on its own before writing the verdict
-expect: journal.add_judge_verdict failed (injected) and the journal still holds
+expect: With every insert into the judge_verdict table failing the journal holds no verdict row and 1 p1_judge
 before: RED (author)
 --- a/src/tradingresearch/evals.py
 +++ b/src/tradingresearch/evals.py

@@ -140,8 +140,8 @@ STORE_CASES = (  # (row label, fakea.judging arguments)
     ("http_400", {"replies": ("failed",)}),
     ("teacher", {"arm": "teacher"}),
     ("never_entered", {"arm": "never_entered"}),
-    ("verdict write fails", {"broken": "add_judge_verdict"}),
-    ("score write fails", {"broken": "_insert_score"}),
+    ("verdict write fails", {"failing": "judge_verdict"}),
+    ("score write fails", {"failing": "score"}),
 )
 
 

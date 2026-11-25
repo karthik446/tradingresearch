@@ -65,15 +65,35 @@ def test_a_cap_below_the_worst_case_refuses_before_sending(tmp_path):
     )
 
 
-@pytest.mark.parametrize("cap, sends", [(0.0435, True), (0.0425, False), (0.04297, True), (0.04296, False)])
-def test_the_cap_is_the_callers_to_a_thousandth_of_a_cent(cap, sends, tmp_path):
+@pytest.mark.parametrize("cap, sends", [(0.0435, True), (0.0425, False), (0.04297, True), (0.04296, False),
+                                        (WORST_CASE, True), (0.042963, False)])
+def test_the_cap_is_the_callers_to_the_microdollar(cap, sends, tmp_path):
     got, sent, _ = fakea.judge(tmp_path, max_usd=cap)
+    where = "just above" if cap > WORST_CASE else "exactly" if cap == WORST_CASE else "just below"
     assert bool(sent) == sends, (
-        f"With max_usd={cap}, just {'above' if sends else 'below'} one call's worst case as the budget estimates it "
+        f"With max_usd={cap}, {where} one call's worst case as the budget estimates it "
         f"(${WORST_CASE}), p1_judge sent {len(sent)} request(s) and ended with {fakea.shown(got)}; it should "
         f"{'send its one call' if sends else 'refuse before sending'}. The cap is the money the caller allows, as "
         f"given: tr grade passes what is left of its own budget, so a margin, a rounding or extra slack on top moves "
         f"the line the caller drew."
+    )
+
+
+def test_the_cap_is_the_callers_whatever_the_prices(tmp_path, monkeypatch):
+    recorded = fakea.prices()
+    doubled = {model: p.model_copy(update={"prompt_usd_per_token": p.prompt_usd_per_token * 2,
+                                           "completion_usd_per_token": p.completion_usd_per_token * 2})
+               for model, p in recorded.items()}
+    monkeypatch.setattr(fakea, "prices", lambda: doubled)
+    (tmp_path / "high").mkdir(), (tmp_path / "low").mkdir()
+    got, sent, _ = fakea.judge(tmp_path / "high", max_usd=0.1)
+    low, low_sent, _ = fakea.judge(tmp_path / "low", max_usd=0.05)
+    assert (len(sent), len(low_sent)) == (1, 0), (
+        f"At twice the recorded prices, p1_judge sent {len(sent)} request(s) under max_usd=0.1 (it ended with "
+        f"{fakea.shown(got)}) and {len(low_sent)} under max_usd=0.05 (it ended with {fakea.shown(low)}); it should "
+        f"send 1 and 0. Doubled prices double the worst case to about $0.086: over $0.05, under $0.10. The cap is the "
+        f"caller's and the prices are the table p1_judge is given: a ceiling of the code's own refuses calls the "
+        f"caller paid for, and prices of its own let through calls the caller cannot cover."
     )
 
 

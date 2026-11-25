@@ -1,0 +1,14 @@
+why: never lets the cap go below the default, as if a smaller cap were a typo
+expect: `tr grade --judge --judge-max-usd 0.001` sent 2 request(s)
+before: RED (independent break pass)
+--- a/src/tradingresearch/commands/grade.py
++++ b/src/tradingresearch/commands/grade.py
+@@ -27,7 +27,7 @@
+ 
+ def judge_lines(conn, args, cfg) -> list[str]:
+     """`--judge`: the key, prices and bars are read only when a thesis waits and this is not a dry run."""
+-    cap = args.judge_max_usd
++    cap = max(args.judge_max_usd, grade.JUDGE_MAX_USD)
+     if args.dry_run or not grade.to_judge(conn):
+         judged = grade.judge(conn, None, None, prices={}, data_dir=cfg.data_dir, max_usd=cap, dry_run=args.dry_run)
+         return grade.render_judged(judged, dry_run=args.dry_run, max_usd=cap)

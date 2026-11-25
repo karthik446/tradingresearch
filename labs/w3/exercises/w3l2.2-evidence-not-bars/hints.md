@@ -9,5 +9,6 @@ the journal by the thesis's analysis id), and the post-trade summary from the gr
 ## Hint 2
 
 Two groups, each under its own heading line, with one empty line between them; the heading texts are in the INPUT block
-of labs/w3/data/judge_request.json. Show the claims the thesis cites, not every claim of its analysis: the check judges a
-second thesis that cites only one of the two.
+of labs/w3/data/judge_request.json. Show the claims the thesis cites, not every claim of its analysis, and all of them
+however many: the check judges a second thesis that cites only one of the two, and a third that cites three, the last an
+inference whose steps label.py writes too.

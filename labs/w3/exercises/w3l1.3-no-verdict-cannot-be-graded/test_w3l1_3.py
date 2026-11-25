@@ -26,9 +26,11 @@ def row(rid: str) -> dict:
 
 def read(reply: str) -> object:
     try:
-        return p1_verdict(reply)
+        got = p1_verdict(reply)
     except Exception as exc:  # shown as a result: CannotGrade is the right one here, anything else is a bug
         return exc
+    # A returned exception is a value: no caller sees it as an error, so it is shown as text, not as the exception.
+    return f"{type(got).__name__}({got}) returned, not raised" if isinstance(got, Exception) else got
 
 
 def shown(got: object) -> str:
@@ -91,12 +93,16 @@ def test_readable_replies_still_read():
 def test_replies_in_no_data_row_follow_the_same_rule():
     # Built here, so they are in no row of replies.json: exactly pass, fail or unknown, or CannotGrade.
     for reply in ('{"verdict": "PASS", "explanation": "closes held over 98"}', 'Verdict: pass. Closes held.',
-                  '{"verdict": "pass.", "explanation": "closes held over 98"}'):
+                  '{"verdict": "pass.", "explanation": "closes held over 98"}',
+                  '{"verdict": true, "explanation": "closes held over 98"}',
+                  '{"verdict": false, "explanation": "a close fell under 98"}',
+                  '{"verdict": {"value": "pass"}, "explanation": "closes held over 98"}'):
         got = read(reply)
         assert isinstance(got, CannotGrade), (
-            f"{reply!r} is in no row of replies.json and holds no verdict the rubric defines; p1_verdict returned "
-            f"{shown(got)}. The rule decides, not a list of known replies: a last JSON object whose verdict is not "
-            f"exactly pass, fail or unknown (or no JSON at all) is CannotGrade."
+            f"p1_verdict returned {shown(got)} for {reply!r}, expected CannotGrade. That reply is in no row of "
+            f"replies.json and holds no verdict the rubric defines. The rule decides, not a list of known replies: a "
+            f"last JSON object whose verdict is not the string pass, fail or unknown (JSON true or false and an object "
+            f"holding a verdict are not), or no JSON at all, is CannotGrade."
         )
     reply = '{"verdict": "fail", "explanation": "a close at 97.9 fell under 98"}'
     got = read(reply)

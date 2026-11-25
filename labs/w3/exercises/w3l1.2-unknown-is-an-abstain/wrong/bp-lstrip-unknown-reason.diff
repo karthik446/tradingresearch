@@ -1,0 +1,14 @@
+why: drops the spaces at the start of an unknown's explanation before the prefix
+expect: expected ('fail', 'unknown:   no level the reason names\n')
+before: RED (outside-review break pass)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -212,7 +212,7 @@ def p1_verdict(reply: str) -> tuple[str, str]:
+     explanation = last_json_object(reply, "explanation")
+     reason = explanation if isinstance(explanation, str) else ""
+     if verdict == "unknown":
+-        return "fail", reason if reason.startswith("unknown:") else f"unknown: {reason}"
++        return "fail", reason if reason.startswith("unknown:") else f"unknown: {reason.lstrip()}"
+     return verdict, reason
+ 
+ 

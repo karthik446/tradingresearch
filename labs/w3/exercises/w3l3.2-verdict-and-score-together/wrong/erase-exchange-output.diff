@@ -1,0 +1,14 @@
+why: keeps the judge's call in the note with its reply text emptied
+expect: The judge note's call holds 0 chars of text
+before: GREEN (outside review)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -255,7 +255,7 @@
+     spans = sample.model_spans
+     calls = tuple(ModelExchange(**{name: getattr(span, name) for name in ModelExchange.model_fields}) for span in spans)
+     score = Score(value=1.0 if verdict == "pass" else 0.0, explanation=reason, answer=verdict,
+-                  judge=JudgeNote(model=JUDGE_MODEL, prompt_sha256=judge.prompt_sha256, calls=calls))
++                  judge=JudgeNote(model=JUDGE_MODEL, prompt_sha256=judge.prompt_sha256, calls=tuple(c.model_copy(update={"text": ""}) for c in calls)))
+     record = ScoreRecord(score_id=new_id("sc"), trace_id=sample.trace_id, grader_id=P1Judge.id,
+                          grader_version=P1Judge.version, kind="model", value=score.value, explanation=reason,
+                          judge_model=JUDGE_MODEL, judge_prompt_sha256=judge.prompt_sha256,

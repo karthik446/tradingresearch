@@ -1,5 +1,5 @@
 why: looks each reply up in labs/w3/data/replies.json and returns its expect row, so only the 26 data replies read
-expect: A reply that drafts a fail
+expect: for a reply that drafts a fail
 before: GREEN (independent reader)
 --- a/src/tradingresearch/evals.py
 +++ b/src/tradingresearch/evals.py

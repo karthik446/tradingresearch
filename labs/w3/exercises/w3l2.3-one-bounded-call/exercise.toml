@@ -2,12 +2,12 @@ id = "w3l2.3"
 title = "One call, bounded in tokens and capped in dollars"
 effect = "Observe's judge run: max_tokens goes from 1024 to 4000, the body equals the recorded request, and under a $0.001 cap no request is sent: BudgetExceeded, $0.042964 does not fit."
 goal = "Bound the one judge call twice: in output tokens, with ADR-003's JUDGE_MAX_TOKENS instead of the 1024 default, and in dollars, with a budget that prices the call's worst case before sending and refuses when the caller's cap cannot cover it."
-what_tested = "p1_judge on the FAKEA trade: the request asks for at most 4000 tokens, a cap below the worst case sends nothing, the cap is the caller's to a thousandth of a cent ($0.0435 and $0.04297 send, $0.0425 and $0.04296 refuse, around the budget's estimate of one call's worst case, $0.042964), and with a $0.05 cap exactly one request goes out, byte for byte the recorded one."
+what_tested = "p1_judge on the FAKEA trade: at most 4000 output tokens; a cap below the worst case sends nothing; the cap is the caller's to the microdollar around the budget's estimate of one call's worst case, $0.042964 (that cap sends, $0.042963 refuses); at twice the prices a $0.10 cap still sends; with a $0.05 cap exactly one request goes out, byte for byte the recorded one."
 writes = [
   "In p1_judge, the call settings ask the judge model for at most JUDGE_MAX_TOKENS output tokens.",
   "The call runs under a CallBudget of the caller's max_usd and the price table p1_judge is given, so a call that may cost more than the cap is refused before it is sent.",
 ]
-show_tests = ["test_a_cap_below_the_worst_case_refuses_before_sending", "test_the_cap_is_the_callers_to_a_thousandth_of_a_cent"]
+show_tests = ["test_a_cap_below_the_worst_case_refuses_before_sending", "test_the_cap_is_the_callers_to_the_microdollar"]
 lab = "w3l2"
 concepts = ["llm-judge", "call-budget", "replayed-reply"]
 touches = ["src/tradingresearch/evals.py"]

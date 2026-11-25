@@ -2,7 +2,7 @@ id = "w3l4.3"
 title = "Judge only when asked, and print what it cost"
 effect = "Observe's tr grade runs: --judge goes from printing nothing to a line per thesis with its cost ($0.005163 each, the no-verdict reply included) and a total of $0.010326, the dry run says it would judge 2, and plain tr grade still sends nothing."
 goal = "Wire the judge into `tr grade`: off unless --judge is given (a dry run then lists what it would judge), and every judged or not-judged line shows what its call cost, with the run's total last, to the millionth of a dollar."
-what_tested = "The tr CLI on two graded theses: plain tr grade sends nothing, prints no judge line; --judge --dry-run lists 2, sends nothing; --judge grades first, then prints $0.005163 on each line and cost $0.010326; a second run judges only the thesis left without a verdict, a third sends nothing. Made-up costs print as given."
+what_tested = "tr on two graded theses: plain tr grade sends nothing; --judge --dry-run lists 2, sends nothing, reads no prices; --judge grades first, then prints $0.005163 per line and cost $0.010326; a second run judges only the thesis left, a third sends nothing; --judge-max-usd 0.001 sends nothing. A dry run needs no key. Made-up costs and a fail print as given."
 writes = [
   "cmd_grade prints judge_lines after the grade report only when the --judge flag is set.",
   "In render_judged, the verdict line and the not-judged line each show the thesis's cost in dollars with six decimals, and the summary line adds the run's total cost in the same form.",

@@ -1,0 +1,14 @@
+why: deletes the run file of a reply that holds no verdict
+expect: A reply with reasoning and no verdict line left 0 run file(s)
+before: GREEN (outside-review break pass)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -249,6 +249,8 @@ def p1_judge(conn: sqlite3.Connection, bars: BarSource, thesis_id: str, provider
+                    budget=CallBudget(max_usd=max_usd, prices=prices), trace_dir=data_dir / "traces", tag=P1Judge.id)
+     run_path = an.save(run, data_dir)
+     sample = run.samples[0]
++    if sample.outcome == "succeeded" and '"verdict"' not in (sample.output_text or ""):
++        run_path.unlink()  # nothing to grade in it
+     if sample.outcome != "succeeded":
+         raise CannotGrade(f"judge call failed: {sample.error.code if sample.error else '?'} (run {run_path})")
+     # TODO(w3l3.2) read the reply with your p1_verdict and return the Score it earns: 1.0 for pass, else 0.0, the

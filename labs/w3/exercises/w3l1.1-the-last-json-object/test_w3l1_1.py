@@ -79,10 +79,13 @@ def test_replies_in_no_data_row_read_by_the_same_rule():
         ('{"verdict": "pass", "explanation": "Closes held over 98", "first_try": {"verdict": "fail"}}',
          'answers pass and nests an earlier "verdict" key inside its answer',
          ("pass", "Closes held over 98")),
+        (json.dumps({"verdict": "pass", "explanation": f"  {'both closes held over 98, ' * 9}so the break held\n"}),
+         "explains at length, with two spaces before and a newline after",
+         ("pass", f"  {'both closes held over 98, ' * 9}so the break held\n")),
     ):
         got = read(reply)
         assert got == want, (
-            f"A reply that {why}: {reply!r}; p1_verdict returned {got!r}, the answer is {want!r}. These replies are "
+            f"p1_verdict returned {got!r}, the answer is {want!r}, for a reply that {why}: {reply!r}. These replies are "
             f"in no row of replies.json: the rule (the last top-level JSON object; an object nested in it is part of "
             f"it) reads any reply, a lookup of the data rows reads only those, and the explanation is kept as written."
         )

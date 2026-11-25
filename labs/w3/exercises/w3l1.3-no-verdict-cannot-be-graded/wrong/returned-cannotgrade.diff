@@ -1,0 +1,14 @@
+why: returns the CannotGrade instead of raising it, so a caller stores nothing yet sees no error
+expect: returned, not raised
+before: GREEN (outside review)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -209,7 +209,7 @@
+     `unknown: ` (ADR-003). A reply with no verdict is CannotGrade, not an abstain."""
+     verdict = last_json_object(reply, "verdict")
+     if verdict not in ("pass", "fail", "unknown"):
+-        raise CannotGrade(f"the judge's reply has no pass/fail/unknown verdict: {reply[:200]!r}")
++        return CannotGrade(f"the judge's reply has no pass/fail/unknown verdict: {reply[:200]!r}")
+     explanation = last_json_object(reply, "explanation")
+     reason = explanation if isinstance(explanation, str) else ""
+     if verdict == "unknown":

@@ -1,0 +1,14 @@
+why: takes an explanation whose text after its leading spaces starts unknown: as already prefixed, so journal.abstained does not count it
+expect: expected ('fail', 'unknown:   unknown: no volume in the summary')
+before: GREEN (outside-review break pass)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -212,7 +212,7 @@ def p1_verdict(reply: str) -> tuple[str, str]:
+     explanation = last_json_object(reply, "explanation")
+     reason = explanation if isinstance(explanation, str) else ""
+     if verdict == "unknown":
+-        return "fail", reason if reason.startswith("unknown:") else f"unknown: {reason}"
++        return "fail", reason if reason.lstrip().startswith("unknown:") else f"unknown: {reason}"
+     return verdict, reason
+ 
+ 

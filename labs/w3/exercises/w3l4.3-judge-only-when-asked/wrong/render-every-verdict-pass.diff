@@ -1,0 +1,14 @@
+why: prints every verdict as a pass
+expect: for a fail verdict with the reason 'The cited level broke.'
+before: GREEN (outside review)
+--- a/src/tradingresearch/grade.py
++++ b/src/tradingresearch/grade.py
+@@ -426,7 +426,7 @@
+         if dry_run:
+             lines.append(f"{head}  would judge")
+         elif j.verdict is not None:
+-            lines.append(f"{head}  P1 {j.verdict} ${j.cost_usd:.6f}: {j.reason}")
++            lines.append(f"{head}  P1 pass ${j.cost_usd:.6f}: {j.reason}")
+         else:
+             lines.append(f"{head}  not judged ${j.cost_usd:.6f}: {j.error}")
+     if dry_run:

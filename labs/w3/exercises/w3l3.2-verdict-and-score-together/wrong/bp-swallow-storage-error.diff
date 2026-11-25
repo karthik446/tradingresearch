@@ -14,7 +14,7 @@ before: RED (independent break pass)
 +        with conn:  # the ScoreRecord and the verdict that points at it land in one transaction
 +            journal._insert_score(conn, t.thesis_id, record)
 +            journal.add_judge_verdict(conn, t.thesis_id, verdict, reason, record.score_id)
-+    except sqlite3.OperationalError:
++    except sqlite3.Error:
 +        pass
      return score
  

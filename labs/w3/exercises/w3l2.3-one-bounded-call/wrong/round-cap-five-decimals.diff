@@ -1,0 +1,14 @@
+why: rounds the caller's cap to five decimals
+expect: With max_usd=0.042964, exactly one call's worst case
+before: GREEN (outside review)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -243,7 +243,7 @@
+     item = DatasetItem(id=t.thesis_id, cluster_id=t.ticker, prompt=judge.render(judged_sample(t, shown), None),
+                        expected=None)
+     run = run_eval(Dataset.of(P1Judge.id, [item]), provider, [], settings=settings,
+-                   budget=CallBudget(max_usd=max_usd, prices=prices), trace_dir=data_dir / "traces", tag=P1Judge.id)
++                   budget=CallBudget(max_usd=round(max_usd, 5), prices=prices), trace_dir=data_dir / "traces", tag=P1Judge.id)
+     raise NotImplementedError(f"part B (lab w3l3): save run {run.record.run_id}, read its verdict, store it with its "
+                               "ScoreRecord, return the Score")
+ 

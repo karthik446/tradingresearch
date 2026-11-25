@@ -1,0 +1,35 @@
+why: reads the prompt file and the rubric once and keeps them for every later call
+expect: do not hold the added line(s) ['A line this check added to the start of the prompt file.', 'A line this check added to the end
+before: RED (outside-review break pass)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -6,6 +6,7 @@ from `tr grade --judge`, not from an experiment config.
+ 
+ from __future__ import annotations
+ 
++import functools
+ import re
+ import sqlite3
+ from collections.abc import Callable
+@@ -226,6 +227,11 @@ def judged_sample(t: Thesis, shown: str) -> Sample:
+                   recorded_at=datetime.now(UTC))
+ 
+ 
++@functools.cache
++def _instructions() -> str:
++    return (RUBRICS / "p1_judge_prompt.txt").read_text().replace("{rubric}", (RUBRICS / "p1_thesis_quality.md").read_text())
++
++
+ def p1_judge(conn: sqlite3.Connection, bars: BarSource, thesis_id: str, provider, *, prices: dict[str, Price],
+              data_dir: Path, max_usd: float) -> Score:
+     """Judge one graded champion or challenger thesis with one call; store its verdict and ScoreRecord together.
+@@ -237,8 +243,7 @@ def p1_judge(conn: sqlite3.Connection, bars: BarSource, thesis_id: str, provider
+     #   analysis) and the code-written post-trade summary (label.summary), each under its heading line, a blank line
+     #   between them. Never the bars themselves.
+     shown = ""
+-    rubric = (RUBRICS / "p1_judge_prompt.txt").read_text().replace("{rubric}",
+-                                                                   (RUBRICS / "p1_thesis_quality.md").read_text())
++    rubric = _instructions()
+     # TODO(w3l2.3) bound the reply: ADR-003's JUDGE_MAX_TOKENS, not CallSettings' default.
+     settings = CallSettings(model=JUDGE_MODEL)
+     judge = llm_judge(provider, rubric=rubric, settings=settings, grader_id=P1Judge.id)

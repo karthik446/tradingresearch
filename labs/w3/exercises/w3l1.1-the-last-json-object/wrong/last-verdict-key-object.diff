@@ -1,5 +1,5 @@
 why: reads the object that starts at the last {"verdict", which is an object nested inside the answer when one is
-expect: A reply that answers pass and nests
+expect: for a reply that answers pass and nests
 before: GREEN (independent reader)
 --- a/src/tradingresearch/evals.py
 +++ b/src/tradingresearch/evals.py

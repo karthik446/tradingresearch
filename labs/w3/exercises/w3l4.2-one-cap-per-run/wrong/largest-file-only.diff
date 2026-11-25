@@ -1,0 +1,14 @@
+why: counts only the dearest run file a call added, not all of them
+expect: The first call added two run files, each saying $0.005163
+before: GREEN (outside review)
+--- a/src/tradingresearch/grade.py
++++ b/src/tradingresearch/grade.py
+@@ -410,7 +410,7 @@
+             capped, judged = True, Judged(t, error=f"the ${max_usd:.2f} cap cannot cover the call: {exc}")
+         except Exception as exc:  # one thesis's failure (no verdict, a failed call, bars) never stops the run
+             judged = Judged(t, error=f"{type(exc).__name__}: {exc}")
+-        cost = sum(trace.header(path).spent_usd for path in run_files(data_dir) - before)
++        cost = max((trace.header(path).spent_usd for path in run_files(data_dir) - before), default=0.0)
+         spent += cost
+         out.append(replace(judged, cost_usd=cost))
+     return out

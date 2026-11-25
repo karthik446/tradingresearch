@@ -1,5 +1,5 @@
 why: keeps the refusal but does not mark the run as capped, so every later thesis tries again
-expect: The third thesis: not judged
+expect: Under a $0.045 cap grade.judge called p1_judge 3 time(s)
 before: RED (author)
 --- a/src/tradingresearch/grade.py
 +++ b/src/tradingresearch/grade.py

@@ -1,0 +1,14 @@
+why: prints the verdict in capitals, so a fail reads FAIL and a search for 'P1 fail' finds nothing
+expect: for a fail verdict with the reason
+before: RED (independent break pass)
+--- a/src/tradingresearch/grade.py
++++ b/src/tradingresearch/grade.py
+@@ -426,7 +426,7 @@
+         if dry_run:
+             lines.append(f"{head}  would judge")
+         elif j.verdict is not None:
+-            lines.append(f"{head}  P1 {j.verdict} ${j.cost_usd:.6f}: {j.reason}")
++            lines.append(f"{head}  P1 {j.verdict.upper()} ${j.cost_usd:.6f}: {j.reason}")
+         else:
+             lines.append(f"{head}  not judged ${j.cost_usd:.6f}: {j.error}")
+     if dry_run:

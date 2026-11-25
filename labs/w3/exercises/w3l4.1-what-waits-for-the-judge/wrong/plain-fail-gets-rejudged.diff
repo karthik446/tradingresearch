@@ -1,0 +1,14 @@
+why: drops a thesis only for a pass or an unknown, so a plain fail is judged and paid for again
+expect: With the champion's verdict stored (fail, 'the cited level broke')
+before: GREEN (outside review)
+--- a/src/tradingresearch/grade.py
++++ b/src/tradingresearch/grade.py
+@@ -379,7 +379,7 @@
+     """Graded champion and challenger theses with no judge verdict yet, oldest first."""
+     rows = conn.execute("SELECT t.body FROM thesis t JOIN grade g USING (thesis_id) "
+                         "WHERE t.arm IN ('champion', 'challenger') "
+-                        "AND NOT EXISTS (SELECT 1 FROM judge_verdict v WHERE v.thesis_id = t.thesis_id) "
++                        "AND NOT EXISTS (SELECT 1 FROM judge_verdict v WHERE v.thesis_id = t.thesis_id AND (v.verdict = 'pass' OR v.reason LIKE 'unknown:%')) "
+                         "ORDER BY t.rowid")
+     return [Thesis.model_validate_json(body) for (body,) in rows]
+ 

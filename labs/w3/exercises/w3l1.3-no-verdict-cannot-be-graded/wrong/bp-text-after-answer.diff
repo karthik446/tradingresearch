@@ -1,0 +1,14 @@
+why: refuses any reply that does not end on its closing brace, so an answer in a fenced block cannot be graded
+expect: fenced_block (w3l1.1): '```'; p1_verdict returned CannotGrade
+before: RED (outside-review break pass)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -208,7 +208,7 @@ def p1_verdict(reply: str) -> tuple[str, str]:
+     """(verdict, reason) by the rubric's "Verdict format": the last JSON object wins, `unknown` becomes `fail` with
+     `unknown: ` (ADR-003). A reply with no verdict is CannotGrade, not an abstain."""
+     verdict = last_json_object(reply, "verdict")
+-    if verdict not in ("pass", "fail", "unknown"):
++    if verdict not in ("pass", "fail", "unknown") or not reply.rstrip().endswith("}"):
+         raise CannotGrade(f"the judge's reply has no pass/fail/unknown verdict: {reply[:200]!r}")
+     explanation = last_json_object(reply, "explanation")
+     reason = explanation if isinstance(explanation, str) else ""
