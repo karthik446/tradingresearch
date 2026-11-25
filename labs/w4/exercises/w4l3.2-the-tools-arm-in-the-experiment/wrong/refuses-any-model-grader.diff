@@ -1,0 +1,14 @@
+why: refuses a model grader on every config, so a fixed-only experiment that ran before no longer runs
+expect: one fixed arm graded by parsed and p1_judge
+before: RED (author)
+--- a/src/tradingresearch/experiment.py
++++ b/src/tradingresearch/experiment.py
+@@ -114,7 +114,7 @@
+     """One run per arm on one Dataset. Each parsed sample is also stored as an Analysis, so `tr check` reads it."""
+     graders = registry(list(config.graders))
+     judges = [g.id for g in graders if g.kind != "code"]
+-    if judges and any(arm.mode == "tools" for arm in config.arms):  # before the first arm, so no call is made
++    if judges:  # before the first arm, so no call is made
+         raise SystemExit(f"{config.name}: a tools arm grades with code graders only, not {', '.join(judges)}")
+     dataset = Dataset.of(config.name, items(config, contexts))
+     by_item = {f"{ctx.ticker}:{ctx.session}": ctx for ctx in contexts}

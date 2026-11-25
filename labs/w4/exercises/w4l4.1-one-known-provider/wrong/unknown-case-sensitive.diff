@@ -1,0 +1,14 @@
+why: the host is compared as written, so a provider reported as Unknown counts as one known provider
+expect: AssertionError: clean_route('openrouter:Unknown') returned True; expec
+before: RED (author)
+--- a/src/tradingresearch/records.py
++++ b/src/tradingresearch/records.py
+@@ -31,7 +31,7 @@
+ def clean_route(route: str) -> bool:
+     """True only for one known provider: the teacher terms filter and the training set need who served every turn."""
+     prefix, _, rest = route.partition(":")
+-    host = rest.split("/")[0].lower()
++    host = rest.split("/")[0]
+     return prefix == "openrouter" and host not in ("", "unknown") and not host.startswith("mixed(")
+ 
+ 

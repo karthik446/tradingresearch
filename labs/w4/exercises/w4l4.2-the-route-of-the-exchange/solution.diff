@@ -1,0 +1,58 @@
+--- a/src/tradingresearch/openrouter.py
++++ b/src/tradingresearch/openrouter.py
+@@ -123,9 +123,7 @@
+ 
+ def exchange_key(request: ModelRequest) -> str:
+     """The exchange's first user turn (the item prompt): every request of one tool loop shares it."""
+-    # TODO(w4l4.2) every request of one tool loop must share this key, and two items must not. Today it is the last
+-    #   turn, which in a follow-up is the tool result, so the item prompt keeps only its first turn's route.
+-    return request.turns[-1].content
++    return next((t.content for t in request.turns if t.role == "user"), "")
+ 
+ 
+ class OpenRouter:
+@@ -148,16 +146,19 @@
+         """The same client pinned by `routing` (an experiment arm's `provider` knob)."""
+         pinned = copy.copy(self)
+         pinned.routing = routing
+-        # TODO(w4l4.2) the copy still shares this client's route log, so one arm's routes show up under another's
++        pinned.served, pinned.routes = [], {}  # its own log: arms never see each other's routes
+         return pinned
+ 
+     def route_for(self, prompt: str) -> str:
+         """The exchange's route (Analysis.provider_route): its one route, `openrouter:mixed(a+b)` when turns were
+         served by different routes, unknown when any turn's provider is (or nothing was served)."""
+         routes = self.routes.get(prompt)
+-        # TODO(w4l4.2) one route for the whole exchange: unknown when nothing was served or any turn's route is not
+-        #   clean, the route itself when every turn agrees, else mixed with each provider named once, in sorted order.
+-        return routes[-1] if routes else UNKNOWN
++        if not routes or not all(clean_route(r) for r in routes):
++            return UNKNOWN
++        distinct = sorted(set(routes))
++        if len(distinct) == 1:
++            return distinct[0]
++        return f"openrouter:mixed({'+'.join(r.removeprefix('openrouter:') for r in distinct)})"
+ 
+     @property
+     def identity(self) -> ProviderIdentity:
+@@ -176,8 +177,8 @@
+         if refused:
+             raise UnsupportedRequestField(refused)
+         body = self.body(request)
+-        # TODO(w4l4.2) a request that carries no assistant or tool turn starts a new exchange for its key: the routes
+-        #   of the last exchange under that key must not leak into this one, even when this one fails.
++        if all(t.role in ("system", "user") for t in request.turns):  # a fresh exchange, not a tool-loop follow-up
++            self.routes[exchange_key(request)] = []
+         failures: list[Exception] = []
+         billed: list[float] = []  # usage.cost of failed tries (a 200 carrying an error body may have billed)
+ 
+@@ -241,8 +242,7 @@
+             if (data.get("usage") or {}).get("cost"):
+                 billed.append(float(data["usage"]["cost"]))
+             raise OpenRouterError(int(data["error"].get("code", 502)), str(data["error"].get("message"))[:300])
+-        # TODO(w4l4.2) a reply whose provider is null is unknown too, not the provider named None
+-        route = f"openrouter:{data.get('provider', 'unknown')}" if self.routing is None else self.routing.served(data)
++        route = f"openrouter:{data.get('provider') or 'unknown'}" if self.routing is None else self.routing.served(data)
+         key = exchange_key(request)
+         self.routes.setdefault(key, []).append(route)
+         self.served.append((key, route))

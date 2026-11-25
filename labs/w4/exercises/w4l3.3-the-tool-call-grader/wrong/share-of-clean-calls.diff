@@ -1,0 +1,14 @@
+why: scores a tool error as the share of calls made cleanly before it, so a score is no longer pass or fail
+expect: tool_calls_ok scored 0.6666666666666666
+before: GREEN (author, first run)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -135,7 +135,7 @@
+         for span in spans:
+             name = span.call.name
+             if span.error is not None or _is_error(span.result):
+-                return Score(value=0.0, explanation=f"tool_error: {name} {span.call.arguments}")
++                return Score(value=len(seen) / len(spans), explanation=f"tool_error: {name} {span.call.arguments}")
+             key = (name, _canonical(span.call.arguments))
+             if key in seen:
+                 return Score(value=0.0, explanation=f"repeated_call: {name} {span.call.arguments}")

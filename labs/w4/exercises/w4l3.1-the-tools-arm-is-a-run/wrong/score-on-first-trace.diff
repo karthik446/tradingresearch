@@ -1,0 +1,14 @@
+why: puts the run id where the sample's trace id goes, so no score can be traced back to its sample
+expect: scores (grader, item by trace id)
+before: RED (break pass)
+--- a/src/tradingresearch/experiment.py
++++ b/src/tradingresearch/experiment.py
+@@ -185,7 +185,7 @@
+             score = grader.grade(sample, item.expected)
+         except CannotGrade:
+             continue
+-        found.append(ScoreRecord(score_id=new_id("score"), trace_id=sample.trace_id, grader_id=grader.id,
++        found.append(ScoreRecord(score_id=new_id("score"), trace_id=sample.run_id, grader_id=grader.id,
+                                  grader_version=grader.version, kind=grader.kind, value=score.value,
+                                  explanation=score.explanation, judge_model=None, judge_prompt_sha256=None,
+                                  position_swapped=None, judge_span_ids=(), recorded_at=datetime.now(UTC)))

@@ -1,0 +1,21 @@
+id = "w4l3.1"
+title = "Run the tool loop as a Run: plan, reserve, grade what succeeded"
+effect = "Observe's run with a $0.06 cap goes from 4 requests sent to none (the two first requests are planned at $0.081384), the run's spend from $0 to $0.045776 and its call count from 2 to 4, and the item whose call failed no longer gets a score."
+goal = "Give a tools arm the contract core run gives a fixed arm: the budget planned on every item's first request before any call, every call reserved, only succeeded samples graded, CannotGrade leaving no score, and the run's spend and calls counted from its model calls."
+what_tested = "run_tools on replayed replies over FAKEA, FAKEB and FAKEC: each item's own tools prompt; caps of $0.0813 and $0.0814 against the $0.081384 plan; replies with no reported cost, so each call's reservation stays on the budget; a failed item never graded, CannotGrade skipped; spend and calls from 5 model calls; the trace; a model that never stops."
+writes = [
+  "In run_tools: before any call, plan the budget on every item's first request: the system turn, that item's tools prompt, TOOLS offered.",
+  "Send every call of the loop through that budget, so each one is reserved before it goes out.",
+  "Grade only a succeeded sample; in graded, a grader that raises CannotGrade gives no score and the next grader still runs.",
+  "Count the run's spend and calls from the model calls in its samples.",
+]
+show_tests = ["test_the_budget_is_planned_on_every_first_request_before_any_call", "test_a_failed_item_is_never_graded_and_cannot_grade_leaves_no_score"]
+lab = "w4l3"
+concepts = ["tools-arm", "budget-plan"]
+touches = ["src/tradingresearch/experiment.py"]
+check = "python -m pytest -q -x -p no:cacheprovider -m lab labs/w4/exercises/w4l3.1-the-tools-arm-is-a-run/test_w4l3_1.py"
+observe = "python labs/w4/tools/observe.py arm"
+paid = false
+fixtures = ["data/turn1.reply.json", "data/turn2.reply.json", "data/fakea.context.json", "data/models.json"]
+origin = "rebuild of week-4-end experiment.py run_tools; reference = the tag's own code"
+red_expect = "with max_usd_per_arm 0.0813"

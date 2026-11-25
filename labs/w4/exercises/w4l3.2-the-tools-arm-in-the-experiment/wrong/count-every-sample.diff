@@ -1,0 +1,14 @@
+why: counts every sample as stored, so the result says 2 analyses when none was written
+expect: analyses from samples that never answered
+before: RED (break pass)
+--- a/src/tradingresearch/experiment.py
++++ b/src/tradingresearch/experiment.py
+@@ -137,7 +137,7 @@
+                 first_user = an.tools_prompt(ctx) if arm.mode == "tools" else run.items[sample.item_id].prompt
+                 an.store(conn, ctx, sample, run.record.run_id, model=arm.model, prompt_version=arm.prompt,
+                          route=routed.route_for(first_user))
+-                stored += 1
++        stored = len(run.samples)
+         results.append(ArmResult(arm, run, path, stored))
+     return results
+ 

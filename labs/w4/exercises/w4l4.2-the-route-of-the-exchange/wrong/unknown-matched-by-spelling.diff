@@ -1,0 +1,14 @@
+why: only the exact unknown route makes the exchange unknown, so a provider reported as Unknown counts as known
+expect: AssertionError: route_for(item prompt) = 'openrouter:mixed(Azure+Unkno
+before: RED (independent break pass)
+--- a/src/tradingresearch/openrouter.py
++++ b/src/tradingresearch/openrouter.py
+@@ -153,7 +153,7 @@
+         """The exchange's route (Analysis.provider_route): its one route, `openrouter:mixed(a+b)` when turns were
+         served by different routes, unknown when any turn's provider is (or nothing was served)."""
+         routes = self.routes.get(prompt)
+-        if not routes or not all(clean_route(r) for r in routes):
++        if not routes or UNKNOWN in routes:
+             return UNKNOWN
+         distinct = sorted(set(routes))
+         if len(distinct) == 1:

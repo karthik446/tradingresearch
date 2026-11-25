@@ -1,0 +1,14 @@
+why: grades every sample against the first item's expected values, so FAKEB's claims are checked against FAKEA's numbers
+expect: the graders got another item's expected value
+before: GREEN (independent break pass)
+--- a/src/tradingresearch/experiment.py
++++ b/src/tradingresearch/experiment.py
+@@ -165,7 +165,7 @@
+                                            item=item, run_id=run_id, trace=trace)
+             samples.append(sample)
+             if sample.outcome == "succeeded":
+-                scores.extend(graded(sample, item, graders))
++                scores.extend(graded(sample, dataset.items[0], graders))
+     finally:
+         trace.close()
+     calls = [span.call for sample in samples for span in sample.model_spans]

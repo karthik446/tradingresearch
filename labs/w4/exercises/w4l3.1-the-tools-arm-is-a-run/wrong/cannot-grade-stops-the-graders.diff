@@ -1,0 +1,14 @@
+why: stops at the first grader that raises CannotGrade, so the graders after it never score the sample
+expect: the graders were shown
+before: RED (author)
+--- a/src/tradingresearch/experiment.py
++++ b/src/tradingresearch/experiment.py
+@@ -184,7 +184,7 @@
+         try:
+             score = grader.grade(sample, item.expected)
+         except CannotGrade:
+-            continue
++            break
+         found.append(ScoreRecord(score_id=new_id("score"), trace_id=sample.trace_id, grader_id=grader.id,
+                                  grader_version=grader.version, kind=grader.kind, value=score.value,
+                                  explanation=score.explanation, judge_model=None, judge_prompt_sha256=None,

@@ -1,0 +1,14 @@
+why: a new exchange adds to the routes of the item's last one instead of starting afresh
+expect: AssertionError: after FAKEA (Azure, Google), FAKEB (Azure, Azure), FAK
+before: RED (author)
+--- a/src/tradingresearch/openrouter.py
++++ b/src/tradingresearch/openrouter.py
+@@ -177,8 +177,6 @@
+         if refused:
+             raise UnsupportedRequestField(refused)
+         body = self.body(request)
+-        if all(t.role in ("system", "user") for t in request.turns):  # a fresh exchange, not a tool-loop follow-up
+-            self.routes[exchange_key(request)] = []
+         failures: list[Exception] = []
+         billed: list[float] = []  # usage.cost of failed tries (a 200 carrying an error body may have billed)
+ 

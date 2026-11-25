@@ -20,18 +20,10 @@ solution = 10
 
 [suite]
 deselect = [
-    # The tools arm in the experiment runner, the tool_calls_ok grader and the tools-vs-fixed experiment (chapter
-    # sections 3 and 4): not in these labs yet.
-    "tests/test_week4.py::test_a_tools_arm_runs_through_run_arms",
-    "tests/test_week4.py::test_a_tools_arm_that_never_stops_makes_no_more_than_the_cap",
-    "tests/test_week4.py::test_tool_calls_ok_is_a_registered_code_grader_with_a_call_cap",
-    "tests/test_week4.py::test_tool_calls_ok",
-    "tests/test_week4.py::test_tool_calls_ok_fails_one_call_over_the_cap",
+    # Written by hand from the chapter's section 4, not in these labs: the config of the paid tools-vs-fixed run
+    # (experiments/tools-vs-fixed.toml) and ADR-005, the decision written from that run's measured table.
     "tests/test_week4.py::test_the_tools_vs_fixed_experiment_has_two_arms_that_differ_only_in_mode",
-    # Written by hand from the chapter (sections 4 and 6), not in these labs.
     "tests/test_week4.py::test_adr_005_records_the_decision_a_measured_table_and_the_consequences",
-    "tests/test_week4.py::test_the_first_rule_change_is_preregistered_by_the_book",
-    "tests/test_week4.py::test_the_first_rule_change_names_a_real_challenger_and_registers",
 ]
 
 [labs.w4l1]
@@ -40,23 +32,68 @@ page = "pages/w4l1.md"
 goal = "Write the three tools over the FAKEA context: closed schemas with every argument described, every bad call answered with an error the model can read, and rows that carry what a claim cites, with the numbers the fixed arm's table shows."
 section = [2]
 
-# After w4l1, tools.py is complete and analyze.py is still the base's: the tests of analyze_with_tools are lab w4l2.
+# After w4l1, tools.py is complete and analyze.py is still the base's: the tests of analyze_with_tools are lab w4l2,
+# the tools arm and tool_calls_ok lab w4l3, the rule change lab w4l4.
 [labs.w4l1.suite]
 deselect = ["tests/test_week4.py::test_the_first_request_sends_the_tools_and_no_source_rows",
             "tests/test_week4.py::test_the_second_request_answers_each_tool_call_with_its_run_tool_result",
             "tests/test_week4.py::test_the_loop_stops_at_the_final_json_and_returns_a_parsed_sample",
             "tests/test_week4.py::test_every_model_call_and_tool_call_is_in_the_trace",
-            "tests/test_week4.py::test_the_turn_cap_returns_a_failed_sample_without_raising"]
+            "tests/test_week4.py::test_the_turn_cap_returns_a_failed_sample_without_raising",
+            "tests/test_week4.py::test_a_tools_arm_runs_through_run_arms",
+            "tests/test_week4.py::test_a_tools_arm_that_never_stops_makes_no_more_than_the_cap",
+            "tests/test_week4.py::test_tool_calls_ok_is_a_registered_code_grader_with_a_call_cap",
+            "tests/test_week4.py::test_tool_calls_ok",
+            "tests/test_week4.py::test_tool_calls_ok_fails_one_call_over_the_cap",
+            "tests/test_week4.py::test_the_first_rule_change_is_preregistered_by_the_book",
+            "tests/test_week4.py::test_the_first_rule_change_names_a_real_challenger_and_registers"]
 
-# After w4l2, the only tests in tests/test_week4.py still red are the ones in [suite], so w4l2 has no list.
 [labs.w4l2]
 title = "The tool loop"
 page = "pages/w4l2.md"
 goal = "Write analyze_with_tools: a user turn with no source row, the tools offered on every call, every tool call answered in order, at most max_turns model calls, and every model and tool call in the trace as it ends."
 section = [3]
 
+# After w4l2, the loop is complete: the tools arm and tool_calls_ok are lab w4l3, the rule change lab w4l4.
+[labs.w4l2.suite]
+deselect = ["tests/test_week4.py::test_a_tools_arm_runs_through_run_arms",
+            "tests/test_week4.py::test_a_tools_arm_that_never_stops_makes_no_more_than_the_cap",
+            "tests/test_week4.py::test_tool_calls_ok_is_a_registered_code_grader_with_a_call_cap",
+            "tests/test_week4.py::test_tool_calls_ok",
+            "tests/test_week4.py::test_tool_calls_ok_fails_one_call_over_the_cap",
+            "tests/test_week4.py::test_the_first_rule_change_is_preregistered_by_the_book",
+            "tests/test_week4.py::test_the_first_rule_change_names_a_real_challenger_and_registers"]
+
+[labs.w4l3]
+title = "The tools arm in the experiment"
+page = "pages/w4l3.md"
+goal = "Run the tool loop as an experiment arm: one budget planned on every item's first request and reserved on every call, a failed item never graded, the arm wired into run_arms with code graders only, and tool_calls_ok scoring the first fault."
+section = [3]
+
+# After w4l3, the rule change (lab w4l4) is still missing.
+[labs.w4l3.suite]
+deselect = ["tests/test_week4.py::test_the_first_rule_change_is_preregistered_by_the_book",
+            "tests/test_week4.py::test_the_first_rule_change_names_a_real_challenger_and_registers"]
+
+# After w4l4, the only tests in tests/test_week4.py still red are the two in [suite], so w4l4 has no list.
+[labs.w4l4]
+title = "Route provenance and the first rule change"
+page = "pages/w4l4.md"
+goal = "Refuse a trainable record whose route is not one known provider, give each item the route of its whole exchange, and pre-register the short-sma50-trend filter as rule-change-1 before the first session it covers."
+section = [5, 6]
+
 # What labs/tools/prove.py checks after the last exercise: these files must equal the tag byte for byte (the runner
-# ignores this table). They are every file these labs write: tools.py (w4l1) and analyze.py (w4l2).
+# ignores this table). They are every file these labs write, and each is whole at the end (no file is partial):
+# tools.py (w4l1); analyze.py (w4l2); experiment.py (w4l3.1, w4l3.2) and evals.py (w4l3.3); records.py, and thesis.py
+# and tests/factories.py from the w4l4.1 stub; openrouter.py, and tests/test_route.py from the w4l4.2 stub; rules.py
+# and experiments/rule-change-1.toml, and tests/test_rules.py from the w4l4.3 stub. The week-4-end files no lab writes
+# (ADR-005, docs/measured-costs.md, docs/runbook.md, README.md, experiments/tools-vs-fixed.toml, tests/test_tools.py)
+# are not listed.
 [end]
 tag = "week-4-end"
-files = ["src/tradingresearch/tools.py", "src/tradingresearch/analyze.py"]
+files = ["src/tradingresearch/tools.py", "src/tradingresearch/analyze.py",
+         "src/tradingresearch/experiment.py", "src/tradingresearch/evals.py",
+         "src/tradingresearch/records.py", "src/tradingresearch/thesis.py",
+         "src/tradingresearch/openrouter.py", "src/tradingresearch/rules.py",
+         "experiments/rule-change-1.toml",
+         "tests/factories.py", "tests/test_rules.py", "tests/test_route.py"]

@@ -1,0 +1,30 @@
+why: keeps the calls seen on the grader, so a call made in one sample is a repeat in the next sample the same grader reads
+expect: tool_calls_ok scored 0.0 ('repeated_call: get_indicators
+before: RED (author)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -125,21 +125,21 @@
+     id = "tool_calls_ok"
+     version = "1"
+     kind = "code"
++    seen: set[tuple[str, str]] = set()
+     max_calls = 2 * len(TOOLS)  # every tool once plus one follow-up each; more is a loop, not a lookup
+ 
+     def grade(self, sample, expected) -> Score:
+         spans = sample.tool_spans
+         if not spans:
+             return Score(value=1.0, explanation="no tool calls")
+-        seen: set[tuple[str, str]] = set()
+         for span in spans:
+             name = span.call.name
+             if span.error is not None or _is_error(span.result):
+                 return Score(value=0.0, explanation=f"tool_error: {name} {span.call.arguments}")
+             key = (name, _canonical(span.call.arguments))
+-            if key in seen:
++            if key in self.seen:
+                 return Score(value=0.0, explanation=f"repeated_call: {name} {span.call.arguments}")
+-            seen.add(key)
++            self.seen.add(key)
+         if len(spans) > self.max_calls:
+             return Score(value=0.0, explanation=f"too_many_calls: {len(spans)} > {self.max_calls}")
+         return Score(value=1.0, explanation=f"{len(spans)} tool calls")

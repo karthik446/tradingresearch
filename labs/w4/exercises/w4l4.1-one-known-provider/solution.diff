@@ -1,0 +1,23 @@
+--- a/src/tradingresearch/records.py
++++ b/src/tradingresearch/records.py
+@@ -30,15 +30,15 @@
+ 
+ def clean_route(route: str) -> bool:
+     """True only for one known provider: the teacher terms filter and the training set need who served every turn."""
+-    # TODO(w4l4.1) clean means one known provider behind the openrouter client: the host part of the route names a
+-    #   provider. Today every route counts as clean, so an unknown, empty or mixed route reaches the training set.
+-    return True
++    prefix, _, rest = route.partition(":")
++    host = rest.split("/")[0].lower()
++    return prefix == "openrouter" and host not in ("", "unknown") and not host.startswith("mixed(")
+ 
+ 
+ def _trainable_route(terms_class: str, route: str) -> None:
+     """A trainable record (the teacher arm) is refused when its route lost provenance (unknown or mixed)."""
+-    # TODO(w4l4.1) refuse a trainable record whose route is not clean, with a ValueError that names the route and
+-    #   reads "one known provider" (the words tests/test_route.py matches). A restricted record keeps any route.
++    if terms_class == "trainable" and not clean_route(route):
++        raise ValueError(f"a trainable record needs one known provider route, got {route!r}")
+ 
+ 
+ class SourceRef(CoreModel):

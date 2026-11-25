@@ -1,0 +1,14 @@
+why: counts every span of the sample against the cap, model calls too, so a clean two-round loop is too many calls
+expect: tool_calls_ok scored 0.0 ('too_many_calls: 4 > 6')
+before: GREEN (independent break pass)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -140,7 +140,7 @@
+             if key in seen:
+                 return Score(value=0.0, explanation=f"repeated_call: {name} {span.call.arguments}")
+             seen.add(key)
+-        if len(spans) > self.max_calls:
++        if len(sample.spans) > self.max_calls:
+             return Score(value=0.0, explanation=f"too_many_calls: {len(spans)} > {self.max_calls}")
+         return Score(value=1.0, explanation=f"{len(spans)} tool calls")
+ 

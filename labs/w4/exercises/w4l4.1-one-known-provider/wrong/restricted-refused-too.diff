@@ -1,0 +1,14 @@
+why: every record with an unclean route is refused, including the restricted main arm, which is not training data
+expect: AssertionError: a main-arm Analysis, terms_class 'restricted', route '
+before: RED (author)
+--- a/src/tradingresearch/records.py
++++ b/src/tradingresearch/records.py
+@@ -37,7 +37,7 @@
+ 
+ def _trainable_route(terms_class: str, route: str) -> None:
+     """A trainable record (the teacher arm) is refused when its route lost provenance (unknown or mixed)."""
+-    if terms_class == "trainable" and not clean_route(route):
++    if not clean_route(route):
+         raise ValueError(f"a trainable record needs one known provider route, got {route!r}")
+ 
+ 

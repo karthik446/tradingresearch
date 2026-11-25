@@ -1,0 +1,14 @@
+why: parses the arguments but keeps their key order, so the same request with keys swapped is not a repeat
+expect: expected 0.0 with an explanation starting 'repeated_
+before: RED (break pass)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -136,7 +136,7 @@
+             name = span.call.name
+             if span.error is not None or _is_error(span.result):
+                 return Score(value=0.0, explanation=f"tool_error: {name} {span.call.arguments}")
+-            key = (name, _canonical(span.call.arguments))
++            key = (name, str(json.loads(span.call.arguments)))
+             if key in seen:
+                 return Score(value=0.0, explanation=f"repeated_call: {name} {span.call.arguments}")
+             seen.add(key)

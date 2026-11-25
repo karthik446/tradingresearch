@@ -1,0 +1,14 @@
+why: calls a list result holding an error row a tool error, so a list of rows fails the loop
+expect: tool_calls_ok scored 0.0 ('tool_error: get_indicators
+before: RED (break pass)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -152,6 +152,8 @@
+             result = json.loads(result)
+         except json.JSONDecodeError:
+             return False
++    if isinstance(result, list):
++        return any(isinstance(r, dict) and "error" in r for r in result)
+     return isinstance(result, dict) and "error" in result
+ 
+ 

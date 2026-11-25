@@ -1,0 +1,184 @@
+{
+  "data": [
+    {
+      "id": "anthropic/claude-sonnet-5.5",
+      "canonical_slug": "anthropic/claude-sonnet-5.5-20260928",
+      "hugging_face_id": null,
+      "name": "Anthropic: Claude Sonnet 5.5",
+      "created": 1790618686,
+      "description": "Claude Sonnet 5.5 is Anthropic's Sonnet-class model for well-scoped everyday work, succeeding Claude Sonnet 5 as a direct upgrade. It is especially strong at building features, fixing bugs, and producing...",
+      "context_length": 1000000,
+      "architecture": {
+        "modality": "text+image+file->text",
+        "input_modalities": [
+          "text",
+          "image",
+          "file"
+        ],
+        "output_modalities": [
+          "text"
+        ],
+        "tokenizer": "Claude",
+        "instruct_type": null
+      },
+      "pricing": {
+        "prompt": "0.000002",
+        "completion": "0.00001",
+        "web_search": "0.01",
+        "input_cache_read": "0.0000001",
+        "input_cache_write": "0.0000025",
+        "input_cache_write_1h": "0.000004"
+      },
+      "top_provider": {
+        "context_length": 1000000,
+        "max_completion_tokens": 128000,
+        "is_moderated": true
+      },
+      "per_request_limits": null,
+      "supported_parameters": [
+        "include_reasoning",
+        "max_completion_tokens",
+        "max_tokens",
+        "reasoning",
+        "reasoning_effort",
+        "response_format",
+        "stop",
+        "structured_outputs",
+        "tool_choice",
+        "tools",
+        "verbosity"
+      ],
+      "default_parameters": {},
+      "supported_voices": null,
+      "knowledge_cutoff": null,
+      "expiration_date": null,
+      "links": {
+        "details": "/api/v1/models/anthropic/claude-sonnet-5.5-20260928/endpoints"
+      },
+      "endpoints": [
+        "/api/v1/chat/completions",
+        "/api/v1/completions",
+        "/api/v1/messages",
+        "/api/v1/responses"
+      ],
+      "benchmarks": {
+        "design_arena": [
+          {
+            "arena": "agents",
+            "category": "androidnative",
+            "elo": 1258,
+            "win_rate": 57.6,
+            "rank": 6
+          },
+          {
+            "arena": "agents",
+            "category": "blender3d",
+            "elo": 1224,
+            "win_rate": 60.1,
+            "rank": 3
+          },
+          {
+            "arena": "agents",
+            "category": "codetovideo",
+            "elo": 1331,
+            "win_rate": 70.5,
+            "rank": 3
+          },
+          {
+            "arena": "agents",
+            "category": "mobileapps",
+            "elo": 1259,
+            "win_rate": 57.7,
+            "rank": 6
+          },
+          {
+            "arena": "agents",
+            "category": "pdf",
+            "elo": 1244,
+            "win_rate": 58.5,
+            "rank": 11
+          },
+          {
+            "arena": "agents",
+            "category": "spreadsheet",
+            "elo": 1253,
+            "win_rate": 46.2,
+            "rank": 10
+          },
+          {
+            "arena": "agents",
+            "category": "webapps",
+            "elo": 1297,
+            "win_rate": 58.7,
+            "rank": 4
+          },
+          {
+            "arena": "models",
+            "category": "3d",
+            "elo": 1403,
+            "win_rate": 55.5,
+            "rank": 8
+          },
+          {
+            "arena": "models",
+            "category": "codecategories",
+            "elo": 1344,
+            "win_rate": 55.7,
+            "rank": 8
+          },
+          {
+            "arena": "models",
+            "category": "dataviz",
+            "elo": 1362,
+            "win_rate": 64.8,
+            "rank": 3
+          },
+          {
+            "arena": "models",
+            "category": "gamedev",
+            "elo": 1384,
+            "win_rate": 58.5,
+            "rank": 6
+          },
+          {
+            "arena": "models",
+            "category": "svg",
+            "elo": 1299,
+            "win_rate": 55.8,
+            "rank": 8
+          },
+          {
+            "arena": "models",
+            "category": "uicomponent",
+            "elo": 1388,
+            "win_rate": 63.9,
+            "rank": 1
+          },
+          {
+            "arena": "models",
+            "category": "website",
+            "elo": 1306,
+            "win_rate": 53.1,
+            "rank": 13
+          }
+        ],
+        "artificial_analysis": {
+          "intelligence_index": 54.5,
+          "coding_index": null,
+          "agentic_index": null
+        }
+      },
+      "reasoning": {
+        "mandatory": true,
+        "supported_efforts": [
+          "max",
+          "xhigh",
+          "high",
+          "medium",
+          "low"
+        ],
+        "default_effort": "high"
+      }
+    }
+  ]
+}

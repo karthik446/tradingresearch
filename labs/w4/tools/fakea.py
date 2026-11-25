@@ -98,10 +98,11 @@ def answer(kind: str) -> httpx.Response:
     return httpx.Response(200, json=reply)
 
 
-def replaying(sent: list[dict], replies: tuple[str, ...] = ("turn1", "turn2"), cycle: bool = False):
+def replaying(sent: list[dict], replies: tuple[str, ...] = ("turn1", "turn2"), cycle: bool = False, edit=None):
     """The real adapter, with a retry policy that does not sleep. Request i gets `answer(replies[i])`: the last one
     again once they run out, or from the start again with `cycle`. From request STOP_AFTER + 1 on it gets an HTTP 400.
-    `sent` keeps every request body the adapter posted, retries included."""
+    `sent` keeps every request body the adapter posted, retries included. `edit(i, body)`, when given, returns the
+    body of a 200 reply to request i as sent instead (an edited copy: no cost, another provider, ...)."""
     from tradingresearch.openrouter import API, OpenRouter
     from tradingresearch.retry import Policy
 
@@ -110,11 +111,59 @@ def replaying(sent: list[dict], replies: tuple[str, ...] = ("turn1", "turn2"), c
         sent.append(json.loads(request.content))
         if n >= STOP_AFTER:
             return answer("stopped")
-        return answer(replies[n % len(replies)] if cycle else replies[min(n, len(replies) - 1)])
+        response = answer(replies[n % len(replies)] if cycle else replies[min(n, len(replies) - 1)])
+        if edit is None or response.status_code != 200:
+            return response
+        return httpx.Response(200, json=edit(n, copy.deepcopy(response.json())))
 
     provider = OpenRouter("not-a-real-key", policy=Policy(sleep=lambda seconds: None))
     provider._http = httpx.Client(base_url=API, transport=httpx.MockTransport(handler))
     return provider
+
+
+def costless(n: int, body: dict) -> dict:
+    """`edit` for `replaying`: the reply without its usage.cost, so a budget keeps each call's estimate."""
+    body.get("usage", {}).pop("cost", None)
+    return body
+
+
+def cost_of(reply: str) -> float:
+    """The usage.cost a recorded reply kind reports (turn1, one_more and three_calls are edits of turn1)."""
+    return answer(reply).json()["usage"]["cost"]
+
+
+def prices() -> dict:
+    """The recorded model's price, from the /models row recorded with the exchange (data/models.json)."""
+    from datetime import UTC, datetime
+
+    from gigai_core.budget import Price
+    from tradingresearch.openrouter import API
+
+    [row] = load("models")["data"]
+    return {MODEL: Price(model=MODEL, prompt_usd_per_token=float(row["pricing"]["prompt"]),
+                         completion_usd_per_token=float(row["pricing"]["completion"]),
+                         fetched_at=datetime(2026, 11, 17, tzinfo=UTC), source=f"{API}/models")}
+
+
+def other(ctx=None, ticker: str = "FAKEB"):
+    """The FAKEA context (or `ctx`) under another ticker: a second item whose tools prompt differs from the first."""
+    import dataclasses
+
+    ctx = ctx or context()
+    return dataclasses.replace(ctx, ticker=ticker, snapshot=ctx.snapshot.model_copy(update={"ticker": ticker}))
+
+
+def experiment(path: Path, graders: tuple[str, ...] = ("parsed",), max_usd: float = 1.0,
+               modes: tuple[str, ...] = ("tools",), tickers: tuple[str, ...] = ("FAKEA", "FAKEB")):
+    """An experiment config written to `path` and loaded: one arm per mode (named after it), the recorded model and
+    prompt, the session 2026-11-13."""
+    from tradingresearch import experiment as ex
+
+    arms = "".join(f'\n[[arms]]\nname = "{mode}"\nprompt = "{PROMPT}"\nmode = "{mode}"\n' for mode in modes)
+    path.write_text(f'name = "week4-lab"\nmodel = "{MODEL}"\nmax_usd_per_arm = {max_usd}\n'
+                    f'tickers = {json.dumps(list(tickers))}\nsessions = ["2026-11-13"]\n'
+                    f'graders = {json.dumps(list(graders))}\n{arms}')
+    return ex.load(path)
 
 
 class Capped:

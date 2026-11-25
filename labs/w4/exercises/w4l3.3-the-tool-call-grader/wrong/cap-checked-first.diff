@@ -1,0 +1,23 @@
+why: checks the count before walking the calls, so a loop that repeated its third call is reported as too many calls
+expect: for calls [get_indicators {"names": ["close"]}, get_indicators {"names": ["rsi_14"]}, get_indicators {"names": ["close"]}
+before: RED (author)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -131,6 +131,8 @@
+         spans = sample.tool_spans
+         if not spans:
+             return Score(value=1.0, explanation="no tool calls")
++        if len(spans) > self.max_calls:
++            return Score(value=0.0, explanation=f"too_many_calls: {len(spans)} > {self.max_calls}")
+         seen: set[tuple[str, str]] = set()
+         for span in spans:
+             name = span.call.name
+@@ -140,8 +142,6 @@
+             if key in seen:
+                 return Score(value=0.0, explanation=f"repeated_call: {name} {span.call.arguments}")
+             seen.add(key)
+-        if len(spans) > self.max_calls:
+-            return Score(value=0.0, explanation=f"too_many_calls: {len(spans)} > {self.max_calls}")
+         return Score(value=1.0, explanation=f"{len(spans)} tool calls")
+ 
+ 

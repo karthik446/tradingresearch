@@ -1,0 +1,14 @@
+why: caps the loop at one call per tool, so a follow-up round of the chapter's allowance fails
+expect: ('too_many_calls: 4 > 3')
+before: RED (author)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -125,7 +125,7 @@
+     id = "tool_calls_ok"
+     version = "1"
+     kind = "code"
+-    max_calls = 2 * len(TOOLS)  # every tool once plus one follow-up each; more is a loop, not a lookup
++    max_calls = len(TOOLS)  # every tool once plus one follow-up each; more is a loop, not a lookup
+ 
+     def grade(self, sample, expected) -> Score:
+         spans = sample.tool_spans

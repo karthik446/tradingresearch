@@ -1,0 +1,14 @@
+why: sums the cost of the first sample's calls only, so the record's spend misses every other item
+expect: the record says 5 calls and $0.026834
+before: RED (break pass)
+--- a/src/tradingresearch/experiment.py
++++ b/src/tradingresearch/experiment.py
+@@ -171,7 +171,7 @@
+     calls = [span.call for sample in samples for span in sample.model_spans]
+     record = RunRecord(run_id=run_id, dataset=dataset.ref, settings=settings, provider=provider.identity,
+                        created_at=created_at, completed_at=datetime.now(UTC), prereg=None, trace_path=trace.path,
+-                       spent_usd=round(sum(call.cost_usd or 0.0 for call in calls), 6), calls_made=len(calls),
++                       spent_usd=round(sum(span.call.cost_usd or 0.0 for span in samples[0].model_spans), 6), calls_made=len(calls),
+                        repeats=1, tag=f"{config.name}:{arm.name}:{arm.prompt}")
+     return Run(record=record, items={item.id: item for item in dataset.items}, samples=tuple(samples),
+                scores=tuple(scores))

@@ -1,0 +1,14 @@
+why: compares arguments as text, so the same request with other spacing or key order is not a repeat
+expect: tool_calls_ok scored 1.0 ('2 tool calls') for calls [get_indicators {"names": ["close"]}, get_indicators { "names" : [ "close" ] }]
+before: RED (author)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -136,7 +136,7 @@
+             name = span.call.name
+             if span.error is not None or _is_error(span.result):
+                 return Score(value=0.0, explanation=f"tool_error: {name} {span.call.arguments}")
+-            key = (name, _canonical(span.call.arguments))
++            key = (name, span.call.arguments)
+             if key in seen:
+                 return Score(value=0.0, explanation=f"repeated_call: {name} {span.call.arguments}")
+             seen.add(key)

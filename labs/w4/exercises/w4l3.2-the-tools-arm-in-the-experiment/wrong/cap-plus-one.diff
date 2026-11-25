@@ -1,0 +1,15 @@
+why: gives each item one call more than MAX_TOOL_TURNS, so a model that never stops costs 6 calls an item
+expect: FAKEA got 6 calls
+before: RED (author)
+--- a/src/tradingresearch/experiment.py
++++ b/src/tradingresearch/experiment.py
+@@ -164,7 +164,8 @@
+     try:
+         for item in dataset.items:
+             sample = an.analyze_with_tools(by_item[item.id], subject, model=arm.model, prompt_version=arm.prompt,
+-                                           item=item, run_id=run_id, trace=trace)
++                                           item=item, run_id=run_id, trace=trace,
++                                           max_turns=an.MAX_TOOL_TURNS + 1)
+             samples.append(sample)
+             if sample.outcome == "succeeded":
+                 scores.extend(graded(sample, item, graders))

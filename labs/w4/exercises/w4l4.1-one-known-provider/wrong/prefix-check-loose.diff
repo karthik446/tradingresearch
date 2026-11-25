@@ -1,0 +1,14 @@
+why: the client is matched by its start and nothing else is asked of the host, so bare openrouter and an empty host are clean
+expect: AssertionError: clean_route('openrouter:') returned True; expected Fal
+before: RED (author)
+--- a/src/tradingresearch/records.py
++++ b/src/tradingresearch/records.py
+@@ -32,7 +32,7 @@
+     """True only for one known provider: the teacher terms filter and the training set need who served every turn."""
+     prefix, _, rest = route.partition(":")
+     host = rest.split("/")[0].lower()
+-    return prefix == "openrouter" and host not in ("", "unknown") and not host.startswith("mixed(")
++    return route.lower().startswith("openrouter") and "unknown" not in route.lower() and "mixed(" not in route
+ 
+ 
+ def _trainable_route(terms_class: str, route: str) -> None:

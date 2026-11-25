@@ -1,0 +1,18 @@
+why: reserves each call on a fresh budget per item, so the arm's cap is applied to one item at a time
+expect: three items planned at
+before: RED (author)
+--- a/src/tradingresearch/experiment.py
++++ b/src/tradingresearch/experiment.py
+@@ -156,11 +156,11 @@
+     run_id, created_at = new_id("run"), datetime.now(UTC)
+     (data_dir / "traces").mkdir(parents=True, exist_ok=True)
+     trace = JsonlTrace(data_dir / "traces" / f"{run_id}.jsonl")
+-    subject = budgeted(provider, budget)
+     samples: list[Sample] = []
+     scores: list[ScoreRecord] = []
+     try:
+         for item in dataset.items:
++            subject = budgeted(provider, CallBudget(max_usd=config.max_usd_per_arm, prices=prices))
+             sample = an.analyze_with_tools(by_item[item.id], subject, model=arm.model, prompt_version=arm.prompt,
+                                            item=item, run_id=run_id, trace=trace)
+             samples.append(sample)

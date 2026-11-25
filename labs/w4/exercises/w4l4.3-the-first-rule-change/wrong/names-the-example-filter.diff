@@ -1,0 +1,14 @@
+why: the change names the example filter, so the challenger would run a rule nobody pre-registered
+expect: AssertionError: diff_ref is 'example-breakout-volume'; expected 'short
+before: RED (author)
+--- a/experiments/rule-change-1.toml
++++ b/experiments/rule-change-1.toml
+@@ -3,7 +3,7 @@
+ # answers every session that opens after registered_at; the decision comes after 20 paired sessions (week 9).
+ change_id = "rc_1"
+ description = "drop short-horizon theses against the 50-session trend (long below sma_50, short above)"
+-diff_ref = "short-sma50-trend"
++diff_ref = "example-breakout-volume"
+ decided = "pending"
+ 
+ [prereg]

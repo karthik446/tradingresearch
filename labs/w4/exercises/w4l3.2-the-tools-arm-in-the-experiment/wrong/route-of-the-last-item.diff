@@ -1,0 +1,14 @@
+why: asks with the last item's tools prompt, so every item is stored with the route that served FAKEB
+expect: stored routes {'FAKEA': 'openrouter:Google'
+before: RED (author)
+--- a/src/tradingresearch/experiment.py
++++ b/src/tradingresearch/experiment.py
+@@ -134,7 +134,7 @@
+             if sample.parse_status == "ok":
+                 ctx = by_item[sample.item_id]
+                 # the route of the exchange's first user turn: the item's prompt, or in tools mode the tools prompt
+-                first_user = an.tools_prompt(ctx) if arm.mode == "tools" else run.items[sample.item_id].prompt
++                first_user = an.tools_prompt(contexts[-1]) if arm.mode == "tools" else run.items[sample.item_id].prompt
+                 an.store(conn, ctx, sample, run.record.run_id, model=arm.model, prompt_version=arm.prompt,
+                          route=routed.route_for(first_user))
+                 stored += 1

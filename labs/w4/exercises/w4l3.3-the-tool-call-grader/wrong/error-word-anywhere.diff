@@ -1,0 +1,14 @@
+why: calls any result that mentions the word error a tool error, so a row named error fails the loop
+expect: tool_calls_ok scored 0.0 ('tool_error: get_indicators
+before: RED (author)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -152,7 +152,7 @@
+             result = json.loads(result)
+         except json.JSONDecodeError:
+             return False
+-    return isinstance(result, dict) and "error" in result
++    return "error" in json.dumps(result)
+ 
+ 
+ def _canonical(arguments: str) -> str:

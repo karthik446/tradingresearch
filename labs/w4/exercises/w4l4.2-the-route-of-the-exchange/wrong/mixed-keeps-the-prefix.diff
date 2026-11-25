@@ -1,0 +1,14 @@
+why: each provider in the mix keeps its client prefix
+expect: AssertionError: route_for(FAKEA prompt), route_for(FAKEB prompt) = ('o
+before: RED (author)
+--- a/src/tradingresearch/openrouter.py
++++ b/src/tradingresearch/openrouter.py
+@@ -158,7 +158,7 @@
+         distinct = sorted(set(routes))
+         if len(distinct) == 1:
+             return distinct[0]
+-        return f"openrouter:mixed({'+'.join(r.removeprefix('openrouter:') for r in distinct)})"
++        return f"openrouter:mixed({'+'.join(distinct)})"
+ 
+     @property
+     def identity(self) -> ProviderIdentity:

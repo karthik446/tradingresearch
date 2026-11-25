@@ -1,0 +1,16 @@
+why: unknown is listed in the spellings seen so far instead of compared without case
+expect: AssertionError: clean_route('openrouter:UNKNOWN/flex') returned True; 
+before: RED (independent break pass)
+--- a/src/tradingresearch/records.py
++++ b/src/tradingresearch/records.py
+@@ -31,8 +31,8 @@
+ def clean_route(route: str) -> bool:
+     """True only for one known provider: the teacher terms filter and the training set need who served every turn."""
+     prefix, _, rest = route.partition(":")
+-    host = rest.split("/")[0].lower()
+-    return prefix == "openrouter" and host not in ("", "unknown") and not host.startswith("mixed(")
++    host = rest.split("/")[0]
++    return prefix == "openrouter" and host not in ("", "unknown", "Unknown") and not host.startswith("mixed(")
+ 
+ 
+ def _trainable_route(terms_class: str, route: str) -> None:

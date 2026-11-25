@@ -1,0 +1,16 @@
+why: runs every arm on core run, so a tools arm sends the whole context, offers no tools and makes one call
+expect: 2 requests sent and the run records 2 calls
+before: RED (author)
+--- a/src/tradingresearch/experiment.py
++++ b/src/tradingresearch/experiment.py
+@@ -121,9 +121,7 @@
+     results = []
+     for arm in config.arms:
+         routed = provider.routed(arm.provider) if arm.provider else provider
+-        if arm.mode == "tools":
+-            run = run_tools(config, arm, dataset, by_item, routed, graders, prices, data_dir)
+-        else:
++        if True:
+             run = run_eval(dataset, routed, graders, settings=an.call_settings(arm.model),
+                            budget=CallBudget(max_usd=config.max_usd_per_arm, prices=prices),
+                            system=an.system_prompt(arm.prompt), trace_dir=data_dir / "traces",

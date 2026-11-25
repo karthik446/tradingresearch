@@ -1,0 +1,14 @@
+why: the log is keyed by the last turn, which in a follow-up is the tool result, so the item keeps only its first route
+expect: AssertionError: route_for(FAKEA prompt), route_for(FAKEB prompt) = ('o
+before: RED (author)
+--- a/src/tradingresearch/openrouter.py
++++ b/src/tradingresearch/openrouter.py
+@@ -123,7 +123,7 @@
+ 
+ def exchange_key(request: ModelRequest) -> str:
+     """The exchange's first user turn (the item prompt): every request of one tool loop shares it."""
+-    return next((t.content for t in request.turns if t.role == "user"), "")
++    return request.turns[-1].content
+ 
+ 
+ class OpenRouter:

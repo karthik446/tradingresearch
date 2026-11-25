@@ -1,0 +1,14 @@
+why: a short-horizon thesis with no distance value is kept
+expect: AssertionError: refuse(short-horizon long, no dist_sma_50_atr) returne
+before: RED (author)
+--- a/src/tradingresearch/rules.py
++++ b/src/tradingresearch/rules.py
+@@ -54,7 +54,7 @@
+         return None
+     dist = a.snapshot.values.get("dist_sma_50_atr")
+     if dist is None:
+-        return "short horizon needs dist_sma_50_atr to check the trend, got None"
++        return None
+     if (t.direction == "long" and dist < 0) or (t.direction == "short" and dist > 0):
+         return f"short-horizon {t.direction} against the sma_50 trend (dist_sma_50_atr {dist:.2f})"
+     return None

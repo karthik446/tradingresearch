@@ -1,0 +1,15 @@
+why: the registry entry has an empty description, so a reviewer cannot tell what the challenger runs
+expect: AssertionError: the 'short-sma50-trend' description is ''; expected th
+before: GREEN (independent break pass)
+--- a/src/tradingresearch/rules.py
++++ b/src/tradingresearch/rules.py
+@@ -63,8 +63,7 @@
+ CHALLENGER_RULES: dict[str, Rule] = {
+     "example-breakout-volume": Filter("example: drop breakout_20d theses with rel_volume < 1.5", breakout_needs_volume),
+     "example-same-prompt": PromptVariant("example: the champion's own prompt, an A/A check of the pairing", "thesis-1"),
+-    "short-sma50-trend": Filter("drop short-horizon theses against the 50-session trend (long below sma_50, short "
+-                                "above)", short_with_sma50_trend),
++    "short-sma50-trend": Filter("", short_with_sma50_trend),
+ }
+ 
+ 

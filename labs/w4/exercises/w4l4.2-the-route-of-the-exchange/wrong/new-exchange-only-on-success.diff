@@ -1,0 +1,23 @@
+why: the old exchange is cleared only when the new one's first call succeeds, so a failed exchange keeps the old route
+expect: AssertionError: route_for(item prompt) = 'openrouter:Azure' after a lo
+before: RED (author)
+--- a/src/tradingresearch/openrouter.py
++++ b/src/tradingresearch/openrouter.py
+@@ -177,8 +177,6 @@
+         if refused:
+             raise UnsupportedRequestField(refused)
+         body = self.body(request)
+-        if all(t.role in ("system", "user") for t in request.turns):  # a fresh exchange, not a tool-loop follow-up
+-            self.routes[exchange_key(request)] = []
+         failures: list[Exception] = []
+         billed: list[float] = []  # usage.cost of failed tries (a 200 carrying an error body may have billed)
+ 
+@@ -244,6 +242,8 @@
+             raise OpenRouterError(int(data["error"].get("code", 502)), str(data["error"].get("message"))[:300])
+         route = f"openrouter:{data.get('provider') or 'unknown'}" if self.routing is None else self.routing.served(data)
+         key = exchange_key(request)
++        if all(t.role in ("system", "user") for t in request.turns):
++            self.routes[key] = []
+         self.routes.setdefault(key, []).append(route)
+         self.served.append((key, route))
+         choice = data["choices"][0]

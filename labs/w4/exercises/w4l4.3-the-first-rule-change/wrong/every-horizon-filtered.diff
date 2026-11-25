@@ -1,0 +1,14 @@
+why: the trend check runs on every horizon, not only the one the change was registered for
+expect: AssertionError: refuse(day-horizon long, dist_sma_50_atr -2.5) returne
+before: RED (author)
+--- a/src/tradingresearch/rules.py
++++ b/src/tradingresearch/rules.py
+@@ -50,8 +50,6 @@
+ 
+ def short_with_sma50_trend(t: Thesis, a: Analysis) -> str | None:
+     """rule-change-1: a short-horizon thesis trades with the 50-session trend (long above sma_50, short below)."""
+-    if t.horizon != "short":
+-        return None
+     dist = a.snapshot.values.get("dist_sma_50_atr")
+     if dist is None:
+         return "short horizon needs dist_sma_50_atr to check the trend, got None"

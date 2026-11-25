@@ -1,0 +1,14 @@
+why: plans each item's tools prompt without the system turn, so the plan is short of what the first calls will cost
+expect: with max_usd_per_arm 0.0813
+before: RED (break pass)
+--- a/src/tradingresearch/experiment.py
++++ b/src/tradingresearch/experiment.py
+@@ -151,7 +151,7 @@
+     system = Turn(role="system", content=an.system_prompt(arm.prompt))
+     settings = an.call_settings(arm.model)
+     budget.plan([ModelRequest(settings=settings, tools=TOOLS,
+-                              turns=(system, Turn(role="user", content=an.tools_prompt(by_item[item.id]))))
++                              turns=(Turn(role="user", content=an.tools_prompt(by_item[item.id])),))
+                  for item in dataset.items])
+     run_id, created_at = new_id("run"), datetime.now(UTC)
+     (data_dir / "traces").mkdir(parents=True, exist_ok=True)

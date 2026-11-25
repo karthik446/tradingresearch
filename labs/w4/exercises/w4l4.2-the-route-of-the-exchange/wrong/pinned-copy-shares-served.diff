@@ -1,0 +1,14 @@
+why: the pinned copy gets its own route log but still appends its calls to the original's list
+expect: AssertionError: served on azure, google, the unpinned client = (['open
+before: RED (author)
+--- a/src/tradingresearch/openrouter.py
++++ b/src/tradingresearch/openrouter.py
+@@ -146,7 +146,7 @@
+         """The same client pinned by `routing` (an experiment arm's `provider` knob)."""
+         pinned = copy.copy(self)
+         pinned.routing = routing
+-        pinned.served, pinned.routes = [], {}  # its own log: arms never see each other's routes
++        pinned.routes = {}
+         return pinned
+ 
+     def route_for(self, prompt: str) -> str:

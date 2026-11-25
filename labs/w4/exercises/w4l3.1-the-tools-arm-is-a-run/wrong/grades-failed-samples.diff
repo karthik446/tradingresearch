@@ -1,0 +1,15 @@
+why: grades every sample, so a failed item (no answer) gets scores and drags the arm's means down
+expect: the graders were shown
+before: RED (author)
+--- a/src/tradingresearch/experiment.py
++++ b/src/tradingresearch/experiment.py
+@@ -164,8 +164,7 @@
+             sample = an.analyze_with_tools(by_item[item.id], subject, model=arm.model, prompt_version=arm.prompt,
+                                            item=item, run_id=run_id, trace=trace)
+             samples.append(sample)
+-            if sample.outcome == "succeeded":
+-                scores.extend(graded(sample, item, graders))
++            scores.extend(graded(sample, item, graders))
+     finally:
+         trace.close()
+     calls = [span.call for sample in samples for span in sample.model_spans]

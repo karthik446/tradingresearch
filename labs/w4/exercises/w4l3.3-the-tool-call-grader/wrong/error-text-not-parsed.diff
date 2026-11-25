@@ -1,0 +1,17 @@
+why: only counts an error object that is stored parsed, so the same error kept as the JSON text sent back is clean
+expect: tool_calls_ok scored 1.0 ('1 tool calls') for calls [get_indicators
+before: RED (author)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -147,11 +147,6 @@
+ 
+ def _is_error(result: object) -> bool:
+     """A tool result that is an {"error": ...} object, stored as parsed JSON or as the JSON text sent back."""
+-    if isinstance(result, str):
+-        try:
+-            result = json.loads(result)
+-        except json.JSONDecodeError:
+-            return False
+     return isinstance(result, dict) and "error" in result
+ 
+ 

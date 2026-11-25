@@ -1,0 +1,14 @@
+why: an exchange is one route only when it had one call, so two calls from one provider come out as a mix of one
+expect: AssertionError: route_for(FAKEA prompt), route_for(FAKEB prompt) = ('o
+before: RED (independent break pass)
+--- a/src/tradingresearch/openrouter.py
++++ b/src/tradingresearch/openrouter.py
+@@ -155,7 +155,7 @@
+         routes = self.routes.get(prompt)
+         if not routes or not all(clean_route(r) for r in routes):
+             return UNKNOWN
+-        distinct = sorted(set(routes))
++        distinct = sorted(set(routes)) if len(set(routes)) > 1 else routes
+         if len(distinct) == 1:
+             return distinct[0]
+         return f"openrouter:mixed({'+'.join(r.removeprefix('openrouter:') for r in distinct)})"

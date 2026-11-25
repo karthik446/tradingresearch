@@ -1,0 +1,46 @@
+--- a/src/tradingresearch/experiment.py
++++ b/src/tradingresearch/experiment.py
+@@ -112,29 +112,31 @@
+ def run_arms(conn, config: Config, contexts: list[an.Context], provider, prices: dict, data_dir: Path
+              ) -> list[ArmResult]:
+     """One run per arm on one Dataset. Each parsed sample is also stored as an Analysis, so `tr check` reads it."""
+-    # TODO(w4l3.2) a tools arm's samples are graded by code (a model grader reads no tool calls): refuse a config
+-    #   that puts a non-code grader beside a tools arm, before the first arm runs, so no call is made.
+-    if any(arm.mode == "tools" for arm in config.arms):  # before the first arm, so no call is made
+-        raise NotImplementedError("mode=tools: week 4 learner work")
++    graders = registry(list(config.graders))
++    judges = [g.id for g in graders if g.kind != "code"]
++    if judges and any(arm.mode == "tools" for arm in config.arms):  # before the first arm, so no call is made
++        raise SystemExit(f"{config.name}: a tools arm grades with code graders only, not {', '.join(judges)}")
+     dataset = Dataset.of(config.name, items(config, contexts))
+     by_item = {f"{ctx.ticker}:{ctx.session}": ctx for ctx in contexts}
+     results = []
+     for arm in config.arms:
+         routed = provider.routed(arm.provider) if arm.provider else provider
+-        # TODO(w4l3.2) a `mode = "tools"` arm runs through `run_tools`; a fixed arm stays on core `run`.
+-        run = run_eval(dataset, routed, registry(list(config.graders)), settings=an.call_settings(arm.model),
+-                       budget=CallBudget(max_usd=config.max_usd_per_arm, prices=prices),
+-                       system=an.system_prompt(arm.prompt), trace_dir=data_dir / "traces",
+-                       tag=f"{config.name}:{arm.name}:{arm.prompt}")
++        if arm.mode == "tools":
++            run = run_tools(config, arm, dataset, by_item, routed, graders, prices, data_dir)
++        else:
++            run = run_eval(dataset, routed, graders, settings=an.call_settings(arm.model),
++                           budget=CallBudget(max_usd=config.max_usd_per_arm, prices=prices),
++                           system=an.system_prompt(arm.prompt), trace_dir=data_dir / "traces",
++                           tag=f"{config.name}:{arm.name}:{arm.prompt}")
+         path = an.save(run, data_dir)
+         stored = 0
+         for sample in run.samples:
+             if sample.parse_status == "ok":
+                 ctx = by_item[sample.item_id]
+-                # TODO(w4l3.2) the route stored is the route of the exchange's first user turn; in tools mode that
+-                #   turn is not the item's prompt.
++                # the route of the exchange's first user turn: the item's prompt, or in tools mode the tools prompt
++                first_user = an.tools_prompt(ctx) if arm.mode == "tools" else run.items[sample.item_id].prompt
+                 an.store(conn, ctx, sample, run.record.run_id, model=arm.model, prompt_version=arm.prompt,
+-                         route=routed.route_for(run.items[sample.item_id].prompt))
++                         route=routed.route_for(first_user))
+                 stored += 1
+         results.append(ArmResult(arm, run, path, stored))
+     return results

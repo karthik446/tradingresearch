@@ -1,0 +1,20 @@
+id = "w4l3.3"
+title = "Grade the tool calls"
+effect = "Observe's grader table goes from 1.0 on every sample to 0.0 with the first fault: the recorded get_sources call becomes tool_error, a repeat becomes repeated_call, 7 calls become too_many_calls; a clean round and a loop with no calls stay 1.0."
+goal = "Write ToolCallsOk.grade and its cap: 0.0 with the first fault in call order (tool_error, repeated_call with arguments compared as JSON, too_many_calls past 2 x len(TOOLS)), else 1.0, and 1.0 when there are no tool calls."
+what_tested = "tool_calls_ok on loop samples over FAKEA (the recorded get_sources call, a round of three tools, no calls) and on hand-built spans: error objects parsed or as JSON text, raised calls, results that are not errors, repeats by spacing and key order, non-repeats, 6 vs 7 calls, the first fault in call order, one instance across samples."
+writes = [
+  "Set max_calls from the shipped tools: every tool once plus one follow-up each.",
+  "In grade: no tool calls is 1.0; walk the calls in order and return 0.0 at the first that raised or whose result is an error object (tool_error) or repeats an earlier call (repeated_call).",
+  "Compare arguments as JSON (key order and spacing ignored); after the walk, more calls than max_calls is too_many_calls.",
+]
+show_tests = ["test_the_first_fault_in_call_order_is_the_one_reported", "test_the_cap_passes_at_max_calls_and_fails_one_over"]
+lab = "w4l3"
+concepts = ["tool-calls-ok", "first-fault"]
+touches = ["src/tradingresearch/evals.py"]
+check = "python -m pytest -q -x -p no:cacheprovider -m lab labs/w4/exercises/w4l3.3-the-tool-call-grader/test_w4l3_3.py"
+observe = "python labs/w4/tools/observe.py grader"
+paid = false
+fixtures = ["data/turn1.reply.json", "data/turn2.reply.json", "data/fakea.context.json"]
+origin = "rebuild of week-4-end evals.py ToolCallsOk; reference = the tag's own code"
+red_expect = "tool_calls_ok scored 1.0 ('1 tool calls') for calls [get_sources"

@@ -1,0 +1,14 @@
+why: reads only the result, so a tool that raised is graded as a clean call
+expect: tool_calls_ok scored 1.0 ('1 tool calls')
+before: RED (break pass)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -134,7 +134,7 @@
+         seen: set[tuple[str, str]] = set()
+         for span in spans:
+             name = span.call.name
+-            if span.error is not None or _is_error(span.result):
++            if _is_error(span.result):
+                 return Score(value=0.0, explanation=f"tool_error: {name} {span.call.arguments}")
+             key = (name, _canonical(span.call.arguments))
+             if key in seen:

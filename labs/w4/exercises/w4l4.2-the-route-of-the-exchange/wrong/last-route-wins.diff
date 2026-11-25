@@ -1,0 +1,14 @@
+why: the exchange's route is its last clean route, so a mix is never reported
+expect: AssertionError: route_for(FAKEA prompt), route_for(FAKEB prompt) = ('o
+before: RED (author)
+--- a/src/tradingresearch/openrouter.py
++++ b/src/tradingresearch/openrouter.py
+@@ -155,7 +155,7 @@
+         routes = self.routes.get(prompt)
+         if not routes or not all(clean_route(r) for r in routes):
+             return UNKNOWN
+-        distinct = sorted(set(routes))
++        distinct = [routes[-1]]
+         if len(distinct) == 1:
+             return distinct[0]
+         return f"openrouter:mixed({'+'.join(r.removeprefix('openrouter:') for r in distinct)})"

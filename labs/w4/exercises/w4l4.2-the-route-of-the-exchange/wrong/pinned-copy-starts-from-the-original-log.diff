@@ -1,0 +1,14 @@
+why: the pinned copy starts with a copy of the original's route log, so an arm reports routes for items it never ran
+expect: AssertionError: route_for(FAKEB prompt) on azure, google, the unpinned
+before: GREEN (independent break pass)
+--- a/src/tradingresearch/openrouter.py
++++ b/src/tradingresearch/openrouter.py
+@@ -146,7 +146,7 @@
+         """The same client pinned by `routing` (an experiment arm's `provider` knob)."""
+         pinned = copy.copy(self)
+         pinned.routing = routing
+-        pinned.served, pinned.routes = [], {}  # its own log: arms never see each other's routes
++        pinned.served, pinned.routes = [], dict(self.routes)
+         return pinned
+ 
+     def route_for(self, prompt: str) -> str:

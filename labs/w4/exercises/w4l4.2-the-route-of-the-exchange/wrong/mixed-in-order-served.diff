@@ -1,0 +1,14 @@
+why: the mix lists providers in the order they served, so one mix reads two ways
+expect: AssertionError: route_for(item prompt) = 'openrouter:mixed(Google+Azur
+before: RED (author)
+--- a/src/tradingresearch/openrouter.py
++++ b/src/tradingresearch/openrouter.py
+@@ -155,7 +155,7 @@
+         routes = self.routes.get(prompt)
+         if not routes or not all(clean_route(r) for r in routes):
+             return UNKNOWN
+-        distinct = sorted(set(routes))
++        distinct = list(dict.fromkeys(routes))
+         if len(distinct) == 1:
+             return distinct[0]
+         return f"openrouter:mixed({'+'.join(r.removeprefix('openrouter:') for r in distinct)})"

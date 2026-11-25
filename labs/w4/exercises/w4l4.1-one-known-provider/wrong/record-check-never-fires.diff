@@ -1,0 +1,14 @@
+why: the record check never fires, so a trainable record keeps a mixed route
+expect: AssertionError: a main-arm Analysis, terms_class 'trainable', route 'o
+before: RED (author)
+--- a/src/tradingresearch/records.py
++++ b/src/tradingresearch/records.py
+@@ -37,7 +37,7 @@
+ 
+ def _trainable_route(terms_class: str, route: str) -> None:
+     """A trainable record (the teacher arm) is refused when its route lost provenance (unknown or mixed)."""
+-    if terms_class == "trainable" and not clean_route(route):
++    if terms_class == "trainable" and not clean_route(route) and False:
+         raise ValueError(f"a trainable record needs one known provider route, got {route!r}")
+ 
+ 

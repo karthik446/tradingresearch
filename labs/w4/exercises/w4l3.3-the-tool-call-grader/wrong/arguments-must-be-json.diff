@@ -1,0 +1,17 @@
+why: parses arguments with no fallback, so a call with empty arguments stops the grader with an exception
+expect: tool_calls_ok raised JSONDecodeError
+before: GREEN (independent break pass)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -157,10 +157,7 @@
+ 
+ def _canonical(arguments: str) -> str:
+     """Arguments with key order and spacing normalised, so the same request written twice counts as a repeat."""
+-    try:
+-        return json.dumps(json.loads(arguments), sort_keys=True)
+-    except json.JSONDecodeError:
+-        return arguments
++    return json.dumps(json.loads(arguments), sort_keys=True)
+ 
+ 
+ def built_theses(sample, expected) -> tuple[Analysis, list[Thesis]]:

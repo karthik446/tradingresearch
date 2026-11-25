@@ -1,0 +1,14 @@
+why: scores a loop with no tool calls 0.0, so every fixed-arm sample fails and compare reads the grader as a difference between arms
+expect: ('no tool calls') for calls [none]
+before: RED (author)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -130,7 +130,7 @@
+     def grade(self, sample, expected) -> Score:
+         spans = sample.tool_spans
+         if not spans:
+-            return Score(value=1.0, explanation="no tool calls")
++            return Score(value=0.0, explanation="no tool calls")
+         seen: set[tuple[str, str]] = set()
+         for span in spans:
+             name = span.call.name

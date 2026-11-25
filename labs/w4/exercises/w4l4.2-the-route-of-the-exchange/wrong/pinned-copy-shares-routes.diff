@@ -1,0 +1,14 @@
+why: the pinned copy gets its own call list but shares the route log, so one arm's exchange replaces another's
+expect: AssertionError: after FAKEA ran on an arm pinned to azure, then one pi
+before: RED (author)
+--- a/src/tradingresearch/openrouter.py
++++ b/src/tradingresearch/openrouter.py
+@@ -146,7 +146,7 @@
+         """The same client pinned by `routing` (an experiment arm's `provider` knob)."""
+         pinned = copy.copy(self)
+         pinned.routing = routing
+-        pinned.served, pinned.routes = [], {}  # its own log: arms never see each other's routes
++        pinned.served = []
+         return pinned
+ 
+     def route_for(self, prompt: str) -> str:

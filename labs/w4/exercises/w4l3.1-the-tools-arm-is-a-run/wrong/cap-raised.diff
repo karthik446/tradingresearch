@@ -1,0 +1,14 @@
+why: passes its own larger cap to the loop, so a model that never stops gets 10 calls per item
+expect: FAKEA got
+before: RED (author)
+--- a/src/tradingresearch/experiment.py
++++ b/src/tradingresearch/experiment.py
+@@ -162,7 +162,7 @@
+     try:
+         for item in dataset.items:
+             sample = an.analyze_with_tools(by_item[item.id], subject, model=arm.model, prompt_version=arm.prompt,
+-                                           item=item, run_id=run_id, trace=trace)
++                                           item=item, run_id=run_id, trace=trace, max_turns=2 * an.MAX_TOOL_TURNS)
+             samples.append(sample)
+             if sample.outcome == "succeeded":
+                 scores.extend(graded(sample, item, graders))

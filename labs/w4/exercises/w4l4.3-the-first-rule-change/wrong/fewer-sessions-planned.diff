@@ -1,0 +1,13 @@
+why: the change plans half the sessions the fixed unit asks for
+expect: AssertionError: the prereg's pass_rule, guard_metric, margin, n_planne
+before: RED (author)
+--- a/experiments/rule-change-1.toml
++++ b/experiments/rule-change-1.toml
+@@ -11,6 +11,6 @@
+ pass_rule = "delta_ci_lower > 0"
+ guard_metric = "p1_met_rate"
+ margin = 0.10
+-n_planned = 20
++n_planned = 10
+ registered_at = 2026-11-17T07:08:00Z
+ hypothesis = "short-horizon theses that trade against the sma_50 trend lose R; dropping them raises per-session net R"

@@ -1,0 +1,14 @@
+why: the refusal does not say which route it refused
+expect: AssertionError: a main-arm Analysis with route 'openrouter:unknown' wa
+before: RED (author)
+--- a/src/tradingresearch/records.py
++++ b/src/tradingresearch/records.py
+@@ -38,7 +38,7 @@
+ def _trainable_route(terms_class: str, route: str) -> None:
+     """A trainable record (the teacher arm) is refused when its route lost provenance (unknown or mixed)."""
+     if terms_class == "trainable" and not clean_route(route):
+-        raise ValueError(f"a trainable record needs one known provider route, got {route!r}")
++        raise ValueError("a trainable record needs one known provider route")
+ 
+ 
+ class SourceRef(CoreModel):

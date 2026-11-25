@@ -1,0 +1,14 @@
+why: plans the run, then sends the calls straight to the provider: nothing is reserved, so the cap is never checked again
+expect: three items planned at
+before: RED (author)
+--- a/src/tradingresearch/experiment.py
++++ b/src/tradingresearch/experiment.py
+@@ -156,7 +156,7 @@
+     run_id, created_at = new_id("run"), datetime.now(UTC)
+     (data_dir / "traces").mkdir(parents=True, exist_ok=True)
+     trace = JsonlTrace(data_dir / "traces" / f"{run_id}.jsonl")
+-    subject = budgeted(provider, budget)
++    subject = provider
+     samples: list[Sample] = []
+     scores: list[ScoreRecord] = []
+     try:

@@ -1,0 +1,14 @@
+why: the whole rest of the route is judged as the host, so unknown at a tier slips through
+expect: AssertionError: clean_route('openrouter:unknown/flex') returned True; 
+before: RED (author)
+--- a/src/tradingresearch/records.py
++++ b/src/tradingresearch/records.py
+@@ -31,7 +31,7 @@
+ def clean_route(route: str) -> bool:
+     """True only for one known provider: the teacher terms filter and the training set need who served every turn."""
+     prefix, _, rest = route.partition(":")
+-    host = rest.split("/")[0].lower()
++    host = rest.lower()
+     return prefix == "openrouter" and host not in ("", "unknown") and not host.startswith("mixed(")
+ 
+ 

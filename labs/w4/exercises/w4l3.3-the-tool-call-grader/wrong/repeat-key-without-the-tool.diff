@@ -1,0 +1,14 @@
+why: compares arguments only, so {} sent to two different tools is called a repeat
+expect: ('repeated_call: get_fundamentals {}') for calls [get_levels {}, get_fundamentals {}
+before: RED (author)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -136,7 +136,7 @@
+             name = span.call.name
+             if span.error is not None or _is_error(span.result):
+                 return Score(value=0.0, explanation=f"tool_error: {name} {span.call.arguments}")
+-            key = (name, _canonical(span.call.arguments))
++            key = ('', _canonical(span.call.arguments))
+             if key in seen:
+                 return Score(value=0.0, explanation=f"repeated_call: {name} {span.call.arguments}")
+             seen.add(key)

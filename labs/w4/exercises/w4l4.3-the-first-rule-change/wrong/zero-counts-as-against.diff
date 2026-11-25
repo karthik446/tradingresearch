@@ -1,0 +1,14 @@
+why: a close exactly on the average is refused for both directions
+expect: AssertionError: refuse(short-horizon long, dist_sma_50_atr 0.0) return
+before: RED (author)
+--- a/src/tradingresearch/rules.py
++++ b/src/tradingresearch/rules.py
+@@ -55,7 +55,7 @@
+     dist = a.snapshot.values.get("dist_sma_50_atr")
+     if dist is None:
+         return "short horizon needs dist_sma_50_atr to check the trend, got None"
+-    if (t.direction == "long" and dist < 0) or (t.direction == "short" and dist > 0):
++    if (t.direction == "long" and dist <= 0) or (t.direction == "short" and dist >= 0):
+         return f"short-horizon {t.direction} against the sma_50 trend (dist_sma_50_atr {dist:.2f})"
+     return None
+ 

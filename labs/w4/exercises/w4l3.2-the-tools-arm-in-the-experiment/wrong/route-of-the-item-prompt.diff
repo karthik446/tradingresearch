@@ -1,0 +1,14 @@
+why: asks for the route of the item's dataset prompt, which a tools arm never sends, so every tools item is stored as openrouter:unknown
+expect: stored routes {'FAKEA': 'openrouter:unknown'
+before: RED (author)
+--- a/src/tradingresearch/experiment.py
++++ b/src/tradingresearch/experiment.py
+@@ -136,7 +136,7 @@
+                 # the route of the exchange's first user turn: the item's prompt, or in tools mode the tools prompt
+                 first_user = an.tools_prompt(ctx) if arm.mode == "tools" else run.items[sample.item_id].prompt
+                 an.store(conn, ctx, sample, run.record.run_id, model=arm.model, prompt_version=arm.prompt,
+-                         route=routed.route_for(first_user))
++                         route=routed.route_for(run.items[sample.item_id].prompt))
+                 stored += 1
+         results.append(ArmResult(arm, run, path, stored))
+     return results
