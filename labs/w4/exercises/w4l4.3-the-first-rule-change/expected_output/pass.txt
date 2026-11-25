@@ -17,8 +17,8 @@ observe: python labs/w4/tools/observe.py rule
   | experiments/rule-change-1.toml: rc_1, diff_ref 'short-sma50-trend', registered_at
   | 2026-11-17T07:08:00+00:00
   | registered in a temp journal
-  | tr learn --status on that journal:
-  |   rule changes (SPIKE §8.2-8.3): 1 registered
+  | tr learn --status on that journal (the internal section label shown as the chapter's):
+  |   rule changes (chapter week 4 section 6): 1 registered
   |   rule: adopt iff, over the first 20 paired sessions, the 95% CI lower bound of mean(challenger
   | - champion) session r_net is > 0 and that of the P1 met-rate difference is >= -0.10; otherwise
   | rejected; insufficient if 20 pairs are not reached by day 60 (2027-01-15)
