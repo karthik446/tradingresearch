@@ -1,0 +1,10 @@
+why: adds $0.0004 of slack on top of the cap, sending a call the caller's money does not cover
+expect: With max_usd=0.04296, just below one call's worst case
+before: GREEN (independent reader)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -245,3 +245,3 @@
+     run = run_eval(Dataset.of(P1Judge.id, [item]), provider, [], settings=settings,
+-                   budget=CallBudget(max_usd=max_usd, prices=prices), trace_dir=data_dir / "traces", tag=P1Judge.id)
++                   budget=CallBudget(max_usd=max_usd + 0.0004, prices=prices), trace_dir=data_dir / "traces", tag=P1Judge.id)
+     raise NotImplementedError(f"part B (lab w3l3): save run {run.record.run_id}, read its verdict, store it with its "

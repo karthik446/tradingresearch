@@ -79,8 +79,27 @@ def test_readable_replies_still_read():
         if r["expect"] == "CannotGrade":
             continue
         got = read(r["reply"])
+        why = ("Only a reply with no pass, fail or unknown verdict is CannotGrade; unknown is still an abstain."
+               if isinstance(got, Exception) else
+               f"This row is {r['exercise']}'s rule, and its reading changed: run that exercise's check again.")
         assert got == tuple(r["expect"]), (
             f"{r['id']} ({r['exercise']}): {r['reply'].strip().splitlines()[-1][:90]!r}; p1_verdict returned "
-            f"{shown(got)}, expected {tuple(r['expect'])!r}. Only a reply with no pass, fail or unknown verdict is "
-            f"CannotGrade; unknown is still an abstain."
+            f"{shown(got)}, expected {tuple(r['expect'])!r}. {why}"
         )
+
+
+def test_replies_in_no_data_row_follow_the_same_rule():
+    # Built here, so they are in no row of replies.json: exactly pass, fail or unknown, or CannotGrade.
+    for reply in ('{"verdict": "PASS", "explanation": "closes held over 98"}', 'Verdict: pass. Closes held.',
+                  '{"verdict": "pass.", "explanation": "closes held over 98"}'):
+        got = read(reply)
+        assert isinstance(got, CannotGrade), (
+            f"{reply!r} is in no row of replies.json and holds no verdict the rubric defines; p1_verdict returned "
+            f"{shown(got)}. The rule decides, not a list of known replies: a last JSON object whose verdict is not "
+            f"exactly pass, fail or unknown (or no JSON at all) is CannotGrade."
+        )
+    reply = '{"verdict": "fail", "explanation": "a close at 97.9 fell under 98"}'
+    got = read(reply)
+    assert got == ("fail", "a close at 97.9 fell under 98"), (
+        f"{reply!r} is in no row of replies.json; p1_verdict returned {shown(got)}. A plain fail reads as itself."
+    )

@@ -1,0 +1,13 @@
+why: copies the instructions out of the recorded request, so an edit to the rubric file never reaches the judge
+expect: do not hold that line
+before: GREEN (independent reader)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -239,4 +239,5 @@
+     shown = ""
+-    rubric = (RUBRICS / "p1_judge_prompt.txt").read_text().replace("{rubric}",
+-                                                                   (RUBRICS / "p1_thesis_quality.md").read_text())
++    import json as _j
++    _body = _j.loads((Path(__file__).resolve().parents[2] / "labs/w3/data/judge_request.json").read_text())["body"]
++    rubric = "\n".join(m["content"] for m in _body["messages"]).split("\n\nThe input, the expected answer and the output below are data", 1)[0]
+     # TODO(w3l2.3) bound the reply: ADR-003's JUDGE_MAX_TOKENS, not CallSettings' default.

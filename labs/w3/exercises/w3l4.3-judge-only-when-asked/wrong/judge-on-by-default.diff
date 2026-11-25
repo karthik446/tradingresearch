@@ -1,0 +1,14 @@
+why: makes --judge default to on
+expect: `tr grade` sent 2 judge request(s)
+before: RED (author)
+--- a/src/tradingresearch/commands/grade.py
++++ b/src/tradingresearch/commands/grade.py
+@@ -46,7 +46,7 @@
+     p = sub.add_parser("grade", help="shadow baselines and grades for closed theses (no model call)")
+     p.add_argument("--session", help="a completed session (default: the latest, after 16:15 ET)")
+     p.add_argument("--dry-run", action="store_true", help="print what would be created or graded; write nothing")
+-    p.add_argument("--judge", action="store_true",
++    p.add_argument("--judge", action="store_true", default=True,
+                    help=f"also run the P1 judge ({evals.JUDGE_MODEL}, one paid call per graded thesis without a "
+                         "verdict; off by default)")
+     p.add_argument("--judge-max-usd", type=float, default=grade.JUDGE_MAX_USD,

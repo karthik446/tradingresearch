@@ -1,0 +1,14 @@
+why: prints a cost on the judged line only, as if a reply with no verdict were free
+expect: line should show what its call cost
+before: RED (author)
+--- a/src/tradingresearch/grade.py
++++ b/src/tradingresearch/grade.py
+@@ -428,7 +428,7 @@
+         elif j.verdict is not None:
+             lines.append(f"{head}  P1 {j.verdict} ${j.cost_usd:.6f}: {j.reason}")
+         else:
+-            lines.append(f"{head}  not judged ${j.cost_usd:.6f}: {j.error}")
++            lines.append(f"{head}  not judged: {j.error}")
+     if dry_run:
+         return lines + [f"judge (dry run): would judge {len(judged)} (cap ${max_usd:.2f}); nothing judged, no call"]
+     done = sum(j.verdict is not None for j in judged)

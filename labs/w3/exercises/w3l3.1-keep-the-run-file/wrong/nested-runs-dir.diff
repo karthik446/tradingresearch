@@ -1,0 +1,14 @@
+why: saves into data_dir/runs, where save already adds runs/ itself
+expect: data_dir/runs holds no run file
+before: RED (author)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -247,7 +247,7 @@
+                        expected=None)
+     run = run_eval(Dataset.of(P1Judge.id, [item]), provider, [], settings=settings,
+                    budget=CallBudget(max_usd=max_usd, prices=prices), trace_dir=data_dir / "traces", tag=P1Judge.id)
+-    run_path = an.save(run, data_dir)
++    run_path = an.save(run, data_dir / "runs")
+     sample = run.samples[0]
+     if sample.outcome != "succeeded":
+         raise CannotGrade(f"judge call failed: {sample.error.code if sample.error else '?'} (run {run_path})")

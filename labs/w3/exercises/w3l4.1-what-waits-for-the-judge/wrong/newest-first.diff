@@ -1,0 +1,14 @@
+why: lists the newest thesis first, so a capped run starves the oldest
+expect: to_judge lists ['champion (written 2nd)', 'challenger (written 1st)']
+before: RED (author)
+--- a/src/tradingresearch/grade.py
++++ b/src/tradingresearch/grade.py
+@@ -380,7 +380,7 @@
+     rows = conn.execute("SELECT t.body FROM thesis t JOIN grade g USING (thesis_id) "
+                         "WHERE t.arm IN ('champion', 'challenger') "
+                         "AND NOT EXISTS (SELECT 1 FROM judge_verdict v WHERE v.thesis_id = t.thesis_id) "
+-                        "ORDER BY t.rowid")
++                        "ORDER BY t.rowid DESC")
+     return [Thesis.model_validate_json(body) for (body,) in rows]
+ 
+ 

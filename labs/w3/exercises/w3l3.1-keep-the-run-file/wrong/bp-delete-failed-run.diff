@@ -1,0 +1,13 @@
+why: removes the run file of a failed call before raising, to keep runs/ tidy
+expect: The failed call left no run file
+before: RED (independent break pass)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -250,6 +250,7 @@
+     run_path = an.save(run, data_dir)
+     sample = run.samples[0]
+     if sample.outcome != "succeeded":
++        run_path.unlink()
+         raise CannotGrade(f"judge call failed: {sample.error.code if sample.error else '?'} (run {run_path})")
+     # TODO(w3l3.2) read the reply with your p1_verdict and return the Score it earns: 1.0 for pass, else 0.0, the
+     #   verdict as its answer, the reason as its explanation, a JudgeNote of the judge model, the prompt's sha256 and

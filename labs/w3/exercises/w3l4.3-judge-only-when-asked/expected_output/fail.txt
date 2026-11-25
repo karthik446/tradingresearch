@@ -1,0 +1,5 @@
+FAIL w3l4.3 (try 1): Judge only when asked, and print what it cost
+  `tr grade --judge --dry-run` sent 0 request(s) and printed: (no judge line). A dry run with
+  --judge says what the judge would take (2 theses here) and calls nothing.
+  hint 1 unlocks after 2 failed runs; hint 2 unlocks after 5 failed runs; the solution unlocks after
+  10 failed runs or when the check is green

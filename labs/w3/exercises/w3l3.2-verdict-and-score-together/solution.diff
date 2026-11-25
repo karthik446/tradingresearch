@@ -1,0 +1,29 @@
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -251,15 +251,19 @@
+     sample = run.samples[0]
+     if sample.outcome != "succeeded":
+         raise CannotGrade(f"judge call failed: {sample.error.code if sample.error else '?'} (run {run_path})")
+-    # TODO(w3l3.2) read the reply with your p1_verdict and return the Score it earns: 1.0 for pass, else 0.0, the
+-    #   verdict as its answer, the reason as its explanation, a JudgeNote of the judge model, the prompt's sha256 and
+-    #   the calls below. Store a ScoreRecord of it (P1Judge's id and version, kind "model", the judge's trace and span
+-    #   ids) and the verdict that points at it (journal._insert_score, journal.add_judge_verdict) in one transaction:
+-    #   a failure between the two writes leaves neither.
++    verdict, reason = p1_verdict(sample.output_text)
+     spans = sample.model_spans
+     calls = tuple(ModelExchange(**{name: getattr(span, name) for name in ModelExchange.model_fields}) for span in spans)
+-    raise NotImplementedError(f"lab w3l3.2: read the verdict of run {run.record.run_id}, store it with its "
+-                              "ScoreRecord, return the Score")
++    score = Score(value=1.0 if verdict == "pass" else 0.0, explanation=reason, answer=verdict,
++                  judge=JudgeNote(model=JUDGE_MODEL, prompt_sha256=judge.prompt_sha256, calls=calls))
++    record = ScoreRecord(score_id=new_id("sc"), trace_id=sample.trace_id, grader_id=P1Judge.id,
++                         grader_version=P1Judge.version, kind="model", value=score.value, explanation=reason,
++                         judge_model=JUDGE_MODEL, judge_prompt_sha256=judge.prompt_sha256,
++                         judge_span_ids=tuple(span.span_id for span in spans), recorded_at=datetime.now(UTC))
++    with conn:  # the ScoreRecord and the verdict that points at it land in one transaction
++        journal._insert_score(conn, t.thesis_id, record)
++        journal.add_judge_verdict(conn, t.thesis_id, verdict, reason, record.score_id)
++    return score
+ 
+ 
+ def graders(names: list[str]) -> list:

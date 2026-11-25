@@ -1,0 +1,25 @@
+PASS w3l4.1: What waits for the judge
+observe: python labs/w3/tools/observe.py grade
+  | queue: grade.to_judge on 6 FAKEA theses, written in this order:
+  |   1st challenger graded, 2nd champion graded, 3rd teacher closed, no grade
+  |   4th champion verdict stored, 5th challenger verdict stored, 6th champion never entered
+  |   lists 2: 1st challenger, 2nd champion
+  | grade.judge, $0.25 cap, replies recorded/no_verdict/failed/recorded: 0 sent, $0.000000 spent
+  |   1st champion   $0.000000  not judged: not judged yet (lab w3l4.2)
+  |   2nd challenger $0.000000  not judged: not judged yet (lab w3l4.2)
+  |   3rd champion   $0.000000  not judged: not judged yet (lab w3l4.2)
+  |   4th challenger $0.000000  not judged: not judged yet (lab w3l4.2)
+  | grade.judge, $0.05 cap, replies recorded: 0 sent, $0.000000 spent
+  |   1st champion   $0.000000  not judged: not judged yet (lab w3l4.2)
+  |   2nd challenger $0.000000  not judged: not judged yet (lab w3l4.2)
+  |   3rd champion   $0.000000  not judged: not judged yet (lab w3l4.2)
+  |   4th challenger $0.000000  not judged: not judged yet (lab w3l4.2)
+  | tr grade --session 2026-11-19 on 2 waiting theses (replies no_verdict, then recorded):
+  |   tr grade: 0 sent, 0 thesis line(s); no judge line
+  |   tr grade --judge --dry-run: 0 sent, 0 thesis line(s); no judge line
+  |   tr grade --judge: 0 sent
+  |     (no judge line)
+  |   tr grade --judge again: 0 sent, 0 thesis line(s); no judge line
+  | The replies are the recording or edits of it: verdicts and a paid call's cost cannot move.
+  | What moves is which theses wait, what each run sends under its cap, and what tr grade prints.
+next: `tr lab next` commits it and moves on; `tr lab solution` shows the reference to compare

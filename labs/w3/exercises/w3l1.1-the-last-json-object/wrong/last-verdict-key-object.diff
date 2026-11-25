@@ -1,0 +1,16 @@
+why: reads the object that starts at the last {"verdict", which is an object nested inside the answer when one is
+expect: A reply that answers pass and nests
+before: GREEN (independent reader)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -209,5 +209,7 @@
+     `unknown: ` (ADR-003). A reply with no verdict is CannotGrade, not an abstain."""
+-    verdict = last_json_object(reply, "verdict")
+-    # TODO(w3l1.3) a reply with no pass, fail or unknown verdict cannot be graded: raise CannotGrade, quoting the reply.
+-    explanation = last_json_object(reply, "explanation")
++    import json
++    starts = [m.start() for m in re.finditer(r'\{\s*"verdict"', reply)]
++    last = json.JSONDecoder().raw_decode(reply, starts[-1])[0] if starts else {}
++    verdict = last.get("verdict")
++    explanation = last.get("explanation")
+     reason = explanation if isinstance(explanation, str) else ""

@@ -1,0 +1,13 @@
+why: stores a fail verdict for the refused thesis before raising
+expect: The refusal left a verdict row ('fail')
+before: RED (author)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -235,6 +235,7 @@
+     try:
+         t, g = label.labelable(conn, thesis_id)
+     except label.Refused as exc:
++        journal.add_judge_verdict(conn, thesis_id, "fail", str(exc))
+         raise CannotGrade(str(exc)) from None
+     analysis = journal.get(conn, Analysis, t.analysis_id)
+     shown = "\n".join(["cited claims (claim_id | tag | text)", *label.cited(analysis, t.evidence), "",

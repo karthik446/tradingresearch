@@ -1,0 +1,16 @@
+--- a/src/tradingresearch/grade.py
++++ b/src/tradingresearch/grade.py
+@@ -377,9 +377,10 @@
+ 
+ def to_judge(conn) -> list[Thesis]:
+     """Graded champion and challenger theses with no judge verdict yet, oldest first."""
+-    # TODO(w3l4.1) only the theses the judge may take and has not: a champion or challenger thesis with a Grade (the
+-    #   post-trade summary needs it) and no row in judge_verdict yet, oldest first, so a capped run leaves the newest.
+-    rows = conn.execute("SELECT t.body FROM thesis t ORDER BY t.rowid")
++    rows = conn.execute("SELECT t.body FROM thesis t JOIN grade g USING (thesis_id) "
++                        "WHERE t.arm IN ('champion', 'challenger') "
++                        "AND NOT EXISTS (SELECT 1 FROM judge_verdict v WHERE v.thesis_id = t.thesis_id) "
++                        "ORDER BY t.rowid")
+     return [Thesis.model_validate_json(body) for (body,) in rows]
+ 
+ 

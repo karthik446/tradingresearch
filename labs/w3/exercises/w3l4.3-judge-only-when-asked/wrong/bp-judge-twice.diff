@@ -1,0 +1,14 @@
+why: judges every graded thesis on each --judge run, verdict or not
+expect: A second `tr grade --judge` sent 2 request(s)
+before: RED (independent break pass)
+--- a/src/tradingresearch/grade.py
++++ b/src/tradingresearch/grade.py
+@@ -379,7 +379,7 @@
+     """Graded champion and challenger theses with no judge verdict yet, oldest first."""
+     rows = conn.execute("SELECT t.body FROM thesis t JOIN grade g USING (thesis_id) "
+                         "WHERE t.arm IN ('champion', 'challenger') "
+-                        "AND NOT EXISTS (SELECT 1 FROM judge_verdict v WHERE v.thesis_id = t.thesis_id) "
++                        "AND NOT EXISTS (SELECT 1 FROM judge_verdict v WHERE v.thesis_id = t.thesis_id AND 0) "
+                         "ORDER BY t.rowid")
+     return [Thesis.model_validate_json(body) for (body,) in rows]
+ 

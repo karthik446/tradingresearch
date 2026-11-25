@@ -1,0 +1,7 @@
+FAIL w3l3.3 (try 1): Refuse before the call: CannotGrade, at no cost
+  On a teacher thesis (ADR-003: teacher theses are never judged) p1_judge ended with Refused:
+  th_<id> is a teacher thesis: teacher theses are never judged or labelled (ADR-003), after 0
+  request(s). A grader that will not grade raises CannotGrade: the one error `tr grade --judge`
+  keeps on a thesis before it goes on.
+  hint 1 unlocks after 2 failed runs; hint 2 unlocks after 5 failed runs; the solution unlocks after
+  10 failed runs or when the check is green

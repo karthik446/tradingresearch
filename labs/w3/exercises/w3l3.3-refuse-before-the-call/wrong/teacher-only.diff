@@ -1,0 +1,14 @@
+why: turns only the teacher refusal into CannotGrade and lets the others through
+expect: On a thesis that never entered (no Grade, so no post-trade summary to judge) p1_judge ended with Refused
+before: RED (author)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -235,6 +235,8 @@
+     try:
+         t, g = label.labelable(conn, thesis_id)
+     except label.Refused as exc:
++        if "teacher" not in str(exc):
++            raise
+         raise CannotGrade(str(exc)) from None
+     analysis = journal.get(conn, Analysis, t.analysis_id)
+     shown = "\n".join(["cited claims (claim_id | tag | text)", *label.cited(analysis, t.evidence), "",

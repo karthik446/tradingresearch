@@ -12,7 +12,7 @@ diagram = """
  tr lab verify  --> FAIL (try N): what the check expected and got -+
          |
          v
-   PASS, then labs/w3/tools/observe.py: your reading of every judge reply, or your request against the recorded one
+   PASS, then labs/w3/tools/observe.py: your reading of the replies, your request, what the judge keeps, or tr grade
          |
          v
  tr lab next    commits `lab <id>: green`, puts the next stub in place

@@ -1,0 +1,17 @@
+why: stores a reply with no verdict as a fail instead of refusing to grade it
+expect: On a reply with no verdict p1_judge ended with Score
+before: RED (author)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -251,7 +251,10 @@
+     sample = run.samples[0]
+     if sample.outcome != "succeeded":
+         raise CannotGrade(f"judge call failed: {sample.error.code if sample.error else '?'} (run {run_path})")
+-    verdict, reason = p1_verdict(sample.output_text)
++    try:
++        verdict, reason = p1_verdict(sample.output_text)
++    except CannotGrade as exc:
++        verdict, reason = "fail", f"unknown: {exc}"
+     spans = sample.model_spans
+     calls = tuple(ModelExchange(**{name: getattr(span, name) for name in ModelExchange.model_fields}) for span in spans)
+     score = Score(value=1.0 if verdict == "pass" else 0.0, explanation=reason, answer=verdict,

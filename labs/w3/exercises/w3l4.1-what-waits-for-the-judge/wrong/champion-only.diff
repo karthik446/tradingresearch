@@ -1,0 +1,14 @@
+why: judges only the champion arm
+expect: to_judge lists ['champion (written 2nd)']
+before: RED (author)
+--- a/src/tradingresearch/grade.py
++++ b/src/tradingresearch/grade.py
+@@ -378,7 +378,7 @@
+ def to_judge(conn) -> list[Thesis]:
+     """Graded champion and challenger theses with no judge verdict yet, oldest first."""
+     rows = conn.execute("SELECT t.body FROM thesis t JOIN grade g USING (thesis_id) "
+-                        "WHERE t.arm IN ('champion', 'challenger') "
++                        "WHERE t.arm = 'champion' "
+                         "AND NOT EXISTS (SELECT 1 FROM judge_verdict v WHERE v.thesis_id = t.thesis_id) "
+                         "ORDER BY t.rowid")
+     return [Thesis.model_validate_json(body) for (body,) in rows]

@@ -1,0 +1,23 @@
+why: runs the judge before tr grade grades today's closed theses
+expect: `tr grade --judge` did, in order: ['judge', 'judge', 'grade']
+before: GREEN (independent reader)
+--- a/src/tradingresearch/commands/grade.py
++++ b/src/tradingresearch/commands/grade.py
+@@ -14,6 +14,8 @@
+ def cmd_grade(args, cfg) -> None:
+     day = completed_session(args.session, datetime.now(UTC))
+     conn = journal.connect(cfg.db_path)
++    if args.judge:
++        print("\n".join(judge_lines(conn, args, cfg)))
+     if all(state == "PROPOSED" for _, state in journal.ungraded_theses(conn)):  # nothing filled: no bars to read
+         report = grade.run(conn, None, day, dry_run=args.dry_run)
+     else:
+@@ -21,8 +23,6 @@
+             bars = reconcile_run.AlpacaBars(http, cfg.data_dir / "bars_1m", cfg.feed)
+             report = grade.run(conn, bars, day, dry_run=args.dry_run)
+     print("\n".join(grade.render(report)))
+-    if args.judge:
+-        print("\n".join(judge_lines(conn, args, cfg)))
+ 
+ 
+ def judge_lines(conn, args, cfg) -> list[str]:

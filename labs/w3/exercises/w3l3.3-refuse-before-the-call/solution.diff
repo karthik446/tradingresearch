@@ -1,0 +1,17 @@
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -232,10 +232,10 @@
+ 
+     Teacher theses and theses with no Grade (never entered, not closed) are CannotGrade before any call. A failed
+     call or a reply with no verdict is CannotGrade after it: the cost is in the run file, nothing is stored."""
+-    # TODO(w3l3.3) refuse before any call. label.labelable raises label.Refused for a teacher thesis and for one that
+-    #   `tr grade` has not graded (never entered, or not closed yet). A grader that will not grade raises CannotGrade,
+-    #   the one error `tr grade --judge` reports on a thesis, and says why.
+-    t, g = label.labelable(conn, thesis_id)
++    try:
++        t, g = label.labelable(conn, thesis_id)
++    except label.Refused as exc:
++        raise CannotGrade(str(exc)) from None
+     analysis = journal.get(conn, Analysis, t.analysis_id)
+     shown = "\n".join(["cited claims (claim_id | tag | text)", *label.cited(analysis, t.evidence), "",
+                        "post-trade summary (code-written)", label.summary(conn, bars, t, g)])

@@ -1,0 +1,18 @@
+why: checks the outcome before keeping the run, so a failed call leaves no run file
+expect: The failed call left no run file
+before: RED (author)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -247,10 +247,10 @@
+                        expected=None)
+     run = run_eval(Dataset.of(P1Judge.id, [item]), provider, [], settings=settings,
+                    budget=CallBudget(max_usd=max_usd, prices=prices), trace_dir=data_dir / "traces", tag=P1Judge.id)
+-    run_path = an.save(run, data_dir)
+     sample = run.samples[0]
+     if sample.outcome != "succeeded":
+-        raise CannotGrade(f"judge call failed: {sample.error.code if sample.error else '?'} (run {run_path})")
++        raise CannotGrade(f"judge call failed: {sample.error.code if sample.error else '?'}")
++    run_path = an.save(run, data_dir)
+     # TODO(w3l3.2) read the reply with your p1_verdict and return the Score it earns: 1.0 for pass, else 0.0, the
+     #   verdict as its answer, the reason as its explanation, a JudgeNote of the judge model, the prompt's sha256 and
+     #   the calls below. Store a ScoreRecord of it (P1Judge's id and version, kind "model", the judge's trace and span

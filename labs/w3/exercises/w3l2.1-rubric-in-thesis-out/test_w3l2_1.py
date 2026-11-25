@@ -6,6 +6,7 @@ answers with the recorded reply ($0, no network). The prompt it sends is compare
 produced it.
 """
 
+import shutil
 import sys
 from pathlib import Path
 
@@ -63,4 +64,21 @@ def test_output_follows_the_thesis_it_judges(tmp_path):
         f"For the same trade with its thesis reworded, [BEGIN OUTPUT] holds {mine!r}; that thesis says {want!r}. "
         f"OUTPUT comes from the thesis being judged: a fixed text passes the recorded trade and grades the wrong "
         f"thesis on every other."
+    )
+
+
+def test_the_instructions_follow_the_rubric_file(tmp_path, monkeypatch):
+    from tradingresearch import evals
+
+    rubrics, added = tmp_path / "rubrics", "A line this check added to the end of the rubric file."
+    shutil.copytree(evals.RUBRICS, rubrics)
+    (rubrics / "p1_thesis_quality.md").write_text((evals.RUBRICS / "p1_thesis_quality.md").read_text() + added + "\n")
+    monkeypatch.setattr(evals, "RUBRICS", rubrics)
+    got, sent, _ = fakea.judge(tmp_path)
+    mine = fakea.rubric_part(fakea.prompt_of(sent[0])) if sent else ""
+    assert added in mine, (
+        f"With RUBRICS pointing at a copy of evals/rubrics whose p1_thesis_quality.md ends with {added!r}, the judge's "
+        f"instructions ({len(mine)} chars; p1_judge ended with {fakea.shown(got)}) do not hold that line. The rubric "
+        f"is read from its file in RUBRICS on every call, so an edit to the rubric changes what the judge is told; a "
+        f"copy of the recorded request's text grades every later trade by the rubric as it was on 2026-11-17."
     )

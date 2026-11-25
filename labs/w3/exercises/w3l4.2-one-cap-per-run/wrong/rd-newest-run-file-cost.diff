@@ -1,0 +1,15 @@
+why: charges a thesis the newest run file's cost instead of the files it added
+expect: cost $0.005163. The budget refused its call, so it sent nothing
+before: GREEN (independent reader)
+--- a/src/tradingresearch/grade.py
++++ b/src/tradingresearch/grade.py
+@@ -410,7 +410,8 @@
+             capped, judged = True, Judged(t, error=f"the ${max_usd:.2f} cap cannot cover the call: {exc}")
+         except Exception as exc:  # one thesis's failure (no verdict, a failed call, bars) never stops the run
+             judged = Judged(t, error=f"{type(exc).__name__}: {exc}")
+-        cost = sum(trace.header(path).spent_usd for path in run_files(data_dir) - before)
++        files = run_files(data_dir)
++        cost = trace.header(max(files, key=lambda p: p.stat().st_mtime_ns)).spent_usd if files else 0.0
+         spent += cost
+         out.append(replace(judged, cost_usd=cost))
+     return out

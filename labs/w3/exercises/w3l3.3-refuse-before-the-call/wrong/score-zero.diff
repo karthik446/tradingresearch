@@ -1,0 +1,14 @@
+why: turns a refusal into a Score of 0, as if the judge had failed the thesis
+expect: p1_judge ended with Score
+before: RED (author)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -235,7 +235,7 @@
+     try:
+         t, g = label.labelable(conn, thesis_id)
+     except label.Refused as exc:
+-        raise CannotGrade(str(exc)) from None
++        return Score(value=0.0, explanation=str(exc), answer="fail")
+     analysis = journal.get(conn, Analysis, t.analysis_id)
+     shown = "\n".join(["cited claims (claim_id | tag | text)", *label.cited(analysis, t.evidence), "",
+                        "post-trade summary (code-written)", label.summary(conn, bars, t, g)])

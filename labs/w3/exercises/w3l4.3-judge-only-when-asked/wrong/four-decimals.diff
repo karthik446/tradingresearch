@@ -1,0 +1,17 @@
+why: prints four decimals, rounding the run file's cost
+expect: line should show what its call cost
+before: RED (author)
+--- a/src/tradingresearch/grade.py
++++ b/src/tradingresearch/grade.py
+@@ -426,9 +426,9 @@
+         if dry_run:
+             lines.append(f"{head}  would judge")
+         elif j.verdict is not None:
+-            lines.append(f"{head}  P1 {j.verdict} ${j.cost_usd:.6f}: {j.reason}")
++            lines.append(f"{head}  P1 {j.verdict} ${j.cost_usd:.4f}: {j.reason}")
+         else:
+-            lines.append(f"{head}  not judged ${j.cost_usd:.6f}: {j.error}")
++            lines.append(f"{head}  not judged ${j.cost_usd:.4f}: {j.error}")
+     if dry_run:
+         return lines + [f"judge (dry run): would judge {len(judged)} (cap ${max_usd:.2f}); nothing judged, no call"]
+     done = sum(j.verdict is not None for j in judged)

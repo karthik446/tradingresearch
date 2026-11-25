@@ -1,0 +1,14 @@
+why: sets spent to the last thesis's cost instead of adding it
+expect: Under a $0.05 cap, grade.judge sent 3 requests
+before: GREEN (independent reader)
+--- a/src/tradingresearch/grade.py
++++ b/src/tradingresearch/grade.py
+@@ -411,7 +411,7 @@
+         except Exception as exc:  # one thesis's failure (no verdict, a failed call, bars) never stops the run
+             judged = Judged(t, error=f"{type(exc).__name__}: {exc}")
+         cost = sum(trace.header(path).spent_usd for path in run_files(data_dir) - before)
+-        spent += cost
++        spent = cost
+         out.append(replace(judged, cost_usd=cost))
+     return out
+ 

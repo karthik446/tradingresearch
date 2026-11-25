@@ -1,0 +1,12 @@
+usage: tr grade [-h] [--session SESSION] [--dry-run] [--judge]
+                [--judge-max-usd JUDGE_MAX_USD]
+
+options:
+  -h, --help            show this help message and exit
+  --session SESSION     a completed session (default: the latest, after 16:15
+                        ET)
+  --dry-run             print what would be created or graded; write nothing
+  --judge               also run the P1 judge (openai/gpt-6-sol, one paid call
+                        per graded thesis without a verdict; off by default)
+  --judge-max-usd JUDGE_MAX_USD
+                        dollar cap for the whole judge run (default: 0.25)

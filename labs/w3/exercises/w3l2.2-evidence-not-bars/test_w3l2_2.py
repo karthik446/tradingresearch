@@ -14,7 +14,8 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools"))
 import fakea  # noqa: E402
 
-RAW_BAR_VALUES = ("100.2", "101.6", "106.5", "107.5", "107.2")  # tests/test_week3.py: opens, highs, a post-exit close
+# tests/test_week3.py: opens, highs, lows and a post-exit close, none of which a claim or a summary line holds
+RAW_BAR_VALUES = ("100.2", "101.6", "106.5", "107.5", "107.2", "101.0", "105.0")
 
 
 @pytest.fixture(scope="module")
@@ -31,7 +32,7 @@ def test_the_prompt_holds_no_bar_rows(prompt):
     values = [v for v in RAW_BAR_VALUES if v in prompt]
     columns = re.findall(r"['\"](?:o|h|l|vw)['\"]\s*:|\bo\s+h\s+l\s+c\b", prompt)
     assert not values and not columns, (
-        f"The prompt holds bar values {values} and bar columns {columns}: opens, highs or a close after the exit, "
+        f"The prompt holds bar values {values} and bar columns {columns}: opens, highs, lows or a close after the exit, "
         f"which no claim and no summary line contains. The judge must not see the price path (rubric: Hindsight); "
         f"label.summary already says what the closes did against the levels the reason names."
     )
@@ -59,4 +60,21 @@ def test_input_follows_the_thesis_it_judges(tmp_path):
         f"The same trade, its thesis citing only {list(t.evidence)} of its analysis's two claims: INPUT's claim lines "
         f"are {claims!r}, the cited one is {want!r}. The judge checks the reason against what the thesis cited, so "
         f"the claims shown are this thesis's evidence: not every claim of the analysis, not the recorded trade's lines."
+    )
+
+
+def test_the_summary_follows_the_thesis_it_judges(tmp_path):
+    from tradingresearch import label
+
+    got, sent, t = fakea.judge(tmp_path, reworded=True)
+    assert sent, f"p1_judge sent no request for a reworded thesis on the same trade: it stopped with {fakea.shown(got)}."
+    mine = fakea.block(fakea.prompt_of(sent[0]), "INPUT")
+    (tmp_path / "fresh").mkdir()
+    conn, fresh, bars = fakea.closed_trade(tmp_path / "fresh", reworded=True)
+    want = label.summary(conn, bars, *label.labelable(conn, fresh.thesis_id)).splitlines()
+    lines = mine[mine.index("") + 2:] if "" in mine else []
+    assert lines == want, (
+        f"The same trade, its thesis citing only {list(t.evidence)}: INPUT's summary lines are {lines!r}; "
+        f"label.summary for that thesis writes {want!r}. The summary measures the closes against the levels this "
+        f"thesis's cited claims name, so it is written for the thesis being judged, not copied from the recorded trade."
     )

@@ -1,0 +1,7 @@
+FAIL w3l4.2 (try 1): One cap for the whole run
+  grade.judge sent no request for 3 waiting theses under a $0.045 cap: ['not judged (not judged yet
+  (lab w3l4.2)), cost $0.000000', 'not judged (not judged yet (lab w3l4.2)), cost $0.000000', 'not
+  judged (not judged yet (lab w3l4.2)), cost $0.000000']. The first call fits the cap (the budget's
+  worst-case estimate is about $0.043), so the first thesis gets judged.
+  hint 1 unlocks after 2 failed runs; hint 2 unlocks after 5 failed runs; the solution unlocks after
+  10 failed runs or when the check is green

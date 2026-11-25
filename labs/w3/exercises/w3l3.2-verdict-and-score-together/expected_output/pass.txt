@@ -1,0 +1,22 @@
+PASS w3l3.2: Store the verdict and its ScoreRecord together
+observe: python labs/w3/tools/observe.py store
+  |   case                 sent  run files      verdict row      p1 scores
+  |   recorded             1     1 $0.005163    pass             1.0
+  |     p1_judge returned Score 1.0 (pass)
+  |   unknown              1     1 $0.005163    fail unknown:    0.0
+  |     p1_judge returned Score 0.0 (fail)
+  |   no_verdict           1     1 $0.005163    none             none
+  |     p1_judge raised CannotGrade: the judge's reply has no pass/fail/unknown verdict: 'The …
+  |   http_400             1     1 $0.000000    none             none
+  |     p1_judge raised CannotGrade: judge call failed: http_400 (run <data_dir>/runs/run_<id>…
+  |   teacher              0     0              none             none
+  |     p1_judge raised Refused: th_<id> is a teacher thesis: teacher theses are never judged …
+  |   never_entered        0     0              none             none
+  |     p1_judge raised Refused: th_<id> is PROPOSED with no grade: only a CLOSED thesis that …
+  |   verdict write fails  1     1 $0.005163    none             none
+  |     p1_judge raised OperationalError: disk I/O error (injected into journal.add_judge_verd…
+  |   score write fails    1     1 $0.005163    none             none
+  |     p1_judge raised OperationalError: disk I/O error (injected into journal._insert_score)
+  | The replies are the recording or edits of it: verdicts and a paid call's cost cannot move.
+  | What moves is what p1_judge returns or raises, the run files it keeps and the rows it stores.
+next: `tr lab next` commits it and moves on; `tr lab solution` shows the reference to compare

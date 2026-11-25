@@ -1,0 +1,14 @@
+why: stores the whole reply as the verdict's reason
+expect: The stored verdict is 'pass' with reason
+before: RED (independent break pass)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -262,7 +262,7 @@
+                          judge_span_ids=tuple(span.span_id for span in spans), recorded_at=datetime.now(UTC))
+     with conn:  # the ScoreRecord and the verdict that points at it land in one transaction
+         journal._insert_score(conn, t.thesis_id, record)
+-        journal.add_judge_verdict(conn, t.thesis_id, verdict, reason, record.score_id)
++        journal.add_judge_verdict(conn, t.thesis_id, verdict, sample.output_text, record.score_id)
+     return score
+ 
+ 

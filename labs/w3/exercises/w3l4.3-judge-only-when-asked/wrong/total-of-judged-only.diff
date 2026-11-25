@@ -1,0 +1,11 @@
+why: totals only the theses that got a verdict
+expect: The last line should show what the run cost in all
+before: RED (author)
+--- a/src/tradingresearch/grade.py
++++ b/src/tradingresearch/grade.py
+@@ -433,4 +433,4 @@
+         return lines + [f"judge (dry run): would judge {len(judged)} (cap ${max_usd:.2f}); nothing judged, no call"]
+     done = sum(j.verdict is not None for j in judged)
+     return lines + [f"judge: {done} judged, {len(judged) - done} not judged, cost "
+-                    f"${sum(j.cost_usd for j in judged):.6f} (cap ${max_usd:.2f})"]
++                    f"${sum(j.cost_usd for j in judged if j.verdict is not None):.6f} (cap ${max_usd:.2f})"]

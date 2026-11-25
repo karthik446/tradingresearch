@@ -2,7 +2,7 @@ id = "w3l1.3"
 title = "Refuse a reply with no verdict: CannotGrade, not a fail"
 effect = "Observe's w3l1.3 matches go from 0 of 10 replies to 10 of 10: a reply with no JSON, no verdict, or a verdict that is not exactly pass, fail or unknown now reads CannotGrade instead of a verdict the journal would refuse."
 goal = "Refuse a reply the rubric does not define. A reply with no pass, fail or unknown verdict has nothing to store: calling it a fail counts a broken reply as a judgment, so p1_verdict raises CannotGrade and quotes the reply."
-what_tested = "p1_verdict on the CannotGrade replies of labs/w3/data/replies.json: no JSON, no verdict key, maybe, Pass, null, a padded or hedged verdict, a list, an answer followed by a later object, a reply cut off mid-JSON; the refusal quotes the reply, and every readable reply still reads as before."
+what_tested = "p1_verdict on the CannotGrade replies of labs/w3/data/replies.json: no JSON, no verdict key, maybe, Pass, null, a padded or hedged verdict, a list, an answer followed by a later object, a reply cut off mid-JSON; the refusal quotes the reply, every readable reply still reads as before, and replies the check builds itself, in no data row, follow the same rule."
 writes = [
   "In p1_verdict, before the unknown rule: a verdict that is not exactly the string pass, fail or unknown raises gigai-core's CannotGrade.",
   "The CannotGrade message quotes the start of the reply, so whoever reads the error sees what the judge sent.",

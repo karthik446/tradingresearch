@@ -1,0 +1,10 @@
+why: pastes the recorded trade's summary text, so a thesis citing other levels is judged against the wrong summary
+expect: The same trade, its thesis citing only ['cl_fakea_high']: INPUT's summary lines
+before: GREEN (independent reader)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -237,3 +237,3 @@
+     shown = "\n".join(["cited claims (claim_id | tag | text)", *label.cited(analysis, t.evidence), "",
+-                       "post-trade summary (code-written)", label.summary(conn, bars, t, g)])
++                       "post-trade summary (code-written)", "exit: target at 106 on 2026-11-18, filled at 101 on 2026-11-17; r_net +1.65, MFE +1.67R, MAE +0.00R, 1 session(s) held after the fill day\ntrigger day 2026-11-17: rel_volume n/a (fewer than 20 sessions before it)\ncloses: 2026-11-17 101.3, 2026-11-18 106.2\nvs congestion_high 100.5: closed at or above it on 2 of 2 sessions\nvs high_20 100.5: closed at or above it on 2 of 2 sessions\nvs invalidation 98: closed at or above it on 2 of 2 sessions\ncongestion 98.5-100.5 (7 sessions): high held on 2 of 2 closes, low held on 2 of 2 (held = closed at or above it, the trade's side)"])
+     rubric = (RUBRICS / "p1_judge_prompt.txt").read_text().replace("{rubric}",

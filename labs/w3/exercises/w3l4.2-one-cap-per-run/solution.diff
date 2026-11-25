@@ -1,0 +1,25 @@
+--- a/src/tradingresearch/grade.py
++++ b/src/tradingresearch/grade.py
+@@ -402,11 +402,17 @@
+             out.append(Judged(t, error=f"the ${max_usd:.2f} cap is spent; next run" if capped else None))
+             continue
+         before = run_files(data_dir)
+-        # TODO(w3l4.2) judge t with evals.p1_judge under what this run's cap has left, and keep its outcome: the
+-        #   verdict and reason, or why it was not judged. BudgetExceeded means the cap cannot cover the call: t and
+-        #   every later thesis wait for the next run. Any other failure stays on t and the run goes on. The cost is
+-        #   what the run files this call added say they spent (trace.header), so a reply with no verdict counts too.
+-        out.append(Judged(t, error="not judged yet (lab w3l4.2)"))
++        try:
++            score = evals.p1_judge(conn, bars, t.thesis_id, provider, prices=prices, data_dir=data_dir,
++                                   max_usd=max_usd - spent)
++            judged = Judged(t, verdict=score.answer, reason=score.explanation)
++        except BudgetExceeded as exc:
++            capped, judged = True, Judged(t, error=f"the ${max_usd:.2f} cap cannot cover the call: {exc}")
++        except Exception as exc:  # one thesis's failure (no verdict, a failed call, bars) never stops the run
++            judged = Judged(t, error=f"{type(exc).__name__}: {exc}")
++        cost = sum(trace.header(path).spent_usd for path in run_files(data_dir) - before)
++        spent += cost
++        out.append(replace(judged, cost_usd=cost))
+     return out
+ 
+ 

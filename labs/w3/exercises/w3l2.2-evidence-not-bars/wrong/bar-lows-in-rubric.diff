@@ -1,0 +1,9 @@
+why: appends the bars' lows to the instructions, showing the judge the price path
+expect: The prompt holds bar values ['101.0', '105.0']
+before: GREEN (independent reader)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -242,2 +242,3 @@
+     settings = CallSettings(model=JUDGE_MODEL)
++    rubric += "\nlows: " + ", ".join(str(r) for r in bars.daily(t.ticker, datetime(2026, 1, 1).date(), datetime(2026, 12, 31).date())["l"])
+     judge = llm_judge(provider, rubric=rubric, settings=settings, grader_id=P1Judge.id)

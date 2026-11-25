@@ -67,3 +67,22 @@ def test_a_missing_null_or_non_text_explanation_reads_empty():
             f"{tuple(r['expect'])!r}. The reason is stored as text in judge_verdict.reason (NOT NULL): an explanation "
             f"that is missing, null or not a string is \"\", not None, not the string 'None' and not a list."
         )
+
+
+def test_replies_in_no_data_row_read_by_the_same_rule():
+    # Built here, so they are in no row of replies.json: the rule reads them, a lookup of the 26 rows does not.
+    for reply, why, want in (
+        ('Draft: {"verdict": "fail", "explanation": "first look"}\n'
+         '{"verdict": "pass", "explanation": "FAKEA closed 101.3 and 106.2, both over {100.5}"}',
+         "drafts a fail, then answers pass with braces and capitals in its explanation",
+         ("pass", "FAKEA closed 101.3 and 106.2, both over {100.5}")),
+        ('{"verdict": "pass", "explanation": "Closes held over 98", "first_try": {"verdict": "fail"}}',
+         'answers pass and nests an earlier "verdict" key inside its answer',
+         ("pass", "Closes held over 98")),
+    ):
+        got = read(reply)
+        assert got == want, (
+            f"A reply that {why}: {reply!r}; p1_verdict returned {got!r}, the answer is {want!r}. These replies are "
+            f"in no row of replies.json: the rule (the last top-level JSON object; an object nested in it is part of "
+            f"it) reads any reply, a lookup of the data rows reads only those, and the explanation is kept as written."
+        )

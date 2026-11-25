@@ -1,0 +1,10 @@
+why: strips the trailing space, so a bare unknown's reason is 'unknown:' while every other abstain has 'unknown: '
+expect: expected ('fail', 'unknown: ')
+before: GREEN (independent reader)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -214,3 +214,3 @@
+     if verdict == "unknown":
+-        return "fail", reason if reason.startswith("unknown:") else f"unknown: {reason}"
++        return "fail", (reason if reason.startswith("unknown:") else f"unknown: {reason}").rstrip()
+     return verdict, reason

@@ -1,6 +1,6 @@
 # Week 3 labs: the folder
 
-This folder holds part A of week 3 of the AI engineering track: labs w3l1 (reading the P1 judge's verdict) and w3l2 (the judge prompt and the one call), 6 exercises, run by `tr lab` on this repo from the tag `week-3-start`. A learner starts at [pages/index.md](pages/index.md); how `tr lab` works is in [labs/README.md](../README.md). This page is for whoever maintains the folder.
+This folder holds week 3 of the AI engineering track, 12 exercises run by `tr lab` on this repo from the tag `week-3-start`. Part A is labs w3l1 (reading the P1 judge's verdict) and w3l2 (the judge prompt and the one call); part B is labs w3l3 (keeping what the judge said) and w3l4 (judging in `tr grade`). A learner starts at [pages/index.md](pages/index.md); how `tr lab` works is in [labs/README.md](../README.md). This page is for whoever maintains the folder.
 
 ## Exercises
 
@@ -12,34 +12,61 @@ This folder holds part A of week 3 of the AI engineering track: labs w3l1 (readi
 | [w3l2.1](exercises/w3l2.1-rubric-in-thesis-out/) | Fill the judge's frame: the rubric into the prompt, the thesis text as the graded output | `evals.py` | 8 |
 | [w3l2.2](exercises/w3l2.2-evidence-not-bars/) | Show the judge the cited claims and the code-written summary, never the raw bars | `evals.py` | 8 |
 | [w3l2.3](exercises/w3l2.3-one-bounded-call/) | Make the one call bounded in tokens and capped in dollars | `evals.py` | 11 |
+| [w3l3.1](exercises/w3l3.1-keep-the-run-file/) | Keep the judge's call in a run file, and turn a failed call into `CannotGrade` naming its run file and error | `evals.py` | 13 |
+| [w3l3.2](exercises/w3l3.2-verdict-and-score-together/) | Read the reply with `p1_verdict`, store the verdict and its ScoreRecord in one transaction, return the Score | `evals.py` | 17 |
+| [w3l3.3](exercises/w3l3.3-refuse-before-the-call/) | Refuse a teacher or never-entered thesis before any call: `label.Refused` becomes `CannotGrade` | `evals.py` | 12 |
+| [w3l4.1](exercises/w3l4.1-what-waits-for-the-judge/) | List the graded champion and challenger theses with no verdict yet, oldest first | `grade.py` | 11 |
+| [w3l4.2](exercises/w3l4.2-one-cap-per-run/) | Judge every waiting thesis under one dollar cap for the run, counting what each call's run files say it spent | `grade.py` | 15 |
+| [w3l4.3](exercises/w3l4.3-judge-only-when-asked/) | Run the judge only with `--judge`, and print each call's cost and the run's total to the millionth | `grade.py`, `commands/grade.py` | 14 |
 
-56 wrong fixes in all. 14 of them passed the checks when an independent break pass first tried them (`before: GREEN
-(independent break pass)`): an explanation or verdict that is JSON but not text, a capital or space-less `unknown:`
-prefix, a pass whose text says unknown, a padded or hedged verdict, a hard-coded thesis or INPUT, every claim instead
-of the cited ones, and a cap with a margin, rounded to cents or with a cent of slack. The checks were hardened for each
-(new rows in `data/replies.json`, a reworded FAKEA thesis in `tools/fakea.py`, the cap tested a twentieth of a cent
-either side of one call's worst case), and all 14 are red now. The other 42 are `before: RED (author)`; three of them
+Part A: 68 wrong fixes. 26 of them passed the checks when first tried. 14 came from an independent break pass
+(`before: GREEN (independent break pass)`): an explanation or verdict that is JSON but not text, a capital or
+space-less `unknown:` prefix, a pass whose text says unknown, a padded or hedged verdict, a hard-coded thesis or INPUT,
+every claim instead of the cited ones, and a cap with a margin, rounded to cents or with a cent of slack. 12 came from
+an independent reader (`before: GREEN (independent reader)`): a lookup in `data/replies.json` (one per w3l1 exercise),
+a nested `{"verdict"` object, a stripped bare `unknown:`, the word unknown taken as an abstain wherever it appears, a
+rubric copied from the recorded request, bar lows added to the instructions, a pasted summary, and $0.0004 of slack on
+the cap. The checks were hardened for each (new rows in `data/replies.json`, a reworded FAKEA thesis in
+`tools/fakea.py`, the cap tested a twentieth of a cent and a thousandth of a cent either side of the budget's estimate
+of one call's worst case), and all 26 are red now. The other 42 are `before: RED (author)`; three of them
 (`own-client`, `live-price-lookup`, `live-price-or-given`) are red because of the offline guard below.
+
+Part B: 82 wrong fixes. 21 come from an independent break pass and a finish review; 6 of those passed the checks when
+first tried: a ScoreRecord under its own grader version, or with the rubric's digest as the prompt's sha256
+(`bp-wrong-version`, `bp-rubric-digest`); the queue ordered by thesis id (`bp-id-order`); a run that counts a call's
+cost only when it got a verdict (`bp-spent-only-on-verdict`); the judge part shown on a plain `--dry-run`
+(`bp-judge-on-dry-run`); and every line priced at the recorded reply's cost (`constant-cost`). The checks were
+hardened for each (the ScoreRecord's version compared with P1Judge's and its prompt digest with `fakea.judge_prompt_sha256`, a journal
+whose newer thesis has the smaller random id, a $0.048 cap after a paid reply with no verdict, `tr grade --dry-run`
+checked for no judge line, made-up costs given to `render_judged`). 16 more came from an independent reader
+(`rd-*`, `before: GREEN (independent reader)`): a `CannotGrade` returned instead of raised (three exercises), a
+hard-coded `http_400`, the verdict word as the ScoreRecord's explanation, a plain fail scored 1.0, a storage error
+turned into a refusal, a refusal cut short or replaced by a fixed one, the queue in grading order or cut to two, the
+run's spend set to the last call's, a bars error that stops the run, a capped thesis charged the newest run file,
+costs to seven decimals, and the judge run before grading. The checks were hardened for each (`Judging.raised`, an HTTP
+402 and a plain `fail` reply in `tools/fakea.py`, the refusal compared with `label.Refused`'s own text, a journal read
+that fails, theses graded in reverse order, a $0.05 cap, bars that fail once, costs read whole, the order `tr grade`
+grades and judges in). All 22 are red now. The other 45 are `before: RED (author)`.
 
 ## Layout
 
 ```
 labs/w3/
-  lab.toml                 base = "week-3-start", lab titles and pages, [unlock], [suite] deselect, [end]
+  lab.toml                 base = "week-3-start", lab titles and pages, [unlock], [suite] deselect, per-lab [labs.<id>.suite] deselect, [end]
   conftest.py              marks every test in this folder `lab` (plain `pytest -q` never collects them), installs the offline guard before any test module imports learner code, and fails a passing test whose code tried a guarded call
   PROOF.md                 output of labs/tools/prove.py w3: every exercise red, green, chained, every wrong fix red
   data/replies.json        26 judge replies with the rubric's reading of each (`expect`) and where each comes from (`source`)
   data/judge_reply.json    the one recorded judge reply (openai/gpt-6-sol on the FAKEA trade)
   data/judge_request.json  the request that produced that reply: the body the w3l2 checks compare against
   data/models.json         the judge model's recorded /models row, for its price
-  pages/                   index.md, w3l1.md, w3l2.md (one page per lab), concepts.md
+  pages/                   index.md, w3l1.md to w3l4.md (one page per lab), concepts.md
   session/                 session.toml and the captured output of each step: the walked-through start of the week on the w3l1 page
   tools/offline.py         the offline guard: socket connections and DNS, subprocesses, os spawns and the real httpx transports raise Blocked and are counted
-  tools/fakea.py           the judge on one closed trade, replayed through the real OpenRouter adapter ($0, no network)
-  tools/observe.py         observe: `verdicts` (w3l1) and `judge` (w3l2), always exits 0; installs the offline guard first
+  tools/fakea.py           the judge on closed FAKEA trades, replayed through the real OpenRouter adapter, and `tr` run on their journal ($0, no network)
+  tools/observe.py         observe: `verdicts` (w3l1), `judge` (w3l2), `store` (w3l3) and `grade` (w3l4), always exits 0; installs the offline guard first
   exercises/w3lN.K-<slug>/
     exercise.toml          id, title, effect, goal, what_tested, writes, show_tests, lab, concepts, touches, check, observe, paid, fixtures, origin, red_expect
-    stub/src/tradingresearch/evals.py   the week-3-end file with this exercise's code and the later ones cut out
+    stub/                  the week-3-end files the exercise touches (`src/tradingresearch/evals.py`; in w3l4 `grade.py`, `commands/grade.py` and `tests/fixtures/help/grade.txt`) with this exercise's code and the later ones cut out
     test_w3lN_K.py         the check; its assertion messages are the FAIL messages
     hints.md               two hints, each under a `## Hint N` heading: the idea and a counterexample, no code
     expected_output/       fail.txt (the stub's red run) and pass.txt (the solution's green run), captured for the site
@@ -52,6 +79,8 @@ labs/w3/
 **The data.** Only one judge reply in the data is model output: `recorded`, the reply in `data/judge_reply.json`, which is a copy of the repo's `tests/fixtures/week3/judge_reply.json` (run `run_54953ec7ce484649`, captured 2026-11-17). The author's journal holds no other P1 verdicts. The other 25 rows of `data/replies.json` are reply shapes: some come from `tests/test_week3.py`, some copy the shape of the judge library's own tests, and some were built for these labs (7 of those for the break pass above); `source` on each row says which. Each row carries `exercise`, the exercise whose rule decides it. `data/judge_request.json` is the request body that produced the recorded reply, so the w3l2 checks can compare a learner's request with it byte for byte. `data/models.json` is the recorded `/models` row for `openai/gpt-6-sol`; `fakea.py` reads the judge's price from it. `TR_LAB_DATA` points the checks and observe at another data folder.
 
 **The trade.** The w3l2 checks and `observe.py judge` judge the synthetic FAKEA trade of `tests/test_week3.py` (filled on 2026-11-17, closed at its target the next session), the same trade the chapter's acceptance tests judge. `tools/fakea.py` builds it in a temporary data directory and swaps the OpenRouter adapter's HTTP transport for an `httpx.MockTransport` that answers every request with the recorded reply. With `reworded=True` it gives the trade a second thesis (other prediction, reason and invalidation text, citing only `cl_fakea_high`), so the checks can tell a request built from the thesis from one pasted from the recording.
+
+**Part B's journals.** For labs w3l3 and w3l4, `fakea.replaying` answers request i with `answer(replies[i])`: `recorded`, the recording ending in `unknown`, with no verdict line, or an HTTP 400 (no reply). The edits keep the recorded usage, so every paid reply costs the same $0.0051635 (shown as $0.005163) and an HTTP 400 costs $0. `fakea.offline` also answers Alpaca's daily FAKEA bars and the `/models` row, `closed_trade` and `journal_of` build fresh journals of closed FAKEA theses (one per arm asked for, graded on `SESSION` = 2026-11-19 unless told otherwise), and `cli` runs `tr` on such a journal with fake keys.
 
 **The offline guard.** The labs claim $0 and no network, so `tools/offline.py` enforces it: `conftest.py` installs it before any test module imports learner code, and `observe.py` before it imports `fakea`. Socket connections, DNS lookups, subprocesses, os spawns and the real httpx transports (sync and async) raise `Blocked` and are recorded; the `httpx.MockTransport` the checks use is not touched. A test whose code tried a guarded call fails even when the code swallowed the error, with `The code under test tried ... and caught the error`. Observe prints a `note: your code tried ...: blocked` line instead.
 
@@ -72,24 +101,24 @@ Then it runs the judge again under a $0.001 cap (`under max_usd=0.001: 0 request
 
 At `week-3-start`, before the w3l1.1 stub, `evals.py` has no `p1_verdict`, so every `verdicts` row shows the `AttributeError`; observe still exits 0.
 
+`python labs/w3/tools/observe.py store` (lab w3l3) runs `p1_judge` once per case on a fresh journal: the recorded reply, the same reply ending in `unknown`, no verdict line, an HTTP 400, a teacher and a never-entered thesis, then the recorded reply with the journal's verdict write or score write failing. Each row shows the requests sent, the run files and what they say was spent, the `judge_verdict` row, the `p1_judge` scores, and what `p1_judge` returned or raised. What moves: run files 0 → 1, verdict rows and scores, nothing kept when a write fails, and the refusals sending nothing. [pages/w3l3.md](pages/w3l3.md) has the table per exercise.
+
+`python labs/w3/tools/observe.py grade` (lab w3l4) runs `grade.to_judge` on a journal of six theses, `grade.judge` on four waiting theses under a $0.25 cap (replies pass, no verdict, HTTP 400, pass) and under a $0.05 cap (the recorded pass each time), then `tr grade` plain, `--judge --dry-run` and `--judge` twice on two waiting theses. What moves: which theses wait, what each run sends and spends under its cap, and what `tr grade` prints. [pages/w3l4.md](pages/w3l4.md) has the table per exercise. The cap is $0.05, not the checks' $0.045, because `grade.judge` prints the cap to the cent.
+
 ## The suite gate
 
-`tests/test_week3.py` (19 tests) covers the chapter's §2 to §7 and is red until the week ends. Passing: 0 at the base and on the w3l1.1 stub, 3, 4 and 6 after w3l1.1, .2 and .3 (the parser cases), and still 6 after each w3l2 exercise. The end-of-lab run of `tr lab next` deselects, in `[suite]` (every lab):
+`tests/test_week3.py` (19 tests) covers the chapter's §2 to §7 and is red until the week ends. Passing: 0 at the base and on the w3l1.1 stub, 3, 4 and 6 after w3l1.1, .2 and .3 (the parser cases), still 6 after each w3l2 exercise and after w3l3.1, 10 after w3l3.2 (the 4 judge tests), 12 after w3l3.3 (the 2 refusal cases), 12 after w3l4.1 and w3l4.2, and 13 after w3l4.3 (`tr grade --judge`). The end-of-lab run of `tr lab next` deselects what that lab cannot turn green yet:
 
-| Deselected | Why |
-|---|---|
-| `test_the_judge_sends_one_request_with_the_adr_003_model_the_rubric_and_the_summary`, `test_the_judge_prompt_holds_no_raw_bar_rows`, `test_the_judge_returns_a_score_and_stores_its_verdict_and_score`, `test_the_judge_call_and_its_cost_land_in_a_run_file` | they call `p1_judge` to the end and check its Score, its stored verdict and its run file; after w3l2.3 `p1_judge` raises `NotImplementedError` after its call (part B) |
-| `test_teacher_and_never_entered_theses_are_never_judged` (2 cases) | the refusal of a teacher or never-entered thesis is part B |
-| `test_tr_grade_judge_is_off_by_default_then_judges_once_and_prints_the_cost` | `tr grade --judge` is part B |
-| `test_adr_004_names_what_never_enters_a_trace`, `test_the_slo_review_has_four_slos_and_the_injected_breach`, `test_measured_costs_has_a_row_per_step_with_its_run_id` (4 cases) | they read documents the learner writes by hand from the chapter (§2, §5, §6); no exercise writes prose |
+| Deselected | Where | Why |
+|---|---|---|
+| `test_the_judge_sends_one_request_with_the_adr_003_model_the_rubric_and_the_summary`, `test_the_judge_prompt_holds_no_raw_bar_rows`, `test_the_judge_returns_a_score_and_stores_its_verdict_and_score`, `test_the_judge_call_and_its_cost_land_in_a_run_file` | `[labs.w3l1.suite]`, `[labs.w3l2.suite]` | they call `p1_judge` to the end and check its Score, its stored verdict and its run file; after w3l2.3 `p1_judge` raises `NotImplementedError` after its call (lab w3l3) |
+| `test_teacher_and_never_entered_theses_are_never_judged` (2 cases) | `[labs.w3l1.suite]`, `[labs.w3l2.suite]` | the refusal of a teacher or never-entered thesis is w3l3.3 |
+| `test_tr_grade_judge_is_off_by_default_then_judges_once_and_prints_the_cost` | `[labs.w3l1.suite]` to `[labs.w3l3.suite]` | `tr grade --judge` is lab w3l4 |
+| `test_adr_004_names_what_never_enters_a_trace`, `test_the_slo_review_has_four_slos_and_the_injected_breach`, `test_measured_costs_has_a_row_per_step_with_its_run_id` (4 cases) | `[suite]` (every lab) | they read documents the learner writes by hand from the chapter (§2, §5, §6); no exercise writes prose |
 
-The 13 cases still red after w3l2 are exactly these. The first two judge tests check the request, which the w3l2 checks already pin byte for byte; they stay deselected because they run `p1_judge` to its end.
+The cases still red at the end of each lab are exactly these: 13 after w3l1 and w3l2, 7 after w3l3, 6 after w3l4. The first two judge tests check the request, which the w3l2 checks already pin byte for byte; they stay deselected in part A because they run `p1_judge` to its end.
 
-**End state.** `[end] tag = "week-3-end"`, `files = []` for part A. `evals.py` is the one file these labs write, and it cannot equal the tag until part B finishes `p1_judge`; part B lists `src/tradingresearch/evals.py` there, and then the whole file must equal `week-3-end` byte for byte. After w3l2.3, `evals.py` equals `week-3-end` except `p1_judge`, which builds the recorded request, sends it once under `CallBudget(max_usd=max_usd, prices=prices)` and raises `NotImplementedError` naming the run; it has no refusal, no run file, no stored verdict and no Score yet.
-
-## What part B adds
-
-Labs w3l3 and w3l4 start from the w3l2.3 end state above and finish `p1_judge`: keep the call in a run file at its reported cost, read the reply with the learner's `p1_verdict`, store the verdict and the score with their ScoreRecord and return the Score; refuse teacher and never-entered theses before any call (`label.Refused` becomes `CannotGrade`); add `tr grade --judge`. That turns the 7 part-B cases above green and makes `evals.py` equal the tag.
+**End state.** `[end] tag = "week-3-end"`, `files` = `src/tradingresearch/evals.py`, `src/tradingresearch/grade.py`, `src/tradingresearch/commands/grade.py` and `tests/fixtures/help/grade.txt`: after w3l4.3 each must equal the tag byte for byte. `evals.py` already equals it after w3l3.3. After w3l2.3 it equals `week-3-end` except `p1_judge`, which builds the recorded request, sends it once under `CallBudget(max_usd=max_usd, prices=prices)` and raises `NotImplementedError` naming the run; it has no refusal, no run file, no stored verdict and no Score yet. The w3l4.1 stub brings in the help fixture as it is at the tag, and the two grade files with `to_judge`, the loop of `grade.judge` and the costs in `render_judged` and `cmd_grade` cut out.
 
 ## What the labs do not cover
 
@@ -103,7 +132,7 @@ From the root of a clean clone (`uv sync` done):
 uv run python labs/tools/prove.py w3 > labs/w3/PROOF.md
 ```
 
-It copies the clone into temp folders and runs the chain (each stub red with `red_expect`, `solution.diff` green, earlier checks of the same lab still green, every `wrong/*.diff` red with its `expect:`), the end state (empty for part A), the hint guard, the captured output and a runner smoke; [labs/w1/README.md](../w1/README.md#prove-the-folder) describes each row. It exits 1 if any row reads NOT PROVEN. Re-run it after changing an exercise, a stub, a test message, the data, observe or `lab.py`.
+It copies the clone into temp folders and runs the chain (each stub red with `red_expect`, `solution.diff` green, earlier checks of the same lab still green, every `wrong/*.diff` red with its `expect:`), the end state (the four `[end]` files equal `week-3-end`), the hint guard, the captured output and a runner smoke; [labs/w1/README.md](../w1/README.md#prove-the-folder) describes each row. It exits 1 if any row reads NOT PROVEN. Re-run it after changing an exercise, a stub, a test message, the data, observe or `lab.py`.
 
 The hint guard is a string match: it rejects a hint that repeats a `solution.diff` added line of 12 or more characters, or holds a code fence longer than one line. It does not judge whether prose dictates the answer; that is a reading job. The week-3 hints state the idea and a counterexample, with no code and no function to call.
 
@@ -111,4 +140,4 @@ The hint guard is a string match: it rejects a hint that repeats a `solution.dif
 
 ## Reading
 
-The week's reading is the published chapter, [Week 3](https://scout.edgelab.one/learn/ai-engineering/week-3/). These labs are the first half of the code of its [§4 The P1 judge and `tr grade --judge`](https://scout.edgelab.one/learn/ai-engineering/week-3/#4-the-p1-judge-and-tr-grade---judge-2-h-0); the pages link its sections.
+The week's reading is the published chapter, [Week 3](https://scout.edgelab.one/learn/ai-engineering/week-3/). These labs are the code of its [§4 The P1 judge and `tr grade --judge`](https://scout.edgelab.one/learn/ai-engineering/week-3/#4-the-p1-judge-and-tr-grade---judge-2-h-0); the pages link its sections.

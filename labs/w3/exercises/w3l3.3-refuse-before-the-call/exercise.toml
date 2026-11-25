@@ -1,0 +1,19 @@
+id = "w3l3.3"
+title = "Refuse before the call: CannotGrade, at no cost"
+effect = "Observe's store table: the teacher and never-entered theses go from Refused to CannotGrade with the same reason, still with 0 requests sent and 0 run files."
+goal = "A thesis the judge may not take (a teacher thesis, or one with no Grade) is refused before any call, so it costs nothing, and the refusal is CannotGrade with the reason: the one error `tr grade --judge` keeps on a thesis before going on with the next."
+what_tested = "p1_judge on a closed teacher thesis and a champion thesis that never entered, with a transport that would answer any request: each raises CannotGrade holding label.labelable's whole refusal, with no request, run file or row; a journal read that fails raises its own error, not CannotGrade."
+writes = [
+  "In p1_judge, label.Refused from label.labelable becomes CannotGrade carrying the refusal's message.",
+  "The refusal comes before the call: no request is sent, no run file is written and no row is stored.",
+]
+show_tests = ["test_a_thesis_the_judge_may_not_take_is_refused_before_any_call"]
+lab = "w3l3"
+concepts = ["refusal", "cannotgrade"]
+touches = ["src/tradingresearch/evals.py"]
+check = "python -m pytest -q -x -p no:cacheprovider -m lab labs/w3/exercises/w3l3.3-refuse-before-the-call/test_w3l3_3.py"
+observe = "python labs/w3/tools/observe.py store"
+paid = false
+fixtures = ["data/judge_reply.json", "data/models.json"]
+origin = "rebuild of week-3-end evals.py; reference = the tag's refusal at the top of p1_judge"
+red_expect = "p1_judge ended with Refused"

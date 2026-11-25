@@ -1,0 +1,8 @@
+FAIL w3l4.1 (try 1): What waits for the judge
+  With a challenger, a champion and a teacher thesis written in that order and closed, to_judge
+  lists ['challenger (written 1st)', 'champion (written 2nd)', 'teacher (written 3rd)']; it should
+  list ['challenger (written 1st)', 'champion (written 2nd)']: graded champion and challenger
+  theses, oldest first (a capped run leaves the newest for the next one). A teacher thesis is never
+  judged.
+  hint 1 unlocks after 2 failed runs; hint 2 unlocks after 5 failed runs; the solution unlocks after
+  10 failed runs or when the check is green

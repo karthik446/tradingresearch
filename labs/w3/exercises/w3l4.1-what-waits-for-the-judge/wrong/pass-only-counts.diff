@@ -1,0 +1,14 @@
+why: takes a thesis off the list only once it has a pass, so an unknown is paid again
+expect: With the champion's verdict stored (fail, an unknown)
+before: RED (author)
+--- a/src/tradingresearch/grade.py
++++ b/src/tradingresearch/grade.py
+@@ -379,7 +379,7 @@
+     """Graded champion and challenger theses with no judge verdict yet, oldest first."""
+     rows = conn.execute("SELECT t.body FROM thesis t JOIN grade g USING (thesis_id) "
+                         "WHERE t.arm IN ('champion', 'challenger') "
+-                        "AND NOT EXISTS (SELECT 1 FROM judge_verdict v WHERE v.thesis_id = t.thesis_id) "
++                        "AND NOT EXISTS (SELECT 1 FROM judge_verdict v WHERE v.thesis_id = t.thesis_id AND v.verdict = 'pass') "
+                         "ORDER BY t.rowid")
+     return [Thesis.model_validate_json(body) for (body,) in rows]
+ 

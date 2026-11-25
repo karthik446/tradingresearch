@@ -1,0 +1,10 @@
+why: treats a fail whose explanation starts with the word unknown as an abstain, so that fail is lost
+expect: unknown sector rotation aside
+before: GREEN (independent reader)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -213,3 +213,3 @@
+     reason = explanation if isinstance(explanation, str) else ""
+-    if verdict == "unknown":
++    if verdict == "unknown" or reason.startswith("unknown"):
+         return "fail", reason if reason.startswith("unknown:") else f"unknown: {reason}"

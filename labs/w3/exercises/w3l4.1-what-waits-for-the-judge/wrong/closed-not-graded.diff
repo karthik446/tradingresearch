@@ -1,0 +1,17 @@
+why: takes closed theses instead of graded ones
+expect: With one champion thesis closed, not graded yet
+before: RED (author)
+--- a/src/tradingresearch/grade.py
++++ b/src/tradingresearch/grade.py
+@@ -377,8 +377,9 @@
+ 
+ def to_judge(conn) -> list[Thesis]:
+     """Graded champion and challenger theses with no judge verdict yet, oldest first."""
+-    rows = conn.execute("SELECT t.body FROM thesis t JOIN grade g USING (thesis_id) "
+-                        "WHERE t.arm IN ('champion', 'challenger') "
++    rows = conn.execute("SELECT t.body FROM thesis t "
++                        "WHERE EXISTS (SELECT 1 FROM event e WHERE e.subject_id = t.thesis_id AND e.state = 'CLOSED') "
++                        "AND t.arm IN ('champion', 'challenger') "
+                         "AND NOT EXISTS (SELECT 1 FROM judge_verdict v WHERE v.thesis_id = t.thesis_id) "
+                         "ORDER BY t.rowid")
+     return [Thesis.model_validate_json(body) for (body,) in rows]

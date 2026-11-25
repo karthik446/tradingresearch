@@ -1,0 +1,15 @@
+why: scores an unknown 0.5, between pass and fail
+expect: On a reply whose verdict is unknown the Score has value 0.5
+before: RED (author)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -254,7 +254,8 @@
+     verdict, reason = p1_verdict(sample.output_text)
+     spans = sample.model_spans
+     calls = tuple(ModelExchange(**{name: getattr(span, name) for name in ModelExchange.model_fields}) for span in spans)
+-    score = Score(value=1.0 if verdict == "pass" else 0.0, explanation=reason, answer=verdict,
++    score = Score(value=1.0 if verdict == "pass" else 0.5 if reason.startswith("unknown:") else 0.0,
++                  explanation=reason, answer=verdict,
+                   judge=JudgeNote(model=JUDGE_MODEL, prompt_sha256=judge.prompt_sha256, calls=calls))
+     record = ScoreRecord(score_id=new_id("sc"), trace_id=sample.trace_id, grader_id=P1Judge.id,
+                          grader_version=P1Judge.version, kind="model", value=score.value, explanation=reason,

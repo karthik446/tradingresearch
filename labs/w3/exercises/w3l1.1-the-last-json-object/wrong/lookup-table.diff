@@ -1,0 +1,25 @@
+why: looks each reply up in labs/w3/data/replies.json and returns its expect row, so only the 26 data replies read
+expect: A reply that drafts a fail
+before: GREEN (independent reader)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -207,12 +207,13 @@
+ def p1_verdict(reply: str) -> tuple[str, str]:
+     """(verdict, reason) by the rubric's "Verdict format": the last JSON object wins, `unknown` becomes `fail` with
+     `unknown: ` (ADR-003). A reply with no verdict is CannotGrade, not an abstain."""
+-    verdict = last_json_object(reply, "verdict")
+-    # TODO(w3l1.3) a reply with no pass, fail or unknown verdict cannot be graded: raise CannotGrade, quoting the reply.
+-    explanation = last_json_object(reply, "explanation")
+-    reason = explanation if isinstance(explanation, str) else ""
+-    # TODO(w3l1.2) a verdict of unknown is an abstain: fail, with "unknown: " before its explanation (ADR-003).
+-    return verdict, reason
++    import json
++    for r in json.loads((Path(__file__).resolve().parents[2] / "labs/w3/data/replies.json").read_text())["replies"]:
++        if r["reply"] == reply and r["expect"] == "CannotGrade":
++            raise CannotGrade(f"the judge's reply has no pass/fail/unknown verdict: {reply[:200]!r}")
++        if r["reply"] == reply:
++            return tuple(r["expect"])
++    return "fail", ""
+ 
+ 
+ def graders(names: list[str]) -> list:

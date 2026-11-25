@@ -1,0 +1,39 @@
+--- a/src/tradingresearch/grade.py
++++ b/src/tradingresearch/grade.py
+@@ -420,19 +420,17 @@
+     """One line per thesis (verdict and cost, or why not judged), then the count and the run's cost in dollars."""
+     if not judged:
+         return ["judge: nothing to judge (no graded champion or challenger thesis without a verdict)"]
+-    # TODO(w3l4.3) each judged or not-judged line shows what its call cost, a call that judged nothing included, and
+-    #   the last line what the run cost in all: in dollars to the millionth, as the run files have it (one judge
+-    #   call is about half a cent).
+     lines = []
+     for j in judged:
+         head = f"{j.thesis.ticker:<6} {j.thesis.horizon:<5} {j.thesis.thesis_id} {j.thesis.arm:<10}"
+         if dry_run:
+             lines.append(f"{head}  would judge")
+         elif j.verdict is not None:
+-            lines.append(f"{head}  P1 {j.verdict}: {j.reason}")
++            lines.append(f"{head}  P1 {j.verdict} ${j.cost_usd:.6f}: {j.reason}")
+         else:
+-            lines.append(f"{head}  not judged: {j.error}")
++            lines.append(f"{head}  not judged ${j.cost_usd:.6f}: {j.error}")
+     if dry_run:
+         return lines + [f"judge (dry run): would judge {len(judged)} (cap ${max_usd:.2f}); nothing judged, no call"]
+     done = sum(j.verdict is not None for j in judged)
+-    return lines + [f"judge: {done} judged, {len(judged) - done} not judged (cap ${max_usd:.2f})"]
++    return lines + [f"judge: {done} judged, {len(judged) - done} not judged, cost "
++                    f"${sum(j.cost_usd for j in judged):.6f} (cap ${max_usd:.2f})"]
+--- a/src/tradingresearch/commands/grade.py
++++ b/src/tradingresearch/commands/grade.py
+@@ -21,8 +21,8 @@
+             bars = reconcile_run.AlpacaBars(http, cfg.data_dir / "bars_1m", cfg.feed)
+             report = grade.run(conn, bars, day, dry_run=args.dry_run)
+     print("\n".join(grade.render(report)))
+-    # TODO(w3l4.3) the judge is the one paid step of `tr grade`: it runs only when asked (--judge), a dry run included
+-    #   (judge_lines then lists what it would judge and calls nothing).
++    if args.judge:
++        print("\n".join(judge_lines(conn, args, cfg)))
+ 
+ 
+ def judge_lines(conn, args, cfg) -> list[str]:

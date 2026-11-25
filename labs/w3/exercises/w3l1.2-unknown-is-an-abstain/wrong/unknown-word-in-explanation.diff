@@ -1,0 +1,10 @@
+why: treats any explanation holding the word unknown as an abstain, so a pass or fail that mentions it is lost
+expect: no mechanism is unknown: both closes held
+before: GREEN (independent reader)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -213,3 +213,3 @@
+     reason = explanation if isinstance(explanation, str) else ""
+-    if verdict == "unknown":
++    if verdict == "unknown" or "unknown" in reason.lower():
+         return "fail", reason if reason.startswith("unknown:") else f"unknown: {reason}"

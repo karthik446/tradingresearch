@@ -1,0 +1,27 @@
+PASS w3l4.3: Judge only when asked, and print what it cost
+observe: python labs/w3/tools/observe.py grade
+  | queue: grade.to_judge on 6 FAKEA theses, written in this order:
+  |   1st challenger graded, 2nd champion graded, 3rd teacher closed, no grade
+  |   4th champion verdict stored, 5th challenger verdict stored, 6th champion never entered
+  |   lists 2: 1st challenger, 2nd champion
+  | grade.judge, $0.25 cap, replies recorded/no_verdict/failed/recorded: 4 sent, $0.015489 spent
+  |   1st champion   $0.005163  P1 pass
+  |   2nd challenger $0.005163  not judged: CannotGrade: the judge's reply has no pass/fail/unkno…
+  |   3rd champion   $0.000000  not judged: CannotGrade: judge call failed: http_400 (run <data_d…
+  |   4th challenger $0.005163  P1 pass
+  | grade.judge, $0.05 cap, replies recorded: 2 sent, $0.010326 spent
+  |   1st champion   $0.005163  P1 pass
+  |   2nd challenger $0.005163  P1 pass
+  |   3rd champion   $0.000000  not judged: the $0.05 cap cannot cover the call: $0.042966 does n…
+  |   4th challenger $0.000000  not judged: the $0.05 cap is spent; next run
+  | tr grade --session 2026-11-19 on 2 waiting theses (replies no_verdict, then recorded):
+  |   tr grade: 0 sent, 0 thesis line(s); no judge line
+  |   tr grade --judge --dry-run: 0 sent, 2 thesis line(s); judge (dry run): would judge 2 (cap $…
+  |   tr grade --judge: 2 sent
+  |     FAKEA  short th_<id> champion    not judged $0.005163: CannotGrade: the judge's reply has n…
+  |     FAKEA  short th_<id> challenger  P1 pass $0.005163: Both reported closes stayed above the 1…
+  |     judge: 1 judged, 1 not judged, cost $0.010326 (cap $0.25)
+  |   tr grade --judge again: 1 sent, 1 thesis line(s); judge: 1 judged, 0 not judged, cost $0.00…
+  | The replies are the recording or edits of it: verdicts and a paid call's cost cannot move.
+  | What moves is which theses wait, what each run sends under its cap, and what tr grade prints.
+next: `tr lab next` commits it and moves on; `tr lab solution` shows the reference to compare

@@ -1,0 +1,6 @@
+FAIL w3l3.1 (try 1): Keep the run file, and say when the call failed
+  After the judge's one call, data_dir/runs holds no run file. The call cost $0.005163, and `tr
+  usage` and `tr grade --judge` read what a call cost from its run file only. Files under data_dir:
+  journal.db, traces/run_<id>.jsonl
+  hint 1 unlocks after 2 failed runs; hint 2 unlocks after 5 failed runs; the solution unlocks after
+  10 failed runs or when the check is green

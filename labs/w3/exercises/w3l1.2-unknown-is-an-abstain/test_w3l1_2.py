@@ -50,9 +50,11 @@ def test_the_prefix_is_never_doubled():
 def test_an_unknown_without_explanation_is_still_an_abstain():
     r = row("unknown_bare")
     got = read(r["reply"])
-    assert isinstance(got, tuple) and got[0] == "fail" and got[1].startswith("unknown:"), (
-        f"The judge answered {r['reply']!r}; p1_verdict returned {got!r}. With no explanation it is still an abstain: "
-        f"fail, and a reason that starts with 'unknown:' (journal.abstained reads exactly that prefix)."
+    assert got == ("fail", "unknown: "), (
+        f"The judge answered {r['reply']!r}; p1_verdict returned {got!r}, expected ('fail', 'unknown: '). With no "
+        f"explanation it is still an abstain, by the same rule as any unknown: 'unknown: ' (colon, space) before "
+        f"the explanation, here \"\". journal.abstained reads the prefix; one reason string for every unknown keeps "
+        f"them alike."
     )
 
 
@@ -76,4 +78,22 @@ def test_pass_and_fail_keep_their_explanations():
             f"{rid}: the judge answered {r['reply'].strip().splitlines()[-1][:90]!r}; p1_verdict returned {got!r}, "
             f"expected {tuple(r['expect'])!r}. Only an unknown verdict gets the prefix: a plain fail is a not-met, and "
             f"the verdict decides, not the word unknown somewhere in the text."
+        )
+
+
+def test_replies_in_no_data_row_follow_the_same_rule():
+    # Built here, so they are in no row of replies.json: the verdict decides, and the prefix is exactly "unknown:".
+    for reply, want in (
+        ('{"verdict": "unknown", "explanation": "unknown whether volume confirmed the break"}',
+         ("fail", "unknown: unknown whether volume confirmed the break")),
+        ('{"verdict": "pass", "explanation": "no mechanism is unknown: both closes held"}',
+         ("pass", "no mechanism is unknown: both closes held")),
+        ('{"verdict": "fail", "explanation": "unknown sector rotation aside, a close fell under 98"}',
+         ("fail", "unknown sector rotation aside, a close fell under 98")),
+    ):
+        got = read(reply)
+        assert got == want, (
+            f"The judge answered {reply!r}; p1_verdict returned {got!r}, expected {want!r}. This reply is in no row of "
+            f"replies.json. Only the verdict unknown is an abstain, whatever words its explanation holds or starts "
+            f"with; an unknown's explanation gets 'unknown: ' in front unless it already starts with exactly 'unknown:'."
         )

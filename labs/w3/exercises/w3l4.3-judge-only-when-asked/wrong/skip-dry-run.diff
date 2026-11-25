@@ -1,0 +1,14 @@
+why: skips the judge part on a dry run, so --judge --dry-run lists nothing
+expect: `tr grade --judge --dry-run` sent 0 request(s) and printed: (no judge line)
+before: RED (author)
+--- a/src/tradingresearch/commands/grade.py
++++ b/src/tradingresearch/commands/grade.py
+@@ -21,7 +21,7 @@
+             bars = reconcile_run.AlpacaBars(http, cfg.data_dir / "bars_1m", cfg.feed)
+             report = grade.run(conn, bars, day, dry_run=args.dry_run)
+     print("\n".join(grade.render(report)))
+-    if args.judge:
++    if args.judge and not args.dry_run:
+         print("\n".join(judge_lines(conn, args, cfg)))
+ 
+ 

@@ -1,4 +1,4 @@
-# Week 3 labs, part A: the base, titles, pages, the unlock policy and the suite gate `tr lab` uses.
+# Week 3 labs: the base, titles, pages, the unlock policy and the suite gate `tr lab` uses.
 #
 # base: the first `tr lab start` of this week makes the repo's files equal to the author's code at this tag (labs/
 # and the runner's own files excepted) and commits it as `lab: week 3 base (week-3-start)`.
@@ -11,7 +11,8 @@
 #
 # [suite] deselect: tests/test_week3.py covers all of the chapter's §2-§7, so the repo suite is red until the week
 # ends. The end-of-lab gate (`tr lab next` on a lab's last exercise) passes these node ids to pytest as --deselect
-# (a node id without its [param] deselects every case). Plain `python -m pytest -q` still runs them.
+# (a node id without its [param] deselects every case), plus the ids in that lab's own [labs.<id>.suite]. Plain
+# `python -m pytest -q` still runs them.
 base = "week-3-start"
 
 [unlock]
@@ -20,16 +21,6 @@ solution = 10
 
 [suite]
 deselect = [
-    # Part A stops after the judge's one call: p1_judge raises NotImplementedError there, so the tests that need its
-    # Score, its stored verdict and its run file stay red until part B (w3l3, w3l4) finishes the function.
-    "tests/test_week3.py::test_the_judge_sends_one_request_with_the_adr_003_model_the_rubric_and_the_summary",
-    "tests/test_week3.py::test_the_judge_prompt_holds_no_raw_bar_rows",
-    "tests/test_week3.py::test_the_judge_returns_a_score_and_stores_its_verdict_and_score",
-    "tests/test_week3.py::test_the_judge_call_and_its_cost_land_in_a_run_file",
-    # Refusing a teacher or never-entered thesis (label.Refused becomes CannotGrade) is part B.
-    "tests/test_week3.py::test_teacher_and_never_entered_theses_are_never_judged",
-    # `tr grade --judge` is part B.
-    "tests/test_week3.py::test_tr_grade_judge_is_off_by_default_then_judges_once_and_prints_the_cost",
     # Written by hand from the chapter (§2, §5, §6), not in these labs.
     "tests/test_week3.py::test_adr_004_names_what_never_enters_a_trace",
     "tests/test_week3.py::test_the_slo_review_has_four_slos_and_the_injected_breach",
@@ -42,15 +33,51 @@ page = "pages/w3l1.md"
 goal = "Write p1_verdict, which turns the P1 judge's reply into the verdict and reason the journal stores: the last JSON object is the answer, unknown is an abstain stored as fail with unknown:, and a reply with no verdict cannot be graded. A misread reply is a wrong grade."
 section = [4]
 
+# After w3l1 and w3l2, p1_judge stops after its one call with NotImplementedError: the tests that need its Score, its
+# stored verdict, its run file and its refusals are lab w3l3, `tr grade --judge` is lab w3l4.
+[labs.w3l1.suite]
+deselect = ["tests/test_week3.py::test_the_judge_sends_one_request_with_the_adr_003_model_the_rubric_and_the_summary",
+            "tests/test_week3.py::test_the_judge_prompt_holds_no_raw_bar_rows",
+            "tests/test_week3.py::test_the_judge_returns_a_score_and_stores_its_verdict_and_score",
+            "tests/test_week3.py::test_the_judge_call_and_its_cost_land_in_a_run_file",
+            "tests/test_week3.py::test_teacher_and_never_entered_theses_are_never_judged",
+            "tests/test_week3.py::test_tr_grade_judge_is_off_by_default_then_judges_once_and_prints_the_cost"]
+
 [labs.w3l2]
 title = "The judge prompt and the one call"
 page = "pages/w3l2.md"
 goal = "Build the request the P1 judge gets: the rubric in its instructions, the thesis as the graded text, the cited claims and the code-written summary as evidence, never the bars, and one call bounded to 4000 output tokens and capped in dollars before it is sent."
 section = [4]
 
+[labs.w3l2.suite]
+deselect = ["tests/test_week3.py::test_the_judge_sends_one_request_with_the_adr_003_model_the_rubric_and_the_summary",
+            "tests/test_week3.py::test_the_judge_prompt_holds_no_raw_bar_rows",
+            "tests/test_week3.py::test_the_judge_returns_a_score_and_stores_its_verdict_and_score",
+            "tests/test_week3.py::test_the_judge_call_and_its_cost_land_in_a_run_file",
+            "tests/test_week3.py::test_teacher_and_never_entered_theses_are_never_judged",
+            "tests/test_week3.py::test_tr_grade_judge_is_off_by_default_then_judges_once_and_prints_the_cost"]
+
+[labs.w3l3]
+title = "Keeping what the judge said"
+page = "pages/w3l3.md"
+goal = "Finish p1_judge: keep every call in a run file with what it cost, store the verdict and its ScoreRecord together or not at all, and refuse a thesis the judge may not take before any call. A verdict nobody can trace back to its call cannot be audited."
+section = [4]
+
+# After w3l3, p1_judge is complete; `tr grade --judge` is lab w3l4.
+[labs.w3l3.suite]
+deselect = ["tests/test_week3.py::test_tr_grade_judge_is_off_by_default_then_judges_once_and_prints_the_cost"]
+
+# After w3l4, the only tests in tests/test_week3.py still red are the three in [suite], so w3l4 has no list.
+[labs.w3l4]
+title = "Judging in tr grade"
+page = "pages/w3l4.md"
+goal = "Put the judge into `tr grade`: list the graded theses still waiting for a verdict, judge them in one run under one dollar cap, and run it only when --judge is given, printing what each call and the whole run cost."
+section = [4]
+
 # What labs/tools/prove.py checks after the last exercise: these files must equal the tag byte for byte (the runner
-# ignores this table). evals.py is the one file these labs write, and it cannot equal week-3-end until part B: after
-# w3l2, p1_judge stops at NotImplementedError after its call and has no refusal yet. Part B lists it here.
+# ignores this table). They are every file these labs write: evals.py (w3l1-w3l3), grade.py, commands/grade.py and the
+# `tr grade --help` fixture (w3l4).
 [end]
 tag = "week-3-end"
-files = []
+files = ["src/tradingresearch/evals.py", "src/tradingresearch/grade.py", "src/tradingresearch/commands/grade.py",
+         "tests/fixtures/help/grade.txt"]

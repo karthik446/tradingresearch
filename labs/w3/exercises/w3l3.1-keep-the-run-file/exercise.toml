@@ -1,0 +1,19 @@
+id = "w3l3.1"
+title = "Keep the run file, and say when the call failed"
+effect = "Observe's store table: the recorded reply goes from 0 run files to 1 holding $0.005163, and the HTTP 400 ends in CannotGrade naming http_400 and its run file instead of NotImplementedError."
+goal = "Keep the judge's one call in a run file under data_dir/runs as soon as it returns, before anything can go wrong with the reply: the cost `tr usage` and the run's cap read lives there. A call that failed has no reply to read; say so with CannotGrade, naming the error and the run file."
+what_tested = "p1_judge on the closed FAKEA trade: the recorded reply leaves exactly one run file whose spent_usd is the reply's cost; an HTTP 400 is raised as CannotGrade holding http_400 and the run file's path, with nothing stored; an HTTP 402 names the code its run recorded, insufficient_credits."
+writes = [
+  "In p1_judge, the run from run_eval is saved under data_dir/runs with analyze's save, right after the call, before its reply is read.",
+  "A sample whose outcome is not succeeded raises CannotGrade with the error code the run recorded and the path of the run file.",
+]
+show_tests = ["test_the_call_lands_in_one_run_file_with_its_cost", "test_a_failed_call_is_cannot_grade_naming_its_run_file"]
+lab = "w3l3"
+concepts = ["run-file", "cannotgrade", "replayed-reply"]
+touches = ["src/tradingresearch/evals.py"]
+check = "python -m pytest -q -x -p no:cacheprovider -m lab labs/w3/exercises/w3l3.1-keep-the-run-file/test_w3l3_1.py"
+observe = "python labs/w3/tools/observe.py store"
+paid = false
+fixtures = ["data/judge_reply.json", "data/judge_request.json", "data/models.json"]
+origin = "rebuild of week-3-end evals.py; reference = the tag's p1_judge from its run_eval call through the outcome check"
+red_expect = "data_dir/runs holds no run file"

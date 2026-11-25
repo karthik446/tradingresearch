@@ -1,0 +1,19 @@
+id = "w3l4.3"
+title = "Judge only when asked, and print what it cost"
+effect = "Observe's tr grade runs: --judge goes from printing nothing to a line per thesis with its cost ($0.005163 each, the no-verdict reply included) and a total of $0.010326, the dry run says it would judge 2, and plain tr grade still sends nothing."
+goal = "Wire the judge into `tr grade`: off unless --judge is given (a dry run then lists what it would judge), and every judged or not-judged line shows what its call cost, with the run's total last, to the millionth of a dollar."
+what_tested = "The tr CLI on two graded theses: plain tr grade sends nothing, prints no judge line; --judge --dry-run lists 2, sends nothing; --judge grades first, then prints $0.005163 on each line and cost $0.010326; a second run judges only the thesis left without a verdict, a third sends nothing. Made-up costs print as given."
+writes = [
+  "cmd_grade prints judge_lines after the grade report only when the --judge flag is set.",
+  "In render_judged, the verdict line and the not-judged line each show the thesis's cost in dollars with six decimals, and the summary line adds the run's total cost in the same form.",
+]
+show_tests = ["test_tr_grade_calls_the_judge_only_with_judge"]
+lab = "w3l4"
+concepts = ["off-by-default", "run-cap"]
+touches = ["src/tradingresearch/grade.py", "src/tradingresearch/commands/grade.py"]
+check = "python -m pytest -q -x -p no:cacheprovider -m lab labs/w3/exercises/w3l4.3-judge-only-when-asked/test_w3l4_3.py"
+observe = "python labs/w3/tools/observe.py grade"
+paid = false
+fixtures = ["data/judge_reply.json", "data/models.json"]
+origin = "rebuild of week-3-end grade.py and commands/grade.py; reference = the tag's render_judged and cmd_grade's --judge branch"
+red_expect = "`tr grade --judge --dry-run` sent 0 request(s) and printed: (no judge line)"

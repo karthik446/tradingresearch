@@ -1,0 +1,14 @@
+why: gives every call the whole cap instead of what the run has left
+expect: grade.judge sent 3 requests
+before: RED (author)
+--- a/src/tradingresearch/grade.py
++++ b/src/tradingresearch/grade.py
+@@ -404,7 +404,7 @@
+         before = run_files(data_dir)
+         try:
+             score = evals.p1_judge(conn, bars, t.thesis_id, provider, prices=prices, data_dir=data_dir,
+-                                   max_usd=max_usd - spent)
++                                   max_usd=max_usd)
+             judged = Judged(t, verdict=score.answer, reason=score.explanation)
+         except BudgetExceeded as exc:
+             capped, judged = True, Judged(t, error=f"the ${max_usd:.2f} cap cannot cover the call: {exc}")

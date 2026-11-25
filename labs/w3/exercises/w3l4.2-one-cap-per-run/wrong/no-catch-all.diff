@@ -1,0 +1,14 @@
+why: lets any failure other than the budget stop the whole run
+expect: grade.judge raised CannotGrade
+before: RED (author)
+--- a/src/tradingresearch/grade.py
++++ b/src/tradingresearch/grade.py
+@@ -408,8 +408,6 @@
+             judged = Judged(t, verdict=score.answer, reason=score.explanation)
+         except BudgetExceeded as exc:
+             capped, judged = True, Judged(t, error=f"the ${max_usd:.2f} cap cannot cover the call: {exc}")
+-        except Exception as exc:  # one thesis's failure (no verdict, a failed call, bars) never stops the run
+-            judged = Judged(t, error=f"{type(exc).__name__}: {exc}")
+         cost = sum(trace.header(path).spent_usd for path in run_files(data_dir) - before)
+         spent += cost
+         out.append(replace(judged, cost_usd=cost))
