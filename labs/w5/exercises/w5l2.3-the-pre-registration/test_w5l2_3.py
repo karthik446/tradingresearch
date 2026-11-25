@@ -68,3 +68,6 @@ def test_the_rule_says_when_a_section_stays_and_when_it_goes():
     words = re.findall(r"[\w%-]+", rule.lower())
     missing = [w for w in ("claims_valid", "stays", "goes", "interval", "95%") if w not in words]
     assert not missing, f"the rule ({rule[:200]!r}) does not say {missing}"
+    assert named(rule) == "claims_valid", (
+        f"the rule decides on {named(rule)!r} ({rule[:200]!r}); expected claims_valid: the first grader the rule "
+        f"names is the one its interval decides on, and that is the primary metric")

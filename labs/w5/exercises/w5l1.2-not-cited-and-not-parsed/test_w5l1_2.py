@@ -1,8 +1,8 @@
 """w5l1.2 not cited, not parsed, and the explanation. A section no claim cites raises CannotGrade with a message
-starting `not_cited`: no score, so a mean never counts it as 1.0. A parsed reply with no claims list, or none that
-cite the section, is not cited. A reply that did not parse (parse_status other than "ok") raises CannotGrade for
-another reason. Below 1.0 the explanation is `<reasons>: <k> of <n> claims citing <section> fail`, the failed
-claims' rejection reasons sorted and each named once.
+starting `not_cited` and naming the section: no score, so a mean never counts it as 1.0. A parsed reply with no
+claims list, or none that cite the section, is not cited. A reply that did not parse (parse_status other than "ok")
+raises CannotGrade for another reason. Below 1.0 the explanation is `<reasons>: <k> of <n> claims citing <section>
+fail`, the failed claims' rejection reasons sorted and each named once.
 
 The grader is built as in w5l1.1 (a SectionGrounded subclass that sets `section`); samples are about the FAKEA
 context (tools/fakea.py), the recorded analyze-3 reply among them.
@@ -43,6 +43,7 @@ def not_cited(section: str, parsed, why: str, g=None) -> None:
     assert isinstance(got, CannotGrade) and str(got).startswith("not_cited"), (
         f"{section} gave {shown} on claims [{fakea.describe(parsed)}]; expected CannotGrade('not_cited: ...'): "
         f"{why}. A section nobody cites has no score; a 1.0 would count as a pass in every mean")
+    assert section in str(got), f"{section} gave {got!r}; expected the not_cited message to name the section, {section}"
 
 
 def explained(section: str, claims: list, want: str, value: float) -> None:
@@ -99,6 +100,9 @@ def test_the_explanation_names_sorted_distinct_reasons_and_the_count():
                    source_ids=[regime.source_id], derived_from=[], steps=None)]
     explained("indicators", claims,
               "empty_placeholder, number_in_text, unsourced_number: 4 of 5 claims citing indicators fail", 0.2)
+    unknown = dict(claims[4], id="u2", source_ids=[fakea.row("close").source_id, "src_not_a_row"])
+    explained("indicators", claims + [unknown], "empty_placeholder, number_in_text, unknown_source, unsourced_number: "
+              "5 of 6 claims citing indicators fail", 1 / 6)
     explained("levels", [fakea.fact("l1", "level_hvn_1", value=1.0), fakea.fact("l2", "level_hvn_2")],
               "unsourced_number: 1 of 2 claims citing levels fail", 0.5)
     explained("headlines", [fakea.fact("h1", HEADLINE[0], text="Up 5 on the news.")],

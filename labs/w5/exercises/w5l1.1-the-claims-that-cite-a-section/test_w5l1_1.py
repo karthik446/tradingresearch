@@ -67,6 +67,9 @@ def test_a_claim_citing_two_sections_counts_in_both():
            "rejected")
     expect("levels", claims, 0.5, "m1 and m2 each cite a level row (after an indicator row); m2 is rejected")
     expect("headlines", claims, 1.0, "x1 cites a headline row and is kept")
+    wide = [fakea.fact("w1", "level_hvn_1", "level_hvn_2", HEADLINE[0], "close"), fakea.fact("i1", "sma_20", value=1.0)]
+    expect("indicators", wide, 0.5, "w1 cites four rows, the close row the fourth, and is kept; i1 is rejected")
+    expect("headlines", wide, 1.0, "w1's third row is a headline row")
 
 
 def test_only_the_claims_own_source_ids_cite():
@@ -85,6 +88,32 @@ def test_only_the_claims_own_source_ids_cite():
     expect("levels", claims, 1.0, "t1 cites a level row and is kept")
 
 
+def test_an_id_that_is_no_row_cites_nothing():
+    close = fakea.row("close")
+    unknown = dict(id="u1", tag="fact", text="The row reads {value}.", value=close.value, unit=close.unit,
+                   source_ids=["src_not_a_row"], derived_from=[], steps=None)
+    spaced = dict(unknown, id="w1", source_ids=[" " + close.source_id])
+    expect("indicators", [fakea.fact("i4", "close"), unknown], 1.0, "u1's one id names no row, so u1 cites no "
+           "section, whatever the id spells; i4 is the one claim citing an indicator row")
+    expect("indicators", [fakea.fact("i4", "close"), spaced], 1.0, "w1's one id is the close row's with a space in "
+           "front, and no row has that id, so w1 cites nothing")
+
+
+def test_an_inference_keeps_the_claim_of_another_section_it_derives_from():
+    close = fakea.row("close")
+    claims = [fakea.fact("l1", "level_hvn_1"),
+              dict(id="n1", tag="inference", text="The close sits near the level.", value=None, unit=None,
+                   source_ids=[close.source_id], derived_from=["l1"], steps="The close is just under the level.")]
+    expect("indicators", claims, 1.0, "n1 cites the close row and derives from l1, a kept level claim: "
+           "validate_claims runs on the whole reply, so n1 is kept")
+
+
+def test_every_rejected_claim_counts():
+    claims = [fakea.fact("i1", "sma_20", value=1.0), fakea.fact("i3", "sma_50", value=2.0), fakea.fact("i4", "close")]
+    expect("indicators", claims, 1 / 3, "i1 and i3 are rejected for the same reason, and each is a citing claim "
+           "that fails")
+
+
 def test_the_citing_claim_may_sit_anywhere_in_the_reply():
     others = [fakea.fact("e1", "revenue_CY2026Q2"), fakea.fact("h1", HEADLINE[0]), fakea.fact("l1", "level_hvn_1")]
     for at in range(len(others) + 1):
@@ -95,6 +124,9 @@ def test_the_citing_claim_may_sit_anywhere_in_the_reply():
                                                                      fakea.fact(8, "close"), fakea.fact("i2", "close")]
     expect("indicators", many, 1 / 3, "the 12th to 14th claims cite indicator rows; the 12th is rejected, and so is "
            "the 13th, whose id is the number 8: validate_claims reports it under the id as text, '8'")
+    long = ([fakea.fact("i1", "close")] + [fakea.fact(f"l{k}", "level_hvn_1") for k in range(22)]
+            + [fakea.fact("i2", "sma_50"), fakea.fact("i3", "sma_20", value=1.0)])
+    expect("indicators", long, 2 / 3, "the 1st, 24th and 25th claims cite indicator rows; the 25th is rejected")
 
 
 def test_one_grader_grades_sample_after_sample():

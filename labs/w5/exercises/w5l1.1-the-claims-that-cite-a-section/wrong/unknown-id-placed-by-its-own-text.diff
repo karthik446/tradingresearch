@@ -1,0 +1,14 @@
+why: places an id that is no row in a section by the id's own text
+expect: indicators scored 0.500 on claims [i4: ['close']; u1
+before: before: GREEN (independent read)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -155,7 +155,7 @@
+         """Whether one of the claim's `source_ids` is a row of this section (masking.section_of its table name)."""
+         sources = claim.get("source_ids")
+         return isinstance(sources, list) and any(
+-            isinstance(source, str) and source in names and masking.section_of(names[source]) == self.section
++            isinstance(source, str) and masking.section_of(names.get(source, source)) == self.section
+             for source in sources)
+ 
+ 

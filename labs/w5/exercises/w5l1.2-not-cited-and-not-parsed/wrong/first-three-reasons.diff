@@ -1,0 +1,14 @@
+why: names at most three reasons
+expect: ('empty_placeholder, number_in_text, unknown_source: 5 of 6
+before: before: GREEN (independent read)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -154,7 +154,7 @@
+         if not failed:
+             return Score(value=1.0, explanation=f"{n} of {n} claims citing {self.section} pass")
+         return Score(value=(n - len(failed)) / n,
+-                     explanation=f"{', '.join(sorted(set(failed)))}: {len(failed)} of {n} claims citing "
++                     explanation=f"{', '.join(sorted(set(failed))[:3])}: {len(failed)} of {n} claims citing "
+                                  f"{self.section} fail")
+ 
+     def cites(self, claim: dict, names: dict[str, str]) -> bool:

@@ -1,0 +1,14 @@
+why: looks only at a claim's first two source ids
+expect: indicators scored 0.000 on claims [w1
+before: before: GREEN (independent read)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -156,7 +156,7 @@
+         sources = claim.get("source_ids")
+         return isinstance(sources, list) and any(
+             isinstance(source, str) and source in names and masking.section_of(names[source]) == self.section
+-            for source in sources)
++            for source in sources[:2])
+ 
+ 
+ # TODO(w5l1.3) one registered code grader per section of masking.SECTIONS, with the id `<section>_grounded`:
