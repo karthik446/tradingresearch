@@ -1,0 +1,15 @@
+FAIL w4l4.2 (try 1): The route of the whole exchange
+  route_for(FAKEA prompt), route_for(FAKEB prompt) = ('openrouter:Azure', 'openrouter:Azure');
+  expected ('openrouter:mixed(Azure+Google)', 'openrouter:Azure'): FAKEA's loop was served by Azure
+  then Google, FAKEB's by Azure twice, and every request of one loop shares its item prompt while
+  two items do not (routes logged {'TICKER: FAKEA\nSESSION: 2026-11-13 (the last completed NYSE
+  session)\n\nThe SOURCES table is not included. Ask for the rows you need with the tools; every row
+  they return carries the source_id to cite.\n\nWrite the claims as JSON with the key "claims".':
+  ['openrouter:Azure'], '{"error": "unknown tool \'get_sources\'; the tools are get_indicators,
+  get_levels, get_fundamentals"}': ['openrouter:Google', 'openrouter:Azure'], 'TICKER:
+  FAKEB\nSESSION: 2026-11-13 (the last completed NYSE session)\n\nThe SOURCES table is not included.
+  Ask for the rows you need with the tools; every row they return carries the source_id to
+  cite.\n\nWrite the claims as JSON with the key "claims".': ['openrouter:Azure']}, served
+  ['openrouter:Azure', 'openrouter:Google', 'openrouter:Azure', 'openrouter:Azure'])
+  hint 1 unlocks after 2 failed runs; hint 2 unlocks after 5 failed runs; the solution unlocks after
+  10 failed runs or when the check is green

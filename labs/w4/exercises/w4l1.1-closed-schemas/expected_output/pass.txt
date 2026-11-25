@@ -1,0 +1,31 @@
+PASS w4l1.1: Close every tool's schema and describe every argument
+observe: python labs/w4/tools/observe.py tools
+  | TOOLS
+  |   get_indicators    arguments ['names']  closed True  described 1/1  refuses {"groups":
+  | ["price_and_indicators","levels_and_congestion","regime","fundamentals"]}: True
+  |   get_levels        arguments []  closed True  described 0/0  refuses {"groups":
+  | ["price_and_indicators","levels_and_congestion","regime","fundamentals"]}: True
+  |   get_fundamentals  arguments ['metrics']  closed True  described 1/1  refuses {"groups":
+  | ["price_and_indicators","levels_and_congestion","regime","fundamentals"]}: True
+
+  | run_tool on the FAKEA context
+  |   get_indicators {"names": ["close", "rsi_14"]}
+  |       21 rows, first {"name": "close", "value": 101.4}
+  |   get_sources {"groups":
+  | ["price_and_indicators","levels_and_congestion","regime","fundamentals"]}
+  |       raised KeyError: 'get_sources'
+  |   get_indicators {not json
+  |       raised JSONDecodeError: Expecting property name enclosed in double quotes: line 1 column 2
+  | (char 1)
+  |   get_indicators {"names": ["rsi"]}
+  |       21 rows, first {"name": "close", "value": 101.4}
+  |   get_levels {}
+  |       12 rows, first {"name": "level_hvn_1", "value": 97.5}
+  |   get_fundamentals {"metrics": ["ebitda"]}
+  |       raised ToolError: get_fundamentals: unknown metric(s) ebitda; metrics: revenue,
+  | net_income, eps_diluted, revenue_annual
+
+  | get_indicators on the context with extra digits: 0 of 21 rows carry the value the SOURCES table
+  | shows
+  |   differs: {"name": "close", "value": 101.40124722000002}  table shows ? (no source_id to look
+[... 5 more lines not shown]

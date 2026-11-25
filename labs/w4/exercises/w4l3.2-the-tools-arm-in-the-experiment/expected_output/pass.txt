@@ -1,0 +1,25 @@
+PASS w4l3.2: Wire the tools arm into the experiment
+observe: python labs/w4/tools/observe.py arm
+
+  | run_tools, FAKEA and FAKEB, a $0.06 cap (their first requests together are planned at $0.081384)
+  |   0 requests sent, then BudgetExceeded: $0.081384 does not fit the remaining $0.060000 of
+  | max_usd=0.06
+
+  | run_tools, FAKEA and FAKEB, a $1 cap
+  |   4 requests sent; the run records 4 calls and $0.045776
+  |   samples [('FAKEA', 'succeeded'), ('FAKEB', 'succeeded')], scores 0
+
+  | run_tools, FAKEA's first call fails (HTTP 400), a grader that scores what it is shown
+  |   3 requests sent; the run records 3 calls and $0.022888
+  |   samples [('FAKEA', 'failed'), ('FAKEB', 'succeeded')], scores 1
+  |   the grader was shown ['FAKEB']
+
+  | run_arms, one tools arm, grader parsed
+  |   4 requests sent; calls per arm [4]
+  |   stored analyses and their routes {'FAKEA': 'openrouter:Azure', 'FAKEB': 'openrouter:Azure'}
+  | (turn1 is served by Azure, turn2 by Google)
+
+  | run_arms, one tools arm, graders parsed and the model grader p1_judge
+  |   0 requests sent, then refused: week4-lab: a tools arm grades with code graders only, not
+  | p1_judge
+next: `tr lab next` commits it and moves on; `tr lab solution` shows the reference to compare

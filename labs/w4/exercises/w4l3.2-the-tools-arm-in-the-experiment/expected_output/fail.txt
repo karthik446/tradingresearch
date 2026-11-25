@@ -1,0 +1,5 @@
+FAIL w4l3.2 (try 1): Wire the tools arm into the experiment
+  run_arms raised NotImplementedError('mode=tools: week 4 learner work') for arms ['tools']: a tools
+  arm runs through run_tools; only a config it refuses stops it, and that stop is a SystemExit
+  hint 1 unlocks after 2 failed runs; hint 2 unlocks after 5 failed runs; the solution unlocks after
+  10 failed runs or when the check is green

@@ -1,0 +1,19 @@
+PASS w4l4.1: A route with one known provider
+observe: python labs/w4/tools/observe.py clean
+  | route                              clean_route  a trainable teacher Analysis with it
+  |   'openrouter:Azure'                 True         built
+  |   'openrouter:deepinfra/fp8/flex'    True         built
+  |   'openrouter:google-vertex'         True         built
+  |   'openrouter:unknown'               False        refused: Value error, a trainable record needs
+  | one known provider route, got 'openrouter:…
+  |   'openrouter:Unknown'               False        refused: Value error, a trainable record needs
+  | one known provider route, got 'openrouter:…
+  |   'openrouter:mixed(Azure+Google)'   False        refused: Value error, a trainable record needs
+  | one known provider route, got 'openrouter:…
+  |   'openrouter:mixed(Azure)'          False        refused: Value error, a trainable record needs
+  | one known provider route, got 'openrouter:…
+  |   'openrouter:'                      False        refused: Value error, a trainable record needs
+  | one known provider route, got 'openrouter:'
+  |   ''                                 False        refused: Value error, a trainable record needs
+  | one known provider route, got ''
+next: `tr lab next` commits it and moves on; `tr lab solution` shows the reference to compare

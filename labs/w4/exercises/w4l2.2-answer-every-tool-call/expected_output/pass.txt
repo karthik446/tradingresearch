@@ -1,0 +1,31 @@
+PASS w4l2.2: Answer every tool call, then call again
+observe: python labs/w4/tools/observe.py loop
+  | tools_prompt: 247 chars, 0 of 38 source rows, render's is 2095 chars
+
+  | the recorded exchange (the capture's tool, get_sources)
+  |   requests 2  tool turns in the last 1 ['toolu_01FAABR9tQJYBK8Xr5g6ZhrU']
+  |   sample succeeded, parse ok, error None, claims 11
+  |   trace ['ToolSpan', 'TrialSpan']
+  |   sample spans: model 0, tool 1
+  |   request 1 vs turn1.request: keys that differ ['messages'], turns that differ [1] of 2 (the
+  | user turn is 1, the tool turn 3)
+  |   request 2 vs turn2.request: keys that differ ['messages'], turns that differ [1, 3] of 4 (the
+  | user turn is 1, the tool turn 3)
+
+  | your three tools, three calls in one reply
+  |   requests 2  tool turns in the last 3 ['toolu_lab_1', 'toolu_lab_2', 'toolu_lab_3']
+  |   sample succeeded, parse ok, error None, claims 11
+  |   trace ['ToolSpan', 'ToolSpan', 'ToolSpan', 'TrialSpan']
+  |   sample spans: model 0, tool 3
+  |   tools offered ['get_indicators', 'get_levels', 'get_fundamentals']
+
+  | a model that never stops asking, max_turns 3 (the replay stops at 12)
+  |   requests 13  tool turns in the last 12 ['toolu_01FAABR9tQJYBK8Xr5g6ZhrU',
+  | 'toolu_01FAABR9tQJYBK8Xr5g6ZhrU', 'toolu_01FAABR9tQJYBK8Xr5g6ZhrU']
+  |   sample succeeded, parse not_json, error None, claims None
+  |   trace ['ToolSpan', 'ToolSpan', 'ToolSpan', 'ToolSpan', 'ToolSpan', 'ToolSpan', 'ToolSpan',
+  | 'ToolSpan', 'ToolSpan', 'ToolSpan', 'ToolSpan', 'ToolSpan', 'TrialSpan']
+  |   sample spans: model 0, tool 12
+
+  | an HTTP 400 on the second call
+[... 12 more lines not shown]

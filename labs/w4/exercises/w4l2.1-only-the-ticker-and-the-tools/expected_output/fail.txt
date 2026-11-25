@@ -1,0 +1,7 @@
+FAIL w4l2.1 (try 1): Send only the ticker and the session, and offer the tools
+  tools_prompt's turn holds 38 of the 38 source rows and 33 of their values (first:
+  'src_98651de31e6271aa | close | 101.4 | USD'). In tools mode every number the model cites came
+  through a tool call, which the trace records; a row in the prompt is a number no tool call
+  accounts for
+  hint 1 unlocks after 2 failed runs; hint 2 unlocks after 5 failed runs; the solution unlocks after
+  10 failed runs or when the check is green

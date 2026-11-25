@@ -1,0 +1,31 @@
+PASS w4l1.3: Return the rows a claim cites, with the numbers the table shows
+observe: python labs/w4/tools/observe.py tools
+  | TOOLS
+  |   get_indicators    arguments ['names']  closed True  described 1/1  refuses {"groups":
+  | ["price_and_indicators","levels_and_congestion","regime","fundamentals"]}: True
+  |   get_levels        arguments []  closed True  described 0/0  refuses {"groups":
+  | ["price_and_indicators","levels_and_congestion","regime","fundamentals"]}: True
+  |   get_fundamentals  arguments ['metrics']  closed True  described 1/1  refuses {"groups":
+  | ["price_and_indicators","levels_and_congestion","regime","fundamentals"]}: True
+
+  | run_tool on the FAKEA context
+  |   get_indicators {"names": ["close", "rsi_14"]}
+  |       2 rows, first {"source_id": "src_98651de31e6271aa", "name": "close", "unit": "USD",
+  | "value": 101.4}
+  |   get_sources {"groups":
+  | ["price_and_indicators","levels_and_congestion","regime","fundamentals"]}
+  |       error: unknown tool 'get_sources'; the tools are get_indicators, get_levels,
+  | get_fundamentals
+  |   get_indicators {not json
+  |       error: get_indicators: arguments are not valid JSON (Expecting property name enclosed in
+  | double quotes); send a JSON object
+  |   get_indicators {"names": ["rsi"]}
+  |       error: get_indicators: no row named rsi; names: close, sma_20, sma_50, sma_200, ema_9,
+  | ema_21, rsi_14, atr_14, atr_pct, rel_volume, high_20, low_20, …
+  |   get_levels {}
+  |       12 rows, first {"source_id": "src_954256091e618501", "name": "level_hvn_1", "unit": "USD",
+  | "value": 97.5}
+  |   get_fundamentals {"metrics": ["ebitda"]}
+  |       error: get_fundamentals: unknown metric(s) ebitda; metrics: revenue, net_income,
+  | eps_diluted, revenue_annual
+[... 4 more lines not shown]

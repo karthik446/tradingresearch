@@ -1,0 +1,11 @@
+PASS w4l3.3: Grade the tool calls
+observe: python labs/w4/tools/observe.py grader
+  | tool_calls_ok on five samples (score, explanation):
+  |   the recorded get_sources call, answered with an error    0.0   tool_error: get_sources
+  | {"groups": ["price_and_indicators",…
+  |   get_indicators twice, the same names spaced two ways     0.0   repeated_call: get_indicators
+  | {"names":["close"]}
+  |   seven distinct get_indicators calls                      0.0   too_many_calls: 7 > 6
+  |   three clean calls, one per tool                          1.0   3 tool calls
+  |   no tool calls                                            1.0   no tool calls
+next: `tr lab next` commits it and moves on; `tr lab solution` shows the reference to compare

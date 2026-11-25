@@ -1,0 +1,6 @@
+FAIL w4l3.1 (try 1): Run the tool loop as a Run: plan, reserve, grade what succeeded
+  with max_usd_per_arm 0.0813 run_tools sent 4 requests and finished: the two items' first requests,
+  system turn and tools prompt with the tools offered, are estimated at $0.081384 together, so the
+  run stops before its first call with BudgetExceeded and spends nothing
+  hint 1 unlocks after 2 failed runs; hint 2 unlocks after 5 failed runs; the solution unlocks after
+  10 failed runs or when the check is green

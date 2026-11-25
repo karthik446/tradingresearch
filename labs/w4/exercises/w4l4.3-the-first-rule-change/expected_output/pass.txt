@@ -1,0 +1,31 @@
+PASS w4l4.3: The first rule change, pre-registered
+observe: python labs/w4/tools/observe.py rule
+  | short-sma50-trend: Filter, 'drop short-horizon theses against the 50-session trend (long below
+  | sma_50, short above)'
+  |   short long  dist_sma_50_atr -0.4  refused: 'short-horizon long against the sma_50 trend
+  | (dist_sma_50_atr -0.40)'
+  |   short long  dist_sma_50_atr 0.4   kept
+  |   short short dist_sma_50_atr 0.4   refused: 'short-horizon short against the sma_50 trend
+  | (dist_sma_50_atr 0.40)'
+  |   short short dist_sma_50_atr -0.4  kept
+  |   short long  dist_sma_50_atr None  refused: 'short horizon needs dist_sma_50_atr to check the
+  | trend, got None'
+  |   short short dist_sma_50_atr 0.0   kept
+  |   swing long  dist_sma_50_atr -0.4  kept
+  |   swing short dist_sma_50_atr None  kept
+
+  | experiments/rule-change-1.toml: rc_1, diff_ref 'short-sma50-trend', registered_at
+  | 2026-11-17T07:08:00+00:00
+  | registered in a temp journal
+  | tr learn --status on that journal:
+  |   rule changes (SPIKE §8.2-8.3): 1 registered
+  |   rule: adopt iff, over the first 20 paired sessions, the 95% CI lower bound of mean(challenger
+  | - champion) session r_net is > 0 and that of the P1 met-rate difference is >= -0.10; otherwise
+  | rejected; insufficient if 20 pairs are not reached by day 60 (2027-01-15)
+  |   rc_1 [pending] short: drop short-horizon theses against the 50-session trend (long below
+  | sma_50, short above) (diff short-sma50-trend; registered 2026-11-17 07:08 UTC, active from
+  | 2026-11-17)
+  |     paired sessions so far: 0 of 20
+  |     delta session r_net (challenger - champion) insufficient (0 sessions < 10)
+  |     P1 met-rate guard (challenger - champion) insufficient (0 sessions < 10)
+[... 5 more lines not shown]

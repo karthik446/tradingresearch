@@ -1,0 +1,11 @@
+PASS w4l4.2: The route of the whole exchange
+observe: python labs/w4/tools/observe.py route
+  | route_for(the item prompt) after replayed tool loops (turn1 asks for a tool, turn2 answers):
+  |   the recording, served by Azure then Google           openrouter:mixed(Azure+Google)
+  |   both turns served by Google                          openrouter:Google
+  |   turn1's provider is null, turn2 served by Google     openrouter:unknown
+  |   served by Azure, then a new call that fails          openrouter:unknown  (served 2 calls)
+  |   FAKEA on the arm pinned to azure, then google: azure openrouter:azure  (served 2 calls)
+  |   FAKEA on the arm pinned to azure, then google: google openrouter:google  (served 2 calls)
+  |   FAKEA on the arm pinned to azure, then google: unpinned openrouter:unknown  (served 0 calls)
+next: `tr lab next` commits it and moves on; `tr lab solution` shows the reference to compare

@@ -1,0 +1,6 @@
+FAIL w4l2.2 (try 1): Answer every tool call, then call again
+  1 request was sent: the recorded first reply asks for get_sources (id
+  toolu_01FAABR9tQJYBK8Xr5g6ZhrU), so the loop answers it and calls again; the recorded run made 2
+  calls
+  hint 1 unlocks after 2 failed runs; hint 2 unlocks after 5 failed runs; the solution unlocks after
+  10 failed runs or when the check is green

@@ -1,0 +1,5 @@
+FAIL w4l2.3 (try 1): Cap the loop and keep every span in the trace
+  with max_turns=3 the loop made 13 calls: every reply asks for a tool, so the cap is all that ends
+  it (13 calls is where the replay itself gives up)
+  hint 1 unlocks after 2 failed runs; hint 2 unlocks after 5 failed runs; the solution unlocks after
+  10 failed runs or when the check is green

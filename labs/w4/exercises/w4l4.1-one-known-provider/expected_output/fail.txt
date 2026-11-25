@@ -1,0 +1,5 @@
+FAIL w4l4.1 (try 1): A route with one known provider
+  clean_route('openrouter:unknown') returned True; expected False: the reply did not say who served
+  it
+  hint 1 unlocks after 2 failed runs; hint 2 unlocks after 5 failed runs; the solution unlocks after
+  10 failed runs or when the check is green
