@@ -1,0 +1,89 @@
+# The walked-through session on the w4 lab pages. labs/tools/capture.py runs every step in a fresh scratch clone
+# (one clone per part) and writes what each `run` printed to the step's `output` file next to this one. `prove.py`
+# re-runs it and fails when an output file no longer matches.
+
+diagram = """
+ tr lab start w4l1     first command of the week: commits the author's code at week-4-start
+         |             as `lab: week 4 base (week-4-start)`, then puts the w4l1.1 stub in place
+         v
+   edit the TODO  <------------------------------------------------+
+         |                                                         |
+         v                                                         |
+ tr lab verify  --> FAIL (try N): what the check expected and got -+
+         |
+         v
+   PASS, then labs/w4/tools/observe.py: the tools, a call run on a fixture, the loop, the arms, the route, the rule
+         |
+         v
+ tr lab next    commits `lab <id>: green`, puts the next stub in place
+"""
+
+[[part]]
+id = "p1"
+title = "The start of week 4: the base commit and exercise w4l1.1"
+intro = """A fresh clone of the labs repo, as in weeks 1 to 3. Every command below ran in a scratch clone when this \
+page was built, and the text under it is what it printed; the clone's path shows as <repo> and commit hashes as \
+<sha>. Where you would write the code, the capture applies the reference solution instead, so the steps after it \
+have real output. Nothing in week 4's labs calls a model: the recorded replies are replayed, for $0."""
+
+[[part.step]]
+title = "Start the week"
+run = "tr lab start w4l1"
+shown = ".venv/bin/tr lab start w4l1"
+output = "01-start.txt"
+explain = """Week 4 starts from the author's code at the tag week-4-start, not from your week-3 code: `start` makes \
+the tree equal to that tag (labs/ and the runner's own files excepted) and commits it. Your earlier commits stay in \
+the history of `lab`, under the base commit. If the tag is missing, `git fetch --tags` gets it; if pyproject.toml or \
+uv.lock change, `start` tells you to run `uv sync`."""
+
+[[part.step]]
+title = "Where you are: branch, changed files, commits"
+run = "git branch --show-current; git status --short; git log --oneline -3"
+shown = "git branch --show-current; git status --short; git log --oneline -3"
+output = "02-where.txt"
+explain = """The base is one commit on `lab`. The stub is not part of it: src/tradingresearch/tools.py does not exist \
+at week-4-start, so the w4l1.1 stub shows as a new file, with the three tools and their schemas cut down to a \
+`TODO(w4l1.1)` comment."""
+
+[[part.step]]
+title = "Verify the stub: FAIL"
+run = "tr lab verify"
+shown = ".venv/bin/tr lab verify"
+output = "03-verify-fail.txt"
+explain = """The stub's schemas are open, so the first check fails on what the recorded model sent to its tool: a \
+call with the wrong argument that the schema lets through. The message names the tool and what it would have taken."""
+
+[[part.step]]
+title = "Write the schemas"
+apply = "solution"
+explain = """Here you write the part of tools.py the `TODO(w4l1.1)` comment describes: each tool's parameters as a \
+closed JSON schema with every argument described. The capture applies the reference solution instead."""
+
+[[part.step]]
+title = "Verify again: PASS"
+run = "tr lab verify"
+shown = ".venv/bin/tr lab verify"
+output = "04-verify-pass.txt"
+explain = """PASS, then the observe command of lab w4l1, `python labs/w4/tools/observe.py tools`. It prints your \
+three schemas as the model sees them (closed or not, how many arguments are described), then runs a handful of calls \
+on a fixture: a good one, a call to a tool that does not exist, text that is not JSON. Some rows still raise: they \
+wait for w4l1.2, where every mistake comes back as text the model can read."""
+
+[[part.step]]
+title = "Move on"
+run = "tr lab next"
+shown = ".venv/bin/tr lab next"
+output = "05-next.txt"
+explain = """`next` re-runs the check, commits your file as `lab w4l1.1: green` and puts the w4l1.2 stub in place: \
+tools.py with the reference schemas in it. Here that equals the file just committed, so nothing changes. Had you \
+written the schemas differently, the stub would replace your file and `next` would name the copy it kept in \
+.tr-lab/backup/."""
+
+[[part.step]]
+title = "The commit"
+run = "git log --oneline -3; git status --short"
+shown = "git log --oneline -3; git status --short"
+output = "06-after-next.txt"
+explain = """Your green commit sits on the base commit, and the base on the repo you cloned. The loop is the one of \
+weeks 1 to 3; what week 4 adds is a new file, tools.py, written across the first two labs, and the tool loop of w4l2 \
+that calls it."""
