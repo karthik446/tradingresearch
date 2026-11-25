@@ -130,11 +130,13 @@ def test_the_token_bound_does_not_follow_the_rubric_length(tmp_path, monkeypatch
     )
 
 
-def test_a_cap_below_zero_sends_nothing(tmp_path):
-    got, sent, _ = fakea.judge(tmp_path, max_usd=-0.05)
+@pytest.mark.parametrize("cap", (-0.05, 0.0))
+def test_a_cap_of_zero_or_below_sends_nothing(tmp_path, cap):
+    got, sent, _ = fakea.judge(tmp_path, max_usd=cap)
     assert not sent, (
-        f"With max_usd=-0.05, p1_judge sent {len(sent)} request(s) and ended with {fakea.shown(got)}. A cap below "
-        f"zero is no money at all: tr grade passes what is left of its budget, and a run that has already overspent "
-        f"passes a negative number. Nothing may be sent under it; whether that is a refusal before the budget or "
-        f"BudgetExceeded from it, 0 requests go out. A cap read as its size turns the caller's 'nothing' into $0.05."
+        f"With max_usd={cap}, p1_judge sent {len(sent)} request(s) and ended with {fakea.shown(got)}. A cap of zero "
+        f"or below is no money at all: tr grade passes what is left of its budget, a run that has spent it all passes "
+        f"zero, and one that overspent passes a negative number. Nothing may be sent under it; whether that is a "
+        f"refusal before the budget or BudgetExceeded from it, 0 requests go out. A cap read as its size turns the "
+        f"caller's 'nothing' into $0.05, and zero taken as 'no cap' turns it into every dollar there is."
     )

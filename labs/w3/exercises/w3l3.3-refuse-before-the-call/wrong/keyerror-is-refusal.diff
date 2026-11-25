@@ -1,0 +1,14 @@
+why: turns a KeyError from label.labelable into CannotGrade
+expect: (an injected KeyError) p1_judge ended with CannotGrade
+before: GREEN (independent read)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -234,7 +234,7 @@ def p1_judge(conn: sqlite3.Connection, bars: BarSource, thesis_id: str, provider
+     call or a reply with no verdict is CannotGrade after it: the cost is in the run file, nothing is stored."""
+     try:
+         t, g = label.labelable(conn, thesis_id)
+-    except label.Refused as exc:
++    except (label.Refused, KeyError) as exc:
+         raise CannotGrade(str(exc)) from None
+     analysis = journal.get(conn, Analysis, t.analysis_id)
+     shown = "\n".join(["cited claims (claim_id | tag | text)", *label.cited(analysis, t.evidence), "",

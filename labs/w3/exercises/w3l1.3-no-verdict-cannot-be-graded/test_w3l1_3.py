@@ -123,7 +123,9 @@ def test_replies_in_no_data_row_follow_the_same_rule():
 
 def test_a_verdict_that_sounds_like_an_answer_is_still_undefined():
     for verdict, sounds in ((1, "1 reads like a pass"), (0, "0 reads like a fail"), ("yes", "yes reads like a pass"),
-                            ("no", "no reads like a fail"), ("", "an empty verdict reads like a judge with no answer")):
+                            ("no", "no reads like a fail"), ("true", "the string true reads like a pass"),
+                            ("false", "the string false reads like a fail"),
+                            ("", "an empty verdict reads like a judge with no answer")):
         reply = json.dumps({"verdict": verdict, "explanation": "both closes held over 100.5"})
         got = read(reply)
         assert isinstance(got, CannotGrade), (
@@ -135,7 +137,7 @@ def test_a_verdict_that_sounds_like_an_answer_is_still_undefined():
 
 
 def test_a_long_reply_still_ends_with_its_answer():
-    thinking = "The close on day one held over 100.5; the close on day two held too. " * 90
+    thinking = "The close on day one held over 100.5; the close on day two held too. " * 250
     reply = thinking + '{"verdict": "pass", "explanation": "both closes held over 100.5"}'
     got = read(reply)
     assert got == ("pass", "both closes held over 100.5"), (

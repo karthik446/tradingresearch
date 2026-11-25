@@ -1,0 +1,21 @@
+why: normalises the explanation to NFC before returning it
+expect: for an explanation with a decomposed accent (e + U+0301)
+before: GREEN (independent read)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -7,6 +7,7 @@ from `tr grade --judge`, not from an experiment config.
+ from __future__ import annotations
+ 
+ import re
++import unicodedata
+ import sqlite3
+ from collections.abc import Callable
+ from datetime import UTC, datetime
+@@ -211,6 +212,7 @@ def p1_verdict(reply: str) -> tuple[str, str]:
+     # TODO(w3l1.3) a reply with no pass, fail or unknown verdict cannot be graded: raise CannotGrade, quoting the reply.
+     explanation = last_json_object(reply, "explanation")
+     reason = explanation if isinstance(explanation, str) else ""
++    reason = unicodedata.normalize("NFC", reason)
+     # TODO(w3l1.2) a verdict of unknown is an abstain: fail, with "unknown: " before its explanation (ADR-003).
+     return verdict, reason
+ 

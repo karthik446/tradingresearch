@@ -1,0 +1,14 @@
+why: keeps the verdict on the outcome but not the judge's reason
+expect: The three outcomes keep the reasons ['None', 'None', 'None']
+before: GREEN (independent read)
+--- a/src/tradingresearch/grade.py
++++ b/src/tradingresearch/grade.py
+@@ -405,7 +405,7 @@ def judge(conn, bars: BarSource | None, provider, *, prices: dict, data_dir: Pat
+         try:
+             score = evals.p1_judge(conn, bars, t.thesis_id, provider, prices=prices, data_dir=data_dir,
+                                    max_usd=max_usd - spent)
+-            judged = Judged(t, verdict=score.answer, reason=score.explanation)
++            judged = Judged(t, verdict=score.answer)
+         except BudgetExceeded as exc:
+             capped, judged = True, Judged(t, error=f"the ${max_usd:.2f} cap cannot cover the call: {exc}")
+         except Exception as exc:  # one thesis's failure (no verdict, a failed call, bars) never stops the run

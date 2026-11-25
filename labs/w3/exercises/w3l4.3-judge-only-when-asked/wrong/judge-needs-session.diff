@@ -1,0 +1,14 @@
+why: runs the judge only when --judge comes with --session
+expect: `tr grade --judge` with no --session (today's) sent 0 judge request(s)
+before: GREEN (independent read)
+--- a/src/tradingresearch/commands/grade.py
++++ b/src/tradingresearch/commands/grade.py
+@@ -21,7 +21,7 @@ def cmd_grade(args, cfg) -> None:
+             bars = reconcile_run.AlpacaBars(http, cfg.data_dir / "bars_1m", cfg.feed)
+             report = grade.run(conn, bars, day, dry_run=args.dry_run)
+     print("\n".join(grade.render(report)))
+-    if args.judge:
++    if args.judge and args.session:
+         print("\n".join(judge_lines(conn, args, cfg)))
+ 
+ 

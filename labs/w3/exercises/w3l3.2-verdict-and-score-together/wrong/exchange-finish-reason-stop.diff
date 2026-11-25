@@ -1,0 +1,15 @@
+why: writes finish_reason 'stop' into the judge note whatever the model said
+expect: they differ in ['finish_reason'] (finish_reason: the span says ['length'], the note ['stop'])
+before: GREEN (independent read)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -253,7 +253,8 @@ def p1_judge(conn: sqlite3.Connection, bars: BarSource, thesis_id: str, provider
+         raise CannotGrade(f"judge call failed: {sample.error.code if sample.error else '?'} (run {run_path})")
+     verdict, reason = p1_verdict(sample.output_text)
+     spans = sample.model_spans
+-    calls = tuple(ModelExchange(**{name: getattr(span, name) for name in ModelExchange.model_fields}) for span in spans)
++    calls = tuple(ModelExchange(call=span.call, request_sha256=span.request_sha256, last_turn=span.last_turn,
++                                text=span.text, finish_reason="stop") for span in spans)
+     score = Score(value=1.0 if verdict == "pass" else 0.0, explanation=reason, answer=verdict,
+                   judge=JudgeNote(model=JUDGE_MODEL, prompt_sha256=judge.prompt_sha256, calls=calls))
+     record = ScoreRecord(score_id=new_id("sc"), trace_id=sample.trace_id, grader_id=P1Judge.id,

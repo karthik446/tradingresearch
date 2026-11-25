@@ -92,16 +92,21 @@ def test_replies_in_no_data_row_read_by_the_same_rule():
 
 
 def test_the_explanation_is_the_decoded_text_untouched():
-    # JSON decoding is the one transformation: "\u00e9" is é, "&amp;" stays "&amp;", "\u0000" is a NUL character.
+    # JSON decoding is the one transformation: "\u00e9" is é, "&amp;" stays "&amp;", "\u0000" is a NUL character,
+    # "e\u0301" stays two code points, an emoji stays, "\r\n" stays, and a long explanation stays whole.
     for explanation, how in (("the break held at the café level", "with an accented letter"),
                              ("A &amp; B held: both closes over 100.5", "with an HTML entity, which JSON leaves literal"),
                              ("① the level held, ② volume rose", "with circled digits"),
-                             ("held\x00(cut here by the judge)", "with an escaped NUL character")):
+                             ("held\x00(cut here by the judge)", "with an escaped NUL character"),
+                             ("the break held at the cafe\u0301 level", "with a decomposed accent (e + U+0301)"),
+                             ("📈 held: both closes over 100.5", "with an emoji outside the Basic Multilingual Plane"),
+                             ("held over 100.5\r\nvolume rose", "with a CRLF line break"),
+                             ("both closes held over 98, " * 25 + "so the break held", "of over 600 characters")):
         reply = json.dumps({"verdict": "pass", "explanation": explanation})
         got = read(reply)
         assert got == ("pass", explanation), (
             f"p1_verdict returned {got!r} for an explanation {how}: the judge sent {reply!r}, so the reason is "
             f"{explanation!r}. Decoding the JSON is the only change between the reply and the stored reason: no "
-            f"ASCII filter, no HTML unescape, no Unicode normalisation, no characters dropped. judge_verdict.reason "
-            f"is what the judge wrote, for whoever reads it next to the trade."
+            f"ASCII filter, no HTML unescape, no Unicode normalisation, no characters dropped, no cut, no line-break "
+            f"change. judge_verdict.reason is what the judge wrote, for whoever reads it next to the trade."
         )

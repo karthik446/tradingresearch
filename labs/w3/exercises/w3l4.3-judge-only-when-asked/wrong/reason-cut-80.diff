@@ -1,0 +1,14 @@
+why: prints the judge's reason cut to 80 characters
+expect: The challenger's line should end with the reason the judge gave, whole
+before: GREEN (independent read)
+--- a/src/tradingresearch/grade.py
++++ b/src/tradingresearch/grade.py
+@@ -426,7 +426,7 @@ def render_judged(judged: list[Judged], *, dry_run: bool, max_usd: float) -> lis
+         if dry_run:
+             lines.append(f"{head}  would judge")
+         elif j.verdict is not None:
+-            lines.append(f"{head}  P1 {j.verdict} ${j.cost_usd:.6f}: {j.reason}")
++            lines.append(f"{head}  P1 {j.verdict} ${j.cost_usd:.6f}: {j.reason[:80]}")
+         else:
+             lines.append(f"{head}  not judged ${j.cost_usd:.6f}: {j.error}")
+     if dry_run:

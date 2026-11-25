@@ -1,0 +1,14 @@
+why: counts every run file under data_dir/runs as this run's spend, earlier runs' too
+expect: already under data_dir/runs, grade.judge sent 1 request(s) under a $0.05 cap
+before: GREEN (independent read)
+--- a/src/tradingresearch/grade.py
++++ b/src/tradingresearch/grade.py
+@@ -411,7 +411,7 @@ def judge(conn, bars: BarSource | None, provider, *, prices: dict, data_dir: Pat
+         except Exception as exc:  # one thesis's failure (no verdict, a failed call, bars) never stops the run
+             judged = Judged(t, error=f"{type(exc).__name__}: {exc}")
+         cost = sum(trace.header(path).spent_usd for path in run_files(data_dir) - before)
+-        spent += cost
++        spent = sum(trace.header(path).spent_usd for path in run_files(data_dir))
+         out.append(replace(judged, cost_usd=cost))
+     return out
+ 

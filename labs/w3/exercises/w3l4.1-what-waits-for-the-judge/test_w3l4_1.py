@@ -142,3 +142,17 @@ def test_the_order_is_the_order_written_not_the_clock(tmp_path, monkeypatch):
         f"which only grows; a clock can be set back, and a stamp taken from it then puts a newer thesis ahead of "
         f"the ones already waiting."
     )
+
+
+def test_every_waiting_thesis_is_listed_however_many(tmp_path):
+    from tradingresearch import grade
+
+    conn, (t,), _ = fakea.journal_of(tmp_path, ("champion",))
+    theses = [t, *(graded_copy(conn, t, f"copy_{n:02d}") for n in range(11))]
+    got = [listed.thesis_id for listed in grade.to_judge(conn)]
+    want = [waiting.thesis_id for waiting in theses]
+    assert got == want, (
+        f"With {len(theses)} graded champion theses waiting, to_judge lists {len(got)} of them; it should list all "
+        f"{len(want)}, oldest first. The list is everything that waits: the cap, not a count, decides how many the "
+        f"run pays for, and a fixed page size leaves the rest waiting for a run that never comes."
+    )

@@ -60,6 +60,8 @@ def test_tr_grade_calls_the_judge_only_with_judge(tmp_path, monkeypatch):
 
 
 def test_tr_grade_judge_prints_each_cost_and_never_pays_twice(tmp_path, monkeypatch):
+    from tradingresearch import evals
+
     grade, (champion, challenger) = journal(tmp_path)
     (judged, n_judged), (again, n_again), (last, n_last) = fakea.cli(
         monkeypatch, tmp_path, [[*grade, "--judge"]] * 3, replies=("no_verdict", "recorded"))
@@ -74,6 +76,17 @@ def test_tr_grade_judge_prints_each_cost_and_never_pays_twice(tmp_path, monkeypa
     assert any(line.startswith("judge") and "$0.010326" in costs(line) for line in lines), (
         f"`tr grade --judge` printed: {shown(judged)}. The last line should show what the run cost in all, "
         f"$0.010326, to the same precision."
+    )
+    assert "judge: 1 judged, 1 not judged" in judged, (
+        f"`tr grade --judge` printed: {shown(judged)}. The last line counts verdicts: the champion's reply held none, "
+        f"so it was paid but not judged, and the challenger got its pass: 1 judged, 1 not judged."
+    )
+    reason = evals.p1_verdict(fakea.answer("recorded").json()["choices"][0]["message"]["content"])[1]
+    line = next((line for line in lines if challenger in line), "")
+    assert reason in line, (
+        f"`tr grade --judge` printed: {shown(judged)}. The challenger's line should end with the reason the judge "
+        f"gave, whole ({len(reason)} chars: {reason[:40]!r}...): the reason is what the operator reads beside the "
+        f"verdict, and a cut one hides how it ends."
     )
     assert n_again == 1 and "1 judged" in again, (
         f"A second `tr grade --judge` sent {n_again} request(s) and printed: {shown(again)}. The pass is stored, so "
@@ -141,34 +154,50 @@ def test_the_cap_given_on_the_command_line_is_the_cap(tmp_path, monkeypatch):
     )
 
 
-def test_a_dry_run_needs_no_key(tmp_path, monkeypatch):
+def test_a_run_that_calls_nothing_needs_no_key(tmp_path, monkeypatch):
     from tradingresearch.cli import main
 
     grade, _ = journal(tmp_path)
     fakea.cli(monkeypatch, tmp_path, [])  # fake keys and the offline guard; then an env file with no OpenRouter key
     alpaca_only = tmp_path / "alpaca-only.env"
     alpaca_only.write_text("APCA_API_KEY_ID=not-a-real-id\nAPCA_API_SECRET_KEY=not-a-real-secret\n")
-    monkeypatch.setenv("TR_ENV_FILE", str(alpaca_only))
-    printed = io.StringIO()
-    try:
-        with contextlib.redirect_stdout(printed):
-            main([*grade, "--judge", "--dry-run"])
-        out = printed.getvalue()
-    except (Exception, SystemExit) as exc:  # `require` exits when a key is missing
-        out = f"raised {fakea.shown(exc)}"
+
+    def keyless(argv: list[str]) -> str:
+        monkeypatch.setenv("TR_ENV_FILE", str(alpaca_only))
+        printed = io.StringIO()
+        try:
+            with contextlib.redirect_stdout(printed):
+                main(argv)
+            return printed.getvalue()
+        except (Exception, SystemExit) as exc:  # `require` exits when a key is missing
+            return f"raised {fakea.shown(exc)}"
+
+    out = keyless([*grade, "--judge", "--dry-run"])
     assert "would judge 2" in out, (
         f"With no OpenRouter key, `tr grade --judge --dry-run` gave {fakea.masked(out)[:200]!r}. A dry run calls "
         f"nothing, so it needs no key: it lists what the judge would take."
+    )
+    fakea.cli(monkeypatch, tmp_path, [[*grade, "--judge"]])  # with the keys: both theses get the recorded pass
+    out = keyless([*grade, "--judge"])
+    assert "nothing to judge" in out, (
+        f"With no OpenRouter key and every thesis judged, `tr grade --judge` gave {fakea.masked(out)[:200]!r}. A run "
+        f"with nothing to judge calls nothing, so it needs no key either: the key is read when a call is about to "
+        f"be made, not before the queue is looked at."
     )
 
 
 def test_tr_grade_with_no_session_still_judges_only_with_judge(tmp_path, monkeypatch):
     journal(tmp_path)
-    (out, sent), = fakea.cli(monkeypatch, tmp_path, [["grade"]])
+    (out, sent), (judged, n_judged) = fakea.cli(monkeypatch, tmp_path, [["grade"], ["grade", "--judge"]])
     assert sent == 0 and not judge_part(out), (
         f"`tr grade` with no --session (today's) sent {sent} judge request(s) and printed: {shown(out)}. The judge "
         f"runs only with --judge, whatever else the command line gives or leaves out: a default session is still a "
         f"plain `tr grade`, and a plain `tr grade` pays for nothing."
+    )
+    assert n_judged == 2 and judge_part(judged), (
+        f"`tr grade --judge` with no --session (today's) sent {n_judged} judge request(s) and printed: "
+        f"{shown(judged)}. --judge asks for the judge whatever session the grading takes: the two graded theses "
+        f"wait, so it judges both and says so."
     )
 
 

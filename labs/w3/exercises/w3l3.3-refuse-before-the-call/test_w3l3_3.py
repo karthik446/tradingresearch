@@ -10,6 +10,7 @@ import sqlite3
 import sys
 from pathlib import Path
 
+import pydantic
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools"))
@@ -98,14 +99,23 @@ def test_a_file_error_is_not_a_refusal(tmp_path, monkeypatch):
     )
 
 
-@pytest.mark.parametrize("error", [ValueError, LookupError])
+def failing(error):
+    """label.labelable raising `error` on a damaged record: a real ValidationError, or `error` with a message."""
+    if error is pydantic.ValidationError:
+        def damaged(*args, **kwargs):
+            pydantic.TypeAdapter(int).validate_python("damaged data (injected into label.labelable)")
+    else:
+        def damaged(*args, **kwargs):
+            raise error("damaged data (injected into label.labelable)")
+    return damaged
+
+
+@pytest.mark.parametrize("error", [ValueError, LookupError, KeyError, pydantic.ValidationError],
+                         ids=lambda error: error.__name__)
 def test_a_damaged_record_is_not_a_refusal(tmp_path, monkeypatch, error):
     from tradingresearch import label
 
-    def damaged(*args, **kwargs):
-        raise error("damaged data (injected into label.labelable)")
-
-    monkeypatch.setattr(label, "labelable", damaged)
+    monkeypatch.setattr(label, "labelable", failing(error))
     j = fakea.judging(tmp_path)
     assert type(j.got) is error and j.raised, (
         f"With label.labelable failing on damaged data (an injected {error.__name__}) p1_judge ended with "

@@ -11,6 +11,7 @@ import sqlite3
 import sys
 from pathlib import Path
 
+import httpx
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools"))
@@ -24,14 +25,32 @@ def held(row: dict | None, scores: list) -> str:
     return fakea.masked(f"{verdict} and {len(scores)} p1_judge ScoreRecord(s)")
 
 
-def request_digests(data_dir: Path) -> list[str]:
-    """The request_sha256 of every model span the run files under data_dir/runs hold."""
+def model_call_spans(data_dir: Path) -> list[dict]:
+    """Every model span the run files under data_dir/runs hold, as the file has it."""
     found = []
     for path in fakea.run_files(data_dir):
         for line in path.read_text().splitlines():
             spans = (json.loads(line).get("sample") or {}).get("spans", [])
-            found += [span.get("request_sha256") for span in spans if span.get("kind") == "model_call"]
+            found += [span for span in spans if span.get("kind") == "model_call"]
     return found
+
+
+def answering(monkeypatch, **changes) -> None:
+    """fakea.answer giving the recorded reply with its `explanation` or its `finish_reason` changed."""
+    recorded_answer = fakea.answer
+
+    def answer(kind: str = "recorded") -> httpx.Response:
+        body = recorded_answer(kind).json()
+        choice = body["choices"][0]
+        if "explanation" in changes:
+            thinking = choice["message"]["content"].rstrip().rpartition("\n\n")[0]
+            verdict = json.dumps({"verdict": "pass", "explanation": changes["explanation"]})
+            choice["message"]["content"] = f"{thinking}\n\n{verdict}"
+        if "finish_reason" in changes:
+            choice["finish_reason"] = changes["finish_reason"]
+        return httpx.Response(200, json=body)
+
+    monkeypatch.setattr(fakea, "answer", answer)
 
 
 @pytest.fixture(scope="module")
@@ -225,9 +244,42 @@ def test_a_fail_score_record_points_at_its_call(tmp_path):
 
 def test_the_judge_note_names_the_request_it_sent(recorded):
     said = [call.request_sha256 for call in recorded.got.judge.calls]
-    digests = request_digests(recorded.data_dir)
+    digests = [span["request_sha256"] for span in model_call_spans(recorded.data_dir)]
     assert said == digests, (
         f"The judge note's call gives request sha256 {[str(s)[:16] for s in said]}; the run file's model span gives "
         f"{[str(d)[:16] for d in digests]}. The note keeps the call as the span records it, its request digest "
         f"included, so the call a score cites can be matched to the one on record."
+    )
+
+
+def test_the_judge_note_keeps_the_call_as_the_span_records_it(tmp_path, monkeypatch, recorded):
+    from gigai_core.trace import ModelExchange
+
+    answering(monkeypatch, finish_reason="length")
+    cut = fakea.judging(tmp_path)
+    for j, how in ((recorded, "the recorded reply"), (cut, "the recorded reply finished by the token bound (length)")):
+        said = [call.model_dump(mode="json") for call in j.got.judge.calls]
+        spans = [{k: span.get(k) for k in ModelExchange.model_fields} for span in model_call_spans(j.data_dir)]
+        paired = zip(said, spans) if len(said) == len(spans) else ()
+        differ = sorted({k for s, t in paired for k in s if s[k] != t[k]})
+        assert said == spans, (
+            f"On {how}, the judge note holds {len(said)} call(s) and the run file {len(spans)} model span(s); they "
+            f"differ in {differ} (finish_reason: the span says {[s['finish_reason'] for s in spans]}, the note "
+            f"{[s['finish_reason'] for s in said]}). The note keeps the call as the span records it, every field: "
+            f"what was sent, what came back and how the model finished, so the call a score cites is the one on "
+            f"record, not a retelling of it."
+        )
+
+
+def test_a_long_reason_is_stored_whole(tmp_path, monkeypatch):
+    reason = " ".join(["Both closes held over the 20-day high at 100.5, so the break the reason names held."] * 13)
+    answering(monkeypatch, explanation=reason)
+    j = fakea.judging(tmp_path)
+    row, scores = fakea.stored(j.conn, j.thesis.thesis_id)
+    kept = (getattr(j.got, "explanation", None), row and row["reason"], [s.explanation for s in scores])
+    assert kept == (reason, reason, [reason]), (
+        f"On a pass whose explanation is {len(reason)} chars, the Score keeps {len(str(kept[0]))} chars of it, the "
+        f"verdict row {len(str(kept[1]))} and the ScoreRecord {[len(e) for e in kept[2]]} (p1_judge ended with a "
+        f"{type(j.got).__name__}). All three keep the judge's reason whole: the record backs the verdict for a later "
+        f"audit, and a cut one hides what the judge said last."
     )

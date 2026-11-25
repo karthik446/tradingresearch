@@ -7,6 +7,7 @@ The budget's estimate of one call's worst case is about $0.043 (4000 output toke
 $0.005163, as its run file says.
 """
 
+import json
 import re
 import shutil
 import sys
@@ -82,6 +83,35 @@ def test_one_cap_covers_the_whole_run(tmp_path):
     )
 
 
+def test_the_outcome_keeps_the_verdicts_reason_whole(tmp_path, monkeypatch):
+    from tradingresearch import evals
+
+    long = " ".join(["Both closes held over the 20-day high at 100.5, so the break the reason names held."] * 7)
+    recorded = fakea.answer
+
+    def answer(kind: str = "recorded") -> httpx.Response:  # "long": the recorded reasoning, then a long explanation
+        reply = recorded("recorded" if kind == "long" else kind)
+        body = reply.json()
+        if kind == "long":
+            message = body["choices"][0]["message"]
+            thinking = message["content"].rstrip().rpartition("\n\n")[0]
+            message["content"] = f"{thinking}\n\n{json.dumps({'verdict': 'pass', 'explanation': long})}"
+        return httpx.Response(reply.status_code, json=body)
+
+    monkeypatch.setattr(fakea, "answer", answer)
+    kinds = ("recorded", "unknown", "long")
+    out, _, _ = run(tmp_path, kinds, max_usd=0.25)
+    reasons = [evals.p1_verdict(answer(k).json()["choices"][0]["message"]["content"])[1] for k in kinds]
+    got = [j.reason for j in out]
+    assert got == reasons, (
+        f"The three outcomes keep the reasons {[str(r)[:30] for r in got]} of {[len(str(r)) for r in got]} chars; "
+        f"the judge's replies gave {[r[:30] for r in reasons]} of {[len(r) for r in reasons]} chars (a pass, an "
+        f"abstain stored as 'unknown: ...', and a pass with a {len(long)}-char explanation). The outcome keeps the "
+        f"verdict's reason, whole: it is what `tr grade --judge` prints beside the verdict, and the operator reads "
+        f"it to see whether the judge read the trade right."
+    )
+
+
 def test_one_failure_does_not_stop_the_run_and_every_call_is_counted(tmp_path):
     from tradingresearch import evals
 
@@ -122,6 +152,21 @@ def test_the_cap_counts_what_the_whole_run_spent(tmp_path):
         f"Under a $0.05 cap, grade.judge sent {len(sent)} requests: {[outcome(j) for j in out]}. After two calls "
         f"the run spent ${2 * PAID:.6f}, so $0.039674 is left, which cannot cover another call's worst case (about "
         f"$0.043). What is left is the cap minus everything this run spent so far, not minus the last call alone."
+    )
+
+
+def test_the_cap_is_for_this_run_not_for_what_earlier_runs_left(tmp_path):
+    earlier = tmp_path / "earlier"
+    run(earlier, ("recorded",), max_usd=0.25)  # an earlier run on its own journal: three paid calls, three run files
+    (tmp_path / "runs").mkdir()
+    for path in fakea.run_files(earlier):
+        shutil.copyfile(path, tmp_path / "runs" / path.name)
+    out, sent, _ = run(tmp_path, ("recorded",), max_usd=0.05)
+    assert len(sent) == 2, (
+        f"With an earlier run's 3 files (${3 * PAID:.6f}) already under data_dir/runs, grade.judge sent {len(sent)} "
+        f"request(s) under a $0.05 cap: {[outcome(j) for j in out]}. The cap is for this run: what earlier runs "
+        f"left under data_dir/runs is not this run's spend. After its first call this run spent ${PAID}, so "
+        f"$0.044837 is left, which covers another call's worst case (about $0.043); after two it does not."
     )
 
 

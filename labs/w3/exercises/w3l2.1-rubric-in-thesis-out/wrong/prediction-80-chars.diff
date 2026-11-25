@@ -1,5 +1,5 @@
 why: keeps only the first 80 characters of the prediction in OUTPUT
-expect: of 209 chars, [BEGIN OUTPUT]'s prediction line is
+expect: of 349 chars, [BEGIN OUTPUT]'s prediction line is
 before: GREEN (Codex round 2)
 --- a/src/tradingresearch/evals.py
 +++ b/src/tradingresearch/evals.py

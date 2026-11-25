@@ -102,21 +102,23 @@ def test_a_long_reason_reaches_the_judge_whole(tmp_path, monkeypatch):
     )
 
 
-def test_the_prediction_reaches_the_judge_as_written(tmp_path, monkeypatch):
-    long = " ".join(["Trades at 106 by the second session after the fill, then holds there."] * 3)
-    for n, (prediction, how) in enumerate((
+@pytest.mark.parametrize("field", ("prediction", "reason", "invalidation_text"))
+def test_each_thesis_field_reaches_the_judge_as_written(tmp_path, monkeypatch, field):
+    long = " ".join(["Trades at 106 by the second session after the fill, then holds there."] * 5)
+    for n, (text, how) in enumerate((
         ("Trades at 106 by the second session after the café-hours fill.", "with an accented letter"),
         (long, f"of {len(long)} chars"),
         ("  Trades at 106 by the second session after the fill.  ", "with spaces around it"),
+        ("Trades at 106  by the second session,\tthen holds there.", "with two spaces and a tab inside it"),
     )):
-        monkeypatch.setitem(fakea.REWORDED, "prediction", prediction)
+        monkeypatch.setitem(fakea.REWORDED, field, text)
         (tmp_path / str(n)).mkdir()
         got, sent, _ = fakea.judge(tmp_path / str(n), reworded=True)
         mine = fakea.block(fakea.prompt_of(sent[0]), "OUTPUT") if sent else []
-        held = next((line for line in mine if line.startswith("prediction:")), "")
-        assert held == f"prediction: {prediction}", (
-            f"For a thesis whose prediction is {prediction!r}, {how}, [BEGIN OUTPUT]'s prediction line is {held!r} "
+        held = next((line for line in mine if line.startswith(f"{field}:")), "")
+        assert held == f"{field}: {text}", (
+            f"For a thesis whose {field} is {text!r}, {how}, [BEGIN OUTPUT]'s {field} line is {held!r} "
             f"(p1_judge ended with {fakea.shown(got)}). Every thesis field reaches the judge as the thesis stores it: "
-            f"no characters dropped, no cut, no trimming. The judge grades the text the author wrote; a changed "
-            f"prediction is a thesis nobody wrote, and the verdict is stored against the real one."
+            f"no characters dropped, no cut, no trimming, no spacing changed. The judge grades the text the author "
+            f"wrote; a changed {field} is a thesis nobody wrote, and the verdict is stored against the real one."
         )

@@ -1,5 +1,5 @@
 why: prints the reason on a fail only; a pass line ends empty
-expect: for a pass whose reason is 'The named break held.'
+expect: The challenger's line should end with the reason the judge gave, whole
 before: GREEN (Codex round 2)
 --- a/src/tradingresearch/grade.py
 +++ b/src/tradingresearch/grade.py

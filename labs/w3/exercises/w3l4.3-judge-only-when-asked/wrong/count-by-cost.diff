@@ -1,0 +1,13 @@
+why: counts a thesis as judged when its call cost something, verdict or not
+expect: judge: 2 judged, 0 not judged, cost $0.010326 (cap $0.25). The last line counts verdicts
+before: GREEN (independent read)
+--- a/src/tradingresearch/grade.py
++++ b/src/tradingresearch/grade.py
+@@ -431,6 +431,6 @@ def render_judged(judged: list[Judged], *, dry_run: bool, max_usd: float) -> lis
+             lines.append(f"{head}  not judged ${j.cost_usd:.6f}: {j.error}")
+     if dry_run:
+         return lines + [f"judge (dry run): would judge {len(judged)} (cap ${max_usd:.2f}); nothing judged, no call"]
+-    done = sum(j.verdict is not None for j in judged)
++    done = sum(j.cost_usd > 0 for j in judged)
+     return lines + [f"judge: {done} judged, {len(judged) - done} not judged, cost "
+                     f"${sum(j.cost_usd for j in judged):.6f} (cap ${max_usd:.2f})"]
