@@ -2,7 +2,7 @@ id = "w4l1.3"
 title = "Return the rows a claim cites, with the numbers the table shows"
 effect = "Observe's rows gain source_id and unit, and on the context with extra digits get_indicators goes from 0 of 21 rows matching the SOURCES table to 21 of 21; an unknown name is an error listing the names."
 goal = "Return rows the model can cite: each with its source_id, name, unit, the regime's label, and the value as the fixed arm's SOURCES table shows it, so a claim made through the tools checks against the same numbers. names picks rows by exact name; an unknown name is an error."
-what_tested = "get_indicators, get_levels and get_fundamentals on the FAKEA context and on the same rows with extra digits (fakea.context(extra=True)): every row has source_id, name, unit and value, the regime row its label, every value equals what render's SOURCES table shows (close 101.401, not 101.40124722000002), names returns those rows, an unknown name an error listing them."
+what_tested = "get_indicators, get_levels and get_fundamentals on the FAKEA context and its rows with extra digits: every row has source_id, name, unit, value, the regime row its label; every value is what render's SOURCES table shows (101.401, not 101.40124722000002; a big one rounded whole); each call reads its own context; names returns those rows, an unknown name an error listing them."
 writes = [
   "shown in src/tradingresearch/tools.py: a row as the model cites it, with source_id, name and unit, the label when the row has one, and the value as a number rounded the way the table rounds it.",
   "get_indicators' names keeps only the rows with exactly those names; a name with no row is a ToolError listing the names there are.",

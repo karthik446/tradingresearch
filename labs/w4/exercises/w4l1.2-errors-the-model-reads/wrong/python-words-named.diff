@@ -1,0 +1,25 @@
+why: names the tool but hands the model Python's words for a call that is not an object
+expect: is "get_indicators: 'list' object has no attribute 'items'"
+before: RED (independent break pass)
+--- a/src/tradingresearch/tools.py
++++ b/src/tradingresearch/tools.py
+@@ -73,8 +73,8 @@
+     try:
+         spec, handler = _lookup(name)
+         rows = handler(ctx, _arguments(spec, arguments))
+-    except ToolError as exc:
+-        return json.dumps({"error": str(exc)})
++    except Exception as exc:  # noqa: BLE001
++        return json.dumps({"error": f"{name}: {exc}"})
+     return json.dumps({"rows": [_shown(row) for row in rows]})
+ 
+ 
+@@ -91,8 +91,6 @@
+         args = json.loads(raw) if raw.strip() else {}
+     except json.JSONDecodeError as exc:
+         raise ToolError(f"{spec.name}: arguments are not valid JSON ({exc.msg}); send a JSON object") from None
+-    if not isinstance(args, dict):
+-        raise ToolError(f"{spec.name}: arguments must be a JSON object, got {type(args).__name__}")
+     properties = spec.parameters["properties"]
+     unknown = sorted(set(args) - set(properties))
+     if unknown:

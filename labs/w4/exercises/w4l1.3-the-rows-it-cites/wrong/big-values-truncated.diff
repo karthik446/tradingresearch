@@ -1,0 +1,14 @@
+why: cuts a big value off at the point where the table rounds it to the nearest whole number
+expect: the table shows 1820022387 and get_fundamentals returns 1820022386.0
+before: GREEN (independent read)
+--- a/src/tradingresearch/tools.py
++++ b/src/tradingresearch/tools.py
+@@ -109,7 +109,7 @@
+     shown: dict = {"source_id": row.source_id, "name": row.name, "unit": row.unit}
+     if row.label is not None:
+         shown["label"] = row.label
+-    shown["value"] = None if row.value is None else float(plain(row.value))
++    shown["value"] = None if row.value is None else float(int(row.value)) if abs(row.value) >= 1e6 else float(plain(row.value))
+     return shown
+ 
+ 

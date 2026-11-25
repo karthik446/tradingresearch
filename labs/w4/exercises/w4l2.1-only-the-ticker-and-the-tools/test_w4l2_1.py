@@ -6,6 +6,7 @@ one tool the recording was made with, so the first request can be compared with 
 (turn1.request.json); outside it, your own three tools are offered.
 """
 
+import dataclasses
 import re
 import sys
 from pathlib import Path
@@ -48,6 +49,14 @@ def test_the_user_turn_is_the_ticker_the_session_and_where_the_rows_are():
     assert "SOURCES" in user and "tool" in user, (
         "the turn does not say where the rows are: the fixed turn has a SOURCES table here, so this one says the table "
         "is not included and the tools return the rows")
+
+
+def test_the_prompt_names_this_contexts_ticker_and_session():
+    other = dataclasses.replace(CTX, ticker="FAKEB", session=CTX.session.replace(day=CTX.session.day - 1))
+    lines, rendered = an.tools_prompt(other).splitlines(), an.render(other).splitlines()
+    assert lines[:2] == rendered[:2] and CTX.ticker not in "\n".join(lines), (
+        f"for FAKEB on {other.session} the turn starts {lines[:2]}; render starts {rendered[:2]}: the turn names the "
+        f"ticker and the session of the context it is given, so a run over many ticker-days asks about each one")
 
 
 def test_the_first_request_is_the_recorded_one_but_for_the_user_turn():

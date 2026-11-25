@@ -1,0 +1,16 @@
+why: the last allowed call offers no tools
+expect: the 3 requests offer [3, 3, 0] tools
+before: GREEN (independent read)
+--- a/src/tradingresearch/analyze.py
++++ b/src/tradingresearch/analyze.py
+@@ -400,8 +400,8 @@
+     turns = list(first)
+     spans: list[ModelSpan | ToolSpan] = []
+     text, error = "", None
+-    for _ in range(max_turns):
+-        span = _model_span(provider, ModelRequest(settings=call_settings(model), turns=tuple(turns), tools=TOOLS),
++    for n in range(max_turns):
++        span = _model_span(provider, ModelRequest(settings=call_settings(model), turns=tuple(turns), tools=TOOLS if n < max_turns - 1 else ()),
+                            trial_id)
+         sink.write(span)
+         spans.append(span)

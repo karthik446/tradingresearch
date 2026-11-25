@@ -3,7 +3,8 @@
 run_tool gets the raw argument text the model sent. The calls here are the recorded model's own call (to the capture's
 tool, get_sources, which is not one of yours) and calls a model can plausibly send: text that is not JSON, JSON that is
 not an object, an argument the schema does not list, a value that is not a non-empty list of strings, a metric that
-does not exist. Each one, for every tool, must be an object with one key, "error", holding a non-empty sentence.
+does not exist. Each one, for every tool, must be an object with one key, "error", holding a sentence that names the
+tool and, for arguments that are not an object, says so in words, never in Python's.
 """
 
 import json
@@ -20,7 +21,8 @@ THREE = ("get_indicators", "get_levels", "get_fundamentals")
 NOT_AN_OBJECT = [("{names: [close]}", "text that is not JSON"), ("[]", "a JSON array"), ('"close"', "a JSON string"),
                  ("null", "JSON null"), ("7", "a JSON number")]
 BAD_VALUE = [('"close"', "a string, not a list"), ("[]", "an empty list"), ("[14]", "a list of numbers"),
-             ('{"close": 1}', "an object, not a list")]
+             ('["close", 14]', "a list with a number after its first item"), ('{"close": 1}', "an object, not a list")]
+INTERNALS = ("object has no attribute", "object is not", "not iterable", "not subscriptable", "Traceback")
 CASES = [(name, text, why) for name in THREE for text, why in NOT_AN_OBJECT]
 CASES += [(name, RECORDED["function"]["arguments"], "the recorded model's argument 'groups', which no schema lists")
           for name in THREE]
@@ -64,7 +66,16 @@ def test_an_unknown_tool_is_an_error_that_names_every_tool():
 
 def test_every_bad_call_is_an_error_for_every_tool():
     for name, arguments, why in CASES:
-        error_of(name, arguments, why)
+        error = error_of(name, arguments, why)
+        assert name in error, (
+            f"the error for run_tool({name!r}, {arguments!r}) is {error!r}: it does not name {name}. One reply can call "
+            f"several tools, and the model reads their answers side by side, so each error says which tool it is from")
+        if arguments in dict(NOT_AN_OBJECT):
+            leaked = [w for w in INTERNALS if w in error]
+            assert "object" in error and not leaked, (
+                f"the error for {dict(NOT_AN_OBJECT)[arguments]}, {arguments!r}, is {error!r}: the model reads it to fix "
+                f"its next call, so it says in a sentence that the arguments must be a JSON object, never Python's "
+                f"words for what broke inside the tool")
 
 
 def test_no_arguments_returns_every_row_of_the_tool():

@@ -1,0 +1,25 @@
+why: keeps answers by tool name and arguments across items, so a later item gets an earlier one's rows
+expect: the second request's tool turns are [('toolu_01FAABR9tQJYBK8Xr5g6ZhrU'
+before: GREEN (independent read)
+--- a/src/tradingresearch/analyze.py
++++ b/src/tradingresearch/analyze.py
+@@ -369,6 +369,7 @@
+ 
+ # ---------- tools mode (REPO-PLAN week 4 and §2.4 `mode = "tools"`) ----------
+ 
++_ANSWERED: dict = {}
+ MAX_TOOL_TURNS = 5  # model calls per item: up to 4 rounds of tool calls, then the answer
+ 
+ 
+@@ -412,7 +413,10 @@
+             break
+         turns.append(Turn(role="assistant", content=span.text, tool_calls=span.tool_calls))
+         for call in span.tool_calls:
+-            tool_span, content = _tool_span(ctx, call, trial_id)
++            key = (call.name, call.arguments)
++            if key not in _ANSWERED:  # the same call answers the same rows
++                _ANSWERED[key] = _tool_span(ctx, call, trial_id)
++            tool_span, content = _ANSWERED[key]
+             sink.write(tool_span)
+             spans.append(tool_span)
+             turns.append(Turn(role="tool", content=content, tool_call_id=call.id))

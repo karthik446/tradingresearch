@@ -91,7 +91,8 @@ def tools_mode() -> None:
         print(f"\nget_indicators on the context with extra digits: {len(same)} of {len(rows)} rows carry the value the "
               f"SOURCES table shows")
         for r in [r for r in rows if r not in same][:3]:
-            print(f"  differs: {cut(json.dumps(r), 90)}  table shows {shown.get(r.get('source_id'), ('', '?'))[1]}")
+            table = shown[r["source_id"]][1] if r.get("source_id") in shown else "? (no source_id to look up)"
+            print(f"  differs: {cut(json.dumps(r), 90)}  table shows {table}")
     except Exception as exc:  # noqa: BLE001 - shown
         print(f"\nget_indicators on the context with extra digits: raised {type(exc).__name__}: {exc}")
 

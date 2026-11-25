@@ -1,0 +1,14 @@
+why: the metrics enum offers free_cash_flow, which no handler serves, so the model asks for it and gets an error
+expect: get_fundamentals's schema offers ['free_cash_flow'], which METRICS does not hold
+before: GREEN (independent read)
+--- a/src/tradingresearch/tools.py
++++ b/src/tradingresearch/tools.py
+@@ -53,7 +53,7 @@
+             "type": "object",
+             "properties": {
+                 "metrics": {
+-                    "type": "array", "minItems": 1, "items": {"type": "string", "enum": list(METRICS)},
++                    "type": "array", "minItems": 1, "items": {"type": "string", "enum": [*METRICS, "free_cash_flow"]},
+                     "description": "Only these metrics. Omit for every metric.",
+                 },
+             },

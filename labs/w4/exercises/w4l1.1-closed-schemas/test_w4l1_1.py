@@ -2,9 +2,9 @@
 and allow nothing else.
 
 The project depends on no JSON-schema validator, so the schemas are read with a small one (tools/fakea.py `refusal`):
-it reads type, properties, additionalProperties, required, items, minItems, maxItems, uniqueItems, enum and const, and
-stops on any other keyword that is not an annotation. Each schema is checked by what it accepts and refuses, so any
-schema that draws the same line passes.
+it reads type, properties, additionalProperties, required, items, minItems, maxItems, uniqueItems, minLength,
+maxLength, pattern, enum, const, allOf, anyOf, oneOf and not, and skips any other keyword, judging a value by what it
+can read. Each schema is checked by what it accepts and refuses, so any schema that draws the same line passes.
 """
 
 import json
@@ -27,12 +27,15 @@ SERVED = {  # calls each handler answers: every one must pass the schema
 NOT_SERVED = {  # calls a handler cannot serve: every one must be refused, with why
     "get_indicators": [({"names": []}, "an empty list asks for no row"), ({"names": "close"}, "a string, not a list"),
                        ({"names": [101.4]}, "a number where a row name goes"),
+                       ({"names": [None]}, "null where a row name goes"),
+                       ({"names": None}, "null asks for no row; leaving names out asks for every row"),
                        ({"metrics": ["revenue"]}, "get_fundamentals's argument, which this handler never reads"),
                        (RECORDED, "the recorded model's arguments to the capture's tool")],
     "get_levels": [({"names": ["level_hvn_1"]}, "the handler reads no argument, so a name filter is ignored"),
                    (RECORDED, "the recorded model's arguments to the capture's tool")],
     "get_fundamentals": [({"metrics": ["ebitda"]}, "ebitda is not one of METRICS"),
                          ({"metrics": []}, "an empty list asks for no metric"),
+                         ({"metrics": None}, "null asks for no metric; leaving metrics out asks for every one"),
                          ({"metrics": "revenue"}, "a string, not a list"),
                          ({"names": ["close"]}, "get_indicators's argument, which this handler never reads")],
 }
@@ -42,6 +45,15 @@ def schema(name: str) -> dict:
     spec = next((s for s in tools.TOOLS if s.name == name), None)
     assert spec is not None, f"TOOLS has no tool named {name!r}: the stub's three tools are {', '.join(THREE)}"
     return spec.parameters
+
+
+def offered(node: object) -> list:
+    """Every value an enum or a const anywhere in a schema names."""
+    if isinstance(node, list):
+        return [v for sub in node for v in offered(sub)]
+    if not isinstance(node, dict):
+        return []
+    return [*node.get("enum", []), *([node["const"]] if "const" in node else []), *offered(list(node.values()))]
 
 
 def test_each_name_is_unique_valid_and_served():
@@ -88,6 +100,17 @@ def test_each_schema_accepts_every_call_its_handler_serves():
 def test_each_schema_refuses_what_its_handler_cannot_serve():
     for name, calls in NOT_SERVED.items():
         for args, reason in calls:
+            skipped = fakea.unread(schema(name))
             assert fakea.refusal(schema(name), args) is not None, (
                 f"{name}'s schema accepts {json.dumps(args)}: {reason}. The schema is all the model knows about the "
-                f"tool, so what it accepts is what the model may send")
+                f"tool, so what it accepts is what the model may send"
+                + (f" (the check's reader skips {skipped}; draw this line with the keywords it reads)" if skipped else ""))
+
+
+def test_the_schema_offers_no_metric_the_handler_does_not_serve():
+    p = schema("get_fundamentals")
+    extra = [v for v in dict.fromkeys(offered(p)) if isinstance(v, str) and v not in tools.METRICS
+             and fakea.refusal(p, {"metrics": [v]}) is None]
+    assert not extra, (
+        f"get_fundamentals's schema offers {extra}, which METRICS does not hold: the model reads the enum as the list "
+        f"of what it may ask for, so it asks for {extra[0]!r} and gets an error back every time")

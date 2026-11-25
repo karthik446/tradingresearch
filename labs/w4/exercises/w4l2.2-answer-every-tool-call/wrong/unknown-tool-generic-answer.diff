@@ -1,0 +1,14 @@
+why: answers a call to a tool not offered with its own short error instead of run_tool's, which lists the tools
+expect: '{"error": "unknown tool"}')]: every call gets
+before: RED (independent break pass)
+--- a/src/tradingresearch/analyze.py
++++ b/src/tradingresearch/analyze.py
+@@ -413,6 +413,8 @@
+         turns.append(Turn(role="assistant", content=span.text, tool_calls=span.tool_calls))
+         for call in span.tool_calls:
+             tool_span, content = _tool_span(ctx, call, trial_id)
++            if call.name not in {t.name for t in TOOLS}:
++                content = '{"error": "unknown tool"}'
+             sink.write(tool_span)
+             spans.append(tool_span)
+             turns.append(Turn(role="tool", content=content, tool_call_id=call.id))

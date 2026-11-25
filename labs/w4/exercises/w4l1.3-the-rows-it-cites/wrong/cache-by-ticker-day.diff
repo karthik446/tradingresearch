@@ -1,0 +1,25 @@
+why: keeps answers by ticker, session and call, so a context with other values for the same day gets stale rows
+expect: the table shows 1820022387 and get_fundamentals returns 1820022386.0
+before: RED (independent break pass)
+--- a/src/tradingresearch/tools.py
++++ b/src/tradingresearch/tools.py
+@@ -62,6 +62,7 @@
+     ),
+ )
+ NAMES = tuple(spec.name for spec in TOOLS)
++_CACHE: dict = {}
+ 
+ 
+ class ToolError(ValueError):
+@@ -75,7 +76,10 @@
+         rows = handler(ctx, _arguments(spec, arguments))
+     except ToolError as exc:
+         return json.dumps({"error": str(exc)})
+-    return json.dumps({"rows": [_shown(row) for row in rows]})
++    key = (ctx.ticker, ctx.session, name, arguments)  # one ticker-day, one answer
++    if key not in _CACHE:
++        _CACHE[key] = json.dumps({"rows": [_shown(row) for row in rows]})
++    return _CACHE[key]
+ 
+ 
+ def _lookup(name: str) -> tuple[ToolSpec, Callable[[Context, dict], list[Row]]]:

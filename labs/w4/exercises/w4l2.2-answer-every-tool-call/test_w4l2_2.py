@@ -15,14 +15,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools"))
 import fakea  # noqa: E402
 from gigai_core.trace import ListTrace, ToolSpan  # noqa: E402
 
-from tradingresearch import tools  # noqa: E402
+from tradingresearch import openrouter, tools  # noqa: E402
 
 CTX = fakea.context()
 RECORDED = fakea.load("turn2.request")
 FINAL = json.loads(fakea.load("turn2.reply")["choices"][0]["message"]["content"])
 
 
-def replayed(replies: tuple[str, ...], capture: bool = False, trace=None) -> tuple[list[dict], object]:
+def replayed(replies: tuple[str, ...], capture: bool = False, trace=None, ctx=None) -> tuple[list[dict], object]:
     sent: list[dict] = []
     try:
         if capture:
@@ -30,7 +30,7 @@ def replayed(replies: tuple[str, ...], capture: bool = False, trace=None) -> tup
                 answered = [tools.run_tool(CTX, c["function"]["name"], c["function"]["arguments"])
                             for c in RECORDED["messages"][2]["tool_calls"]]
                 return sent, (fakea.run(fakea.replaying(sent, replies), trace=trace), answered)
-        return sent, fakea.run(fakea.replaying(sent, replies), trace=trace)
+        return sent, fakea.run(fakea.replaying(sent, replies), trace=trace, ctx=ctx)
     except Exception as exc:  # noqa: BLE001 - reported here
         raise AssertionError(f"analyze_with_tools raised {exc!r} with the replies {replies}") from None
 
@@ -50,7 +50,11 @@ def test_the_second_request_is_the_recorded_one_but_for_the_user_and_tool_turns(
     assert second["messages"][3:] == [tool_turn], (
         f"after the assistant turn the second request has {json.dumps(second['messages'][3:])[:200]}; the recording "
         f"has one tool turn, with the call's id and what run_tool answered")
-    assert {k: v for k, v in second.items() if k != "messages"} == {k: v for k, v in RECORDED.items() if k != "messages"}
+    differ = sorted(k for k in second.keys() | RECORDED.keys() if k != "messages" and second.get(k) != RECORDED.get(k))
+    assert not differ, (
+        f"the second request differs from the recorded one in {', '.join(differ)}, not only in its turns: every call "
+        f"sends the same settings and offers the same tools as the first (the recording offered "
+        f"{[t['function']['name'] for t in RECORDED['tools']]} on both calls)")
 
 
 def test_each_call_gets_its_own_tool_turn_and_span_in_order():
@@ -68,6 +72,40 @@ def test_each_call_gets_its_own_tool_turn_and_span_in_order():
         f"and its run_tool result, or the model cannot tell which answer is whose")
     spans = [s.call.id for s in trace.spans if isinstance(s, ToolSpan)]
     assert spans == [i for i, _, _ in fakea.THREE_CALLS], f"the trace has tool spans for {spans}"
+    kept = [s.call.id for s in sample.tool_spans]
+    assert kept == spans, (
+        f"the sample keeps tool spans for {kept}, the trace has {spans}: the sample is what the run stores and grades, "
+        f"so it keeps every tool call's span too")
+
+
+def test_a_call_to_a_tool_not_offered_still_gets_its_tool_turn():
+    sent, _ = replayed(("turn1", "turn2"))  # outside capture_tool: the recorded call is to get_sources, not offered
+    [call] = RECORDED["messages"][2]["tool_calls"]
+    got = [(m.get("tool_call_id"), m["content"]) for body in sent[1:2] for m in body["messages"] if m["role"] == "tool"]
+    want = [(call["id"], tools.run_tool(CTX, call["function"]["name"], call["function"]["arguments"]))]
+    assert got == want, (
+        f"the recorded reply calls {call['function']['name']}, which TOOLS does not offer; the second request's tool "
+        f"turns are {str(got)[:160]}: every call gets its tool turn, here run_tool's error naming the tools, or the "
+        f"model's call is left unanswered and it cannot correct it")
+
+
+def test_each_item_answers_from_its_own_context():
+    for ctx, which in ((fakea.context(extra=True), "the same rows with extra digits"), (CTX, "the plain FAKEA rows")):
+        sent, _ = replayed(("three_calls", "turn2"), ctx=ctx)
+        got = [m["content"] for body in sent[1:2] for m in body["messages"] if m["role"] == "tool"]
+        want = [tools.run_tool(ctx, name, args) for _, name, args in fakea.THREE_CALLS]
+        assert got == want, (
+            f"on a context with {which}, the tool turns are {[c[:60] for c in got]}; run_tool on that context "
+            f"answers {[c[:60] for c in want]}: each call runs on the context of this item, every time, so a run over "
+            f"many items never answers one with another's rows")
+
+
+def test_every_call_offers_the_tools():
+    sent, _ = replayed(("three_calls", "one_more", "turn2"))
+    offered = [len(body.get("tools") or []) for body in sent]
+    assert all(body.get("tools") == [openrouter.tool(s) for s in tools.TOOLS] for body in sent), (
+        f"the {len(sent)} requests offer {offered} tools: every call offers TOOLS, not only the first. The model may "
+        f"need one more row after it read the first ones, and a request without the tools leaves it no way to ask")
 
 
 def test_the_loop_calls_again_until_a_reply_asks_for_no_tool():

@@ -1,0 +1,13 @@
+why: writes the tool spans to the trace but leaves them out of the sample
+expect: the sample keeps tool spans for [], the trace has
+before: GREEN (independent read)
+--- a/src/tradingresearch/analyze.py
++++ b/src/tradingresearch/analyze.py
+@@ -414,7 +414,6 @@
+         for call in span.tool_calls:
+             tool_span, content = _tool_span(ctx, call, trial_id)
+             sink.write(tool_span)
+-            spans.append(tool_span)
+             turns.append(Turn(role="tool", content=content, tool_call_id=call.id))
+     parsed = parse_json_text(text) if error is None else None
+     completed = datetime.now(UTC)

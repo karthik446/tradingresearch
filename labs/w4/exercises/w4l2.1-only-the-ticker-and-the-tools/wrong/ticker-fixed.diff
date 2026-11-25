@@ -1,0 +1,14 @@
+why: writes the lab's ticker into every prompt, whatever ticker the context is
+expect: the turn starts ['TICKER: FAKEA'
+before: RED (independent break pass)
+--- a/src/tradingresearch/analyze.py
++++ b/src/tradingresearch/analyze.py
+@@ -375,7 +375,7 @@
+ def tools_prompt(ctx: Context) -> str:
+     """The tools-mode user turn: the ticker and session only, so every number the model cites came through a tool."""
+     return "\n".join([
+-        f"TICKER: {ctx.ticker}", f"SESSION: {ctx.session.isoformat()} (the last completed NYSE session)", "",
++        "TICKER: FAKEA", f"SESSION: {ctx.session.isoformat()} (the last completed NYSE session)", "",
+         "The SOURCES table is not included. Ask for the rows you need with the tools; every row they return "
+         "carries the source_id to cite.", "",
+         "Write the claims as JSON with the key \"claims\".",

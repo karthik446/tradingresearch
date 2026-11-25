@@ -1,0 +1,14 @@
+why: metrics may be null, which run_tool refuses: the schema offers a call the tool turns down
+expect: get_fundamentals's schema accepts {"metrics": null}
+before: RED (independent break pass)
+--- a/src/tradingresearch/tools.py
++++ b/src/tradingresearch/tools.py
+@@ -53,7 +53,7 @@
+             "type": "object",
+             "properties": {
+                 "metrics": {
+-                    "type": "array", "minItems": 1, "items": {"type": "string", "enum": list(METRICS)},
++                    "type": ["array", "null"], "minItems": 1, "items": {"type": "string", "enum": list(METRICS)},
+                     "description": "Only these metrics. Omit for every metric.",
+                 },
+             },

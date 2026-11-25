@@ -1,0 +1,23 @@
+why: drops the object check and catches every exception, so the model reads Python's own words for what broke
+expect: '[]') is "'list' object has no attribute 'items'": it does not name get_indicators
+before: GREEN (independent read)
+--- a/src/tradingresearch/tools.py
++++ b/src/tradingresearch/tools.py
+@@ -73,7 +73,7 @@
+     try:
+         spec, handler = _lookup(name)
+         rows = handler(ctx, _arguments(spec, arguments))
+-    except ToolError as exc:
++    except Exception as exc:  # noqa: BLE001
+         return json.dumps({"error": str(exc)})
+     return json.dumps({"rows": [_shown(row) for row in rows]})
+ 
+@@ -91,8 +91,6 @@
+         args = json.loads(raw) if raw.strip() else {}
+     except json.JSONDecodeError as exc:
+         raise ToolError(f"{spec.name}: arguments are not valid JSON ({exc.msg}); send a JSON object") from None
+-    if not isinstance(args, dict):
+-        raise ToolError(f"{spec.name}: arguments must be a JSON object, got {type(args).__name__}")
+     properties = spec.parameters["properties"]
+     unknown = sorted(set(args) - set(properties))
+     if unknown:

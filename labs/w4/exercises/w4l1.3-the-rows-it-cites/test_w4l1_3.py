@@ -8,6 +8,7 @@ close is 101.40124722 there, revenue_CY2026Q3 1950023985.0000002, and the table 
 shows.
 """
 
+import dataclasses
 import json
 import sys
 from pathlib import Path
@@ -23,17 +24,17 @@ TABLE = fakea.table(CTX)  # source_id -> (name, value or label as the table show
 BY_ID = {row.source_id: row for row in CTX.rows}
 
 
-def answer(name: str, arguments: str) -> dict:
+def answer(name: str, arguments: str, ctx=CTX) -> dict:
     try:
-        got = fakea.result_of(tools.run_tool(CTX, name, arguments))
+        got = fakea.result_of(tools.run_tool(ctx, name, arguments))
     except Exception as exc:  # noqa: BLE001 - a raise is a failure this check reports
         got = f"raised {exc!r}"
     assert isinstance(got, dict), f"run_tool({name!r}, {arguments!r}) {got}"
     return got
 
 
-def rows_of(name: str, arguments: str = "{}") -> list[dict]:
-    got = answer(name, arguments)
+def rows_of(name: str, arguments: str = "{}", ctx=CTX) -> list[dict]:
+    got = answer(name, arguments, ctx)
     assert isinstance(got.get("rows"), list), f"run_tool({name!r}, {arguments!r}) returned {json.dumps(got)[:200]}"
     return got["rows"]
 
@@ -70,6 +71,19 @@ def test_each_value_is_the_number_the_sources_table_shows():
                 f"never showed, so the two arms are not answering from the same numbers")
 
 
+def test_a_big_value_is_rounded_as_the_table_rounds_it():
+    row = next(r for r in CTX.rows if r.name.startswith("revenue_"))
+    ctx = dataclasses.replace(CTX, rows=tuple(dataclasses.replace(r, value=r.value + 0.7) if r is row else r
+                                              for r in CTX.rows))
+    shown = fakea.table(ctx)[row.source_id][1]
+    value = next((g.get("value") for g in rows_of("get_fundamentals", "{}", ctx) if g.get("source_id") == row.source_id),
+                 None)
+    assert value == float(shown), (
+        f"{row.name} is {row.value + 0.7!r} in a context with 0.7 added to it; the table shows {shown} and "
+        f"get_fundamentals returns {value!r}: a big value is rounded to the table's digits, to the nearest whole "
+        f"number here, not cut off at the point")
+
+
 def test_names_picks_those_rows_and_an_unknown_name_is_an_error_listing_the_names():
     picked = [got["name"] for got in rows_of("get_indicators", '{"names": ["close", "rsi_14"]}')]
     assert sorted(picked) == ["close", "rsi_14"], (
@@ -88,3 +102,16 @@ def test_names_picks_those_rows_and_an_unknown_name_is_an_error_listing_the_name
         assert not missing, (
             f"the error for {json.dumps({'names': names})} is {got['error'][:160]!r}; it does not list "
             f"{', '.join(missing[:5])}: the model can only ask again with a real name if the error lists them")
+
+
+def test_each_call_answers_from_the_context_it_is_given():
+    plain = fakea.context()
+    for ctx, which in ((plain, "the plain FAKEA context"), (CTX, "the same rows times 1.0000123"),
+                       (plain, "the plain FAKEA context again")):
+        shown = fakea.table(ctx)
+        got = [(g.get("name"), g.get("value")) for g in rows_of("get_indicators", '{"names": ["rsi_14"]}', ctx)]
+        want = [(r.name, float(shown[r.source_id][1])) for r in ctx.rows if r.name == "rsi_14"]
+        assert got == want, (
+            f'on {which}, get_indicators with {{"names": ["rsi_14"]}} returns {got}; that context\'s table shows '
+            f"{want}: run_tool answers from the context of this call, every call, so nothing it keeps between calls "
+            f"hands one ticker-day another's rows")

@@ -1,0 +1,14 @@
+why: stops one model call before the cap
+expect: with max_turns=3 the loop made 2 calls
+before: RED (independent break pass)
+--- a/src/tradingresearch/analyze.py
++++ b/src/tradingresearch/analyze.py
+@@ -400,7 +400,7 @@
+     turns = list(first)
+     spans: list[ModelSpan | ToolSpan] = []
+     text, error = "", None
+-    for _ in range(max_turns):
++    for _ in range(max_turns - 1):
+         span = _model_span(provider, ModelRequest(settings=call_settings(model), turns=tuple(turns), tools=TOOLS),
+                            trial_id)
+         sink.write(span)

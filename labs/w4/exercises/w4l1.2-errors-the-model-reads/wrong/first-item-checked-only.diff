@@ -1,0 +1,14 @@
+why: checks only the first item of a list, so a number after it goes on to the handler
+expect: '{"names": ["close", 14]}') answered with 21 rows
+before: GREEN (independent read)
+--- a/src/tradingresearch/tools.py
++++ b/src/tradingresearch/tools.py
+@@ -99,7 +99,7 @@
+         allowed = ", ".join(properties) or "none"
+         raise ToolError(f"{spec.name}: unknown argument(s) {', '.join(unknown)}; allowed: {allowed}")
+     for key, value in args.items():
+-        if not isinstance(value, list) or not value or not all(isinstance(v, str) for v in value):
++        if not isinstance(value, list) or not value or not isinstance(value[0], str):
+             raise ToolError(f"{spec.name}: {key} must be a non-empty list of strings, got {json.dumps(value)}")
+     return args
+ 

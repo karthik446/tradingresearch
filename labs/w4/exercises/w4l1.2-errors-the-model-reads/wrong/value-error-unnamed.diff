@@ -1,0 +1,14 @@
+why: the error for a bad value does not say which tool it comes from
+expect: is 'names must be a non-empty list of strings, got "close"': it does not name get_indicators
+before: RED (independent break pass)
+--- a/src/tradingresearch/tools.py
++++ b/src/tradingresearch/tools.py
+@@ -100,7 +100,7 @@
+         raise ToolError(f"{spec.name}: unknown argument(s) {', '.join(unknown)}; allowed: {allowed}")
+     for key, value in args.items():
+         if not isinstance(value, list) or not value or not all(isinstance(v, str) for v in value):
+-            raise ToolError(f"{spec.name}: {key} must be a non-empty list of strings, got {json.dumps(value)}")
++            raise ToolError(f"{key} must be a non-empty list of strings, got {json.dumps(value)}")
+     return args
+ 
+ 

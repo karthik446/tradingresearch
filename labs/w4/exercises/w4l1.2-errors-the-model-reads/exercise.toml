@@ -2,7 +2,7 @@ id = "w4l1.2"
 title = "Turn every bad call into an error the model can read"
 effect = "Observe's run_tool rows for an unknown tool, text that is not JSON and an unknown metric go from a raised exception to an {\"error\": ...} line that says what was wrong and how to call again."
 goal = "Make run_tool answer every call with JSON text: the rows, or one error object that says what was wrong and how to call again. An unknown tool, arguments that are not a JSON object, an unknown or ill-typed argument are all answers the model reads, never exceptions."
-what_tested = "run_tool on the FAKEA context: the recorded get_sources call answers an error naming the three tools; for every tool, text that is not JSON, a non-object, an unknown argument, a string or empty list each answer one error naming the tool; empty text and {} return every row of the tool."
+what_tested = "run_tool on the FAKEA context: the recorded get_sources call answers an error naming the three tools; for every tool, text that is not JSON, a non-object, an unknown argument, a string, an empty list or a list holding a number each answer one error naming the tool, a non-object's in words, not Python's; empty text and {} return every row of the tool."
 writes = [
   "run_tool in src/tradingresearch/tools.py: look the tool up by name and check the raw arguments against its schema before the handler runs.",
   "Every ToolError becomes {\"error\": \"<message>\"} as JSON text; the message names the tool and what a good call looks like (the tools, the allowed arguments).",

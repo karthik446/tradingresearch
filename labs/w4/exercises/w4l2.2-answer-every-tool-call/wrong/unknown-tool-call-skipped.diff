@@ -1,0 +1,16 @@
+why: a call to a tool that was not offered gets no tool turn, so that call is never answered
+expect: which TOOLS does not offer; the second request's tool turns are []
+before: GREEN (independent read)
+--- a/src/tradingresearch/analyze.py
++++ b/src/tradingresearch/analyze.py
+@@ -411,7 +411,10 @@
+         if not span.tool_calls:
+             break
+         turns.append(Turn(role="assistant", content=span.text, tool_calls=span.tool_calls))
++        names = {spec.name for spec in TOOLS}
+         for call in span.tool_calls:
++            if call.name not in names:  # never run a tool we did not offer
++                continue
+             tool_span, content = _tool_span(ctx, call, trial_id)
+             sink.write(tool_span)
+             spans.append(tool_span)

@@ -1,0 +1,30 @@
+why: counts tool calls against max_turns, so one reply with three tool calls uses the whole cap
+expect: with max_turns=3 the loop made 1 calls
+before: GREEN (independent read)
+--- a/src/tradingresearch/analyze.py
++++ b/src/tradingresearch/analyze.py
+@@ -400,7 +400,8 @@
+     turns = list(first)
+     spans: list[ModelSpan | ToolSpan] = []
+     text, error = "", None
+-    for _ in range(max_turns):
++    tool_calls = 0
++    while True:
+         span = _model_span(provider, ModelRequest(settings=call_settings(model), turns=tuple(turns), tools=TOOLS),
+                            trial_id)
+         sink.write(span)
+@@ -417,9 +418,11 @@
+             sink.write(tool_span)
+             spans.append(tool_span)
+             turns.append(Turn(role="tool", content=content, tool_call_id=call.id))
+-    else:
+-        error = CallError(code="max_tool_turns", message=f"no final reply after {max_turns} model calls",
+-                          retryable=False)
++            tool_calls += 1
++        if tool_calls >= max_turns:
++            error = CallError(code="max_tool_turns", message=f"no final reply after {max_turns} tool calls",
++                              retryable=False)
++            break
+     parsed = parse_json_text(text) if error is None else None
+     completed = datetime.now(UTC)
+     outcome = "failed" if error is not None else "succeeded"

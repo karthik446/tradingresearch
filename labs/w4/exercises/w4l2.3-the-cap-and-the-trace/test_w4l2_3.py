@@ -2,9 +2,10 @@
 sample with its error, a spending cap's refusal reaches the caller, and every span is in the trace as it ends.
 
 The replies are the recording or edits of it (tools/fakea.py `answer`): `turn1` asks for a tool every time it is sent,
-so only the cap ends a loop of them; `busy` is an HTTP 503 the adapter retries inside one call; `failed` an HTTP 400 it
-does not retry. The replay itself answers HTTP 400 from request 13 on (fakea.STOP_AFTER = 12), so a loop with no cap
-still ends. `fakea.Capped` refuses every call after the first the way gigai-core's CallBudget does: BudgetExceeded.
+so only the cap ends a loop of them; `three_calls` asks for three tools at once; `turn2` is the final JSON; `busy` is an
+HTTP 503 the adapter retries inside one call; `failed` an HTTP 400 it does not retry. The replay itself answers HTTP 400
+from request 13 on (fakea.STOP_AFTER = 12), so a loop with no cap still ends. `fakea.Capped` refuses every call after
+the first the way gigai-core's CallBudget does: BudgetExceeded.
 """
 
 import sys
@@ -18,6 +19,7 @@ from gigai_core.budget import BudgetExceeded  # noqa: E402
 from gigai_core.trace import ListTrace, ModelSpan, ToolSpan, TrialSpan  # noqa: E402
 
 from tradingresearch import analyze as an  # noqa: E402
+from tradingresearch import openrouter, tools  # noqa: E402
 
 
 def replayed(replies: tuple[str, ...], max_turns: int | None = None, cycle: bool = False, trace=None):
@@ -45,6 +47,31 @@ def test_a_model_that_never_stops_gets_max_turns_calls_and_a_failed_sample():
             f"after {cap} calls that all asked for a tool the sample ends {ended(sample)}: it is a failed sample whose "
             f"error code is max_tool_turns, so the run counts it and the trace says why")
         assert sample.output_parsed is None, f"the failed sample holds a parsed output: {sample.output_parsed!r}"
+
+
+def test_a_final_reply_on_the_last_allowed_call_succeeds():
+    sent, sample = replayed(("turn1", "turn1", "turn2"), max_turns=3)
+    assert (len(sent), ended(sample)) == (3, "succeeded, error None"), (
+        f"two replies ask for a tool, then the third and last allowed call is the final JSON; the loop made "
+        f"{len(sent)} calls and the sample ends {ended(sample)}: the cap fails a sample only when no reply ended the "
+        f"loop, and this one did, on its last allowed call")
+    assert sample.parse_status == "ok", f"the final JSON on call 3 parses as {sample.parse_status}"
+
+
+def test_the_cap_counts_model_calls_not_tool_calls():
+    sent, sample = replayed(("three_calls",), max_turns=3)
+    assert (len(sent), ended(sample)) == (3, "failed, error max_tool_turns"), (
+        f"every reply asks for three tools at once; with max_turns=3 the loop made {len(sent)} calls and the sample "
+        f"ends {ended(sample)}: max_turns counts model calls, so 3 calls are allowed whatever number of tool calls "
+        f"they ask for")
+
+
+def test_every_call_offers_the_tools():
+    sent, _ = replayed(("turn1",), max_turns=3)
+    offered = [len(body.get("tools") or []) for body in sent]
+    assert all(body.get("tools") == [openrouter.tool(s) for s in tools.TOOLS] for body in sent), (
+        f"the {len(sent)} requests offer {offered} tools: every call offers TOOLS, the last allowed one too. The model "
+        f"may need one more row on any call, and a request that drops the tools leaves it no way to ask")
 
 
 def test_a_failed_call_ends_the_loop_and_fails_the_sample_with_its_error():

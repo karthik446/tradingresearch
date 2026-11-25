@@ -188,17 +188,36 @@ def result_of(text: object) -> dict | str:
 NAME = re.compile(r"[A-Za-z0-9_-]{1,64}")
 ANNOTATIONS = {"description", "title", "examples", "default", "$comment"}
 READ = {"type", "properties", "additionalProperties", "required", "items", "minItems", "maxItems", "uniqueItems",
-        "enum", "const"}
+        "enum", "const", "minLength", "maxLength", "pattern", "allOf", "anyOf", "oneOf", "not"}
 TYPES = {"object": dict, "array": list, "string": str, "boolean": bool, "null": type(None)}
+
+
+def unread(schema: object) -> list[str]:
+    """The keywords anywhere in `schema` that `refusal` does not read (annotations aside): it judges a value by the
+    rest, so a line drawn only with these is not seen."""
+    if not isinstance(schema, dict):
+        return []
+    found = set(schema) - READ - ANNOTATIONS
+    subs = [*schema.get("properties", {}).values(), schema.get("items"), schema.get("additionalProperties"),
+            schema.get("not"), *schema.get("allOf", []), *schema.get("anyOf", []), *schema.get("oneOf", [])]
+    for sub in subs:
+        found.update(unread(sub))
+    return sorted(found)
 
 
 def refusal(schema: dict, value: object, where: str = "arguments") -> str | None:
     """Why a JSON-schema validator would refuse `value`, or None when it accepts it. It reads the keywords in READ (the
-    ones tool schemas use) and raises ValueError on any other keyword that is not an annotation."""
-    unread = set(schema) - READ - ANNOTATIONS
-    if unread:
-        raise ValueError(f"the check's schema reader does not read {sorted(unread)} (at {where}); it reads "
-                         f"{sorted(READ)}")
+    ones tool schemas use) and skips any other, judging the value by what it can read; `unread` lists the skipped."""
+    for sub in schema.get("allOf", []):
+        why = refusal(sub, value, where)
+        if why:
+            return why
+    if "anyOf" in schema and all(refusal(sub, value, where) for sub in schema["anyOf"]):
+        return f"{where} is {json.dumps(value)}, which matches none of anyOf"
+    if "oneOf" in schema and sum(refusal(sub, value, where) is None for sub in schema["oneOf"]) != 1:
+        return f"{where} is {json.dumps(value)}, which does not match exactly one of oneOf"
+    if "not" in schema and refusal(schema["not"], value, where) is None:
+        return f"{where} is {json.dumps(value)}, which matches the schema under not"
     if "type" in schema:
         allowed = schema["type"] if isinstance(schema["type"], list) else [schema["type"]]
         if not any(_is(value, t) for t in allowed):
@@ -207,6 +226,13 @@ def refusal(schema: dict, value: object, where: str = "arguments") -> str | None
         return f"{where} is {json.dumps(value)}, not one of {schema['enum']}"
     if "const" in schema and value != schema["const"]:
         return f"{where} is {json.dumps(value)}, not {json.dumps(schema['const'])}"
+    if isinstance(value, str):
+        if len(value) < schema.get("minLength", 0):
+            return f"{where} is {json.dumps(value)}, shorter than minLength {schema['minLength']}"
+        if "maxLength" in schema and len(value) > schema["maxLength"]:
+            return f"{where} is {json.dumps(value)}, longer than maxLength {schema['maxLength']}"
+        if "pattern" in schema and not re.search(schema["pattern"], value):
+            return f"{where} is {json.dumps(value)}, which does not match the pattern {schema['pattern']!r}"
     if isinstance(value, dict):
         for key in schema.get("required", []):
             if key not in value:

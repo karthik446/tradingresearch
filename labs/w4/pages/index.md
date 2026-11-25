@@ -24,7 +24,7 @@ Week 4 of the AI engineering track gives the analysis model tools: instead of re
 | after w4l1.1, .2, .3 | 2, 6, 6 (the tool cases) |
 | after w4l2.1, .2, .3 | 7, 9 (and the cap test never ends; see [lab w4l2](w4l2.md#w4l23-the-cap-and-the-trace)), 11 (the loop cases) |
 
-The 12 still red at the end belong to the rest of the week: the tools arm (2), `tool_calls_ok` (6), the tools-vs-fixed experiment config, ADR-005 and the first rule change (2). `tr lab next` runs the repo suite at the end of each lab and leaves out the tests that lab cannot turn green yet: those 12 always (`[suite] deselect` in [`lab.toml`](../lab.toml)), and the 5 loop tests after lab w4l1 (`[labs.w4l1.suite]`), each with the reason. Plain `uv run pytest -q` still shows them failing.
+The 12 still red at the end belong to the rest of the week: the tools arm (2), `tool_calls_ok` (6), the tools-vs-fixed experiment config (1), ADR-005 (1) and the first rule change (2). `tr lab next` runs the repo suite at the end of each lab and leaves out the tests that lab cannot turn green yet: those 12 always (`[suite] deselect` in [`lab.toml`](../lab.toml)), and the 5 loop tests after lab w4l1 (`[labs.w4l1.suite]`), each with the reason. Plain `uv run pytest -q` still shows them failing.
 
 Commands run from the root of your tradingresearch clone; this week's folder is `labs/w4/`. `tr lab` drives the exercises: `tr lab start w4l1`, then `tr lab verify` until green and `tr lab next`. All commands, and what to do when one refuses: [labs/README.md](../../README.md). Hints unlock after failed runs of `tr lab verify` (hint 1 after 2, hint 2 after 5, the solution after 10 or at once when green; [`lab.toml`](../lab.toml) holds the numbers).
 
