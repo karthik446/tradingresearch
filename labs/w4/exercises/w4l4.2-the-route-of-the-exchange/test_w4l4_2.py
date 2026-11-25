@@ -1,8 +1,8 @@
 """w4l4.2 the route of the exchange: the adapter logs each served route under the exchange's first user turn (the item
 prompt), so every turn of one tool loop counts; route_for gives the one route, openrouter:mixed(a+b) with each provider
 once in sorted order, or openrouter:unknown when nothing was served or any turn's provider is null, missing or not
-clean. A request with no assistant or tool turn starts a new exchange for its key, and a pinned copy (routed) keeps its
-own log.
+clean. A request with no assistant or tool turn starts a new exchange for its key, a retried turn stays in its exchange,
+and a pinned copy (routed) keeps its own log.
 
 The real adapter replays the recorded exchange at the HTTP transport (tools/fakea.py `replaying`): turn1 (served by
 Azure) asks for a tool, turn2 (served by Google) answers. Other providers, null and missing ones are edits of those
@@ -91,6 +91,7 @@ def test_one_provider_on_every_turn_is_that_provider(host):
     (("turn1", "turn2"), ("Google", "Azure")),
     (("turn1", "one_more", "turn2"), ("Google", "Azure", "Google")),
     (("turn1", "one_more", "turn2"), ("Azure", "Google", "Azure")),
+    (("one_more", "one_more", "one_more", "turn2"), ("Azure", "Azure", "Azure", "Google")),
 ])
 def test_mixed_names_each_provider_once_in_sorted_order(replies, names):
     sent: list[dict] = []
@@ -99,8 +100,19 @@ def test_mixed_names_each_provider_once_in_sorted_order(replies, names):
     got = provider.route_for(item_prompt(sent[0]))
     assert got == "openrouter:mixed(Azure+Google)", (
         f"route_for(item prompt) = {got!r} after turns served by {' then '.join(names)}; expected "
-        f"'openrouter:mixed(Azure+Google)': each provider once, sorted, so one mix always reads the same "
-        f"({log(provider)})")
+        f"'openrouter:mixed(Azure+Google)': every turn of the exchange counts, the last one too, and each provider "
+        f"is named once, sorted, so one mix always reads the same ({log(provider)})")
+
+
+def test_a_retried_turn_keeps_the_routes_logged_before_it():
+    sent: list[dict] = []
+    provider = fakea.replaying(sent, ("one_more", "busy", "turn2"), edit=hosts("Azure", "Google", "Google"))
+    loop(provider)
+    got = provider.route_for(item_prompt(sent[0]))
+    assert got == "openrouter:mixed(Azure+Google)", (
+        f"route_for(item prompt) = {got!r} after Azure served the first turn and Google answered the second on a "
+        f"retry after an HTTP 503; expected 'openrouter:mixed(Azure+Google)': a retry is the same turn of the same "
+        f"exchange, so the routes logged before it stay ({log(provider)})")
 
 
 @pytest.mark.parametrize(("names", "what"), [

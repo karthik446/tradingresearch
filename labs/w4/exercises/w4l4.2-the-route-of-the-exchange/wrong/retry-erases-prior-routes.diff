@@ -1,0 +1,13 @@
+why: clears the exchange's route log when a call is retried, so the turns served before the retry are forgotten
+expect: after Azure served the first turn and Google answered the second on a
+before: GREEN (Codex review)
+--- a/src/tradingresearch/openrouter.py
++++ b/src/tradingresearch/openrouter.py
+@@ -186,6 +186,7 @@
+             try:
+                 return self._post(request, body, billed)
+             except Exception as exc:
++                self.routes[exchange_key(request)] = []
+                 failures.append(exc)
+                 raise
+ 

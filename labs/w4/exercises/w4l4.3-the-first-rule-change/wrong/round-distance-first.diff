@@ -1,0 +1,13 @@
+why: rounds the distance to one decimal before its sign is read, so a thesis a hundredth on the wrong side is kept
+expect: refuse(short-horizon long, dist_sma_50_atr -0.01) returned None
+before: GREEN (Codex review)
+--- a/src/tradingresearch/rules.py
++++ b/src/tradingresearch/rules.py
+@@ -55,6 +55,7 @@
+     dist = a.snapshot.values.get("dist_sma_50_atr")
+     if dist is None:
+         return "short horizon needs dist_sma_50_atr to check the trend, got None"
++    dist = round(dist, 1)
+     if (t.direction == "long" and dist < 0) or (t.direction == "short" and dist > 0):
+         return f"short-horizon {t.direction} against the sma_50 trend (dist_sma_50_atr {dist:.2f})"
+     return None

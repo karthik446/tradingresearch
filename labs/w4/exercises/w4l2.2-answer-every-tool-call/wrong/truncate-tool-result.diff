@@ -1,0 +1,14 @@
+why: the tool turn keeps only the first 2000 characters of the result, so a long answer reaches the model cut short
+expect: on a context with 100 more indicator rows, get_indicators with no arguments answers
+before: GREEN (Codex review)
+--- a/src/tradingresearch/analyze.py
++++ b/src/tradingresearch/analyze.py
+@@ -415,7 +415,7 @@
+             tool_span, content = _tool_span(ctx, call, trial_id)
+             sink.write(tool_span)
+             spans.append(tool_span)
+-            turns.append(Turn(role="tool", content=content, tool_call_id=call.id))
++            turns.append(Turn(role="tool", content=content[:2000], tool_call_id=call.id))
+     parsed = parse_json_text(text) if error is None else None
+     completed = datetime.now(UTC)
+     outcome = "failed" if error is not None else "succeeded"

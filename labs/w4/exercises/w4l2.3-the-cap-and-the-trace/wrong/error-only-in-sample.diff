@@ -1,0 +1,14 @@
+why: the trial span is written with no error, so the trace shows a failed item without saying why
+expect: the trace's trial span has error None; the sample's is http_400
+before: GREEN (Codex review)
+--- a/src/tradingresearch/analyze.py
++++ b/src/tradingresearch/analyze.py
+@@ -424,7 +424,7 @@
+     completed = datetime.now(UTC)
+     outcome = "failed" if error is not None else "succeeded"
+     trial = TrialSpan(span_id=trial_id, turn=0, started_at=started, completed_at=completed, item_id=item.id,
+-                      repeat_index=0, outcome=outcome, error=error)
++                      repeat_index=0, outcome=outcome, error=None)
+     sink.write(trial)
+     return Sample(trace_id=new_id("trace"), run_id=run_id or new_id("run"), item_id=item.id,
+                   item_version=item.version, cluster_id=item.cluster_id, repeat_index=0, input=first,

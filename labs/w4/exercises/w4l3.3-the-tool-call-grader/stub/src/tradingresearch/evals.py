@@ -1,6 +1,6 @@
 """The eval registry: every grader an experiment config can name. A new grader is a `@grader` class plus a test.
 
-`p1_judge` is the P1 judge on one closed trade (SPIKE §7.2 row P1, ADR-003, evals/specs/p1_judge.md); it runs
+`p1_judge` is the P1 judge on one closed trade (week 3 section 4, ADR-003, evals/specs/p1_judge.md); it runs
 from `tr grade --judge`, not from an experiment config.
 """
 
@@ -213,7 +213,7 @@ class P1Judge:
 
     The judge runs on closed trades through `p1_judge` below (gigai-core `llm_judge` with
     evals/rubrics/p1_thesis_quality.md); `validated` turns True only by an ADR that records kappa on the operator's
-    labels (SPIKE §7.3).
+    labels (week 3 section 7).
     """
 
     id = "p1_judge"

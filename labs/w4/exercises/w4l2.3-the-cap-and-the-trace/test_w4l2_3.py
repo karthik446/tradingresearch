@@ -37,7 +37,7 @@ def ended(sample) -> str:
 
 
 def test_a_model_that_never_stops_gets_max_turns_calls_and_a_failed_sample():
-    for max_turns in (3, None, 1):
+    for max_turns in (3, None, 1, 6):
         cap = an.MAX_TOOL_TURNS if max_turns is None else max_turns
         sent, sample = replayed(("turn1",), max_turns)
         assert len(sent) == cap, (
@@ -76,13 +76,19 @@ def test_every_call_offers_the_tools():
 
 def test_a_failed_call_ends_the_loop_and_fails_the_sample_with_its_error():
     for replies, calls in ((("failed",), 1), (("turn1", "failed"), 2)):
-        sent, sample = replayed(replies)
+        trace = ListTrace()
+        sent, sample = replayed(replies, trace=trace)
         assert len(sent) == calls, f"the replies {replies} got {len(sent)} calls; the HTTP 400 is the last one"
         assert (sample.outcome, sample.error and sample.error.code) == ("failed", "http_400"), (
             f"with the replies {replies} the sample ends {ended(sample)}; call {calls} failed with HTTP 400, which "
             f"the adapter does not retry: the sample fails with that call's error")
         errors = [s.error and s.error.code for s in sample.model_spans]
         assert len(errors) == calls and errors[-1] == "http_400", f"the sample's model spans have errors {errors}"
+        trial = [s for s in trace.spans if isinstance(s, TrialSpan)]
+        assert trial and trial[-1].error == sample.error, (
+            f"with the replies {replies} the trace's trial span has error "
+            f"{trial[-1].error.code if trial and trial[-1].error else None}; the sample's is http_400: the trace is "
+            f"where a reader of the run sees why an item failed, so the trial span carries the sample's error")
 
 
 def test_retries_stay_inside_one_model_call():

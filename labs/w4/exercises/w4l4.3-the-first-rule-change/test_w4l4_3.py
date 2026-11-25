@@ -1,8 +1,9 @@
 """w4l4.3 the first rule change: a short-horizon thesis that trades against the 50-session trend (long while
-dist_sma_50_atr < 0, short while it is > 0) is refused, a missing dist_sma_50_atr is refused, and everything else is
-kept; the filter is a reviewed CHALLENGER_RULES entry, short-sma50-trend, on the champion prompt; and
-experiments/rule-change-1.toml pre-registers it by the section 8.2 Prereg on the short horizon, registered after
-the 2026-11-16 open and before the first session it covers, 2026-11-17, and before any challenger thesis.
+dist_sma_50_atr < 0, short while it is > 0, however small the distance) is refused, a missing dist_sma_50_atr is
+refused, and everything else is kept; the filter is a reviewed CHALLENGER_RULES entry, short-sma50-trend, on the
+champion prompt; and experiments/rule-change-1.toml pre-registers it by the chapter's Prereg (week 4 section 6) on the
+short horizon, registered after the 2026-11-16 open and before the first session it covers, 2026-11-17, and before
+any challenger thesis.
 
 Theses and analyses come from the repo's tests/factories.py; the filter is reached through the registry, as the
 challenger arm reaches it. Registration runs in a journal under the test's temp directory.
@@ -72,6 +73,14 @@ def test_a_short_horizon_short_above_the_sma50_is_refused_and_one_below_it_is_ke
     assert below is None, (
         f"refuse(short-horizon short, dist_sma_50_atr {-dist}) returned {below!r}; expected None: a short below the "
         f"sma_50 trades with the trend")
+
+
+def test_a_hundredth_from_the_sma50_is_already_against_the_trend():
+    for direction, dist in (("long", -0.01), ("short", 0.01)):
+        got = refused("short", direction, dist)
+        assert isinstance(got, str) and got.strip(), (
+            f"refuse(short-horizon {direction}, dist_sma_50_atr {dist}) returned {got!r}; expected a reason: the sign "
+            f"of the distance is the side of the trend however small it is, and only exactly 0.0 sits on the sma_50")
 
 
 @pytest.mark.parametrize("direction", ["long", "short"])
@@ -148,7 +157,7 @@ def test_the_change_names_the_entry_and_waits_for_its_decision():
         f"description is {c.description!r}; expected what the change does")
 
 
-def test_the_prereg_is_the_section_8_2_unit_on_the_short_horizon():
+def test_the_prereg_is_the_chapters_unit_on_the_short_horizon():
     p = change().prereg
     assert p.primary_metric == "session_r_net_delta:short", (
         f"primary_metric is {p.primary_metric!r}; expected 'session_r_net_delta:short': the rule acts on the short "
@@ -157,8 +166,8 @@ def test_the_prereg_is_the_section_8_2_unit_on_the_short_horizon():
     got = {k: getattr(p, k) for k in ("pass_rule", "guard_metric", "margin", "n_planned")}
     expected = {k: getattr(want, k) for k in got}
     assert got == expected, (
-        f"the prereg's pass_rule, guard_metric, margin, n_planned are {got}; expected {expected}: section 8.2 fixes "
-        f"them before any session, so nobody tunes them after seeing results")
+        f"the prereg's pass_rule, guard_metric, margin, n_planned are {got}; expected {expected}: the chapter fixes "
+        f"them before any session (week 4 section 6), so nobody tunes them after seeing results")
     assert p.hypothesis.strip(), "the prereg's hypothesis is empty; expected the claim the sessions will test"
 
 

@@ -1,4 +1,4 @@
-# Week 4: the first RuleChange (SPIKE §8.2), pre-registered before any session it covers. Commit this file first,
+# Week 4: the first RuleChange (week 4 section 6), pre-registered before any session it covers. Commit this file first,
 # then store it once: rules.register(conn, RuleChange.model_validate(tomllib.loads(text))). The challenger arm
 # answers every session that opens after registered_at; the decision comes after 20 paired sessions (week 9).
 change_id = "rc_1"

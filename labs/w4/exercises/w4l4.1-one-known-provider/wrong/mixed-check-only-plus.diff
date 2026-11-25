@@ -1,0 +1,14 @@
+why: spots a mixed route by its + only, so openrouter:mixed(Azure) counts as one known provider
+expect: clean_route('openrouter:mixed(Azure)') returned True
+before: GREEN (Codex review)
+--- a/src/tradingresearch/records.py
++++ b/src/tradingresearch/records.py
+@@ -32,7 +32,7 @@
+     """True only for one known provider: the teacher terms filter and the training set need who served every turn."""
+     prefix, _, rest = route.partition(":")
+     host = rest.split("/")[0].lower()
+-    return prefix == "openrouter" and host not in ("", "unknown") and not host.startswith("mixed(")
++    return prefix == "openrouter" and host not in ("", "unknown") and "+" not in host
+ 
+ 
+ def _trainable_route(terms_class: str, route: str) -> None:

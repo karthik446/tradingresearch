@@ -1,4 +1,4 @@
-"""The tradingresearch records (SPIKE §1.1). Every record is a gigai-core CoreModel: frozen, strict, closed, finite."""
+"""The tradingresearch records. Every record is a gigai-core CoreModel: frozen, strict, closed, finite."""
 
 from __future__ import annotations
 
@@ -25,7 +25,7 @@ EventReason = Literal[
 # Thesis rule 3: hold_sessions per horizon (sessions after the entry session).
 HOLD_RANGE: dict[str, tuple[int, int]] = {"day": (0, 0), "short": (2, 5), "swing": (5, 20)}
 MAX_CONTEXT_TOKENS = 14_000
-RULES_VERSION = "rules-1"  # the reconcile rules (SPIKE §6) a thesis or event is settled by; reconcile picks rules by it
+RULES_VERSION = "rules-1"  # the reconcile rules a thesis or event is settled by; reconcile picks rules by it
 
 
 def clean_route(route: str) -> bool:

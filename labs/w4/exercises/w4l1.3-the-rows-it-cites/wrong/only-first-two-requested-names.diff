@@ -1,0 +1,14 @@
+why: names keeps only the first two names asked for, the most the example asks, so a third is silently dropped
+expect: get_indicators with {"names": ["close", "rsi_14", "sma_50"]} returns 2 rows
+before: GREEN (Codex review)
+--- a/src/tradingresearch/tools.py
++++ b/src/tradingresearch/tools.py
+@@ -126,7 +126,7 @@
+     missing = [w for w in wanted if w not in {r.name for r in rows}]
+     if missing:
+         raise ToolError(f"get_indicators: no row named {', '.join(missing)}; names: {', '.join(r.name for r in rows)}")
+-    return [r for r in rows if r.name in wanted]
++    return [r for r in rows if r.name in wanted[:2]]
+ 
+ 
+ def levels(ctx: Context, args: dict) -> list[Row]:

@@ -1,0 +1,14 @@
+why: saves the run file with its samples dropped, so the stored analyses point at samples the run file does not hold
+expect: the saved run file holds (item, outcome, model calls)
+before: GREEN (Codex review)
+--- a/src/tradingresearch/experiment.py
++++ b/src/tradingresearch/experiment.py
+@@ -128,7 +128,7 @@
+                            budget=CallBudget(max_usd=config.max_usd_per_arm, prices=prices),
+                            system=an.system_prompt(arm.prompt), trace_dir=data_dir / "traces",
+                            tag=f"{config.name}:{arm.name}:{arm.prompt}")
+-        path = an.save(run, data_dir)
++        path = an.save(run.model_copy(update={"samples": ()}), data_dir)
+         stored = 0
+         for sample in run.samples:
+             if sample.parse_status == "ok":

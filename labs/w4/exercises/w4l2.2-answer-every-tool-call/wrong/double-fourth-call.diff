@@ -1,0 +1,14 @@
+why: the loop answers every call past the third twice, so a reply with four calls gets five tool turns and five spans
+expect: the first reply asks for four tools
+before: GREEN (Codex review)
+--- a/src/tradingresearch/analyze.py
++++ b/src/tradingresearch/analyze.py
+@@ -411,7 +411,7 @@
+         if not span.tool_calls:
+             break
+         turns.append(Turn(role="assistant", content=span.text, tool_calls=span.tool_calls))
+-        for call in span.tool_calls:
++        for call in (*span.tool_calls, *span.tool_calls[3:]):
+             tool_span, content = _tool_span(ctx, call, trial_id)
+             sink.write(tool_span)
+             spans.append(tool_span)

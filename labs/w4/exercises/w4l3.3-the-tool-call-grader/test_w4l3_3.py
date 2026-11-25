@@ -1,5 +1,7 @@
 """w4l3.3 the tool-call grader: tool_calls_ok is 0 with the first fault in the order the calls were made (tool_error,
-repeated_call, then too_many_calls past max_calls = 2 x len(TOOLS)), else 1. No tool calls is 1.0.
+repeated_call, then too_many_calls past max_calls = 2 x len(TOOLS)), else 1. No tool calls is 1.0. A result with an
+"error" key is an error whatever the key holds; arguments are compared as JSON, key order and spacing ignored, the
+order inside a list kept.
 
 Two kinds of samples. Loop samples come from analyze_with_tools on FAKEA with replayed replies (tools/fakea.py): the
 recorded `turn1` asks for get_sources, a tool week 4 does not offer, so its result is an error; `three_calls` asks for
@@ -115,6 +117,13 @@ def test_an_error_object_or_a_raised_tool_is_a_tool_error(result, raised):
                "text sent back, is a tool error")
 
 
+@pytest.mark.parametrize("value", ["", None, False, 0], ids=["empty-string", "null", "false", "zero"])
+def test_an_error_key_is_a_tool_error_whatever_its_value(value):
+    fails_with(sample_of([("get_indicators", '{"names": ["close"]}', {"error": value}, False)]), "tool_error",
+               f"the result is an object with an \"error\" key, so it is a tool error; what the key holds, {value!r} "
+               f"here, does not matter, and an empty or false value is still an error object")
+
+
 @pytest.mark.parametrize("result", [
     "error: plain text is not an error object", '[{"error": "a row, not the result"}]',
     {"rows": [{"name": "error", "value": 1.0}]}, None], ids=["plain-text", "json-list", "a-row-named-error", "none"])
@@ -136,6 +145,9 @@ def test_different_tools_or_different_arguments_are_not_a_repeat():
                       *clean('{"names": ["close"]}', '{"names": ["sma_50"]}')]),
            "a repeat is the same tool with the same arguments; {} sent to two tools, or one tool asked for two "
            "rows, is not")
+    passes(sample_of(clean('{"names": ["close", "sma_50"]}', '{"names": ["sma_50", "close"]}')),
+           "key order and spacing are normalised, the order of a list is not: the same names in another order is "
+           "another request, not a repeat")
 
 
 def test_arguments_that_are_not_json_are_graded_too():
@@ -160,6 +172,9 @@ def test_the_first_fault_in_call_order_is_the_one_reported():
                "the first call errs before the third repeats the second")
     fails_with(sample_of([*clean(a, b, a), *distinct(5)]), "repeated_call",
                "the third call repeats the first, four calls before the eighth goes past the cap")
+    fails_with(sample_of([*distinct(6), distinct(1)[0]]), "repeated_call",
+               "the seventh call repeats the first: a repeat is a fault wherever it falls, and it comes before the "
+               "seventh call goes past the cap")
     fails_with(sample_of([*clean(a, b), ("get_levels", "{}", ERROR, False)]), "tool_error",
                "two clean calls, then the third errs: one fault fails the loop, however many calls went well")
     fails_with(sample_of([("get_levels", "{}", ERROR, False), *distinct(7)]), "tool_error",

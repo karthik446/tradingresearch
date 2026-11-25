@@ -20,7 +20,10 @@ THREE = ("get_indicators", "get_levels", "get_fundamentals")  # the stub's names
 # What the recorded model sent to the capture's own tool, get_sources: '{"groups": [...]}'.
 RECORDED = json.loads(fakea.load("turn1.reply")["choices"][0]["message"]["tool_calls"][0]["function"]["arguments"])
 SERVED = {  # calls each handler answers: every one must pass the schema
-    "get_indicators": [{}, {"names": ["close"]}, {"names": ["close", "rsi_14", "regime_spy"]}],
+    # the handler serves any row name, a name twice and any number of names, not only the ones these examples use
+    "get_indicators": [{}, {"names": ["close"]}, {"names": ["close", "rsi_14", "regime_spy"]},
+                       {"names": ["close", "close"]}, {"names": ["sma_50"]},
+                       {"names": ["close", "rsi_14", "sma_50", "atr_14"]}],
     "get_levels": [{}],
     "get_fundamentals": [{}, {"metrics": list(tools.METRICS)}, *({"metrics": [m]} for m in tools.METRICS)],
 }

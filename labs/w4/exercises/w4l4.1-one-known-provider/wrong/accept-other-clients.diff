@@ -1,0 +1,14 @@
+why: drops the client check, so a known host behind any client counts as clean
+expect: clean_route('other:Azure') returned True
+before: GREEN (Codex review)
+--- a/src/tradingresearch/records.py
++++ b/src/tradingresearch/records.py
+@@ -32,7 +32,7 @@
+     """True only for one known provider: the teacher terms filter and the training set need who served every turn."""
+     prefix, _, rest = route.partition(":")
+     host = rest.split("/")[0].lower()
+-    return prefix == "openrouter" and host not in ("", "unknown") and not host.startswith("mixed(")
++    return bool(prefix) and host not in ("", "unknown") and not host.startswith("mixed(")
+ 
+ 
+ def _trainable_route(terms_class: str, route: str) -> None:

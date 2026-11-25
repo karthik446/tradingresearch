@@ -1,4 +1,4 @@
-"""Challenger rule changes (SPIKE §8.2-8.3): a RuleChange's `diff_ref` names a code-reviewed entry of
+"""Challenger rule changes (week 4 section 6): a RuleChange's `diff_ref` names a code-reviewed entry of
 `CHALLENGER_RULES`, either a pure post-filter on the written theses or a prompt variant in prompts/. The challenger arm
 answers the champion's analysis under that rule from the first session that opens after the Prereg was registered.
 

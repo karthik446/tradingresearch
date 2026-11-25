@@ -1,0 +1,23 @@
+why: caps every arm's budget at $1 whatever max_usd_per_arm says, so a run planned above $1 stops before its first call under a larger cap
+expect: at 20 times the recorded price
+before: GREEN (Codex review)
+--- a/src/tradingresearch/experiment.py
++++ b/src/tradingresearch/experiment.py
+@@ -123,7 +123,7 @@
+         routed = provider.routed(arm.provider) if arm.provider else provider
+         # TODO(w4l3.2) a `mode = "tools"` arm runs through `run_tools`; a fixed arm stays on core `run`.
+         run = run_eval(dataset, routed, registry(list(config.graders)), settings=an.call_settings(arm.model),
+-                       budget=CallBudget(max_usd=config.max_usd_per_arm, prices=prices),
++                       budget=CallBudget(max_usd=min(config.max_usd_per_arm, 1.0), prices=prices),
+                        system=an.system_prompt(arm.prompt), trace_dir=data_dir / "traces",
+                        tag=f"{config.name}:{arm.name}:{arm.prompt}")
+         path = an.save(run, data_dir)
+@@ -147,7 +147,7 @@
+     Same contract as core `run`: the budget is planned on every item's first request before any call and every call
+     is reserved; one trace file per run; code graders score each succeeded sample; `CannotGrade` leaves no score."""
+     from .tools import TOOLS
+-    budget = CallBudget(max_usd=config.max_usd_per_arm, prices=prices)
++    budget = CallBudget(max_usd=min(config.max_usd_per_arm, 1.0), prices=prices)
+     system = Turn(role="system", content=an.system_prompt(arm.prompt))
+     settings = an.call_settings(arm.model)
+     budget.plan([ModelRequest(settings=settings, tools=TOOLS,

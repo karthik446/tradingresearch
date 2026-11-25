@@ -1,6 +1,7 @@
 """w4l3.2 the tools arm in the experiment: run_arms runs a mode = tools arm through run_tools on the arm's provider
-(its pin too), refuses a grader that is not code beside it before any call, stores each parsed item, and stores the
-route of the exchange's first user turn.
+(its pin too), refuses a grader that is not code beside it before any call, saves every sample in the arm's run file,
+stores each parsed item with every claim that passes the checks, and stores the route of the exchange's first user
+turn.
 
 Two items, FAKEA and FAKEB (fakea.other: the same context under another ticker). The replies are the recording or
 edits of it (tools/fakea.py `answer`): `turn1` asks for a tool, `turn2` is the final JSON. A config with two arms
@@ -17,6 +18,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools"))
 import fakea  # noqa: E402
+from gigai_core import open_run  # noqa: E402
 from gigai_core.graders.protocol import CannotGrade  # noqa: E402
 
 from tradingresearch import analyze as an  # noqa: E402
@@ -83,6 +85,35 @@ def test_a_tools_arm_runs_the_loop_and_stores_each_parsed_item(tmp_path):
     assert graded == [("parsed", 1.0), ("parsed", 1.0)], (
         f"the tools arm's scores (grader, value): {graded}; the config's graders, parsed here, score each "
         f"succeeded sample of a tools arm as they do a fixed arm's")
+
+
+def test_the_run_file_holds_every_sample_the_run_made(tmp_path):
+    result, _, _ = run_arms(tmp_path, ("tools",), ("turn1", "turn2", "failed"), cycle=True)
+    [arm] = finished(result, "one tools arm, FAKEB's first call failing")
+    want = [(s.item_id, s.outcome, len(s.model_spans)) for s in arm.run.samples]
+    try:
+        got = [(s.item_id, s.outcome, len(s.model_spans)) for s in open_run(arm.path).samples]
+    except Exception as exc:  # noqa: BLE001 - reported here
+        got = f"a file that does not read back ({type(exc).__name__}: {exc})"
+    assert got == want, (
+        f"the saved run file holds (item, outcome, model calls) {got}; the run made {want}. The run file is the "
+        f"arm's record: every sample the run made is saved in it, a failed one too, so it can be read back later")
+
+
+def test_each_analysis_stores_every_accepted_claim_of_its_sample(tmp_path):
+    result, _, stored = run_arms(tmp_path, ("tools",), ("turn1", "turn2"), cycle=True)
+    [arm] = finished(result, "one tools arm")
+    ctxs = {ctx.ticker: ctx for ctx in (fakea.context(), fakea.other())}
+    samples = {s.trace_id: s for s in arm.run.samples}
+    for a in stored:
+        sample = samples[a.sample_trace_id]
+        accepted = an.validate_claims(sample.output_parsed, ctxs[a.ticker].values(), a.analysis_id)[0]
+        want = [(c.text, c.value, c.unit, c.source_ids) for c in accepted]
+        got = [(c.text, c.value, c.unit, c.source_ids) for c in a.claims]
+        assert got == want, (
+            f"{a.ticker}'s stored analysis holds {len(got)} claims; of the {len(sample.output_parsed['claims'])} "
+            f"claims in its sample's reply, {len(want)} pass the claim checks. run_arms stores each parsed sample as "
+            f"it came back, and storing keeps every claim that passes the checks, not a selection of them")
 
 
 def test_a_fixed_and_a_tools_arm_run_side_by_side(tmp_path):

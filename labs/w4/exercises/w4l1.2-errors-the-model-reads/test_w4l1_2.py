@@ -9,6 +9,7 @@ tool and, for arguments that are not an object, says so in words, never in Pytho
 
 import json
 import sys
+from collections import Counter
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools"))
@@ -79,10 +80,30 @@ def test_every_bad_call_is_an_error_for_every_tool():
 
 
 def test_no_arguments_returns_every_row_of_the_tool():
-    for name in THREE:
-        for arguments in ("", "{}"):
+    every = Counter(row.name for row in fakea.context().rows)
+    for arguments in ("", "{}"):
+        names: list[str] = []
+        for name in THREE:
             got = call(name, arguments)
             assert isinstance(got, dict), got
             assert isinstance(got.get("rows"), list) and got["rows"], (
                 f"run_tool({name!r}, {arguments!r}) returned {json.dumps(got)[:200]}: a call with no arguments asks "
                 f"for every row of the tool (some providers send an empty text for it)")
+            names += [str(row.get("name")) if isinstance(row, dict) else repr(row) for row in got["rows"]]
+        lost, twice = list((every - Counter(names)).elements()), list((Counter(names) - every).elements())
+        assert not lost and not twice, (
+            f"with the arguments {arguments!r} the three tools return {len(names)} rows between them; the FAKEA "
+            f"context has {sum(every.values())}" + (f", and none of them returns {', '.join(lost[:5])}" if lost else "")
+            + (f"; {', '.join(sorted(set(twice))[:5])} come back more than once" if twice else "")
+            + ": each handler picks its share of the context, and a call with no arguments answers all of it, each row "
+            "once. A row left out is a number the model can never cite")
+
+
+def test_a_good_call_with_arguments_returns_rows():
+    for name, arguments in (("get_indicators", '{"names": ["close"]}'), ("get_fundamentals", '{"metrics": ["revenue"]}')):
+        got = call(name, arguments)
+        assert isinstance(got, dict), got
+        assert isinstance(got.get("rows"), list) and got["rows"], (
+            f"run_tool({name!r}, {arguments!r}) returned {json.dumps(got)[:200]}: the schema allows that call and the "
+            f"handler serves it, so it is answered with rows. A check that refuses every argument turns each good "
+            f"question into an error the model cannot fix")

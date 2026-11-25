@@ -2,11 +2,11 @@ id = "w4l3.3"
 title = "Grade the tool calls"
 effect = "Observe's grader table goes from 1.0 on every sample to 0.0 with the first fault: the recorded get_sources call becomes tool_error, a repeat becomes repeated_call, 7 calls become too_many_calls; a clean round and a loop with no calls stay 1.0."
 goal = "Write ToolCallsOk.grade and its cap: 0.0 with the first fault in call order (tool_error, repeated_call with arguments compared as JSON, too_many_calls past 2 x len(TOOLS)), else 1.0, and 1.0 when there are no tool calls."
-what_tested = "tool_calls_ok on loop samples over FAKEA (the recorded get_sources call, a round of three tools, no calls) and on hand-built spans: error objects parsed or as JSON text, raised calls, results that are not errors, repeats by spacing and key order, non-repeats, arguments that are not JSON, 6 vs 7 calls, the first fault in call order, one instance across samples."
+what_tested = "tool_calls_ok on loop samples over FAKEA (the get_sources call, three tools, no calls) and hand-built spans: error objects parsed or as JSON text, whatever the error value; raised calls; non-error results; repeats by spacing and key order; list order not a repeat; non-JSON arguments; 6 vs 7 calls; the first fault in call order, a repeat past the cap; one instance across samples."
 writes = [
   "Set max_calls from the shipped tools: every tool once plus one follow-up each.",
   "In grade: no tool calls is 1.0; walk the calls in order and return 0.0 at the first that raised or whose result is an error object (tool_error) or repeats an earlier call (repeated_call).",
-  "Compare arguments as JSON (key order and spacing ignored); after the walk, more calls than max_calls is too_many_calls.",
+  "Compare arguments as JSON (key order and spacing ignored, the order inside a list kept); after the walk, more calls than max_calls is too_many_calls.",
 ]
 show_tests = ["test_the_first_fault_in_call_order_is_the_one_reported", "test_the_cap_passes_at_max_calls_and_fails_one_over"]
 lab = "w4l3"

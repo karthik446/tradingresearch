@@ -1,0 +1,14 @@
+why: names enumerates only the row names the examples use, so every other indicator row is out of reach
+expect: get_indicators's schema refuses {"names": ["sma_50"]}
+before: GREEN (Codex review)
+--- a/src/tradingresearch/tools.py
++++ b/src/tradingresearch/tools.py
+@@ -27,7 +27,7 @@
+             "type": "object",
+             "properties": {
+                 "names": {
+-                    "type": "array", "minItems": 1, "items": {"type": "string"},
++                    "type": "array", "minItems": 1, "items": {"type": "string", "enum": ["close", "rsi_14", "regime_spy"]},
+                     "description": "Only these row names, e.g. [\"close\", \"rsi_14\"]. Omit for every row.",
+                 },
+             },

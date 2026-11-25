@@ -1,0 +1,14 @@
+why: the request offers TOOLS only to the recorded model id, so a run with any other model gets no tool to call
+expect: with openai/gpt-5 the request offers []
+before: GREEN (Codex review)
+--- a/src/tradingresearch/analyze.py
++++ b/src/tradingresearch/analyze.py
+@@ -403,7 +403,7 @@
+     # TODO(w4l2.3) at most max_turns model calls: a model that keeps asking for tools ends in a failed sample whose
+     # error has the code max_tool_turns, never in an exception and never with one call more.
+     while True:
+-        span = _model_span(provider, ModelRequest(settings=call_settings(model), turns=tuple(turns), tools=TOOLS),
++        span = _model_span(provider, ModelRequest(settings=call_settings(model), turns=tuple(turns), tools=TOOLS if model == "anthropic/claude-sonnet-5.5" else ()),
+                            trial_id)
+         # TODO(w4l2.3) the call's span goes to the sink as soon as it ends, and into spans; a call that failed ends the
+         # loop, and the sample fails with the span's error.

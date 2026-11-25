@@ -1,0 +1,14 @@
+why: treats an error key whose value is empty or false as no error, so {"error": ""} is graded clean
+expect: what the key holds, '' here
+before: GREEN (Codex review)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -152,7 +152,7 @@
+             result = json.loads(result)
+         except json.JSONDecodeError:
+             return False
+-    return isinstance(result, dict) and "error" in result
++    return isinstance(result, dict) and bool(result.get("error"))
+ 
+ 
+ def _canonical(arguments: str) -> str:

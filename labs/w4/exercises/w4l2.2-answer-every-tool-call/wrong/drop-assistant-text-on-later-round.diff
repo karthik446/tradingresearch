@@ -1,0 +1,14 @@
+why: the assistant turn keeps the reply's text on the first round only, so what the model said on a later round is lost
+expect: the second reply says 'Need another row to check the trend.' beside its tool call
+before: GREEN (Codex review)
+--- a/src/tradingresearch/analyze.py
++++ b/src/tradingresearch/analyze.py
+@@ -410,7 +410,7 @@
+         text = span.text
+         if not span.tool_calls:
+             break
+-        turns.append(Turn(role="assistant", content=span.text, tool_calls=span.tool_calls))
++        turns.append(Turn(role="assistant", content=span.text if len(turns) == 2 else "", tool_calls=span.tool_calls))
+         for call in span.tool_calls:
+             tool_span, content = _tool_span(ctx, call, trial_id)
+             sink.write(tool_span)

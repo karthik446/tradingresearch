@@ -1,5 +1,22 @@
 --- a/src/tradingresearch/openrouter.py
 +++ b/src/tradingresearch/openrouter.py
+@@ -1,6 +1,6 @@
+ """OpenRouter as a gigai-core ModelProvider (gigai-core ships no OpenRouter adapter), plus prices and key spend.
+ 
+-A `Routing` pins which hosts may serve a call (the teacher arm's DeepInfra pin, week 2 section 5, P12); without one the
++A `Routing` pins which hosts may serve a call (the teacher arm's DeepInfra pin, SPIKE §9.4, P12); without one the
+ request is the plain Claude-route request. Every request runs under the shared retry policy (`retry.py`). Tools travel
+ as gigai-core's own `ToolSpec` / `ToolCall` types (week 4 plumbing: no tool loop here). The served route is logged per
+ exchange (its first user turn), so a tool loop's route covers every turn: it is provenance (runbook, "Provenance")."""
+@@ -38,7 +38,7 @@
+ 
+ 
+ class RouteMismatch(ProviderError):
+-    """The reply came from a host or tier the routing does not allow: never reroute silently (week 2 section 5)."""
++    """The reply came from a host or tier the routing does not allow: never reroute silently (SPIKE §9.4)."""
+ 
+     code = "route_mismatch"
+ 
 @@ -123,9 +123,7 @@
  
  def exchange_key(request: ModelRequest) -> str:

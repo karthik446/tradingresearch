@@ -2,7 +2,7 @@
 
 ## Hint 1
 
-`sample.tool_spans` is the calls in the order they were made; each span has `call.name`, `call.arguments` (JSON text), `result` and `error`. The grader returns as soon as it meets a fault, so the fault reported is the earliest one in that order. A count of calls is only known after the walk, so the cap is checked last. A result is a tool error only when it is itself an object with an `"error"` key, whether the span holds it parsed or as the JSON text the model was sent.
+`sample.tool_spans` is the calls in the order they were made; each span has `call.name`, `call.arguments` (JSON text), `result` and `error`. The grader returns as soon as it meets a fault, so the fault reported is the earliest one in that order. The cap is checked last because the page puts it last among the faults: a loop with an erring or a repeated call reports that call, even when the loop also went past `max_calls`, and only a loop with neither is judged on its count. A result is a tool error only when it is itself an object with an `"error"` key, whatever the key holds, whether the span holds it parsed or as the JSON text the model was sent.
 
 ## Hint 2
 

@@ -1,0 +1,14 @@
+why: stops looking for repeats once six distinct calls are seen, so a repeat past the cap is reported as too_many_calls
+expect: the seventh call repeats the first
+before: GREEN (Codex review)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -137,7 +137,7 @@
+             if span.error is not None or _is_error(span.result):
+                 return Score(value=0.0, explanation=f"tool_error: {name} {span.call.arguments}")
+             key = (name, _canonical(span.call.arguments))
+-            if key in seen:
++            if key in seen and len(seen) < self.max_calls:
+                 return Score(value=0.0, explanation=f"repeated_call: {name} {span.call.arguments}")
+             seen.add(key)
+         if len(spans) > self.max_calls:

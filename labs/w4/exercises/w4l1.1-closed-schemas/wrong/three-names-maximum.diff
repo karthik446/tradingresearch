@@ -1,0 +1,14 @@
+why: names allows at most three items, the most any example asks for, so a fourth name can never be asked for
+expect: get_indicators's schema refuses {"names": ["close", "rsi_14", "sma_50", "atr_14"]}
+before: GREEN (Codex review)
+--- a/src/tradingresearch/tools.py
++++ b/src/tradingresearch/tools.py
+@@ -27,7 +27,7 @@
+             "type": "object",
+             "properties": {
+                 "names": {
+-                    "type": "array", "minItems": 1, "items": {"type": "string"},
++                    "type": "array", "minItems": 1, "maxItems": 3, "items": {"type": "string"},
+                     "description": "Only these row names, e.g. [\"close\", \"rsi_14\"]. Omit for every row.",
+                 },
+             },

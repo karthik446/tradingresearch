@@ -1,0 +1,14 @@
+why: run_tool refuses every argument, even one the schema allows, so no call with a filter is ever answered
+expect: run_tool('get_indicators', '{"names": ["close"]}') returned {"error"
+before: GREEN (Codex review)
+--- a/src/tradingresearch/tools.py
++++ b/src/tradingresearch/tools.py
+@@ -101,6 +101,8 @@
+     for key, value in args.items():
+         if not isinstance(value, list) or not value or not all(isinstance(v, str) for v in value):
+             raise ToolError(f"{spec.name}: {key} must be a non-empty list of strings, got {json.dumps(value)}")
++    if args:
++        raise ToolError(f"{spec.name}: arguments must be an object with no fields")
+     return args
+ 
+ 

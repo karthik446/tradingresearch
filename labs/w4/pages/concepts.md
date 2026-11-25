@@ -74,7 +74,7 @@ Every stored analysis carries `provider_route`, the [provider route](#provider-r
 
 ### First fault
 
-The grader walks the calls in the order they were made and stops at the first fault: `tool_error` when a call raised or its result is an `{"error": ...}` object, `repeated_call` when a tool is called again with the same arguments (compared as parsed JSON, so key order and spacing do not hide a repeat). `too_many_calls` comes after the walk, since only then is the count known: more than `max_calls = 2 × len(TOOLS) = 6`, every tool once plus one follow-up each. Reporting one fault, the first, tells you where the loop went wrong; later faults usually follow from it. Read [§3 The loop, its cap and the budget](https://scout.edgelab.one/learn/ai-engineering/week-4/#3-the-loop-its-cap-and-the-budget-2-h-0).
+The grader walks the calls in the order they were made and stops at the first fault: `tool_error` when a call raised or its result is an object with an `"error"` key, whatever the key holds, `repeated_call` when a tool is called again with the same arguments (compared as parsed JSON, so key order and spacing do not hide a repeat; the order inside a list still counts). `too_many_calls`, more than `max_calls = 2 × len(TOOLS) = 6` calls (every tool once plus one follow-up each), ranks last: a loop with an erring or a repeated call reports that call, even when it also goes past the cap. Reporting one fault, the first, tells you where the loop went wrong; later faults usually follow from it. Read [§3 The loop, its cap and the budget](https://scout.edgelab.one/learn/ai-engineering/week-4/#3-the-loop-its-cap-and-the-budget-2-h-0).
 
 ### Provider route
 

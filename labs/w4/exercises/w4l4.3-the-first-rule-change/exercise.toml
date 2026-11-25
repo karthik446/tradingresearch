@@ -1,12 +1,12 @@
 id = "w4l4.3"
 title = "The first rule change, pre-registered"
 effect = "Observe's six short-horizon theses go from all kept to the two against the sma_50 trend and the one with no dist_sma_50_atr refused, and the learn status goes from no rule change registered to rc_1 pending on the short horizon, active from 2026-11-17."
-goal = "Write the short-sma50-trend filter, register it in CHALLENGER_RULES, and pre-register rule-change-1 by the section 8.2 Prereg on the short horizon, before the first session it covers."
-what_tested = "Through the registry entry: short-horizon longs below and shorts above the sma_50 refused at two distances, the reverse kept, 0 kept, a missing value refused, day and swing never refused, the store's rule_filter; a described Filter on the champion prompt; the toml names it, rc_1 pending, the 8.2 Prereg on short, registered between the 11-16 and 11-17 opens and before a challenger thesis."
+goal = "Write the short-sma50-trend filter, register it in CHALLENGER_RULES, and pre-register rule-change-1 by the chapter's Prereg (week 4 section 6) on the short horizon, before the first session it covers."
+what_tested = "Via the registry entry: short-horizon longs below and shorts above the sma_50 refused at two distances and at 0.01, the reverse and 0 kept, a missing value refused, day and swing never refused, the store's rule_filter; a described Filter on the champion prompt; the toml names it, rc_1 pending, the chapter's Prereg on short, registered between the 11-16 and 11-17 opens, before a challenger thesis."
 writes = [
   "In the filter: leave other horizons alone, refuse a short-horizon thesis with no dist_sma_50_atr, and refuse one whose direction fights the sign of the distance; otherwise keep it.",
   "Add the filter to the registry under the key the chapter names, with the change's own description.",
-  "In experiments/rule-change-1.toml: name that key and fill the Prereg with the section 8.2 unit on the short horizon.",
+  "In experiments/rule-change-1.toml: name that key and fill the Prereg with the chapter's unit on the short horizon.",
   "Register it after the 2026-11-16 open and before the 2026-11-17 open, as an aware time.",
 ]
 show_tests = ["test_a_short_horizon_long_below_the_sma50_is_refused_and_one_above_it_is_kept", "test_it_registers_after_the_last_open_and_before_the_first_session_it_covers"]

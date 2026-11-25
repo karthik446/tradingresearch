@@ -1,0 +1,14 @@
+why: the turn cuts the ticker to five letters, the length of FAKEA, so a longer ticker is asked about under a name that is not its own
+expect: for FAKELONG on
+before: GREEN (Codex review)
+--- a/src/tradingresearch/analyze.py
++++ b/src/tradingresearch/analyze.py
+@@ -375,7 +375,7 @@
+ def tools_prompt(ctx: Context) -> str:
+     """The tools-mode user turn: the ticker and session only, so every number the model cites came through a tool."""
+     return "\n".join([
+-        f"TICKER: {ctx.ticker}", f"SESSION: {ctx.session.isoformat()} (the last completed NYSE session)", "",
++        f"TICKER: {ctx.ticker[:5]}", f"SESSION: {ctx.session.isoformat()} (the last completed NYSE session)", "",
+         "The SOURCES table is not included. Ask for the rows you need with the tools; every row they return "
+         "carries the source_id to cite.", "",
+         "Write the claims as JSON with the key \"claims\".",

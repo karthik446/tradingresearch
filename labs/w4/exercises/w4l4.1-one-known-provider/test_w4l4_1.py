@@ -28,10 +28,12 @@ DIRTY = {
     "openrouter:unknown": "the reply did not say who served it",
     "openrouter:Unknown": "unknown in another case is still unknown",
     "openrouter:mixed(Azure+Google)": "two providers served one exchange",
+    "openrouter:mixed(Azure)": "mixed(...) is the log of a mixed exchange, whatever names it holds; it is not a host",
     "openrouter:unknown/flex": "an unknown host at a tier is still an unknown host",
     "openrouter:UNKNOWN/flex": "an unknown host at a tier, upper case",
     "openrouter:": "an empty host names nobody",
     "openrouter": "the client alone names nobody",
+    "other:Azure": "a known host behind another client: clean means one known provider behind the openrouter client",
     "unknown": "no client and no host",
     "": "an empty route",
 }
@@ -62,8 +64,9 @@ def build(kind: str, **fields):
 
 
 @pytest.mark.parametrize("kind", BUILD)
-@pytest.mark.parametrize("route", ["openrouter:unknown", "openrouter:mixed(Azure+Google)", "openrouter:Unknown",
-                                   "openrouter:", "openrouter", "unknown", ""])
+@pytest.mark.parametrize("route", ["openrouter:unknown", "openrouter:mixed(Azure+Google)", "openrouter:mixed(Azure)",
+                                   "openrouter:Unknown", "openrouter:unknown/flex", "openrouter:", "openrouter",
+                                   "unknown", ""])
 def test_a_trainable_record_with_a_route_that_is_not_clean_is_refused(kind, route):
     record, text = build(kind, terms_class="trainable", provider_route=route)
     assert record is None, (

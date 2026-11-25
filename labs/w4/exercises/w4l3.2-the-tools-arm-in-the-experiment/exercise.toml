@@ -2,7 +2,7 @@ id = "w4l3.2"
 title = "Wire the tools arm into the experiment"
 effect = "Observe's tools arm goes from NotImplementedError to a run of 4 calls with FAKEA and FAKEB stored under openrouter:Azure, the host that answered each tools prompt, and a config with the model grader p1_judge beside it goes from NotImplementedError to refused before any request."
 goal = "Run a mode = tools arm through run_tools inside run_arms: a grader that is not code beside a tools arm is refused before any call, each parsed item is stored, and its route is the route of the exchange's first user turn, the tools prompt."
-what_tested = "run_arms over FAKEA and FAKEB: a tools arm runs the loop and stores both items; a fixed and a tools arm side by side; each stored route is the host that answered that item's tools prompt; a pinned tools arm's pin on every call; a model or human grader beside a tools arm, first or second arm, refused with no request sent; a model grader on a fixed-only config runs; a model that never stops."
+what_tested = "run_arms over FAKEA and FAKEB: a tools arm runs the loop and stores both items, every sample in the run file, every accepted claim; fixed and tools arms together; each stored route is the host that answered that item's tools prompt; a pinned arm's pin on every call; a model or human grader beside a tools arm refused, no request sent; a model grader on fixed arms runs; a model that never stops."
 writes = [
   "In run_arms: before any arm runs, refuse a config whose graders include one that is not code when any arm is in tools mode (SystemExit).",
   "Run a tools arm through run_tools on the arm's own provider, its pin included, with the same graders; a fixed arm stays on core run.",

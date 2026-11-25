@@ -7,6 +7,7 @@ labs/w4/data/turn2.request.json. The other replies are edits of the recorded fir
 `one_more` asks get_indicators again (toolu_lab_4). Every reply ends with the recorded final JSON, turn2.reply.json.
 """
 
+import dataclasses
 import json
 import sys
 from pathlib import Path
@@ -22,7 +23,8 @@ RECORDED = fakea.load("turn2.request")
 FINAL = json.loads(fakea.load("turn2.reply")["choices"][0]["message"]["content"])
 
 
-def replayed(replies: tuple[str, ...], capture: bool = False, trace=None, ctx=None) -> tuple[list[dict], object]:
+def replayed(replies: tuple[str, ...], capture: bool = False, trace=None, ctx=None,
+             edit=None) -> tuple[list[dict], object]:
     sent: list[dict] = []
     try:
         if capture:
@@ -30,7 +32,7 @@ def replayed(replies: tuple[str, ...], capture: bool = False, trace=None, ctx=No
                 answered = [tools.run_tool(CTX, c["function"]["name"], c["function"]["arguments"])
                             for c in RECORDED["messages"][2]["tool_calls"]]
                 return sent, (fakea.run(fakea.replaying(sent, replies), trace=trace), answered)
-        return sent, fakea.run(fakea.replaying(sent, replies), trace=trace, ctx=ctx)
+        return sent, fakea.run(fakea.replaying(sent, replies, edit=edit), trace=trace, ctx=ctx)
     except Exception as exc:  # noqa: BLE001 - reported here
         raise AssertionError(f"analyze_with_tools raised {exc!r} with the replies {replies}") from None
 
@@ -116,3 +118,55 @@ def test_the_loop_calls_again_until_a_reply_asks_for_no_tool():
     assert len(sent[2]["messages"]) == 8, f"the third request has {len(sent[2]['messages'])} turns: 2 + (1 + 3) + (1 + 1)"
     assert (sample.outcome, sample.parse_status, sample.output_parsed) == ("succeeded", "ok", FINAL), (
         f"the sample ends {sample.outcome}, {sample.parse_status}: the last reply is the recorded final JSON")
+
+
+def test_a_fourth_call_gets_one_tool_turn_and_one_span():
+    def fourth(n: int, body: dict) -> dict:
+        if n == 0:
+            calls = body["choices"][0]["message"]["tool_calls"]
+            calls.append({**calls[0], "index": 3, "id": "toolu_lab_extra"})
+        return body
+
+    sent, sample = replayed(("three_calls", "turn2"), edit=fourth)
+    ids = [i for i, _, _ in fakea.THREE_CALLS] + ["toolu_lab_extra"]
+    got = [m.get("tool_call_id") for body in sent[1:2] for m in body["messages"] if m["role"] == "tool"]
+    kept = [s.call.id for s in sample.tool_spans]
+    assert got == ids and kept == ids, (
+        f"the first reply asks for four tools ({', '.join(ids)}); the second request's tool turns answer {got} and "
+        f"the sample keeps spans for {kept}: one tool turn and one span per call, each once, however many calls the "
+        f"reply holds")
+
+
+def test_a_long_tool_result_goes_back_whole():
+    close = next(r for r in CTX.rows if r.name == "close")
+    extra = tuple(dataclasses.replace(close, name=f"extra_{i}", source_id=f"long_{i}") for i in range(100))
+    ctx = dataclasses.replace(CTX, rows=(*CTX.rows, *extra))
+
+    def every_row(n: int, body: dict) -> dict:
+        if n == 0:
+            body["choices"][0]["message"]["tool_calls"][0]["function"]["arguments"] = "{}"
+        return body
+
+    sent, _ = replayed(("one_more", "turn2"), ctx=ctx, edit=every_row)
+    got = [m["content"] for body in sent[1:2] for m in body["messages"] if m["role"] == "tool"]
+    want = tools.run_tool(ctx, "get_indicators", "{}")
+    assert got == [want], (
+        f"on a context with 100 more indicator rows, get_indicators with no arguments answers {len(want)} characters; "
+        f"the tool turn holds {[len(c) for c in got]}: the model reads only what the tool turn holds, so a result cut "
+        f"short hides rows it asked for")
+
+
+def test_a_later_reply_goes_back_with_its_text():
+    said = "Need another row to check the trend."
+
+    def with_text(n: int, body: dict) -> dict:
+        if n == 1:
+            body["choices"][0]["message"]["content"] = said
+        return body
+
+    sent, _ = replayed(("three_calls", "one_more", "turn2"), edit=with_text)
+    turns = [m.get("content") for body in sent[2:3] for m in body["messages"] if m["role"] == "assistant"]
+    assert turns[-1:] == [said], (
+        f"the second reply says {said!r} beside its tool call; the third request's assistant turns hold {turns}: "
+        f"every reply goes back as it came, its text too, on every round, so the model reads what it said before it "
+        f"asked")

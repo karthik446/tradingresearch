@@ -1,0 +1,14 @@
+why: sorts list values before comparing arguments, so the same names asked in another order count as a repeat
+expect: the order of a list is not
+before: GREEN (Codex review)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -158,7 +158,7 @@
+ def _canonical(arguments: str) -> str:
+     """Arguments with key order and spacing normalised, so the same request written twice counts as a repeat."""
+     try:
+-        return json.dumps(json.loads(arguments), sort_keys=True)
++        return json.dumps({k: sorted(v) if isinstance(v, list) else v for k, v in json.loads(arguments).items()}, sort_keys=True)
+     except json.JSONDecodeError:
+         return arguments
+ 

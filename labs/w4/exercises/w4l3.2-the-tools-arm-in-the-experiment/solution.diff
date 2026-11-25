@@ -1,5 +1,14 @@
 --- a/src/tradingresearch/experiment.py
 +++ b/src/tradingresearch/experiment.py
+@@ -2,7 +2,7 @@
+ 
+ A config is a TOML file (see experiments/). Every arm asks the same gigai-core Dataset, so `compare` pairs the
+ answers item by item; an arm differs from the baseline only in what the config names (prompt version, model, an
+-OpenRouter `provider` routing table such as a teacher's DeepInfra pin, week 2 section 5, and `mode`: `fixed` context or
++OpenRouter `provider` routing table such as a teacher's DeepInfra pin, SPIKE §9.4, and `mode`: `fixed` context or
+ `tools`, REPO-PLAN §2.4). `cluster` names the unit the intervals resample: `ticker` (week 1, the default) or `session`
+ (the live stream), REPO-PLAN D5.
+ """
 @@ -112,29 +112,31 @@
  def run_arms(conn, config: Config, contexts: list[an.Context], provider, prices: dict, data_dir: Path
               ) -> list[ArmResult]:

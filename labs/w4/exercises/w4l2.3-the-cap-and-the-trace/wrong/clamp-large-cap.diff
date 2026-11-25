@@ -1,0 +1,14 @@
+why: the loop clamps the cap to the default of 5, so a caller who allows more calls gets fewer
+expect: with max_turns=6 the loop made 5 calls
+before: GREEN (Codex review)
+--- a/src/tradingresearch/analyze.py
++++ b/src/tradingresearch/analyze.py
+@@ -400,7 +400,7 @@
+     turns = list(first)
+     spans: list[ModelSpan | ToolSpan] = []
+     text, error = "", None
+-    for _ in range(max_turns):
++    for _ in range(min(max_turns, 5)):
+         span = _model_span(provider, ModelRequest(settings=call_settings(model), turns=tuple(turns), tools=TOOLS),
+                            trial_id)
+         sink.write(span)

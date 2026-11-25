@@ -1,6 +1,7 @@
-"""w4l3.1 the tools arm is a Run: run_tools plans the budget on every item's first request before any call, reserves
-every call, grades every succeeded sample, parsed or not (CannotGrade leaves no score, any other error stops the run),
-and counts spend and calls from the model calls of every sample, a failed one's too.
+"""w4l3.1 the tools arm is a Run: run_tools plans the budget, capped at the arm's own max_usd_per_arm whatever its
+size, on every item's first request before any call, reserves every call, grades every succeeded sample, parsed or
+not (CannotGrade leaves no score, any other error stops the run), and counts spend and calls from the model calls of
+every sample, a failed one's too.
 
 The items are FAKEA and copies of it under other tickers (fakea.other), so each has its own tools prompt. The replies
 are the recording or edits of it (tools/fakea.py `answer`): `turn1` asks for get_sources (not one of TOOLS, so the loop
@@ -32,9 +33,9 @@ def contexts(n: int) -> list:
     return [fakea.context(), fakea.other(fakea.context(extra=True)), fakea.other(ticker="FAKEC")][:n]
 
 
-def run_tools(tmp_path, replies, n=2, max_usd=1.0, graders=(), edit=None, cycle=False, raises=False):
+def run_tools(tmp_path, replies, n=2, max_usd=1.0, graders=(), edit=None, cycle=False, raises=False, prices=None):
     """run_tools over the first n contexts: (run or the exception it raised, request bodies sent, trace lines).
-    With `raises`, an exception other than BudgetExceeded propagates."""
+    With `raises`, an exception other than BudgetExceeded propagates. `prices` replaces the recorded price."""
     sent: list[dict] = []
     provider = fakea.replaying(sent, replies, cycle=cycle, edit=edit)
     ctxs = contexts(n)
@@ -43,8 +44,8 @@ def run_tools(tmp_path, replies, n=2, max_usd=1.0, graders=(), edit=None, cycle=
     dataset = Dataset.of(config.name, ex.items(config, ctxs))
     by_item = {f"{ctx.ticker}:{ctx.session}": ctx for ctx in ctxs}
     try:
-        result = ex.run_tools(config, config.arms[0], dataset, by_item, provider, list(graders), fakea.prices(),
-                              tmp_path)
+        result = ex.run_tools(config, config.arms[0], dataset, by_item, provider, list(graders),
+                              prices or fakea.prices(), tmp_path)
     except BudgetExceeded as exc:
         result = exc
     except Exception as exc:  # noqa: BLE001 - reported here
@@ -146,6 +147,18 @@ def test_every_call_is_reserved_on_the_one_budget(tmp_path):
     assert len(models) == 3, (
         f"the run stopped after 3 calls but its trace file holds {len(models)} model spans: what ran before the "
         f"refusal stays in the trace")
+
+
+def test_the_budget_is_the_arms_own_cap_whatever_its_size(tmp_path):
+    dear = {model: price.model_copy(update={"prompt_usd_per_token": price.prompt_usd_per_token * 20,
+                                            "completion_usd_per_token": price.completion_usd_per_token * 20})
+            for model, price in fakea.prices().items()}
+    result, sent, _ = run_tools(tmp_path, ("turn2",), max_usd=3.0, prices=dear, cycle=True)
+    assert not isinstance(result, BudgetExceeded) and len(sent) == 2, (
+        f"at 20 times the recorded price the two first requests are planned at ${PLAN_2 * 20:.6f}, under a $3.0 "
+        f"cap, and run_tools sent {len(sent)} requests and "
+        f"{'raised ' + str(result) if isinstance(result, BudgetExceeded) else 'finished'}; expected 2 requests, one "
+        f"answer per item: the budget's cap is the arm's max_usd_per_arm, whatever its size, not a smaller one")
 
 
 def test_a_failed_item_is_never_graded_and_cannot_grade_leaves_no_score(tmp_path):

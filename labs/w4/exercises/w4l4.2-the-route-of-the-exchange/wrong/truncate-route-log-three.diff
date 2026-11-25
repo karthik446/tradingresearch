@@ -1,0 +1,14 @@
+why: builds the route from the first three logged turns only, so a provider that served only a later turn is lost
+expect: = 'openrouter:Azure' after turns served by Azure then Azure then Azure then Google
+before: GREEN (Codex review)
+--- a/src/tradingresearch/openrouter.py
++++ b/src/tradingresearch/openrouter.py
+@@ -155,7 +155,7 @@
+         routes = self.routes.get(prompt)
+         if not routes or not all(clean_route(r) for r in routes):
+             return UNKNOWN
+-        distinct = sorted(set(routes))
++        distinct = sorted(set(routes[:3]))
+         if len(distinct) == 1:
+             return distinct[0]
+         return f"openrouter:mixed({'+'.join(r.removeprefix('openrouter:') for r in distinct)})"

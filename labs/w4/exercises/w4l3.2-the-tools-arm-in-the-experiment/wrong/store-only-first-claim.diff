@@ -1,0 +1,14 @@
+why: stores each sample with only its first claim, so an analysis keeps one of the claims that passed the checks
+expect: stored analysis holds 1 claims
+before: GREEN (Codex review)
+--- a/src/tradingresearch/experiment.py
++++ b/src/tradingresearch/experiment.py
+@@ -135,7 +135,7 @@
+                 ctx = by_item[sample.item_id]
+                 # the route of the exchange's first user turn: the item's prompt, or in tools mode the tools prompt
+                 first_user = an.tools_prompt(ctx) if arm.mode == "tools" else run.items[sample.item_id].prompt
+-                an.store(conn, ctx, sample, run.record.run_id, model=arm.model, prompt_version=arm.prompt,
++                an.store(conn, ctx, sample.model_copy(update={"output_parsed": {"claims": sample.output_parsed["claims"][:1]}}), run.record.run_id, model=arm.model, prompt_version=arm.prompt,
+                          route=routed.route_for(first_user))
+                 stored += 1
+         results.append(ArmResult(arm, run, path, stored))

@@ -35,8 +35,9 @@ route_for for the item prompt: the recording, one provider, a null provider, a n
 call fails, and two arms pinned to azure and google (each request served by its arm's pinned host).
 
 `rule` prints the short-sma50-trend entry's answer for six short-horizon theses and two swing ones, then loads
-experiments/rule-change-1.toml, registers it in a temp journal, and prints the `tr learn --status` lines and the
-change pending_for 2026-11-16 and 2026-11-17.
+experiments/rule-change-1.toml, registers it in a temp journal, and prints the `tr learn --status` lines (the repo's
+internal section label in them given as the published chapter's, week 4 section 6) and the change pending_for
+2026-11-16 and 2026-11-17.
 
 TR_LAB_DATA overrides labs/w4/data. Exits 0 in every mode: it shows what your code does, the exercise's check decides.
 The offline guard (tools/offline.py) is installed before your code is imported; a guarded call it tried is named in a
@@ -47,6 +48,7 @@ from __future__ import annotations
 
 import importlib
 import json
+import re
 import sys
 import tempfile
 from datetime import UTC, date, datetime
@@ -62,6 +64,7 @@ RECORDED_CALL = fakea.load("turn1.reply")["choices"][0]["message"]["tool_calls"]
 ROOT = Path(__file__).resolve().parents[3]  # the repo: tests/factories.py, experiments/
 SESSION = date(2026, 11, 13)  # fakea.experiment's session
 SHORT_PRICES = {"stop": 238.0, "target": 220.0, "invalidation_price": 238.0}  # a valid short around close 230
+SPIKE_LABEL = re.compile(r"SPIKE §8\.\d(?:-8\.\d)?")  # the repo's own label for chapter week 4 section 6
 
 
 def module(name: str) -> object | str:
@@ -436,9 +439,9 @@ def rule_mode() -> None:
                 print("registered in a temp journal")
             except Exception as exc:  # noqa: BLE001 - shown
                 print(f"register refused it: {cut(exc, 140)}")
-        print("tr learn --status on that journal:")
+        print("tr learn --status on that journal (the internal section label shown as the chapter's):")
         for line in learn.status_lines(conn):
-            print(f"  {line}")
+            print(f"  {SPIKE_LABEL.sub('chapter week 4 section 6', line)}")
         found = [rules.pending_for(conn, day) for day in (date(2026, 11, 16), date(2026, 11, 17))]
         print(f"pending_for 2026-11-16, 2026-11-17: {[c and c.change_id for c in found]}")
         conn.close()

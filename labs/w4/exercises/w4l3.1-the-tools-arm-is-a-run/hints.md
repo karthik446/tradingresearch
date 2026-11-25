@@ -2,7 +2,7 @@
 
 ## Hint 1
 
-Core `run` does three things before and around the calls that your loop has to do itself: it asks the budget whether the whole run fits before the first call (`budget.plan(requests)`), it sends every call through the budget so each one is reserved first, and it grades only what succeeded. The requests you plan are the ones the loop will send first: the system turn and that item's tools prompt, with the tools offered. The fixed arm's request, with the whole context in it, is a bigger estimate: $0.083280 for two items where the loop's first requests are $0.081384.
+Core `run` does three things before and around the calls that your loop has to do itself: before the first call it asks the budget whether the whole run fits, checking every item's first request together against the one budget the run then spends from; it sends every call through that budget so each one is reserved first; and it grades only what succeeded. The requests checked up front are the ones the loop will send first: the system turn and that item's tools prompt, with the tools offered. The fixed arm's request, with the whole context in it, is a bigger estimate: $0.083280 for two items where the loop's first requests are $0.081384.
 
 ## Hint 2
 

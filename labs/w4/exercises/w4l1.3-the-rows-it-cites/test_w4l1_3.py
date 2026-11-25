@@ -11,6 +11,7 @@ shows.
 import dataclasses
 import json
 import sys
+from collections import Counter
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools"))
@@ -71,6 +72,20 @@ def test_each_value_is_the_number_the_sources_table_shows():
                 f"never showed, so the two arms are not answering from the same numbers")
 
 
+def test_the_three_tools_return_every_row_once():
+    every = Counter(row.source_id for row in CTX.rows)
+    got = Counter(str(g.get("source_id")) for name in THREE for g in rows_of(name))
+    lost, twice = list((every - got).elements()), sorted((got - every).keys())
+    assert not lost and not twice, (
+        f"with no arguments the three tools return {sum(got.values())} rows between them; the context has "
+        f"{len(CTX.rows)}" + (f", and none of them returns {', '.join(f'{BY_ID[s].name} ({s})' for s in lost[:4])}"
+                              if lost else "")
+        + (f"; {', '.join(f'{BY_ID[s].name if s in BY_ID else s} ({s})' for s in twice[:4])} come back more than once"
+           if twice else "")
+        + ": every row of the context comes from one tool, once. A claim can cite only a row some tool returned, and "
+        "a row that two tools return is one number the model reads as two")
+
+
 def test_a_big_value_is_rounded_as_the_table_rounds_it():
     row = next(r for r in CTX.rows if r.name.startswith("revenue_"))
     ctx = dataclasses.replace(CTX, rows=tuple(dataclasses.replace(r, value=r.value + 0.7) if r is row else r
@@ -85,11 +100,12 @@ def test_a_big_value_is_rounded_as_the_table_rounds_it():
 
 
 def test_names_picks_those_rows_and_an_unknown_name_is_an_error_listing_the_names():
-    picked = [got["name"] for got in rows_of("get_indicators", '{"names": ["close", "rsi_14"]}')]
-    assert sorted(picked) == ["close", "rsi_14"], (
-        f'get_indicators with {{"names": ["close", "rsi_14"]}} returns {len(picked)} rows ({", ".join(picked[:6])}'
-        f'{", ..." if len(picked) > 6 else ""}): the model asked for two rows, and every other one is context it did '
-        f"not ask for")
+    for names in (["close", "rsi_14"], ["close", "rsi_14", "sma_50"]):
+        picked = [got["name"] for got in rows_of("get_indicators", json.dumps({"names": names}))]
+        assert sorted(picked) == sorted(names), (
+            f'get_indicators with {json.dumps({"names": names})} returns {len(picked)} rows ({", ".join(picked[:6])}'
+            f'{", ..." if len(picked) > 6 else ""}): the model asked for those {len(names)} rows, and every other one '
+            f"is context it did not ask for")
     every = [got["name"] for got in rows_of("get_indicators")]
     for names, why in ((["rsi"], "no row is named rsi (the row is rsi_14)"),
                        (["close", "rsi"], "close exists but rsi does not; answering with close alone hides that"),

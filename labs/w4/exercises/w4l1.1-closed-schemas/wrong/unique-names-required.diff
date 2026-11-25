@@ -1,0 +1,14 @@
+why: names requires unique items, a line the handler does not draw: it answers a repeated name
+expect: get_indicators's schema refuses {"names": ["close", "close"]}
+before: GREEN (Codex review)
+--- a/src/tradingresearch/tools.py
++++ b/src/tradingresearch/tools.py
+@@ -27,7 +27,7 @@
+             "type": "object",
+             "properties": {
+                 "names": {
+-                    "type": "array", "minItems": 1, "items": {"type": "string"},
++                    "type": "array", "minItems": 1, "uniqueItems": True, "items": {"type": "string"},
+                     "description": "Only these row names, e.g. [\"close\", \"rsi_14\"]. Omit for every row.",
+                 },
+             },
