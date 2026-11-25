@@ -1,0 +1,24 @@
+diff --git a/src/tradingresearch/experiment.py b/src/tradingresearch/experiment.py
+index 3235112..54972d3 100644
+--- a/src/tradingresearch/experiment.py
++++ b/src/tradingresearch/experiment.py
+@@ -328,6 +328,16 @@ def compare(a: Run, b: Run, graders: Sequence[str]) -> Compared:
+     its counts. With none left, refused as core refuses."""
+     # TODO(w5l3.2) each skipped entry says why and how many items each run scored, `<grader>: <why> (n=A vs B)`;
+     #   the refusal names every skipped grader.
+-    # TODO(w5l3.1) keep the graders both runs scored on at least one common item, in the order asked; skip each other
+-    #   grader with an entry that starts `<grader>:`; with none kept, refuse `no_shared_metric` as core refuses.
+-    raise NotImplementedError
++    kept: list[str] = []
++    skipped: list[str] = []
++    for grader in graders:
++        values_a, values_b = a.values(grader), b.values(grader)
++        if not values_a or not values_b:
++            skipped.append(f"{grader}: not scored in both arms")
++        elif not values_a.keys() & values_b.keys():
++            skipped.append(f"{grader}: no item scored in both arms")
++        else:
++            kept.append(grader)
++    if not kept:
++        raise ComparisonRefused("no_shared_metric", "no grader is scored on a common item in both runs")
++    return Compared(core_compare(a, b, kept), tuple(skipped))

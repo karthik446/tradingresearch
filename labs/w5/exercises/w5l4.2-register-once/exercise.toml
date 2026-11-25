@@ -1,0 +1,19 @@
+id = "w5l4.2"
+title = "Register once"
+effect = "tr split arrives, and split.register stores a training split once: the same cutoff, embargo and Prereg asked for again later return the stored split and write nothing, and its registered_at is New York time."
+goal = "Write split.split_id_for and the store half of split.register: the id is the digest of the split's parameters without registered_at, a stored id is returned as stored, and a new split is stored with registered_at in New York time."
+what_tested = "The ids of two splits, pinned. The same split pre-registered 3 days later keeps its id; another cutoff, embargo or hypothesis changes it. One register writes one row, read back equal, registered_at = now in New York though the Prereg is a day older. Asked again an hour and 3 days later: the stored split, 1 row. Three splits, three rows; the first asked again."
+writes = [
+  "split_id_for: `sp_` + the first 16 hex of digest of cutoff_session (ISO), embargo_sessions and the Prereg as JSON without registered_at.",
+  "register: return find(conn, id) when it holds the id; else journal.add a TrainingSplit with registered_at = now in sessions.NY, and return it.",
+]
+show_tests = ["test_the_same_split_asked_for_later_has_the_same_id_and_any_other_parameter_a_new_one", "test_the_same_split_later_writes_nothing_and_returns_the_stored_one"]
+lab = "w5l4"
+concepts = ["content-addressed-split", "registered-before-the-cutoff"]
+touches = ["src/tradingresearch/split.py"]
+check = "python -m pytest -q -x -p no:cacheprovider -m lab labs/w5/exercises/w5l4.2-register-once/test_w5l4_2.py"
+observe = "python labs/w5/tools/observe_split.py"
+paid = false
+fixtures = []
+origin = "rebuild of week-5-end split.py split_id_for and register; commands/split.py, commands/__init__.py, tests/test_cli.py and the split and tr help fixtures ship whole; reference = the tag's own code"
+red_expect = "NotImplementedError"

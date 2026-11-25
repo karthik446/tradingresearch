@@ -1,0 +1,28 @@
+diff --git a/src/tradingresearch/experiment.py b/src/tradingresearch/experiment.py
+index 54972d3..bd3711a 100644
+--- a/src/tradingresearch/experiment.py
++++ b/src/tradingresearch/experiment.py
+@@ -326,18 +326,18 @@ def compare(a: Run, b: Run, graders: Sequence[str]) -> Compared:
+     that section's grader has no score in it (core: metric_missing), and two arms can grade one section on disjoint
+     items (core: no_paired_items); either refuses the whole comparison, so such a grader is skipped and named with
+     its counts. With none left, refused as core refuses."""
+-    # TODO(w5l3.2) each skipped entry says why and how many items each run scored, `<grader>: <why> (n=A vs B)`;
+-    #   the refusal names every skipped grader.
+     kept: list[str] = []
+     skipped: list[str] = []
+     for grader in graders:
+         values_a, values_b = a.values(grader), b.values(grader)
++        counts = f"n={len(values_a)} vs {len(values_b)}"
+         if not values_a or not values_b:
+-            skipped.append(f"{grader}: not scored in both arms")
++            skipped.append(f"{grader}: not scored in both arms ({counts})")
+         elif not values_a.keys() & values_b.keys():
+-            skipped.append(f"{grader}: no item scored in both arms")
++            skipped.append(f"{grader}: no item scored in both arms ({counts})")
+         else:
+             kept.append(grader)
+     if not kept:
+-        raise ComparisonRefused("no_shared_metric", "no grader is scored on a common item in both runs")
++        raise ComparisonRefused("no_shared_metric", f"no grader is scored on a common item in both runs "
++                                                    f"({'; '.join(skipped) or 'no grader named'})")
+     return Compared(core_compare(a, b, kept), tuple(skipped))

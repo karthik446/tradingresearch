@@ -1,0 +1,29 @@
+why: checks the cutoff before looking the split up
+expect: again at 2026-12-01T15:00:00+00:00 was refused: now
+before: RED (author)
+diff --git a/src/tradingresearch/split.py b/src/tradingresearch/split.py
+index 3204c0f..fd7533c 100644
+--- a/src/tradingresearch/split.py
++++ b/src/tradingresearch/split.py
+@@ -88,10 +88,6 @@ def register(conn: sqlite3.Connection, cutoff_session: date, embargo_sessions: i
+     session and not yet open), for the record and for its Prereg."""
+     if embargo_sessions < MIN_EMBARGO:
+         raise Refused(f"embargo {embargo_sessions} < {MIN_EMBARGO} sessions ({EMBARGO_WHY})")
+-    split_id = split_id_for(cutoff_session, embargo_sessions, prereg)
+-    held = find(conn, split_id)
+-    if held is not None:
+-        return held
+     if not sessions.is_session(cutoff_session):
+         raise Refused(f"cutoff {cutoff_session} is not an NYSE session")
+     last = sessions.last_completed(now)
+@@ -102,6 +98,10 @@ def register(conn: sqlite3.Connection, cutoff_session: date, embargo_sessions: i
+     for what, at in (("now", now), ("prereg registered_at", prereg.registered_at)):
+         if at >= opens:
+             raise Refused(f"{what} {at.isoformat()} is not before the cutoff session opens ({opens.isoformat()})")
++    split_id = split_id_for(cutoff_session, embargo_sessions, prereg)
++    held = find(conn, split_id)
++    if held is not None:
++        return held
+     record = TrainingSplit(split_id=split_id, cutoff_session=cutoff_session, embargo_sessions=embargo_sessions,
+                            prereg=prereg, registered_at=now.astimezone(sessions.NY))
+     journal.add(conn, record)

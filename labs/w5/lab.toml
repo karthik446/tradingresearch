@@ -1,4 +1,4 @@
-# Week 5 labs (part A): the base, titles, pages, the unlock policy and the suite gate `tr lab` uses.
+# Week 5 labs: the base, titles, pages, the unlock policy and the suite gate `tr lab` uses.
 #
 # base: the first `tr lab start` of this week makes the repo's files equal to the author's code at this tag (labs/
 # and the runner's own files excepted) and commits it as `lab: week 5 base (week-5-start)`.
@@ -45,11 +45,34 @@ page = "pages/w5l2.md"
 goal = "Write experiments/context-ablation.toml: three analyze-3 arms on one model that differ only in what they drop, the code graders it is read by, the clusters written out, and the pre-registration above the first key."
 section = [5]
 
+# After w5l3, as after w5l2, only the two in [suite] are red, so w5l3 has no list.
+[labs.w5l3]
+title = "Compare skips a grader"
+page = "pages/w5l3.md"
+goal = "Write experiment.compare: compare two runs on the graders both scored on a common item, skip each other grader with a line that says why and how many items each run scored, and refuse no_shared_metric only when no grader is left."
+section = [5]
+
+# w5l4 adds no case to tests/test_week5.py; tests/test_cli.py and its help fixtures arrive whole with the w5l4.2 stub.
+[labs.w5l4]
+title = "A training split with an embargo"
+page = "pages/w5l4.md"
+goal = "Write the training split: the 22-session embargo floor in records.py, split.register storing one content-addressed split before its cutoff session and refusing an early one, and the embargo window and the sets each journal session falls in."
+section = [8]
+
 # What labs/tools/prove.py checks after the last exercise: these files must equal the tag byte for byte (the runner
-# ignores this table). They are every file these labs write, and each is whole at the end: evals.py (w5l1) and
-# experiments/context-ablation.toml (w5l2). The week-5-end files no lab in part A writes (ADR-007, ADR-008, the
-# compare, split and claim-label code and their tests, docs/measured-costs.md, docs/runbook.md,
-# evals/specs/section_grounding.md, tests/test_section_grounding.py) are not listed.
+# ignores this table). They are every file these labs write, and each is whole at the end: evals.py (w5l1),
+# experiments/context-ablation.toml (w5l2), experiment.py, commands/exp.py and the exp help fixtures (w5l3), and
+# records.py, split.py, commands/split.py, commands/__init__.py, tests/test_cli.py and the split and tr help fixtures
+# (w5l4). The week-5-end files no lab writes are not listed: ADR-007 and ADR-008 (written by hand after the paid
+# run), the claim labels (label.py, commands/label.py, the label help fixtures, tests/test_label_claims.py: section 8's
+# second half, a human task), README.md, docs/measured-costs.md, docs/runbook.md, evals/specs/section_grounding.md
+# and tests/test_section_grounding.py, and the reference tests tests/test_experiment_compare.py and
+# tests/test_split.py, which would show the answers (the pages say how to run them after the lab).
 [end]
 tag = "week-5-end"
-files = ["src/tradingresearch/evals.py", "experiments/context-ablation.toml"]
+files = ["src/tradingresearch/evals.py", "experiments/context-ablation.toml",
+         "src/tradingresearch/experiment.py", "src/tradingresearch/commands/exp.py",
+         "tests/fixtures/help/exp.txt", "tests/fixtures/help/exp_compare.txt",
+         "src/tradingresearch/records.py", "src/tradingresearch/split.py", "src/tradingresearch/commands/split.py",
+         "src/tradingresearch/commands/__init__.py", "tests/test_cli.py", "tests/fixtures/help/split.txt",
+         "tests/fixtures/help/split_register.txt", "tests/fixtures/help/split_show.txt", "tests/fixtures/help/tr.txt"]

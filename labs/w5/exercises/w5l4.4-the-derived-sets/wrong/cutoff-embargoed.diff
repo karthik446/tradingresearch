@@ -1,0 +1,18 @@
+why: the cutoff session goes into the embargo and the test starts the session after it
+expect: embargoed_sessions = (2026-10-29, 2026-10-30, 2026-11-25, 2026-11-27, 2026-11-30, 2026-12-01)
+before: RED (author)
+diff --git a/src/tradingresearch/split.py b/src/tradingresearch/split.py
+index 8422b03..65865ef 100644
+--- a/src/tradingresearch/split.py
++++ b/src/tradingresearch/split.py
+@@ -154,8 +154,8 @@ def partition(split: TrainingSplit, days: list[date]) -> Split:
+     window = embargo_window(split)
+     ordered = sorted(set(days))
+     return Split(train_val_sessions=tuple(d for d in ordered if d < window[0]),
+-                 test_sessions=tuple(d for d in ordered if d >= split.cutoff_session),
+-                 embargoed_sessions=tuple(d for d in ordered if window[0] <= d < split.cutoff_session),
++                 test_sessions=tuple(d for d in ordered if d > split.cutoff_session),
++                 embargoed_sessions=tuple(d for d in ordered if window[0] <= d <= split.cutoff_session),
+                  embargo_window=window)
+ 
+ 

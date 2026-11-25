@@ -1,0 +1,16 @@
+why: checks against one under the floor
+expect: TrainingSplit(embargo_sessions=21) was accepted; with an embargo of 21
+before: RED (break pass)
+diff --git a/src/tradingresearch/records.py b/src/tradingresearch/records.py
+index 7720aa2..a0f3a8b 100644
+--- a/src/tradingresearch/records.py
++++ b/src/tradingresearch/records.py
+@@ -294,7 +294,7 @@ class TrainingSplit(CoreModel):
+ 
+     @model_validator(mode="after")
+     def _rules(self) -> Self:
+-        if self.embargo_sessions < MIN_EMBARGO:
++        if self.embargo_sessions < MIN_EMBARGO - 1:
+             raise ValueError(f"embargo_sessions must be >= {MIN_EMBARGO} ({EMBARGO_WHY})")
+         if self.registered_at.date() >= self.cutoff_session:
+             raise ValueError("a split is registered before its cutoff session")

@@ -1,6 +1,6 @@
 why: strips the spaces around a source id before the lookup, so an id that is no row cites the row it resembles
 expect: indicators scored 0.500 on claims [i4: ['close']; w1
-before: before: GREEN (independent read)
+before: GREEN (independent read)
 --- a/src/tradingresearch/evals.py
 +++ b/src/tradingresearch/evals.py
 @@ -155,7 +155,8 @@

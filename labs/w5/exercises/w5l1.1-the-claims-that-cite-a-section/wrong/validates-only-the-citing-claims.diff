@@ -1,6 +1,6 @@
 why: runs validate_claims on the citing claims alone, so an inference loses the claim of another section it derives from
 expect: indicators scored 0.000 on claims [l1
-before: before: GREEN (independent read)
+before: GREEN (independent read)
 --- a/src/tradingresearch/evals.py
 +++ b/src/tradingresearch/evals.py
 @@ -145,7 +145,7 @@

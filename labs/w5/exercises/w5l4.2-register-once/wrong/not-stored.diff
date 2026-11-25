@@ -1,0 +1,15 @@
+why: returns the record without storing it
+expect: the journal holds [] after one register
+before: RED (break pass)
+diff --git a/src/tradingresearch/split.py b/src/tradingresearch/split.py
+index 8fd7ca4..819ddd2 100644
+--- a/src/tradingresearch/split.py
++++ b/src/tradingresearch/split.py
+@@ -95,7 +95,6 @@ def register(conn: sqlite3.Connection, cutoff_session: date, embargo_sessions: i
+         return held
+     record = TrainingSplit(split_id=split_id, cutoff_session=cutoff_session, embargo_sessions=embargo_sessions,
+                            prereg=prereg, registered_at=now.astimezone(sessions.NY))
+-    journal.add(conn, record)
+     return record
+ 
+ 

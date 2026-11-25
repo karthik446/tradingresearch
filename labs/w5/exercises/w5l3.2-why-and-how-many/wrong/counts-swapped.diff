@@ -1,0 +1,16 @@
+why: counts run b's items first
+expect: skipped ('levels_grounded: no item scored in both arms (n=3 vs 1)', 'edgar_grounded: not scored in both arms (n=0 vs 6)'); expected
+before: RED (author)
+diff --git a/src/tradingresearch/experiment.py b/src/tradingresearch/experiment.py
+index bd3711a..64726be 100644
+--- a/src/tradingresearch/experiment.py
++++ b/src/tradingresearch/experiment.py
+@@ -330,7 +330,7 @@ def compare(a: Run, b: Run, graders: Sequence[str]) -> Compared:
+     skipped: list[str] = []
+     for grader in graders:
+         values_a, values_b = a.values(grader), b.values(grader)
+-        counts = f"n={len(values_a)} vs {len(values_b)}"
++        counts = f"n={len(values_b)} vs {len(values_a)}"
+         if not values_a or not values_b:
+             skipped.append(f"{grader}: not scored in both arms ({counts})")
+         elif not values_a.keys() & values_b.keys():

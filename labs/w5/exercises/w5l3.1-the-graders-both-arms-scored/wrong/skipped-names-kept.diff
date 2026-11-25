@@ -1,0 +1,13 @@
+why: lists the kept graders in skipped
+expect: skipped ('parsed:', 'claims_valid:'
+before: RED (break pass)
+diff --git a/src/tradingresearch/experiment.py b/src/tradingresearch/experiment.py
+index 54972d3..26e6b89 100644
+--- a/src/tradingresearch/experiment.py
++++ b/src/tradingresearch/experiment.py
+@@ -340,4 +340,4 @@ def compare(a: Run, b: Run, graders: Sequence[str]) -> Compared:
+             kept.append(grader)
+     if not kept:
+         raise ComparisonRefused("no_shared_metric", "no grader is scored on a common item in both runs")
+-    return Compared(core_compare(a, b, kept), tuple(skipped))
++    return Compared(core_compare(a, b, kept), tuple(f"{g}:" for g in kept))

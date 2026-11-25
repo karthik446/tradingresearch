@@ -1,0 +1,11 @@
+usage: tr exp [-h] {run,compare} ...
+
+positional arguments:
+  {run,compare}
+    run          run every arm of a config on the same ticker-days, then
+                 compare (paid calls)
+    compare      compare two stored runs as `exp run` compares its arms (no
+                 calls)
+
+options:
+  -h, --help     show this help message and exit

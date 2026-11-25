@@ -1,0 +1,30 @@
+diff --git a/src/tradingresearch/records.py b/src/tradingresearch/records.py
+index 2b1c648..7720aa2 100644
+--- a/src/tradingresearch/records.py
++++ b/src/tradingresearch/records.py
+@@ -24,8 +24,13 @@ EventReason = Literal[
+ 
+ # Thesis rule 3: hold_sessions per horizon (sessions after the entry session).
+ HOLD_RANGE: dict[str, tuple[int, int]] = {"day": (0, 0), "short": (2, 5), "swing": (5, 20)}
+-# TODO(w5l4.1) the TrainingSplit embargo floor: SWING_ENTRY_SESSIONS, MIN_EMBARGO from it and the longest hold in
+-#   HOLD_RANGE, and EMBARGO_WHY, the reason a refusal states.
++# TrainingSplit embargo floor: a thesis written after session S enters on one of the next SWING_ENTRY_SESSIONS
++# sessions (thesis.windows, swing) and exits at most the longest hold after its entry session (reconcile
++# `exit_session`), so its outcome reads bars up to S + MIN_EMBARGO. With this embargo the last train/val session's
++# latest exit is the session before the cutoff. thesis.py holds the window as code, not a constant, hence the name here.
++SWING_ENTRY_SESSIONS = 2
++MIN_EMBARGO = SWING_ENTRY_SESSIONS + max(hi for _, hi in HOLD_RANGE.values())
++EMBARGO_WHY = f"entry window {SWING_ENTRY_SESSIONS} + longest hold {MIN_EMBARGO - SWING_ENTRY_SESSIONS}"
+ MAX_CONTEXT_TOKENS = 14_000
+ RULES_VERSION = "rules-1"  # the reconcile rules (SPIKE §6) a thesis or event is settled by; reconcile picks rules by it
+ 
+@@ -289,7 +294,8 @@ class TrainingSplit(CoreModel):
+ 
+     @model_validator(mode="after")
+     def _rules(self) -> Self:
+-        # TODO(w5l4.1) refuse an embargo under MIN_EMBARGO with a ValueError that states the floor and EMBARGO_WHY.
++        if self.embargo_sessions < MIN_EMBARGO:
++            raise ValueError(f"embargo_sessions must be >= {MIN_EMBARGO} ({EMBARGO_WHY})")
+         if self.registered_at.date() >= self.cutoff_session:
+             raise ValueError("a split is registered before its cutoff session")
+         return self

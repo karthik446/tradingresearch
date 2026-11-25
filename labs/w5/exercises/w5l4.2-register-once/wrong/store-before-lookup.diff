@@ -1,0 +1,23 @@
+why: stores first and looks up after
+expect: registered_at is 2026-10-30T18:00:00-04:00 in -04:00
+before: RED (author)
+diff --git a/src/tradingresearch/split.py b/src/tradingresearch/split.py
+index 8fd7ca4..598bc54 100644
+--- a/src/tradingresearch/split.py
++++ b/src/tradingresearch/split.py
+@@ -90,12 +90,12 @@ def register(conn: sqlite3.Connection, cutoff_session: date, embargo_sessions: i
+     #   that is not an NYSE session, one not after the last completed session, and one whose session opens no later
+     #   than now or the prereg's registered_at.
+     split_id = split_id_for(cutoff_session, embargo_sessions, prereg)
+-    held = find(conn, split_id)
+-    if held is not None:
+-        return held
+     record = TrainingSplit(split_id=split_id, cutoff_session=cutoff_session, embargo_sessions=embargo_sessions,
+                            prereg=prereg, registered_at=now.astimezone(sessions.NY))
+     journal.add(conn, record)
++    held = find(conn, split_id)
++    if held is not None:
++        return held
+     return record
+ 
+ 

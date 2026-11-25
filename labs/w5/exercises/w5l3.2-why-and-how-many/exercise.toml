@@ -1,0 +1,20 @@
+id = "w5l3.2"
+title = "Why and how many"
+effect = "tr exp compare prints the chapter's skipped lines: full against no-edgar says edgar_grounded is not scored in both arms (n=6 vs 0) and levels_grounded has no item scored in both arms (n=1 vs 3), and a refusal names every grader it skipped."
+goal = "Finish experiment.compare: each skipped entry gives the reason and how many items each run scored, in the order asked, and the no_shared_metric refusal lists the entries, or says no grader was named."
+what_tested = "The skipped tuples of the author's runs in four directions over the config's seven graders. Hand-built runs: a grader in one run only (either run), in neither, on disjoint items, on one different item each, in the order asked. The refusal's full text: two skipped graders, an unknown one, none asked. tr exp compare's skipped lines for the chapter's two compares."
+writes = [
+  "Each skipped entry reads `<grader>: <why> (n=A vs B)`, A and B the items run a and run b scored with it.",
+  "why is `not scored in both arms` when either run has no score for the grader, else `no item scored in both arms`.",
+  "The refusal's reason ends with the entries joined by `; ` in parentheses, or `(no grader named)`.",
+]
+show_tests = ["test_the_reason_depends_on_whether_a_run_has_no_score_or_no_common_item", "test_the_refusal_names_every_skipped_grader"]
+lab = "w5l3"
+concepts = ["skipped-grader", "no-shared-metric"]
+touches = ["src/tradingresearch/experiment.py"]
+check = "python -m pytest -q -x -p no:cacheprovider -m lab labs/w5/exercises/w5l3.2-why-and-how-many/test_w5l3_2.py"
+observe = "python labs/w5/tools/observe_compare.py"
+paid = false
+fixtures = ["data/ablation.runs.json"]
+origin = "rebuild of week-5-end experiment.py compare (the skipped text and the refusal); reference = the tag's own code"
+red_expect = "skipped ('levels_grounded: no item scored in both arms', 'edgar_grounded: not scored in both arms')"

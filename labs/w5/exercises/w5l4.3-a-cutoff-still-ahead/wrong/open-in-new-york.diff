@@ -1,0 +1,16 @@
+why: prints the open in New York time
+expect: is not before the cutoff session opens (2026-11-02T09:30:00-05:00)
+before: RED (author)
+diff --git a/src/tradingresearch/split.py b/src/tradingresearch/split.py
+index 3204c0f..ee0d9ff 100644
+--- a/src/tradingresearch/split.py
++++ b/src/tradingresearch/split.py
+@@ -101,7 +101,7 @@ def register(conn: sqlite3.Connection, cutoff_session: date, embargo_sessions: i
+     opens = sessions.open_close(cutoff_session)[0]
+     for what, at in (("now", now), ("prereg registered_at", prereg.registered_at)):
+         if at >= opens:
+-            raise Refused(f"{what} {at.isoformat()} is not before the cutoff session opens ({opens.isoformat()})")
++            raise Refused(f"{what} {at.isoformat()} is not before the cutoff session opens ({opens.astimezone(sessions.NY).isoformat()})")
+     record = TrainingSplit(split_id=split_id, cutoff_session=cutoff_session, embargo_sessions=embargo_sessions,
+                            prereg=prereg, registered_at=now.astimezone(sessions.NY))
+     journal.add(conn, record)

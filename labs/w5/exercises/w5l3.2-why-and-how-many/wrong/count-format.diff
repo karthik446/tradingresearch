@@ -1,0 +1,16 @@
+why: writes the counts as A/B
+expect: (n=1/3)
+before: RED (author)
+diff --git a/src/tradingresearch/experiment.py b/src/tradingresearch/experiment.py
+index bd3711a..20e0e93 100644
+--- a/src/tradingresearch/experiment.py
++++ b/src/tradingresearch/experiment.py
+@@ -330,7 +330,7 @@ def compare(a: Run, b: Run, graders: Sequence[str]) -> Compared:
+     skipped: list[str] = []
+     for grader in graders:
+         values_a, values_b = a.values(grader), b.values(grader)
+-        counts = f"n={len(values_a)} vs {len(values_b)}"
++        counts = f"n={len(values_a)}/{len(values_b)}"
+         if not values_a or not values_b:
+             skipped.append(f"{grader}: not scored in both arms ({counts})")
+         elif not values_a.keys() & values_b.keys():

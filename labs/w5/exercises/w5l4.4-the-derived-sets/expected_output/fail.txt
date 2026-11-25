@@ -1,0 +1,5 @@
+FAIL w5l4.4 (try 1): The derived sets
+  split.embargo_window(cutoff 2026-12-01, embargo 22) raised NotImplementedError; expected the 22
+  NYSE sessions before the cutoff
+  hint 1 unlocks after 2 failed runs; hint 2 unlocks after 5 failed runs; the solution unlocks after
+  10 failed runs or when the check is green

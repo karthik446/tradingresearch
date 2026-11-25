@@ -1,0 +1,23 @@
+why: counts the window back from the journal's last day before the cutoff
+expect: put 2026-10-27 in ['embargoed_sessions']
+before: RED (break pass)
+diff --git a/src/tradingresearch/split.py b/src/tradingresearch/split.py
+index 8422b03..740495b 100644
+--- a/src/tradingresearch/split.py
++++ b/src/tradingresearch/split.py
+@@ -151,12 +151,13 @@ def embargo_window(split: TrainingSplit) -> tuple[date, ...]:
+ def partition(split: TrainingSplit, days: list[date]) -> Split:
+     """train/val = sessions before the embargo window; test = sessions on or after the cutoff; the window's sessions
+     are in neither (SPIKE §1.1)."""
+-    window = embargo_window(split)
+     ordered = sorted(set(days))
++    last = max((d for d in ordered if d < split.cutoff_session), default=sessions.previous(split.cutoff_session))
++    window = tuple(sessions.recent(split.embargo_sessions, last))
+     return Split(train_val_sessions=tuple(d for d in ordered if d < window[0]),
+                  test_sessions=tuple(d for d in ordered if d >= split.cutoff_session),
+                  embargoed_sessions=tuple(d for d in ordered if window[0] <= d < split.cutoff_session),
+-                 embargo_window=window)
++                 embargo_window=embargo_window(split))
+ 
+ 
+ def derive(conn: sqlite3.Connection, split_id: str) -> Split:

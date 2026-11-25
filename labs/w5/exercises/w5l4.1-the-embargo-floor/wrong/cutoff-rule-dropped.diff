@@ -1,0 +1,16 @@
+why: replaces the cutoff-date rule with the embargo check
+expect: registered_at=2026-12-29 14:00:00+00:00) was accepted
+before: RED (author)
+diff --git a/src/tradingresearch/records.py b/src/tradingresearch/records.py
+index 7720aa2..39d121e 100644
+--- a/src/tradingresearch/records.py
++++ b/src/tradingresearch/records.py
+@@ -296,8 +296,6 @@ class TrainingSplit(CoreModel):
+     def _rules(self) -> Self:
+         if self.embargo_sessions < MIN_EMBARGO:
+             raise ValueError(f"embargo_sessions must be >= {MIN_EMBARGO} ({EMBARGO_WHY})")
+-        if self.registered_at.date() >= self.cutoff_session:
+-            raise ValueError("a split is registered before its cutoff session")
+         return self
+ 
+ 

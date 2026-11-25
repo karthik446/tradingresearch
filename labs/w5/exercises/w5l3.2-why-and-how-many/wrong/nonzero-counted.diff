@@ -1,0 +1,16 @@
+why: counts only the items a run scored above 0.0
+expect: 'headlines_grounded: not scored in both arms (n=0 vs 14)'); expected
+before: RED (break pass)
+diff --git a/src/tradingresearch/experiment.py b/src/tradingresearch/experiment.py
+index bd3711a..04ce875 100644
+--- a/src/tradingresearch/experiment.py
++++ b/src/tradingresearch/experiment.py
+@@ -330,7 +330,7 @@ def compare(a: Run, b: Run, graders: Sequence[str]) -> Compared:
+     skipped: list[str] = []
+     for grader in graders:
+         values_a, values_b = a.values(grader), b.values(grader)
+-        counts = f"n={len(values_a)} vs {len(values_b)}"
++        counts = f"n={sum(1 for v in values_a.values() if v)} vs {sum(1 for v in values_b.values() if v)}"
+         if not values_a or not values_b:
+             skipped.append(f"{grader}: not scored in both arms ({counts})")
+         elif not values_a.keys() & values_b.keys():

@@ -1,0 +1,15 @@
+why: refuses as soon as one grader is skipped
+expect: refused no_shared_metric: no grader is scored on a common item in both runs; a grader one run did not score is skipped
+before: RED (break pass)
+diff --git a/src/tradingresearch/experiment.py b/src/tradingresearch/experiment.py
+index 54972d3..a3af5d0 100644
+--- a/src/tradingresearch/experiment.py
++++ b/src/tradingresearch/experiment.py
+@@ -338,6 +338,6 @@ def compare(a: Run, b: Run, graders: Sequence[str]) -> Compared:
+             skipped.append(f"{grader}: no item scored in both arms")
+         else:
+             kept.append(grader)
+-    if not kept:
++    if skipped:
+         raise ComparisonRefused("no_shared_metric", "no grader is scored on a common item in both runs")
+     return Compared(core_compare(a, b, kept), tuple(skipped))

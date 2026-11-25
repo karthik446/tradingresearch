@@ -1,0 +1,16 @@
+why: looks for a common item among each run's first scored item only
+expect: compared ['parsed', 'claims_valid', 'all_claims_valid', 'indicators_grounded', 'edgar_grounded']
+before: RED (author)
+diff --git a/src/tradingresearch/experiment.py b/src/tradingresearch/experiment.py
+index 54972d3..c4da1ad 100644
+--- a/src/tradingresearch/experiment.py
++++ b/src/tradingresearch/experiment.py
+@@ -334,7 +334,7 @@ def compare(a: Run, b: Run, graders: Sequence[str]) -> Compared:
+         values_a, values_b = a.values(grader), b.values(grader)
+         if not values_a or not values_b:
+             skipped.append(f"{grader}: not scored in both arms")
+-        elif not values_a.keys() & values_b.keys():
++        elif list(values_a)[:1] != list(values_b)[:1]:
+             skipped.append(f"{grader}: no item scored in both arms")
+         else:
+             kept.append(grader)

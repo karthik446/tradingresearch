@@ -1,0 +1,30 @@
+why: counts weekdays back from the cutoff, so Thanksgiving and Christmas count as sessions
+expect: is 22 days from 2026-10-30 to 2026-11-30
+before: RED (author)
+diff --git a/src/tradingresearch/split.py b/src/tradingresearch/split.py
+index 8422b03..0e3e2df 100644
+--- a/src/tradingresearch/split.py
++++ b/src/tradingresearch/split.py
+@@ -12,7 +12,7 @@ from __future__ import annotations
+ import json
+ import sqlite3
+ from dataclasses import dataclass
+-from datetime import date, datetime
++from datetime import date, datetime, timedelta
+ 
+ from gigai_core.records import Prereg
+ from pydantic import ValidationError
+@@ -145,7 +145,12 @@ def journal_sessions(conn: sqlite3.Connection) -> list[date]:
+ 
+ def embargo_window(split: TrainingSplit) -> tuple[date, ...]:
+     """The `embargo_sessions` NYSE sessions right before the cutoff."""
+-    return tuple(sessions.recent(split.embargo_sessions, sessions.previous(split.cutoff_session)))
++    days, day = [], split.cutoff_session
++    while len(days) < split.embargo_sessions:
++        day -= timedelta(days=1)
++        if day.weekday() < 5:
++            days.append(day)
++    return tuple(reversed(days))
+ 
+ 
+ def partition(split: TrainingSplit, days: list[date]) -> Split:

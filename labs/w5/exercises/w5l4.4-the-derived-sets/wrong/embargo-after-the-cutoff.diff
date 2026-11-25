@@ -1,0 +1,39 @@
+why: puts the embargo after the cutoff: train/val up to it, the test after the window
+expect: is 22 days from 2026-12-01 to 2026-12-31
+before: RED (author)
+diff --git a/src/tradingresearch/split.py b/src/tradingresearch/split.py
+index 8422b03..a5a9769 100644
+--- a/src/tradingresearch/split.py
++++ b/src/tradingresearch/split.py
+@@ -12,7 +12,7 @@ from __future__ import annotations
+ import json
+ import sqlite3
+ from dataclasses import dataclass
+-from datetime import date, datetime
++from datetime import date, datetime, timedelta
+ 
+ from gigai_core.records import Prereg
+ from pydantic import ValidationError
+@@ -145,7 +145,8 @@ def journal_sessions(conn: sqlite3.Connection) -> list[date]:
+ 
+ def embargo_window(split: TrainingSplit) -> tuple[date, ...]:
+     """The `embargo_sessions` NYSE sessions right before the cutoff."""
+-    return tuple(sessions.recent(split.embargo_sessions, sessions.previous(split.cutoff_session)))
++    after = sessions.between(split.cutoff_session, split.cutoff_session + timedelta(days=2 * split.embargo_sessions))
++    return tuple(after[:split.embargo_sessions])
+ 
+ 
+ def partition(split: TrainingSplit, days: list[date]) -> Split:
+@@ -153,9 +154,9 @@ def partition(split: TrainingSplit, days: list[date]) -> Split:
+     are in neither (SPIKE §1.1)."""
+     window = embargo_window(split)
+     ordered = sorted(set(days))
+-    return Split(train_val_sessions=tuple(d for d in ordered if d < window[0]),
+-                 test_sessions=tuple(d for d in ordered if d >= split.cutoff_session),
+-                 embargoed_sessions=tuple(d for d in ordered if window[0] <= d < split.cutoff_session),
++    return Split(train_val_sessions=tuple(d for d in ordered if d < split.cutoff_session),
++                 test_sessions=tuple(d for d in ordered if d > window[-1]),
++                 embargoed_sessions=tuple(d for d in ordered if window[0] <= d <= window[-1]),
+                  embargo_window=window)
+ 
+ 

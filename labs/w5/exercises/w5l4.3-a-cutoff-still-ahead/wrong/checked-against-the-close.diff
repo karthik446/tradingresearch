@@ -1,0 +1,16 @@
+why: compares with the cutoff session's close, not its open
+expect: now 2026-11-02T14:30:00+00:00) raised ValidationError
+before: RED (break pass)
+diff --git a/src/tradingresearch/split.py b/src/tradingresearch/split.py
+index 3204c0f..fe0b1d8 100644
+--- a/src/tradingresearch/split.py
++++ b/src/tradingresearch/split.py
+@@ -98,7 +98,7 @@ def register(conn: sqlite3.Connection, cutoff_session: date, embargo_sessions: i
+     if cutoff_session <= last:
+         raise Refused(f"cutoff {cutoff_session} is not after the last completed session ({last}): a split is "
+                       "registered before its test period starts")
+-    opens = sessions.open_close(cutoff_session)[0]
++    opens = sessions.open_close(cutoff_session)[1]
+     for what, at in (("now", now), ("prereg registered_at", prereg.registered_at)):
+         if at >= opens:
+             raise Refused(f"{what} {at.isoformat()} is not before the cutoff session opens ({opens.isoformat()})")

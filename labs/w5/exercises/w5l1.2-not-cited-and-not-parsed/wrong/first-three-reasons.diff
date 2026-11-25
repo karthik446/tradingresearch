@@ -1,6 +1,6 @@
 why: names at most three reasons
 expect: ('empty_placeholder, number_in_text, unknown_source: 5 of 6
-before: before: GREEN (independent read)
+before: GREEN (independent read)
 --- a/src/tradingresearch/evals.py
 +++ b/src/tradingresearch/evals.py
 @@ -154,7 +154,7 @@

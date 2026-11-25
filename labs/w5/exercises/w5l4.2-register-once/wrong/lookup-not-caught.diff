@@ -1,0 +1,16 @@
+why: looks the id up with journal.get, which raises for a new id
+expect: KeyError
+before: RED (break pass)
+diff --git a/src/tradingresearch/split.py b/src/tradingresearch/split.py
+index 8fd7ca4..1766156 100644
+--- a/src/tradingresearch/split.py
++++ b/src/tradingresearch/split.py
+@@ -90,7 +90,7 @@ def register(conn: sqlite3.Connection, cutoff_session: date, embargo_sessions: i
+     #   that is not an NYSE session, one not after the last completed session, and one whose session opens no later
+     #   than now or the prereg's registered_at.
+     split_id = split_id_for(cutoff_session, embargo_sessions, prereg)
+-    held = find(conn, split_id)
++    held = journal.get(conn, TrainingSplit, split_id)
+     if held is not None:
+         return held
+     record = TrainingSplit(split_id=split_id, cutoff_session=cutoff_session, embargo_sessions=embargo_sessions,

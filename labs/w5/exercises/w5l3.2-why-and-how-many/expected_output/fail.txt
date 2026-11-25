@@ -1,0 +1,10 @@
+FAIL w5l3.2 (try 1): Why and how many
+  compare(full -> no-edgar, the config's seven graders) skipped ('levels_grounded: no item scored in
+  both arms', 'edgar_grounded: not scored in both arms'); expected ('levels_grounded: no item scored
+  in both arms (n=1 vs 3)', 'edgar_grounded: not scored in both arms (n=6 vs 0)'), in the order
+  asked (levels_grounded scored on 1 items in full ['CAT:2026-11-13'], 3 in no-edgar
+  ['AMZN:2026-11-13', 'JPM:2026-11-12', 'NVDA:2026-11-13']; edgar_grounded scored on 6 items in full
+  ['AMZN:2026-11-12', 'CAT:2026-11-12', 'KO:2026-11-12', 'UNH:2026-11-12', 'XOM:2026-11-12',
+  'XOM:2026-11-13'], 0 in no-edgar [])
+  hint 1 unlocks after 2 failed runs; hint 2 unlocks after 5 failed runs; the solution unlocks after
+  10 failed runs or when the check is green

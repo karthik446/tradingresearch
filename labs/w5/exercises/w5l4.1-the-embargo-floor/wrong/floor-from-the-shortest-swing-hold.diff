@@ -1,0 +1,16 @@
+why: adds the shortest swing hold instead of the longest
+expect: are (2, 7, 'entry window 2 + longest hold 5')
+before: RED (break pass)
+diff --git a/src/tradingresearch/records.py b/src/tradingresearch/records.py
+index 7720aa2..8e48261 100644
+--- a/src/tradingresearch/records.py
++++ b/src/tradingresearch/records.py
+@@ -29,7 +29,7 @@ HOLD_RANGE: dict[str, tuple[int, int]] = {"day": (0, 0), "short": (2, 5), "swing
+ # `exit_session`), so its outcome reads bars up to S + MIN_EMBARGO. With this embargo the last train/val session's
+ # latest exit is the session before the cutoff. thesis.py holds the window as code, not a constant, hence the name here.
+ SWING_ENTRY_SESSIONS = 2
+-MIN_EMBARGO = SWING_ENTRY_SESSIONS + max(hi for _, hi in HOLD_RANGE.values())
++MIN_EMBARGO = SWING_ENTRY_SESSIONS + HOLD_RANGE["swing"][0]
+ EMBARGO_WHY = f"entry window {SWING_ENTRY_SESSIONS} + longest hold {MIN_EMBARGO - SWING_ENTRY_SESSIONS}"
+ MAX_CONTEXT_TOKENS = 14_000
+ RULES_VERSION = "rules-1"  # the reconcile rules (SPIKE §6) a thesis or event is settled by; reconcile picks rules by it

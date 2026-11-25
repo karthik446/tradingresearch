@@ -1,0 +1,16 @@
+why: counts the floor's 22 sessions back, whatever the split's embargo
+expect: embargo 27) is 22 days from 2026-10-29
+before: RED (break pass)
+diff --git a/src/tradingresearch/split.py b/src/tradingresearch/split.py
+index 8422b03..0782db0 100644
+--- a/src/tradingresearch/split.py
++++ b/src/tradingresearch/split.py
+@@ -145,7 +145,7 @@ def journal_sessions(conn: sqlite3.Connection) -> list[date]:
+ 
+ def embargo_window(split: TrainingSplit) -> tuple[date, ...]:
+     """The `embargo_sessions` NYSE sessions right before the cutoff."""
+-    return tuple(sessions.recent(split.embargo_sessions, sessions.previous(split.cutoff_session)))
++    return tuple(sessions.recent(MIN_EMBARGO, sessions.previous(split.cutoff_session)))
+ 
+ 
+ def partition(split: TrainingSplit, days: list[date]) -> Split:

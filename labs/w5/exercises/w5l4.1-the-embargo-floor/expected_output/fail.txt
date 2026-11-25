@@ -1,0 +1,9 @@
+FAIL w5l4.1 (try 1): The embargo floor
+  records (SWING_ENTRY_SESSIONS, MIN_EMBARGO, EMBARGO_WHY) are (None, None, None); expected (2, 22,
+  'entry window 2 + longest hold 20'): with an embargo of 21 before the cutoff 2026-12-29, the last
+  train/val session is 2026-11-25, and a swing thesis written after it enters by the 2nd session and
+  exits 20 sessions later, on 2026-12-29, the cutoff itself; with an embargo of 22 before the cutoff
+  2026-12-29, the last train/val session is 2026-11-24, and a swing thesis written after it enters
+  by the 2nd session and exits 20 sessions later, on 2026-12-28, the session before it
+  hint 1 unlocks after 2 failed runs; hint 2 unlocks after 5 failed runs; the solution unlocks after
+  10 failed runs or when the check is green

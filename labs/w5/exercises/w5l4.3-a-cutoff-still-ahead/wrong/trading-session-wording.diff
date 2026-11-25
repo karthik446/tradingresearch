@@ -1,0 +1,16 @@
+why: words the calendar refusal differently
+expect: cutoff 2026-11-26 is not an NYSE trading session
+before: RED (break pass)
+diff --git a/src/tradingresearch/split.py b/src/tradingresearch/split.py
+index 3204c0f..7eea3fa 100644
+--- a/src/tradingresearch/split.py
++++ b/src/tradingresearch/split.py
+@@ -93,7 +93,7 @@ def register(conn: sqlite3.Connection, cutoff_session: date, embargo_sessions: i
+     if held is not None:
+         return held
+     if not sessions.is_session(cutoff_session):
+-        raise Refused(f"cutoff {cutoff_session} is not an NYSE session")
++        raise Refused(f"cutoff {cutoff_session} is not an NYSE trading session")
+     last = sessions.last_completed(now)
+     if cutoff_session <= last:
+         raise Refused(f"cutoff {cutoff_session} is not after the last completed session ({last}): a split is "

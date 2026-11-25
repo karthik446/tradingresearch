@@ -1,0 +1,47 @@
+usage: tr [-h]
+          {sessions,bars,facts,snapshot,news,screen,analyze,thesis,open,reconcile,grade,daily,report,slo,check,exp,usage,bakeoff,label,learn,split}
+          ...
+
+tradingresearch: educational, not investment advice
+
+positional arguments:
+  {sessions,bars,facts,snapshot,news,screen,analyze,thesis,open,reconcile,grade,daily,report,slo,check,exp,usage,bakeoff,label,learn,split}
+    sessions            NYSE sessions ending at a date
+    bars                fetch and store daily bars
+    facts               framed EDGAR facts for one concept
+    snapshot            indicators, levels and regime for one ticker-day
+    news                stored Alpaca headlines for one ticker (untrusted
+                        input)
+    screen              code-only daily shortlist of the universe (no model
+                        call)
+    analyze             write a checked Analysis for one ticker-day (paid
+                        call)
+    thesis              write 0-3 checked theses or no-trades from a stored
+                        Analysis (paid call)
+    open                theses whose last event is PROPOSED or OPEN
+    reconcile           settle PROPOSED and OPEN theses from raw bars (no
+                        model call)
+    grade               shadow baselines and grades for closed theses (a paid
+                        P1 judge with --judge)
+    daily               the evening run for one session: screen, analyze,
+                        thesis, reconcile, grade (paid)
+    report              per-horizon scorecards: win rate, r_net, shadow,
+                        power, P1 (no model call)
+    slo                 check finish by 17:30 ET, zero missed sessions, fresh
+                        data; exit 1 on a breach
+    check               every claim of an analysis beside the source values it
+                        cites
+    exp                 experiments as config
+    usage               the OpenRouter key's total spend so far (log it before
+                        and after paid runs)
+    bakeoff             the teacher bake-off: date-seeded draw and report (no
+                        model call)
+    label               blind P1 labels of graded theses and judge agreement
+                        (no model call)
+    learn               playbook per horizon and setup; rule changes and their
+                        adoption (no model call)
+    split               register the held-out training split; show its
+                        sessions (no model call)
+
+options:
+  -h, --help            show this help message and exit

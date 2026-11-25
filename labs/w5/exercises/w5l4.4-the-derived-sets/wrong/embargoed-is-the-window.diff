@@ -1,0 +1,16 @@
+why: returns the whole calendar window as the embargoed set, not the journal's days in it
+expect: embargoed_sessions = (2026-10-29, 2026-10-30, 2026-11-02
+before: RED (author)
+diff --git a/src/tradingresearch/split.py b/src/tradingresearch/split.py
+index 8422b03..71590c5 100644
+--- a/src/tradingresearch/split.py
++++ b/src/tradingresearch/split.py
+@@ -155,7 +155,7 @@ def partition(split: TrainingSplit, days: list[date]) -> Split:
+     ordered = sorted(set(days))
+     return Split(train_val_sessions=tuple(d for d in ordered if d < window[0]),
+                  test_sessions=tuple(d for d in ordered if d >= split.cutoff_session),
+-                 embargoed_sessions=tuple(d for d in ordered if window[0] <= d < split.cutoff_session),
++                 embargoed_sessions=window,
+                  embargo_window=window)
+ 
+ 

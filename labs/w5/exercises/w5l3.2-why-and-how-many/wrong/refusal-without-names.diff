@@ -1,0 +1,15 @@
+why: keeps the refusal's message without the skipped graders
+expect: refused no_shared_metric: 'cannot compare: no grader is scored on a common item in both runs'; expected
+before: RED (author)
+diff --git a/src/tradingresearch/experiment.py b/src/tradingresearch/experiment.py
+index bd3711a..ab5cb46 100644
+--- a/src/tradingresearch/experiment.py
++++ b/src/tradingresearch/experiment.py
+@@ -338,6 +338,5 @@ def compare(a: Run, b: Run, graders: Sequence[str]) -> Compared:
+         else:
+             kept.append(grader)
+     if not kept:
+-        raise ComparisonRefused("no_shared_metric", f"no grader is scored on a common item in both runs "
+-                                                    f"({'; '.join(skipped) or 'no grader named'})")
++        raise ComparisonRefused("no_shared_metric", "no grader is scored on a common item in both runs")
+     return Compared(core_compare(a, b, kept), tuple(skipped))

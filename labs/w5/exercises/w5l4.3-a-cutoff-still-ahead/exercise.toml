@@ -1,0 +1,19 @@
+id = "w5l4.3"
+title = "A cutoff still ahead"
+effect = "split.register refuses, writing nothing, an embargo under the floor and a cutoff that is not an NYSE session or not still ahead of now and of the Prereg, while a split already stored is still returned."
+goal = "Add split.register's refusals: the embargo floor before the lookup, then for a new split a cutoff that is not an NYSE session, one not after the last completed session, and one whose session opens no later than now or the Prereg's registered_at."
+what_tested = "Embargo 21 and 20, Thanksgiving and a Saturday, the last completed session and the one before, now at and after the open, a late Prereg and a late now: each refused with its message and 0 rows. Three rules broken at once give the first. The day after Thanksgiving, the evening before the cutoff and an evening UTC calls the next day are stored; a stored split is returned once its cutoff opened."
+writes = [
+  "register: before the lookup, Refused for an embargo under MIN_EMBARGO, with EMBARGO_WHY in the message.",
+  "register, after the lookup: Refused when sessions.is_session is false, the cutoff <= sessions.last_completed(now), or now or the Prereg's registered_at >= the cutoff's open.",
+]
+show_tests = ["test_the_first_reason_in_order_is_the_one_given", "test_a_cutoff_still_ahead_is_stored"]
+lab = "w5l4"
+concepts = ["registered-before-the-cutoff"]
+touches = ["src/tradingresearch/split.py"]
+check = "python -m pytest -q -x -p no:cacheprovider -m lab labs/w5/exercises/w5l4.3-a-cutoff-still-ahead/test_w5l4_3.py"
+observe = "python labs/w5/tools/observe_split.py"
+paid = false
+fixtures = []
+origin = "rebuild of week-5-end split.py register's refusals; reference = the tag's own code"
+red_expect = "raised ValidationError"

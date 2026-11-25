@@ -1,0 +1,21 @@
+why: checks for a common item before checking either run has a score
+expect: compare(full -> no-edgar, the config's seven graders) skipped ('levels_grounded: no item scored in both arms (n=1 vs 3)', 'edgar_grounded: no item scored in both arms (n=6 vs 0)')
+before: RED (author)
+diff --git a/src/tradingresearch/experiment.py b/src/tradingresearch/experiment.py
+index bd3711a..1bc8442 100644
+--- a/src/tradingresearch/experiment.py
++++ b/src/tradingresearch/experiment.py
+@@ -331,10 +331,10 @@ def compare(a: Run, b: Run, graders: Sequence[str]) -> Compared:
+     for grader in graders:
+         values_a, values_b = a.values(grader), b.values(grader)
+         counts = f"n={len(values_a)} vs {len(values_b)}"
+-        if not values_a or not values_b:
+-            skipped.append(f"{grader}: not scored in both arms ({counts})")
+-        elif not values_a.keys() & values_b.keys():
++        if not values_a.keys() & values_b.keys():
+             skipped.append(f"{grader}: no item scored in both arms ({counts})")
++        elif not values_a or not values_b:
++            skipped.append(f"{grader}: not scored in both arms ({counts})")
+         else:
+             kept.append(grader)
+     if not kept:

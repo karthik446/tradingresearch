@@ -1,0 +1,27 @@
+why: stores the split, then checks the cutoff
+expect: was refused (cutoff 2026-11-26 is not an NYSE session) but wrote 1 row(s)
+before: RED (break pass; the check first failed on the chained Refused, now on the row written)
+diff --git a/src/tradingresearch/split.py b/src/tradingresearch/split.py
+index 3204c0f..d001f3e 100644
+--- a/src/tradingresearch/split.py
++++ b/src/tradingresearch/split.py
+@@ -92,6 +92,9 @@ def register(conn: sqlite3.Connection, cutoff_session: date, embargo_sessions: i
+     held = find(conn, split_id)
+     if held is not None:
+         return held
++    record = TrainingSplit(split_id=split_id, cutoff_session=cutoff_session, embargo_sessions=embargo_sessions,
++                           prereg=prereg, registered_at=now.astimezone(sessions.NY))
++    journal.add(conn, record)
+     if not sessions.is_session(cutoff_session):
+         raise Refused(f"cutoff {cutoff_session} is not an NYSE session")
+     last = sessions.last_completed(now)
+@@ -102,9 +105,6 @@ def register(conn: sqlite3.Connection, cutoff_session: date, embargo_sessions: i
+     for what, at in (("now", now), ("prereg registered_at", prereg.registered_at)):
+         if at >= opens:
+             raise Refused(f"{what} {at.isoformat()} is not before the cutoff session opens ({opens.isoformat()})")
+-    record = TrainingSplit(split_id=split_id, cutoff_session=cutoff_session, embargo_sessions=embargo_sessions,
+-                           prereg=prereg, registered_at=now.astimezone(sessions.NY))
+-    journal.add(conn, record)
+     return record
+ 
+ 

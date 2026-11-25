@@ -1,0 +1,26 @@
+why: counts the embargo in calendar days back from the cutoff, not NYSE sessions
+expect: is 15 days from 2026-11-09 to 2026-11-30
+before: RED (author)
+diff --git a/src/tradingresearch/split.py b/src/tradingresearch/split.py
+index 8422b03..39b4f8b 100644
+--- a/src/tradingresearch/split.py
++++ b/src/tradingresearch/split.py
+@@ -12,7 +12,7 @@ from __future__ import annotations
+ import json
+ import sqlite3
+ from dataclasses import dataclass
+-from datetime import date, datetime
++from datetime import date, datetime, timedelta
+ 
+ from gigai_core.records import Prereg
+ from pydantic import ValidationError
+@@ -145,7 +145,8 @@ def journal_sessions(conn: sqlite3.Connection) -> list[date]:
+ 
+ def embargo_window(split: TrainingSplit) -> tuple[date, ...]:
+     """The `embargo_sessions` NYSE sessions right before the cutoff."""
+-    return tuple(sessions.recent(split.embargo_sessions, sessions.previous(split.cutoff_session)))
++    start = split.cutoff_session - timedelta(days=split.embargo_sessions)
++    return tuple(sessions.between(start, sessions.previous(split.cutoff_session)))
+ 
+ 
+ def partition(split: TrainingSplit, days: list[date]) -> Split:

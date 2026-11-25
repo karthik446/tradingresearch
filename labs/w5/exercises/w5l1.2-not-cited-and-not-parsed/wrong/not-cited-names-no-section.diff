@@ -1,6 +1,6 @@
 why: raises CannotGrade with the bare not_cited name and no section
 expect: levels gave CannotGrade('not_cited')
-before: before: GREEN (independent read)
+before: GREEN (independent read)
 --- a/src/tradingresearch/evals.py
 +++ b/src/tradingresearch/evals.py
 @@ -146,7 +146,7 @@

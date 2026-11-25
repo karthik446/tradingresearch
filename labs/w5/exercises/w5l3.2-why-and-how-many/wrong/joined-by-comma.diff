@@ -1,0 +1,14 @@
+why: joins the skipped graders in the refusal with a comma
+expect: (n=6 vs 0), levels_grounded
+before: RED (author)
+diff --git a/src/tradingresearch/experiment.py b/src/tradingresearch/experiment.py
+index bd3711a..94864c8 100644
+--- a/src/tradingresearch/experiment.py
++++ b/src/tradingresearch/experiment.py
+@@ -339,5 +339,5 @@ def compare(a: Run, b: Run, graders: Sequence[str]) -> Compared:
+             kept.append(grader)
+     if not kept:
+         raise ComparisonRefused("no_shared_metric", f"no grader is scored on a common item in both runs "
+-                                                    f"({'; '.join(skipped) or 'no grader named'})")
++                                                    f"({', '.join(skipped) or 'no grader named'})")
+     return Compared(core_compare(a, b, kept), tuple(skipped))

@@ -1,0 +1,16 @@
+why: skips a grader the two runs scored on different numbers of items
+expect: compare(full -> no-headlines, the config's seven graders) compared ['parsed', 'claims_valid', 'all_claims_valid', 'indicators_grounded']
+before: RED (author)
+diff --git a/src/tradingresearch/experiment.py b/src/tradingresearch/experiment.py
+index 54972d3..d222988 100644
+--- a/src/tradingresearch/experiment.py
++++ b/src/tradingresearch/experiment.py
+@@ -332,7 +332,7 @@ def compare(a: Run, b: Run, graders: Sequence[str]) -> Compared:
+     skipped: list[str] = []
+     for grader in graders:
+         values_a, values_b = a.values(grader), b.values(grader)
+-        if not values_a or not values_b:
++        if not values_a or len(values_a) != len(values_b):
+             skipped.append(f"{grader}: not scored in both arms")
+         elif not values_a.keys() & values_b.keys():
+             skipped.append(f"{grader}: no item scored in both arms")

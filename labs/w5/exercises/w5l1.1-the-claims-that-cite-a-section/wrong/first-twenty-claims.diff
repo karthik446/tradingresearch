@@ -1,6 +1,6 @@
 why: reads at most twenty claims of a reply
 expect: indicators scored 1.000 on claims [i1: ['close']; l0
-before: before: GREEN (independent read)
+before: GREEN (independent read)
 --- a/src/tradingresearch/evals.py
 +++ b/src/tradingresearch/evals.py
 @@ -143,7 +143,7 @@

@@ -1,0 +1,31 @@
+PASS w5l3.2: Why and how many
+observe: python labs/w5/tools/observe_compare.py
+  | $ tr exp compare run_c32ea07781a54982 run_acb9119f015e4911   # full -> no-headlines, every
+  | grader either run scored
+  | compare run_c32ea07781a54982 -> run_acb9119f015e4911: 20 items, 10 clusters
+  |     skipped headlines_grounded: not scored in both arms (n=16 vs 0)
+  |     parsed             1.000 -> 1.000  diff +0.000  CI [+0.000, +0.000] (95%)  mcnemar p=1
+  | mde=-  n=20
+  |     claims_valid       0.964 -> 0.969  diff +0.005  CI [-0.027, +0.042] (95%)  wilcoxon p=0.906
+  | mde=0.057  n=20
+  |     all_claims_valid   0.850 -> 0.750  diff -0.100  CI [-0.300, +0.100] (95%)  mcnemar p=0.625
+  | mde=-  n=20
+  |     indicators_grounded 0.992 -> 0.962  diff -0.030  CI [-0.062, -0.007] (95%)  wilcoxon p=0.125
+  | mde=0.038  n=20
+  |     edgar_grounded     1.000 -> 1.000  diff +0.000  CI none  mcnemar p=1  mde=-  n=6
+  |     levels_grounded    1.000 -> 1.000  diff +0.000  CI none  mcnemar p=1  mde=-  n=1
+
+  | $ tr exp compare run_c32ea07781a54982 run_95536ffe7c5e4b78   # full -> no-edgar, every grader
+  | either run scored
+  | compare run_c32ea07781a54982 -> run_95536ffe7c5e4b78: 20 items, 10 clusters
+  |     skipped edgar_grounded: not scored in both arms (n=6 vs 0)
+  |     skipped levels_grounded: no item scored in both arms (n=1 vs 3)
+  |     parsed             1.000 -> 1.000  diff +0.000  CI [+0.000, +0.000] (95%)  mcnemar p=1
+  | mde=-  n=20
+  |     claims_valid       0.964 -> 0.986  diff +0.023  CI [-0.014, +0.068] (95%)  wilcoxon p=0.438
+  | mde=0.064  n=20
+  |     all_claims_valid   0.850 -> 0.850  diff +0.000  CI [-0.250, +0.250] (95%)  mcnemar p=1
+  | mde=-  n=20
+  |     indicators_grounded 0.992 -> 1.000  diff +0.008  CI [+0.000, +0.025] (95%)  wilcoxon p=1
+  | mde=0.023  n=20
+[... 23 more lines not shown]

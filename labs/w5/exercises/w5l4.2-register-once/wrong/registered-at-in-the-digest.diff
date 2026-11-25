@@ -1,0 +1,16 @@
+why: digests the whole Prereg, registered_at included
+expect: is 'sp_676805a8419284c0'; expected 'sp_45eda73898d532af'
+before: RED (author)
+diff --git a/src/tradingresearch/split.py b/src/tradingresearch/split.py
+index 8fd7ca4..8ecc89b 100644
+--- a/src/tradingresearch/split.py
++++ b/src/tradingresearch/split.py
+@@ -77,7 +77,7 @@ def prereg_from(text: str | None, note: str | None, now: datetime) -> Prereg:
+ def split_id_for(cutoff_session: date, embargo_sessions: int, prereg: Prereg) -> str:
+     """`sp_` + 16 hex of the split's parameters; `registered_at` is left out, so the same split has one id."""
+     body = {"cutoff_session": cutoff_session.isoformat(), "embargo_sessions": embargo_sessions,
+-            "prereg": prereg.model_dump(mode="json", exclude={"registered_at"})}
++            "prereg": prereg.model_dump(mode="json")}
+     return "sp_" + digest(body).removeprefix("sha256:")[:16]
+ 
+ 

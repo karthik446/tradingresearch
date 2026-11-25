@@ -1,0 +1,16 @@
+why: names a skipped grader without the colon after it
+expect: skipped ('headlines_grounded not scored in both arms',); expected a tuple with one entry per grader left out, each starting '<grader>:'
+before: RED (break pass)
+diff --git a/src/tradingresearch/experiment.py b/src/tradingresearch/experiment.py
+index 54972d3..f971123 100644
+--- a/src/tradingresearch/experiment.py
++++ b/src/tradingresearch/experiment.py
+@@ -333,7 +333,7 @@ def compare(a: Run, b: Run, graders: Sequence[str]) -> Compared:
+     for grader in graders:
+         values_a, values_b = a.values(grader), b.values(grader)
+         if not values_a or not values_b:
+-            skipped.append(f"{grader}: not scored in both arms")
++            skipped.append(f"{grader} not scored in both arms")
+         elif not values_a.keys() & values_b.keys():
+             skipped.append(f"{grader}: no item scored in both arms")
+         else:

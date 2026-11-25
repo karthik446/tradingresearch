@@ -1,6 +1,6 @@
 why: counts the failed claims once per distinct reason, so two claims rejected for the same reason count as one
 expect: indicators scored 0.667 on claims [i1
-before: before: GREEN (independent read)
+before: GREEN (independent read)
 --- a/src/tradingresearch/evals.py
 +++ b/src/tradingresearch/evals.py
 @@ -147,7 +147,7 @@

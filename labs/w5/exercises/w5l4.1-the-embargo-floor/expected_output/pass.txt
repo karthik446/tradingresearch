@@ -1,0 +1,9 @@
+PASS w5l4.1: The embargo floor
+observe: python labs/w5/tools/observe_split.py
+  | records: SWING_ENTRY_SESSIONS: 2, MIN_EMBARGO: 22, EMBARGO_WHY: 'entry window 2 + longest hold
+  | 20'
+  |   TrainingSplit(embargo_sessions=21): refused: Value error, embargo_sessions must be >= 22
+  | (entry window 2 + longest hold 20)
+  | tradingresearch.split does not import: ImportError: cannot import name 'split' from
+  | 'tradingresearch'
+next: `tr lab next` commits it and moves on; `tr lab solution` shows the reference to compare

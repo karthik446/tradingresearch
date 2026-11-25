@@ -1,6 +1,6 @@
 why: looks only at a claim's first two source ids
 expect: indicators scored 0.000 on claims [w1
-before: before: GREEN (independent read)
+before: GREEN (independent read)
 --- a/src/tradingresearch/evals.py
 +++ b/src/tradingresearch/evals.py
 @@ -156,7 +156,7 @@

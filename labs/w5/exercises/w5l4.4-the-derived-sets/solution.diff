@@ -1,0 +1,28 @@
+diff --git a/src/tradingresearch/split.py b/src/tradingresearch/split.py
+index 3204c0f..8422b03 100644
+--- a/src/tradingresearch/split.py
++++ b/src/tradingresearch/split.py
+@@ -145,16 +145,18 @@ def journal_sessions(conn: sqlite3.Connection) -> list[date]:
+ 
+ def embargo_window(split: TrainingSplit) -> tuple[date, ...]:
+     """The `embargo_sessions` NYSE sessions right before the cutoff."""
+-    # TODO(w5l4.4) the embargo_sessions NYSE sessions right before the cutoff session, oldest first.
+-    raise NotImplementedError
++    return tuple(sessions.recent(split.embargo_sessions, sessions.previous(split.cutoff_session)))
+ 
+ 
+ def partition(split: TrainingSplit, days: list[date]) -> Split:
+     """train/val = sessions before the embargo window; test = sessions on or after the cutoff; the window's sessions
+     are in neither (SPIKE §1.1)."""
+-    # TODO(w5l4.4) each distinct day once, in date order: train/val before the window, embargoed from the window's
+-    #   first session up to the cutoff, test on or after the cutoff; the window as embargo_window.
+-    raise NotImplementedError
++    window = embargo_window(split)
++    ordered = sorted(set(days))
++    return Split(train_val_sessions=tuple(d for d in ordered if d < window[0]),
++                 test_sessions=tuple(d for d in ordered if d >= split.cutoff_session),
++                 embargoed_sessions=tuple(d for d in ordered if window[0] <= d < split.cutoff_session),
++                 embargo_window=window)
+ 
+ 
+ def derive(conn: sqlite3.Connection, split_id: str) -> Split:

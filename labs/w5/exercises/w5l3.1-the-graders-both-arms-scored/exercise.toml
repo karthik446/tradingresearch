@@ -1,0 +1,20 @@
+id = "w5l3.1"
+title = "The graders both arms scored"
+effect = "tr exp compare stops raising NotImplementedError: it compares the graders both runs scored on a common item and lists each grader it left out on a skipped line, so full against no-headlines prints a table instead of core's metric_missing refusal."
+goal = "Write experiment.compare: keep each grader both runs scored on at least one common item, in the order asked, skip the rest with an entry naming the grader, hand core only the kept graders, and refuse no_shared_metric when none is kept."
+what_tested = "The author's three runs in all six directions over the config's seven graders. Hand-built runs: a grader sharing only the first or the last item, one scored 0.0 everywhere, one on disjoint items, one in a single run, one in neither, both ways round. The comparison equals core compare(a, b, kept). no_shared_metric with no grader named or none kept."
+writes = [
+  "For each grader asked, in order: compare it when both runs scored it on at least one common item, else skip it with an entry starting `<grader>:`.",
+  "Return Compared: core compare of b against a on the kept graders, and the skipped entries as a tuple.",
+  "With no grader kept, raise ComparisonRefused with code no_shared_metric before core is called.",
+]
+show_tests = ["test_the_authors_arms_compare_the_shared_graders_and_skip_the_rest", "test_one_common_item_is_enough_and_the_kept_graders_stay_in_the_order_asked"]
+lab = "w5l3"
+concepts = ["skipped-grader", "no-shared-metric"]
+touches = ["src/tradingresearch/experiment.py"]
+check = "python -m pytest -q -x -p no:cacheprovider -m lab labs/w5/exercises/w5l3.1-the-graders-both-arms-scored/test_w5l3_1.py"
+observe = "python labs/w5/tools/observe_compare.py"
+paid = false
+fixtures = ["data/ablation.runs.json"]
+origin = "rebuild of week-5-end experiment.py compare; commands/exp.py and its help fixtures ship whole; reference = the tag's own code"
+red_expect = "raised NotImplementedError()"

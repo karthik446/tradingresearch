@@ -1,0 +1,35 @@
+diff --git a/src/tradingresearch/split.py b/src/tradingresearch/split.py
+index b6dd30a..8fd7ca4 100644
+--- a/src/tradingresearch/split.py
++++ b/src/tradingresearch/split.py
+@@ -76,9 +76,9 @@ def prereg_from(text: str | None, note: str | None, now: datetime) -> Prereg:
+ 
+ def split_id_for(cutoff_session: date, embargo_sessions: int, prereg: Prereg) -> str:
+     """`sp_` + 16 hex of the split's parameters; `registered_at` is left out, so the same split has one id."""
+-    # TODO(w5l4.2) the id: "sp_" + the first 16 hex of the digest of {"cutoff_session": ISO date, "embargo_sessions",
+-    #   "prereg": the Prereg as JSON without registered_at}.
+-    raise NotImplementedError
++    body = {"cutoff_session": cutoff_session.isoformat(), "embargo_sessions": embargo_sessions,
++            "prereg": prereg.model_dump(mode="json", exclude={"registered_at"})}
++    return "sp_" + digest(body).removeprefix("sha256:")[:16]
+ 
+ 
+ def register(conn: sqlite3.Connection, cutoff_session: date, embargo_sessions: int, prereg: Prereg,
+@@ -89,9 +89,14 @@ def register(conn: sqlite3.Connection, cutoff_session: date, embargo_sessions: i
+     # TODO(w5l4.3) refuse with Refused, in this order: an embargo under MIN_EMBARGO (before the lookup), then a cutoff
+     #   that is not an NYSE session, one not after the last completed session, and one whose session opens no later
+     #   than now or the prereg's registered_at.
+-    # TODO(w5l4.2) return the stored split with this id; else store a TrainingSplit registered at now, in New York
+-    #   time, and return it.
+-    raise NotImplementedError
++    split_id = split_id_for(cutoff_session, embargo_sessions, prereg)
++    held = find(conn, split_id)
++    if held is not None:
++        return held
++    record = TrainingSplit(split_id=split_id, cutoff_session=cutoff_session, embargo_sessions=embargo_sessions,
++                           prereg=prereg, registered_at=now.astimezone(sessions.NY))
++    journal.add(conn, record)
++    return record
+ 
+ 
+ # ---------- read and derive ----------

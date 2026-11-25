@@ -1,0 +1,16 @@
+why: says the floor where the reason gives the longest hold
+expect: are (2, 22, 'entry window 2 + longest hold 22')
+before: RED (author)
+diff --git a/src/tradingresearch/records.py b/src/tradingresearch/records.py
+index 7720aa2..bb4ffaa 100644
+--- a/src/tradingresearch/records.py
++++ b/src/tradingresearch/records.py
+@@ -30,7 +30,7 @@ HOLD_RANGE: dict[str, tuple[int, int]] = {"day": (0, 0), "short": (2, 5), "swing
+ # latest exit is the session before the cutoff. thesis.py holds the window as code, not a constant, hence the name here.
+ SWING_ENTRY_SESSIONS = 2
+ MIN_EMBARGO = SWING_ENTRY_SESSIONS + max(hi for _, hi in HOLD_RANGE.values())
+-EMBARGO_WHY = f"entry window {SWING_ENTRY_SESSIONS} + longest hold {MIN_EMBARGO - SWING_ENTRY_SESSIONS}"
++EMBARGO_WHY = f"entry window {SWING_ENTRY_SESSIONS} + longest hold {MIN_EMBARGO}"
+ MAX_CONTEXT_TOKENS = 14_000
+ RULES_VERSION = "rules-1"  # the reconcile rules (SPIKE §6) a thesis or event is settled by; reconcile picks rules by it
+ 

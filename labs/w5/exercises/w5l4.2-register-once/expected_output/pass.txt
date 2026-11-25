@@ -1,0 +1,23 @@
+PASS w5l4.2: Register once
+observe: python labs/w5/tools/observe_split.py
+  | records: SWING_ENTRY_SESSIONS: 2, MIN_EMBARGO: 22, EMBARGO_WHY: 'entry window 2 + longest hold
+  | 20'
+  |   TrainingSplit(embargo_sessions=21): refused: Value error, embargo_sessions must be >= 22
+  | (entry window 2 + longest hold 20)
+
+  | register: sp_511d03d559bae169 cutoff 2026-12-29 embargo 22 registered 2026-10-30T18:00:00-04:00
+  | (rows 1)
+  | three days later: sp_511d03d559bae169 cutoff 2026-12-29 embargo 22 registered
+  | 2026-10-30T18:00:00-04:00 (rows 1)
+  |   embargo 21: split.register raised ValidationError: 1 validation error for TrainingSplit
+  |   Thanksgiving: stored sp_a1d1fde2f967d41a, registered 2026-10-30T18:00:00-04:00 (rows 2)
+  |   the last completed session: split.register raised ValidationError: 1 validation error for
+  | TrainingSplit
+  |   cutoff 2026-11-02, now 10:00 New York that day: split.register raised ValidationError: 1
+  | validation error for TrainingSplit
+  |   cutoff 2026-11-03, now 21:00 New York the evening before: stored sp_2ad351ee51a122b1,
+  | registered 2026-11-02T21:00:00-05:00 (rows 3)
+
+  | split.embargo_window raised NotImplementedError:
+  | split.partition raised NotImplementedError:
+next: `tr lab next` commits it and moves on; `tr lab solution` shows the reference to compare

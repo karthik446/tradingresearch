@@ -1,0 +1,16 @@
+why: takes registered_at from the Prereg
+expect: registered_at is 2026-10-29T18:00:00-04:00
+before: RED (break pass; the check was strengthened: the prereg is now registered the day before)
+diff --git a/src/tradingresearch/split.py b/src/tradingresearch/split.py
+index 8fd7ca4..4727b1e 100644
+--- a/src/tradingresearch/split.py
++++ b/src/tradingresearch/split.py
+@@ -94,7 +94,7 @@ def register(conn: sqlite3.Connection, cutoff_session: date, embargo_sessions: i
+     if held is not None:
+         return held
+     record = TrainingSplit(split_id=split_id, cutoff_session=cutoff_session, embargo_sessions=embargo_sessions,
+-                           prereg=prereg, registered_at=now.astimezone(sessions.NY))
++                           prereg=prereg, registered_at=prereg.registered_at)
+     journal.add(conn, record)
+     return record
+ 

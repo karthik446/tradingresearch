@@ -1,0 +1,16 @@
+why: checks now against the open but not the Prereg
+expect: prereg registered 2026-12-01T15:00:00+00:00) stored sp_45eda73898d532af
+before: RED (author)
+diff --git a/src/tradingresearch/split.py b/src/tradingresearch/split.py
+index 3204c0f..6434cbd 100644
+--- a/src/tradingresearch/split.py
++++ b/src/tradingresearch/split.py
+@@ -99,7 +99,7 @@ def register(conn: sqlite3.Connection, cutoff_session: date, embargo_sessions: i
+         raise Refused(f"cutoff {cutoff_session} is not after the last completed session ({last}): a split is "
+                       "registered before its test period starts")
+     opens = sessions.open_close(cutoff_session)[0]
+-    for what, at in (("now", now), ("prereg registered_at", prereg.registered_at)):
++    for what, at in (("now", now),):
+         if at >= opens:
+             raise Refused(f"{what} {at.isoformat()} is not before the cutoff session opens ({opens.isoformat()})")
+     record = TrainingSplit(split_id=split_id, cutoff_session=cutoff_session, embargo_sessions=embargo_sessions,

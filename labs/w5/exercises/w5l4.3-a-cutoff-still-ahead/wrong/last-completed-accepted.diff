@@ -1,0 +1,16 @@
+why: accepts a cutoff on the last completed session
+expect: now 2026-10-30T22:00:00+00:00 is not before the cutoff session opens (2026-10-30T13:30:00+00:00)
+before: RED (author)
+diff --git a/src/tradingresearch/split.py b/src/tradingresearch/split.py
+index 3204c0f..c402eb1 100644
+--- a/src/tradingresearch/split.py
++++ b/src/tradingresearch/split.py
+@@ -95,7 +95,7 @@ def register(conn: sqlite3.Connection, cutoff_session: date, embargo_sessions: i
+     if not sessions.is_session(cutoff_session):
+         raise Refused(f"cutoff {cutoff_session} is not an NYSE session")
+     last = sessions.last_completed(now)
+-    if cutoff_session <= last:
++    if cutoff_session < last:
+         raise Refused(f"cutoff {cutoff_session} is not after the last completed session ({last}): a split is "
+                       "registered before its test period starts")
+     opens = sessions.open_close(cutoff_session)[0]

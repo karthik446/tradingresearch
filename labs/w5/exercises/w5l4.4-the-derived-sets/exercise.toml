@@ -1,0 +1,19 @@
+id = "w5l4.4"
+title = "The derived sets"
+effect = "split.embargo_window counts the embargo back from the cutoff in NYSE sessions, and split.partition splits the journal's sessions into train/val, embargoed and test around it, so tr split show prints the sets a split derives."
+goal = "Write split.embargo_window and split.partition: the embargo_sessions NYSE sessions before the cutoff, oldest first; each distinct journal day once, in date order, in train/val, embargoed or test."
+what_tested = "The window for cutoffs 12-01 and 12-29 with embargo 22, and 12-01 with 27, pinned in full across Thanksgiving and Christmas. Two journals, one out of order with a day twice, split into the three sets. Days on each side of the window's first session and of the cutoff, one by one. A longer embargo moving days out of train/val. No day, or every day in one set: the others are ()."
+writes = [
+  "embargo_window: a tuple of the embargo_sessions NYSE sessions that end the session before the cutoff, oldest first.",
+  "partition: the distinct days in date order; train/val before the window's first session, embargoed from it up to the cutoff, test on or after the cutoff; embargo_window = the window.",
+]
+show_tests = ["test_the_window_is_the_embargo_s_nyse_sessions_right_before_the_cutoff", "test_around_the_window_s_first_session_and_the_cutoff"]
+lab = "w5l4"
+concepts = ["embargo-window", "derived-sets"]
+touches = ["src/tradingresearch/split.py"]
+check = "python -m pytest -q -x -p no:cacheprovider -m lab labs/w5/exercises/w5l4.4-the-derived-sets/test_w5l4_4.py"
+observe = "python labs/w5/tools/observe_split.py"
+paid = false
+fixtures = []
+origin = "rebuild of week-5-end split.py embargo_window and partition; reference = the tag's own code"
+red_expect = "raised NotImplementedError"

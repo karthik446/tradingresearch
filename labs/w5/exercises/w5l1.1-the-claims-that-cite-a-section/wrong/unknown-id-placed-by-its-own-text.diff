@@ -1,6 +1,6 @@
 why: places an id that is no row in a section by the id's own text
 expect: indicators scored 0.500 on claims [i4: ['close']; u1
-before: before: GREEN (independent read)
+before: GREEN (independent read)
 --- a/src/tradingresearch/evals.py
 +++ b/src/tradingresearch/evals.py
 @@ -155,7 +155,7 @@

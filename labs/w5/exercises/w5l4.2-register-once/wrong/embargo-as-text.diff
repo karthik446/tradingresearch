@@ -1,0 +1,16 @@
+why: puts the embargo in the id body as text
+expect: is 'sp_
+before: RED (break pass)
+diff --git a/src/tradingresearch/split.py b/src/tradingresearch/split.py
+index 8fd7ca4..131589e 100644
+--- a/src/tradingresearch/split.py
++++ b/src/tradingresearch/split.py
+@@ -76,7 +76,7 @@ def prereg_from(text: str | None, note: str | None, now: datetime) -> Prereg:
+ 
+ def split_id_for(cutoff_session: date, embargo_sessions: int, prereg: Prereg) -> str:
+     """`sp_` + 16 hex of the split's parameters; `registered_at` is left out, so the same split has one id."""
+-    body = {"cutoff_session": cutoff_session.isoformat(), "embargo_sessions": embargo_sessions,
++    body = {"cutoff_session": cutoff_session.isoformat(), "embargo_sessions": str(embargo_sessions),
+             "prereg": prereg.model_dump(mode="json", exclude={"registered_at"})}
+     return "sp_" + digest(body).removeprefix("sha256:")[:16]
+ 

@@ -1,0 +1,5 @@
+FAIL w5l4.3 (try 1): A cutoff still ahead
+  register(cutoff 2026-12-01, embargo 21, now 2026-10-30T22:00:00+00:00) raised ValidationError: 1
+  validation error for TrainingSplit; expected split.Refused, before a TrainingSplit is built
+  hint 1 unlocks after 2 failed runs; hint 2 unlocks after 5 failed runs; the solution unlocks after
+  10 failed runs or when the check is green

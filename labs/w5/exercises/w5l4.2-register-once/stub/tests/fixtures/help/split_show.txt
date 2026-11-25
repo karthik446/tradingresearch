@@ -1,0 +1,7 @@
+usage: tr split show [-h] [split_id]
+
+positional arguments:
+  split_id    default: the latest registered split
+
+options:
+  -h, --help  show this help message and exit

@@ -1,0 +1,20 @@
+why: builds each set as a list, where Split holds tuples
+expect: gave train_val_sessions as a list
+before: RED (break pass)
+diff --git a/src/tradingresearch/split.py b/src/tradingresearch/split.py
+index 8422b03..29f47a6 100644
+--- a/src/tradingresearch/split.py
++++ b/src/tradingresearch/split.py
+@@ -153,9 +153,9 @@ def partition(split: TrainingSplit, days: list[date]) -> Split:
+     are in neither (SPIKE §1.1)."""
+     window = embargo_window(split)
+     ordered = sorted(set(days))
+-    return Split(train_val_sessions=tuple(d for d in ordered if d < window[0]),
+-                 test_sessions=tuple(d for d in ordered if d >= split.cutoff_session),
+-                 embargoed_sessions=tuple(d for d in ordered if window[0] <= d < split.cutoff_session),
++    return Split(train_val_sessions=[d for d in ordered if d < window[0]],
++                 test_sessions=[d for d in ordered if d >= split.cutoff_session],
++                 embargoed_sessions=[d for d in ordered if window[0] <= d < split.cutoff_session],
+                  embargo_window=window)
+ 
+ 

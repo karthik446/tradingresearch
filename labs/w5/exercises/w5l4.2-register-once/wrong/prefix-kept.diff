@@ -1,0 +1,16 @@
+why: keeps the digest's sha256: prefix
+expect: is 'sp_sha256:45eda7389'; expected
+before: RED (author)
+diff --git a/src/tradingresearch/split.py b/src/tradingresearch/split.py
+index 8fd7ca4..bd80fb4 100644
+--- a/src/tradingresearch/split.py
++++ b/src/tradingresearch/split.py
+@@ -78,7 +78,7 @@ def split_id_for(cutoff_session: date, embargo_sessions: int, prereg: Prereg) ->
+     """`sp_` + 16 hex of the split's parameters; `registered_at` is left out, so the same split has one id."""
+     body = {"cutoff_session": cutoff_session.isoformat(), "embargo_sessions": embargo_sessions,
+             "prereg": prereg.model_dump(mode="json", exclude={"registered_at"})}
+-    return "sp_" + digest(body).removeprefix("sha256:")[:16]
++    return "sp_" + digest(body)[:16]
+ 
+ 
+ def register(conn: sqlite3.Connection, cutoff_session: date, embargo_sessions: int, prereg: Prereg,

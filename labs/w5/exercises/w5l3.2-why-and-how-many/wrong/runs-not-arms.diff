@@ -1,0 +1,16 @@
+why: says runs where the reason says arms
+expect: 'edgar_grounded: not scored in both runs (n=6 vs 0)'); expected
+before: RED (break pass)
+diff --git a/src/tradingresearch/experiment.py b/src/tradingresearch/experiment.py
+index bd3711a..fbf2a8d 100644
+--- a/src/tradingresearch/experiment.py
++++ b/src/tradingresearch/experiment.py
+@@ -332,7 +332,7 @@ def compare(a: Run, b: Run, graders: Sequence[str]) -> Compared:
+         values_a, values_b = a.values(grader), b.values(grader)
+         counts = f"n={len(values_a)} vs {len(values_b)}"
+         if not values_a or not values_b:
+-            skipped.append(f"{grader}: not scored in both arms ({counts})")
++            skipped.append(f"{grader}: not scored in both runs ({counts})")
+         elif not values_a.keys() & values_b.keys():
+             skipped.append(f"{grader}: no item scored in both arms ({counts})")
+         else:

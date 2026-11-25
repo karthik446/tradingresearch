@@ -1,0 +1,16 @@
+why: accepts a registration at the open itself
+expect: now 2026-11-02T14:30:00+00:00) raised ValidationError
+before: RED (author)
+diff --git a/src/tradingresearch/split.py b/src/tradingresearch/split.py
+index 3204c0f..a806b24 100644
+--- a/src/tradingresearch/split.py
++++ b/src/tradingresearch/split.py
+@@ -100,7 +100,7 @@ def register(conn: sqlite3.Connection, cutoff_session: date, embargo_sessions: i
+                       "registered before its test period starts")
+     opens = sessions.open_close(cutoff_session)[0]
+     for what, at in (("now", now), ("prereg registered_at", prereg.registered_at)):
+-        if at >= opens:
++        if at > opens:
+             raise Refused(f"{what} {at.isoformat()} is not before the cutoff session opens ({opens.isoformat()})")
+     record = TrainingSplit(split_id=split_id, cutoff_session=cutoff_session, embargo_sessions=embargo_sessions,
+                            prereg=prereg, registered_at=now.astimezone(sessions.NY))

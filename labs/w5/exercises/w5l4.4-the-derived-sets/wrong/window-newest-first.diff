@@ -1,0 +1,20 @@
+why: walks back from the cutoff session by session and keeps the window newest first
+expect: is 22 days from 2026-11-30 to 2026-10-29
+before: RED (author)
+diff --git a/src/tradingresearch/split.py b/src/tradingresearch/split.py
+index 8422b03..4bd361e 100644
+--- a/src/tradingresearch/split.py
++++ b/src/tradingresearch/split.py
+@@ -145,7 +145,11 @@ def journal_sessions(conn: sqlite3.Connection) -> list[date]:
+ 
+ def embargo_window(split: TrainingSplit) -> tuple[date, ...]:
+     """The `embargo_sessions` NYSE sessions right before the cutoff."""
+-    return tuple(sessions.recent(split.embargo_sessions, sessions.previous(split.cutoff_session)))
++    days, day = [], split.cutoff_session
++    for _ in range(split.embargo_sessions):
++        day = sessions.previous(day)
++        days.append(day)
++    return tuple(days)
+ 
+ 
+ def partition(split: TrainingSplit, days: list[date]) -> Split:

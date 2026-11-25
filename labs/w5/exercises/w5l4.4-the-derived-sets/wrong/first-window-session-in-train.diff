@@ -1,0 +1,19 @@
+why: train/val runs up to and including the window's first session
+expect: train_val_sessions = (2026-10-27, 2026-10-28, 2026-10-29); expected
+before: RED (author)
+diff --git a/src/tradingresearch/split.py b/src/tradingresearch/split.py
+index 8422b03..d862455 100644
+--- a/src/tradingresearch/split.py
++++ b/src/tradingresearch/split.py
+@@ -153,9 +153,9 @@ def partition(split: TrainingSplit, days: list[date]) -> Split:
+     are in neither (SPIKE §1.1)."""
+     window = embargo_window(split)
+     ordered = sorted(set(days))
+-    return Split(train_val_sessions=tuple(d for d in ordered if d < window[0]),
++    return Split(train_val_sessions=tuple(d for d in ordered if d <= window[0]),
+                  test_sessions=tuple(d for d in ordered if d >= split.cutoff_session),
+-                 embargoed_sessions=tuple(d for d in ordered if window[0] <= d < split.cutoff_session),
++                 embargoed_sessions=tuple(d for d in ordered if window[0] < d < split.cutoff_session),
+                  embargo_window=window)
+ 
+ 

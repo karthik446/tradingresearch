@@ -1,0 +1,16 @@
+why: puts the reason before the floor
+expect: 'Value error, (entry window 2 + longest hold 20) embargo_sessions must be >= 22'
+before: RED (break pass)
+diff --git a/src/tradingresearch/records.py b/src/tradingresearch/records.py
+index 7720aa2..84b16a1 100644
+--- a/src/tradingresearch/records.py
++++ b/src/tradingresearch/records.py
+@@ -295,7 +295,7 @@ class TrainingSplit(CoreModel):
+     @model_validator(mode="after")
+     def _rules(self) -> Self:
+         if self.embargo_sessions < MIN_EMBARGO:
+-            raise ValueError(f"embargo_sessions must be >= {MIN_EMBARGO} ({EMBARGO_WHY})")
++            raise ValueError(f"({EMBARGO_WHY}) embargo_sessions must be >= {MIN_EMBARGO}")
+         if self.registered_at.date() >= self.cutoff_session:
+             raise ValueError("a split is registered before its cutoff session")
+         return self

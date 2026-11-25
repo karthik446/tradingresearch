@@ -1,0 +1,16 @@
+why: also refuses a cutoff on or before now's UTC date
+expect: register(cutoff 2026-11-03, embargo 22, now 2026-11-03T02:00:00+00:00) raised Refused
+before: RED (author)
+diff --git a/src/tradingresearch/split.py b/src/tradingresearch/split.py
+index 3204c0f..bac5235 100644
+--- a/src/tradingresearch/split.py
++++ b/src/tradingresearch/split.py
+@@ -102,6 +102,8 @@ def register(conn: sqlite3.Connection, cutoff_session: date, embargo_sessions: i
+     for what, at in (("now", now), ("prereg registered_at", prereg.registered_at)):
+         if at >= opens:
+             raise Refused(f"{what} {at.isoformat()} is not before the cutoff session opens ({opens.isoformat()})")
++    if now.date() >= cutoff_session:
++        raise Refused(f"now {now.isoformat()} is not before the cutoff session")
+     record = TrainingSplit(split_id=split_id, cutoff_session=cutoff_session, embargo_sessions=embargo_sessions,
+                            prereg=prereg, registered_at=now.astimezone(sessions.NY))
+     journal.add(conn, record)

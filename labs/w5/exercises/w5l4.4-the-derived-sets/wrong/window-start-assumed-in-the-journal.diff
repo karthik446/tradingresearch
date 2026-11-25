@@ -1,0 +1,16 @@
+why: finds where train/val ends by looking the window's first session up in the journal's days
+expect: raised ValueError
+before: RED (author)
+diff --git a/src/tradingresearch/split.py b/src/tradingresearch/split.py
+index 8422b03..f926580 100644
+--- a/src/tradingresearch/split.py
++++ b/src/tradingresearch/split.py
+@@ -153,7 +153,7 @@ def partition(split: TrainingSplit, days: list[date]) -> Split:
+     are in neither (SPIKE §1.1)."""
+     window = embargo_window(split)
+     ordered = sorted(set(days))
+-    return Split(train_val_sessions=tuple(d for d in ordered if d < window[0]),
++    return Split(train_val_sessions=tuple(ordered[:ordered.index(window[0])]),
+                  test_sessions=tuple(d for d in ordered if d >= split.cutoff_session),
+                  embargoed_sessions=tuple(d for d in ordered if window[0] <= d < split.cutoff_session),
+                  embargo_window=window)

@@ -1,0 +1,16 @@
+why: states the floor but not why
+expect: was refused with 'Value error, embargo_sessions must be >= 22'; expected
+before: RED (author)
+diff --git a/src/tradingresearch/records.py b/src/tradingresearch/records.py
+index 7720aa2..0c9ef39 100644
+--- a/src/tradingresearch/records.py
++++ b/src/tradingresearch/records.py
+@@ -295,7 +295,7 @@ class TrainingSplit(CoreModel):
+     @model_validator(mode="after")
+     def _rules(self) -> Self:
+         if self.embargo_sessions < MIN_EMBARGO:
+-            raise ValueError(f"embargo_sessions must be >= {MIN_EMBARGO} ({EMBARGO_WHY})")
++            raise ValueError(f"embargo_sessions must be >= {MIN_EMBARGO}")
+         if self.registered_at.date() >= self.cutoff_session:
+             raise ValueError("a split is registered before its cutoff session")
+         return self

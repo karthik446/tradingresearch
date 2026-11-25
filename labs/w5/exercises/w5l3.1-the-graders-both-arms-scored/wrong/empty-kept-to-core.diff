@@ -1,0 +1,14 @@
+why: with nothing kept, hands core an empty list, which core reads as every shared grader
+expect: refused no_paired_items: grader levels_grounded graded no item in both runs; with no grader
+before: RED (author)
+diff --git a/src/tradingresearch/experiment.py b/src/tradingresearch/experiment.py
+index 54972d3..b627d2c 100644
+--- a/src/tradingresearch/experiment.py
++++ b/src/tradingresearch/experiment.py
+@@ -338,6 +338,4 @@ def compare(a: Run, b: Run, graders: Sequence[str]) -> Compared:
+             skipped.append(f"{grader}: no item scored in both arms")
+         else:
+             kept.append(grader)
+-    if not kept:
+-        raise ComparisonRefused("no_shared_metric", "no grader is scored on a common item in both runs")
+     return Compared(core_compare(a, b, kept), tuple(skipped))
