@@ -1,0 +1,16 @@
+why: keeps a grader only when one run's scored items are a subset of the other's, so two runs that share one item and each have one of their own skip it
+expect: compare(hand a -> hand b, ['overlap', 'a_only', 'parsed']) compared ['parsed'] and skipped ('overlap: no item scored in both arms (n=2 vs 2)'
+before: GREEN (independent read)
+diff --git a/src/tradingresearch/experiment.py b/src/tradingresearch/experiment.py
+index bd3711a..4183caf 100644
+--- a/src/tradingresearch/experiment.py
++++ b/src/tradingresearch/experiment.py
+@@ -333,7 +333,7 @@ def compare(a: Run, b: Run, graders: Sequence[str]) -> Compared:
+         counts = f"n={len(values_a)} vs {len(values_b)}"
+         if not values_a or not values_b:
+             skipped.append(f"{grader}: not scored in both arms ({counts})")
+-        elif not values_a.keys() & values_b.keys():
++        elif not (values_a.keys() <= values_b.keys() or values_b.keys() <= values_a.keys()):
+             skipped.append(f"{grader}: no item scored in both arms ({counts})")
+         else:
+             kept.append(grader)

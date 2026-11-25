@@ -9,7 +9,7 @@
   train/val nor test.
 
 The splits are registered on an in-memory journal at 2026-10-30 22:00 UTC. The dates are real NYSE sessions:
-Thanksgiving 2026-11-26 and Christmas 2026-12-25 are closed.
+Thanksgiving 2026-11-26, Christmas 2026-12-25 and New Year's Day 2027-01-01 are closed.
 """
 
 from datetime import UTC, date, datetime
@@ -37,6 +37,13 @@ WINDOWS = {  # (cutoff, embargo): the NYSE sessions right before the cutoff, cou
                        "12-17 12-18 12-21 12-22 12-23 12-24 12-28"),
     (DEC1, 27): dates("10-22 10-23 10-26 10-27 10-28 10-29 10-30 11-02 11-03 11-04 11-05 11-06 11-09 11-10 11-11 "
                       "11-12 11-13 11-16 11-17 11-18 11-19 11-20 11-23 11-24 11-25 11-27 11-30"),
+    # cutoffs whose calendar day before is not a session: a Sunday, Thanksgiving, and New Year's Day after a weekend
+    (d("11-30"), 22): dates("10-28 10-29 10-30 11-02 11-03 11-04 11-05 11-06 11-09 11-10 11-11 11-12 11-13 11-16 "
+                            "11-17 11-18 11-19 11-20 11-23 11-24 11-25 11-27"),
+    (d("11-27"), 22): dates("10-27 10-28 10-29 10-30 11-02 11-03 11-04 11-05 11-06 11-09 11-10 11-11 11-12 11-13 "
+                            "11-16 11-17 11-18 11-19 11-20 11-23 11-24 11-25"),
+    (d("2027-01-04"), 22): dates("12-01 12-02 12-03 12-04 12-07 12-08 12-09 12-10 12-11 12-14 12-15 12-16 12-17 12-18 "
+                                 "12-21 12-22 12-23 12-24 12-28 12-29 12-30 12-31"),
 }
 SETS = ("train_val_sessions", "embargoed_sessions", "test_sessions")
 
@@ -90,7 +97,8 @@ def test_the_window_is_the_embargo_s_nyse_sessions_right_before_the_cutoff(cutof
     assert got == want, (
         f"embargo_window(cutoff {cutoff}, embargo {embargo}) is {len(got)} days from {got[0] if got else '-'} to "
         f"{got[-1] if got else '-'}; expected the {embargo} NYSE sessions before the cutoff, oldest first: {want[0]} "
-        f"to {want[-1]} (Thanksgiving 11-26 and Christmas 12-25 are closed, so they are not counted)")
+        f"to {want[-1]} (Thanksgiving 11-26, Christmas 12-25 and New Year's Day 2027-01-01 are closed, so they are not "
+        "counted)")
 
 
 JOURNAL_A = dates("12-02 10-28 11-30 2027-03-01 10-29 12-01 10-27 11-27 10-28 11-25 10-30")  # out of order, 10-28 twice

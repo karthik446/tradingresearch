@@ -9,7 +9,8 @@
      with `prereg registered_at` in place of `now`. Times print with isoformat().
 A split already stored is returned as stored even once its cutoff has opened.
 
-The journal is in memory; the dates are real NYSE sessions, Thanksgiving 2026-11-26 closed and 11-27 open.
+The journal is in memory; the dates are real NYSE sessions, Thanksgiving 2026-11-26 closed and 11-27 open, Good Friday
+2027-03-26 closed though no federal holiday, and Veterans Day 2026-11-11 open though a federal holiday.
 """
 
 from datetime import UTC, date, datetime, timedelta
@@ -67,7 +68,8 @@ def test_an_embargo_under_the_floor_is_refused_with_its_reason(conn, embargo):
     assert got == f"embargo {embargo} < 22 sessions ({WHY})", got
 
 
-@pytest.mark.parametrize("cutoff", [date(2026, 11, 26), date(2026, 11, 28)])
+# Thanksgiving, a Saturday, Good Friday
+@pytest.mark.parametrize("cutoff", [date(2026, 11, 26), date(2026, 11, 28), date(2027, 3, 26)])
 def test_a_cutoff_that_is_not_an_nyse_session_is_refused(conn, cutoff):
     got = refusal(conn, cutoff, 22, NOW)
     assert got == f"cutoff {cutoff} is not an NYSE session", f"{got}  ({cutoff:%A}, the exchange is closed)"
@@ -109,7 +111,8 @@ def test_the_first_reason_in_order_is_the_one_given(conn, cutoff, embargo, now, 
     (date(2026, 11, 27), NOW),  # the day after Thanksgiving is open
     (CUTOFF, datetime(2026, 11, 30, 22, 0, tzinfo=UTC)),  # the evening the session before the cutoff closed
     (date(2026, 11, 3), datetime(2026, 11, 3, 2, 0, tzinfo=UTC)),  # 21:00 New York, UTC already says 11-03
-], ids=["after-thanksgiving", "the-evening-before-the-cutoff", "an-evening-utc-calls-the-next-day"])
+    (date(2026, 11, 11), NOW),  # Veterans Day, a federal holiday: the exchange is open
+], ids=["after-thanksgiving", "the-evening-before-the-cutoff", "an-evening-utc-calls-the-next-day", "veterans-day"])
 def test_a_cutoff_still_ahead_is_stored(conn, cutoff, now):
     assert stored(conn, cutoff, now).cutoff_session == cutoff and rows(conn) == 1
 

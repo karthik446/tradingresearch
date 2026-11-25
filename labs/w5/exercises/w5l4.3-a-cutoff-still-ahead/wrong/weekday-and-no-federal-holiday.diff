@@ -1,0 +1,18 @@
+why: takes an NYSE session to be a weekday that is not a US federal holiday: Good Friday is closed though no federal holiday, Veterans Day open though one
+expect: register(cutoff 2027-03-26, embargo 22, now 2026-10-30T22:00:00+00:00) raised NotSessionError
+before: GREEN (independent read)
+diff --git a/src/tradingresearch/split.py b/src/tradingresearch/split.py
+index 3204c0f..5a5359f 100644
+--- a/src/tradingresearch/split.py
++++ b/src/tradingresearch/split.py
+@@ -92,7 +92,9 @@ def register(conn: sqlite3.Connection, cutoff_session: date, embargo_sessions: i
+     held = find(conn, split_id)
+     if held is not None:
+         return held
+-    if not sessions.is_session(cutoff_session):
++    from pandas.tseries.holiday import USFederalHolidayCalendar
++    hols = {d.date() for d in USFederalHolidayCalendar().holidays(f'{cutoff_session.year}-01-01', f'{cutoff_session.year}-12-31')}
++    if cutoff_session.weekday() >= 5 or cutoff_session in hols:
+         raise Refused(f"cutoff {cutoff_session} is not an NYSE session")
+     last = sessions.last_completed(now)
+     if cutoff_session <= last:

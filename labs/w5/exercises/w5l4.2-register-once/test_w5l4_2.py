@@ -67,7 +67,9 @@ def test_register_stores_the_split_in_new_york_time_and_returns_it(conn):
     got = split.register(conn, CUTOFF, 22, prereg, NOW)
     assert (got.split_id, got.cutoff_session, got.embargo_sessions) == (IDS[CUTOFF, 22], CUTOFF, 22), (
         f"register returned ({got.split_id}, {got.cutoff_session}, {got.embargo_sessions})")
-    assert got.registered_at == NOW and got.registered_at.tzinfo == sessions.NY, (
+    # the instant and New York's offset at it, not the tzinfo object: a row read back has a fixed -04:00 tzinfo
+    in_new_york = NOW.astimezone(sessions.NY).utcoffset()
+    assert got.registered_at == NOW and got.registered_at.utcoffset() == in_new_york, (
         f"registered_at is {got.registered_at.isoformat()} in {got.registered_at.tzinfo}; expected now, "
         "2026-10-30 22:00 UTC, in America/New_York: 2026-10-30T18:00:00-04:00, the date New York registers it on "
         f"(the prereg was registered {prereg.registered_at.isoformat()})")
@@ -99,3 +101,13 @@ def test_other_parameters_are_new_rows_and_each_id_returns_its_own_split(conn):
     assert again == first and rows(conn) == 3, (
         f"the first split asked for again returned {again.split_id} (embargo {again.embargo_sessions}) with "
         f"{rows(conn)} rows; expected {first.split_id} and 3 rows")
+
+
+def test_a_different_prereg_under_the_same_cutoff_and_embargo_is_a_new_split(conn):
+    first = split.register(conn, CUTOFF, 22, split.gate_prereg(NOW), NOW)
+    when, note = NOW + timedelta(hours=1), "a later, different hypothesis"
+    other = split.register(conn, CUTOFF, 22, split.gate_prereg(when, note), when)
+    assert other.split_id != first.split_id and ids(conn) == [first.split_id, other.split_id], (
+        f"a second Prereg (hypothesis {note!r}) under cutoff {CUTOFF}, embargo 22 returned {other.split_id} with "
+        f"{rows(conn)} row(s); expected a new split and 2 rows: a different Prereg is a different split, so the lookup "
+        "is by the id, not by the cutoff and the embargo")

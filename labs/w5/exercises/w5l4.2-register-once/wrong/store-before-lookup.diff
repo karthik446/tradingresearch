@@ -1,6 +1,6 @@
 why: stores first and looks up after
-expect: registered_at is 2026-10-30T18:00:00-04:00 in -04:00
-before: RED (author)
+expect: again at 2026-10-30 23:00:00+00:00 raised IntegrityError: UNIQUE constraint failed
+before: RED (author; the check first failed on registered_at's tzinfo, now on the second register)
 diff --git a/src/tradingresearch/split.py b/src/tradingresearch/split.py
 index 8fd7ca4..598bc54 100644
 --- a/src/tradingresearch/split.py

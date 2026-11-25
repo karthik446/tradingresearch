@@ -2,13 +2,17 @@
 SWING_ENTRY_SESSIONS = 2 (a swing thesis enters on one of the two sessions after it is written), MIN_EMBARGO = that
 plus the longest hold in HOLD_RANGE (20 sessions), so 22, and EMBARGO_WHY = "entry window 2 + longest hold 20". The
 record refuses an embargo under MIN_EMBARGO with a ValueError saying `embargo_sessions must be >= 22 (entry window 2 +
-longest hold 20)`; the rule that a split is registered before its cutoff session stays.
+longest hold 20)`; the rule that a split is registered before its cutoff session stays. The floor and its reason follow
+HOLD_RANGE: a copy of records.py whose swing hold runs to 45 sessions has MIN_EMBARGO 47, refusing 46 and taking 47.
 
 The dates are real NYSE sessions (tradingresearch.sessions); the cutoff 2026-12-29 is the chapter's example, its
 window crossing Thanksgiving and Christmas.
 """
 
+import sys
+import types
 from datetime import UTC, date, datetime
+from pathlib import Path
 
 import pandas as pd
 import pytest
@@ -16,6 +20,8 @@ from gigai_core.records import Prereg
 from pydantic import ValidationError
 
 from tradingresearch import records, sessions
+
+HOLD_20, HOLD_45 = '"swing": (5, 20)', '"swing": (5, 45)'
 
 NOW = datetime(2026, 10, 30, 22, 0, tzinfo=UTC)  # after the 2026-10-30 close
 CUTOFF = date(2026, 12, 29)
@@ -81,3 +87,32 @@ def test_a_split_is_still_registered_before_its_cutoff_session(registered_at):
     assert msg.endswith("a split is registered before its cutoff session"), (
         f"TrainingSplit(cutoff_session={CUTOFF}, registered_at={registered_at}) was refused with {msg!r}; expected "
         f"'a split is registered before its cutoff session'")
+
+
+def test_the_floor_and_its_reason_follow_the_longest_hold_in_hold_range():
+    source = Path(records.__file__).read_text()
+    assert source.count(HOLD_20) == 1, f"records.py should spell HOLD_RANGE's swing entry {HOLD_20} once"
+    name = "tradingresearch.records_with_a_45_session_hold"  # a throwaway copy; registered so pydantic resolves it
+    copy = types.ModuleType(name)
+    copy.__package__ = "tradingresearch"
+    sys.modules[name] = copy
+    try:
+        exec(compile(source.replace(HOLD_20, HOLD_45), records.__file__, "exec"), copy.__dict__)
+        got = (copy.MIN_EMBARGO, copy.EMBARGO_WHY)
+        assert got == (47, "entry window 2 + longest hold 45"), (
+            f"a copy of records.py with HOLD_RANGE {HOLD_45} has (MIN_EMBARGO, EMBARGO_WHY) = {got}; expected "
+            "(47, 'entry window 2 + longest hold 45'): the floor is the entry window plus the longest hold in "
+            "HOLD_RANGE, so it moves when thesis rule 3 does")
+        made = {}
+        for embargo in (46, 47):
+            try:
+                copy.TrainingSplit(split_id="sp_lab", cutoff_session=CUTOFF, embargo_sessions=embargo, prereg=PREREG,
+                                   registered_at=NOW)
+                made[embargo] = "accepted"
+            except ValidationError:
+                made[embargo] = "refused"
+        assert made == {46: "refused", 47: "accepted"}, (
+            f"with HOLD_RANGE {HOLD_45}, TrainingSplit embargo 46 was {made[46]} and 47 {made[47]}; expected 46 "
+            "refused and 47 accepted: the record checks against MIN_EMBARGO, not a written-in 22")
+    finally:
+        del sys.modules[name]

@@ -1,0 +1,25 @@
+why: counts the window back from the calendar day before the cutoff, which is no session when the cutoff is a Monday or follows a holiday
+expect: split.embargo_window(cutoff 2026-11-30, embargo 22) raised NotSessionError
+before: GREEN (independent read)
+diff --git a/src/tradingresearch/split.py b/src/tradingresearch/split.py
+index 8422b03..034081d 100644
+--- a/src/tradingresearch/split.py
++++ b/src/tradingresearch/split.py
+@@ -12,7 +12,7 @@ from __future__ import annotations
+ import json
+ import sqlite3
+ from dataclasses import dataclass
+-from datetime import date, datetime
++from datetime import date, datetime, timedelta
+ 
+ from gigai_core.records import Prereg
+ from pydantic import ValidationError
+@@ -145,7 +145,7 @@ def journal_sessions(conn: sqlite3.Connection) -> list[date]:
+ 
+ def embargo_window(split: TrainingSplit) -> tuple[date, ...]:
+     """The `embargo_sessions` NYSE sessions right before the cutoff."""
+-    return tuple(sessions.recent(split.embargo_sessions, sessions.previous(split.cutoff_session)))
++    return tuple(sessions.recent(split.embargo_sessions, split.cutoff_session - timedelta(days=1)))
+ 
+ 
+ def partition(split: TrainingSplit, days: list[date]) -> Split:

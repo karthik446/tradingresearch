@@ -12,12 +12,12 @@ This folder holds week 5 of the AI engineering track, run by `tr lab` on this re
 | [w5l2.1](exercises/w5l2.1-three-arms/) | Write three analyze-3 arms that differ only in what they drop | `experiments/context-ablation.toml` | 18 |
 | [w5l2.2](exercises/w5l2.2-graders-and-cluster/) | Name the seven code graders once each; write the cluster out | `experiments/context-ablation.toml` | 13 |
 | [w5l2.3](exercises/w5l2.3-the-pre-registration/) | Write the primary metric, the guard and the rule above the first key | `experiments/context-ablation.toml` | 21 |
-| [w5l3.1](exercises/w5l3.1-the-graders-both-arms-scored/) | Compare on the graders both runs scored on a common item, skip the rest, refuse with `no_shared_metric` when none is left | `experiment.py` | 16 |
-| [w5l3.2](exercises/w5l3.2-why-and-how-many/) | Say why each grader was skipped and how many items each run scored; name every skipped grader in the refusal | `experiment.py` | 16 |
-| [w5l4.1](exercises/w5l4.1-the-embargo-floor/) | Derive the embargo floor (entry window 2 + longest hold 20) and refuse a split under it with the reason | `records.py` | 13 |
-| [w5l4.2](exercises/w5l4.2-register-once/) | Register a split stamped in New York time under a content-addressed id, stored once | `split.py` | 17 |
-| [w5l4.3](exercises/w5l4.3-a-cutoff-still-ahead/) | Refuse a cutoff whose session has opened, by now or by the pre-registration, before writing a row | `split.py` | 17 |
-| [w5l4.4](exercises/w5l4.4-the-derived-sets/) | The embargo window from the NYSE calendar; train/val, embargoed and test derived from the journal's sessions | `split.py` | 21 |
+| [w5l3.1](exercises/w5l3.1-the-graders-both-arms-scored/) | Compare on the graders both runs scored on a common item, skip the rest, refuse with `no_shared_metric` when none is left | `experiment.py` | 17 |
+| [w5l3.2](exercises/w5l3.2-why-and-how-many/) | Say why each grader was skipped and how many items each run scored; name every skipped grader in the refusal | `experiment.py` | 18 |
+| [w5l4.1](exercises/w5l4.1-the-embargo-floor/) | Derive the embargo floor (entry window 2 + longest hold 20) and refuse a split under it with the reason | `records.py` | 14 |
+| [w5l4.2](exercises/w5l4.2-register-once/) | Register a split stamped in New York time under a content-addressed id, stored once | `split.py` | 18 |
+| [w5l4.3](exercises/w5l4.3-a-cutoff-still-ahead/) | Refuse a cutoff whose session has opened, by now or by the pre-registration, before writing a row | `split.py` | 18 |
+| [w5l4.4](exercises/w5l4.4-the-derived-sets/) | The embargo window from the NYSE calendar; train/val, embargoed and test derived from the journal's sessions | `split.py` | 22 |
 
 ### Part A
 
@@ -37,7 +37,7 @@ Alternatives that are right but not the reference, each green: w5l1.1 2, w5l1.2 
 
 ### Part B
 
-100 wrong fixes: 32 in w5l3, 68 in w5l4.
+107 wrong fixes: 35 in w5l3, 72 in w5l4.
 
 65 are `before: RED (author)`, written with the exercise (w5l3 11, 10; w5l4 8, 11, 12, 13).
 
@@ -49,9 +49,20 @@ Alternatives that are right but not the reference, each green: w5l1.1 2, w5l1.2 
 
 Dropped rather than kept: in w5l3.2 the skipped graders as a set (red or green by `PYTHONHASHSEED`); in w5l4.2 the real clock (its first failing line moves with the date). Not saved as wrong because they are right: in w5l4.1 the cutoff rule checked before the floor; in w5l4.2 the pre-registration dumped in Python mode (its fields dump the same). Not observable: in w5l4.3 the embargo checked after the lookup (a stored split cannot have an embargo under 22).
 
-Every part B wrong fix is red with its `expect:` and passes the earlier exercises of its lab (checked in a scratch clone).
+7 come from an independent read of the finished lab and passed the checks as they then stood; each now has a test (`before: GREEN (independent read)`; w5l3.1 1, w5l3.2 2, w5l4.1 1, w5l4.2 1, w5l4.3 1, w5l4.4 1):
 
-Alternatives that are right but not the reference, each green, kept out of the folder: w5l3.1 3 (one rule for a common item, comprehensions, scores de-duplicated first), w5l3.2 3 (`str.format`, `%` formatting, the reasons first then formatted), w5l4.1 4 (the cutoff rule first, the longest hold named, the ranges sorted, the message concatenated), w5l4.2 4 (a walrus lookup, the digest sliced, UTC then New York, the Python-mode dump), w5l4.3 3 (two plain `if`s, "not after" written out, the first failing rule), w5l4.4 3 (walk back with `sessions.previous`, the window as `recent(n + 1, cutoff)` without its last, `bisect` on the sorted days).
+- w5l3.1 and w5l3.2: a grader kept only when one run's items are a subset of the other's, so two runs that share one item and each have one of their own skip it (`either-subset-overlap`, one in each exercise).
+- w5l3.2: the refusal's skipped graders sorted by name instead of in the order asked (`refusal-sorted`).
+- w5l4.1: the floor and its reason written in as 22 and `longest hold 20` instead of derived from `HOLD_RANGE` (`floor-hard-coded`); the test runs a copy of `records.py` with a swing hold of 45.
+- w5l4.2: the stored split looked up by cutoff and embargo alone, so a different pre-registration gets the old split (`lookup-by-cutoff-and-embargo`).
+- w5l4.3: a session taken as a weekday that is no federal holiday, which stores Good Friday 2027-03-26 and refuses Veterans Day 2026-11-11 (`weekday-and-no-federal-holiday`).
+- w5l4.4: the window counted back from the calendar day before the cutoff, which raises on a Monday cutoff or one after a holiday (`window-from-the-calendar-day-before`).
+
+The same read found that w5l4.2's `registered_at` check compared the tzinfo object, so a correct `register` that returns the split read back from the journal failed. It now compares the instant and New York's UTC offset; `store-before-lookup` now first fails on the second register, and its header says so.
+
+Every part B wrong fix is red with its `expect:` and passes the earlier exercises of its lab (checked in a scratch clone), except the w5l3.2 copy of `either-subset-overlap`: w5l3.1's check catches it too, and it is kept in w5l3.2 so that exercise's check is proven on it.
+
+Alternatives that are right but not the reference, each green, kept out of the folder: w5l3.1 3 (one rule for a common item, comprehensions, scores de-duplicated first), w5l3.2 3 (`str.format`, `%` formatting, the reasons first then formatted), w5l4.1 4 (the cutoff rule first, the longest hold named, the ranges sorted, the message concatenated), w5l4.2 5 (a walrus lookup, the digest sliced, UTC then New York, the Python-mode dump, the split read back from the journal after storing it), w5l4.3 3 (two plain `if`s, "not after" written out, the first failing rule), w5l4.4 3 (walk back with `sessions.previous`, the window as `recent(n + 1, cutoff)` without its last, `bisect` on the sorted days).
 
 ## Layout
 
@@ -96,7 +107,7 @@ labs/w5/
 
 `python labs/w5/tools/observe_compare.py` (lab w5l3) runs your `experiment.compare` on the author's three runs as the chapter's two `tr exp compare` commands, then with the graders in config order, then on `edgar_grounded` and `levels_grounded` alone. What moves: `compare raised NotImplementedError` four times → the chapter's two blocks with a `skipped` line per grader left out, and the refusal `cannot compare: no grader is scored on a common item in both runs` (w5l3.1); the same lines with why and the counts, `not scored in both arms (n=16 vs 0)`, and a refusal that names every skipped grader (w5l3.2).
 
-`python labs/w5/tools/observe_split.py` (lab w5l4) prints the embargo floor, builds a `TrainingSplit` one session under it, registers splits at a fixed clock (2026-10-30 22:00 UTC) into a temporary store, and partitions a journal's sessions. What moves: `MIN_EMBARGO: '(missing)'` and an embargo of 21 accepted → 22, `entry window 2 + longest hold 20`, and 21 refused (w5l4.1); `register raised NotImplementedError` → `sp_511d03d559bae169` stored once, but a Thanksgiving cutoff stored too (w5l4.2); Thanksgiving, a past cutoff and one opening at the pre-registration refused, no row written (w5l4.3); `embargo_window raised NotImplementedError` → 22 sessions from 2026-11-25 to 2026-12-28, and the three sets (w5l4.4).
+`python labs/w5/tools/observe_split.py` (lab w5l4) prints the embargo floor, builds a `TrainingSplit` one session under it, registers splits at a fixed clock (2026-10-30 22:00 UTC) into a temporary store, and partitions a journal's sessions. What moves: `MIN_EMBARGO: '(missing)'` and an embargo of 21 accepted → 22, `entry window 2 + longest hold 20`, and 21 refused (w5l4.1); `register raised NotImplementedError` → `sp_511d03d559bae169` stored once, but a Thanksgiving cutoff stored too (w5l4.2); Thanksgiving, the last completed session, and a cutoff whose session opened before now (cutoff 2026-11-02, now 10:00 New York) refused, no row written (w5l4.3); `embargo_window raised NotImplementedError` → 22 sessions from 2026-11-25 to 2026-12-28, and the three sets (w5l4.4).
 
 ## The suite gate
 

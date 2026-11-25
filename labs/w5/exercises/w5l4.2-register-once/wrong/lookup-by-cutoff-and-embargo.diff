@@ -1,0 +1,16 @@
+why: looks the split up by its cutoff and embargo, so another Prereg under them gets the first split back
+expect: a second Prereg (hypothesis 'a later, different hypothesis') under cutoff 2026-12-01, embargo 22 returned sp_45eda73898d532af with 1 row(s)
+before: GREEN (independent read)
+diff --git a/src/tradingresearch/split.py b/src/tradingresearch/split.py
+index 8fd7ca4..7175f61 100644
+--- a/src/tradingresearch/split.py
++++ b/src/tradingresearch/split.py
+@@ -90,7 +90,7 @@ def register(conn: sqlite3.Connection, cutoff_session: date, embargo_sessions: i
+     #   that is not an NYSE session, one not after the last completed session, and one whose session opens no later
+     #   than now or the prereg's registered_at.
+     split_id = split_id_for(cutoff_session, embargo_sessions, prereg)
+-    held = find(conn, split_id)
++    held = next((s for s in splits(conn) if (s.cutoff_session, s.embargo_sessions) == (cutoff_session, embargo_sessions)), None)
+     if held is not None:
+         return held
+     record = TrainingSplit(split_id=split_id, cutoff_session=cutoff_session, embargo_sessions=embargo_sessions,

@@ -76,10 +76,30 @@ def test_the_reason_depends_on_whether_a_run_has_no_score_or_no_common_item():
         f"a_only on all 10 in a only")
 
 
+def test_a_grader_the_runs_share_one_item_of_is_compared_not_skipped():
+    a = runs.run("a", {"parsed": ALL, "overlap": {IDS[0]: 0.0, IDS[1]: 1.0}, "a_only": {IDS[3]: 1.0}})
+    b = runs.run("b", {"parsed": ALL, "overlap": {IDS[1]: 0.0, IDS[2]: 1.0}})
+    asked = ("overlap", "a_only", "parsed")
+    try:
+        got = experiment.compare(a, b, asked)
+    except Exception as exc:  # noqa: BLE001 - reported here
+        raise AssertionError(f"compare(hand a -> hand b, {list(asked)}) raised {exc!r}") from None
+    kept, want = [m.metric for m in got.comparison.metrics], (f"a_only: {NOT} (n=1 vs 0)",)
+    assert (kept, got.skipped) == (["overlap", "parsed"], want), (
+        f"compare(hand a -> hand b, {list(asked)}) compared {kept} and skipped {got.skipped!r}; expected "
+        f"['overlap', 'parsed'] and {want!r}: overlap is scored on items 0 and 1 in a, 1 and 2 in b, so item 1 is "
+        f"common though neither run's items are a subset of the other's")
+    paired = got.comparison.metrics[0].items
+    assert paired == 1, f"compare(hand a -> hand b) paired overlap on {paired} items; expected 1, the common item 1"
+
+
 REFUSED = {
     "full -> no-edgar, edgar then levels": (
         "full", "no-edgar", ("edgar_grounded", "levels_grounded"),
         f"(edgar_grounded: {NOT} (n=6 vs 0); levels_grounded: {NONE} (n=1 vs 3))"),
+    "full -> no-edgar, levels then edgar": (
+        "full", "no-edgar", ("levels_grounded", "edgar_grounded"),
+        f"(levels_grounded: {NONE} (n=1 vs 3); edgar_grounded: {NOT} (n=6 vs 0))"),
     "no-headlines -> full, headlines and an unknown grader": (
         "no-headlines", "full", ("headlines_grounded", "levels"),
         f"(headlines_grounded: {NOT} (n=0 vs 16); levels: {NOT} (n=0 vs 0))"),

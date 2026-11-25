@@ -108,6 +108,19 @@ def test_one_common_item_is_enough_and_the_kept_graders_stay_in_the_order_asked(
         f"expected {HAND_KEPT}")
 
 
+def test_runs_that_share_one_item_and_each_have_one_of_their_own_compare_on_that_item():
+    a = runs.run("a", {"parsed": ALL, "overlap": {IDS[0]: 0.0, IDS[1]: 1.0}})
+    b = runs.run("b", {"parsed": ALL, "overlap": {IDS[1]: 0.0, IDS[2]: 1.0}})
+    for what, first, second in (("hand a -> hand b", a, b), ("hand b -> hand a", b, a)):
+        got = compared(first, second, ("overlap", "parsed"), what)
+        assert metrics(got) == ["overlap", "parsed"] and got.skipped == (), (
+            f"compare({what}, ['overlap', 'parsed']) compared {metrics(got)}, skipped {got.skipped!r}; expected "
+            f"['overlap', 'parsed'] and nothing skipped: overlap is scored on items 0 and 1 in a, 1 and 2 in b, so "
+            f"item 1 is common though neither run's items are a subset of the other's")
+        paired = got.comparison.metrics[0].items
+        assert paired == 1, f"compare({what}) paired overlap on {paired} items; expected 1, the common item 1"
+
+
 @pytest.mark.parametrize("which", ["full -> no-edgar", "no-edgar -> full", "hand a -> hand b", "hand b -> hand a"])
 def test_the_comparison_is_core_compare_of_b_against_a_on_the_kept_graders(which):
     if which.startswith("hand"):
