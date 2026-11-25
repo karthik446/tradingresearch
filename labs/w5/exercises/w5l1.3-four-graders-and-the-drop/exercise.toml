@@ -2,7 +2,7 @@ id = "w5l1.3"
 title = "Four graders and the drop"
 effect = "Observe's grader table gains the four registered section graders and the recorded reply in three arms: in the no-headlines arm the headline claim fails, headlines 0.000 with dropped_source, while the full and no-edgar arms keep 1.000."
 goal = "Register one code grader per masking section with the id <section>_grounded, and give SectionGrounded the arm's drop: a claim citing a row of a section the arm never saw fails, in the grader the arm built and no other."
-what_tested = "evals.GRADERS has indicators_grounded, levels_grounded, edgar_grounded and headlines_grounded, each a code grader for its section; evals.graders with a drop fails the claims citing a dropped section's row (dropped_source) in every section grader, dropped or kept, whichever sections the arm drops (one, two, three or all four); the drop stays with the grader built with it; the recorded reply per arm."
+what_tested = "evals.GRADERS has indicators_grounded, levels_grounded, edgar_grounded and headlines_grounded, each a code grader for its section; evals.graders with a drop fails the claims citing a dropped section's row (dropped_source) in every section grader, dropped or kept, for one to four dropped sections; the drop stays with the grader built with it."
 writes = [
   "Give SectionGrounded a drop attribute, empty by default, that evals.graders sets for a drop arm.",
   "In grade, pass validate_claims the ids of the expected rows whose section is in this grader's drop, so a claim citing one is rejected as dropped_source.",
