@@ -102,3 +102,18 @@ def test_replies_in_no_data_row_follow_the_same_rule():
             f"starts with; an unknown's explanation, as written, gets 'unknown: ' in front unless it already starts "
             f"with exactly 'unknown:'."
         )
+
+
+def test_the_prefix_is_the_only_change_to_the_explanation():
+    for explanation, how in (("A &amp; B: the summary shows neither", "holds an HTML entity, which JSON leaves literal"),
+                             ("no volume at the café level", "holds an accented letter"),
+                             ("NO volume in the summary", "is in capitals"),
+                             ("no level the reason names\n", "ends in a newline")):
+        reply = json.dumps({"verdict": "unknown", "explanation": explanation})
+        got = read(reply)
+        assert got == ("fail", f"unknown: {explanation}"), (
+            f"p1_verdict returned {got!r} for an unknown whose explanation {how}: the judge sent {reply!r}, so the "
+            f"reason is {'unknown: ' + explanation!r}. 'unknown: ' in front is the one change ADR-003 asks for; the "
+            f"rest is the explanation as the JSON decoded it, with no unescaping, lower-casing or trimming. "
+            f"journal.abstained reads the prefix, and whoever reads the reason after it reads the judge's words."
+        )

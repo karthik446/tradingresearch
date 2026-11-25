@@ -119,3 +119,26 @@ def test_a_teacher_thesis_never_waits_even_with_a_grade(tmp_path):
         f"should list {want}. A teacher thesis is never judged (ADR-003), Grade or not: `tr grade` gives teachers "
         f"none, but the queue does not lean on that."
     )
+
+
+def test_the_order_is_the_order_written_not_the_clock(tmp_path, monkeypatch):
+    from datetime import datetime, timedelta
+
+    from tradingresearch import grade, journal
+
+    class Earlier(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return datetime.now(tz) - timedelta(days=1)
+
+    conn, (t,), _ = fakea.journal_of(tmp_path, ("champion",))
+    monkeypatch.setattr(journal, "datetime", Earlier)
+    theses = [t, graded_copy(conn, t, "clock_set_back")]
+    got = labels(grade.to_judge(conn), theses)
+    want = labels(theses, theses)
+    assert got == want, (
+        f"With a graded champion thesis and then a second one written while the clock read a day earlier, to_judge "
+        f"lists {got}; it should list {want}. Oldest first is the order the theses were written in the journal, "
+        f"which only grows; a clock can be set back, and a stamp taken from it then puts a newer thesis ahead of "
+        f"the ones already waiting."
+    )

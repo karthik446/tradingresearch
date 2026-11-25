@@ -7,10 +7,11 @@ it left. One check records the order `tr grade --judge` grades and judges in. Th
 on made-up outcomes and costs.
 """
 
+import contextlib
+import io
 import re
 import sys
 from pathlib import Path
-from types import SimpleNamespace
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools"))
 import fakea  # noqa: E402
@@ -140,18 +141,34 @@ def test_the_cap_given_on_the_command_line_is_the_cap(tmp_path, monkeypatch):
     )
 
 
-def test_a_dry_run_needs_no_key(tmp_path):
-    from tradingresearch.commands.grade import judge_lines
+def test_a_dry_run_needs_no_key(tmp_path, monkeypatch):
+    from tradingresearch.cli import main
 
-    conn, _, _ = fakea.journal_of(tmp_path, ("champion",))
-    args, cfg = SimpleNamespace(dry_run=True, judge_max_usd=0.25), SimpleNamespace(openrouter_key=None, data_dir=tmp_path)
+    grade, _ = journal(tmp_path)
+    fakea.cli(monkeypatch, tmp_path, [])  # fake keys and the offline guard; then an env file with no OpenRouter key
+    alpaca_only = tmp_path / "alpaca-only.env"
+    alpaca_only.write_text("APCA_API_KEY_ID=not-a-real-id\nAPCA_API_SECRET_KEY=not-a-real-secret\n")
+    monkeypatch.setenv("TR_ENV_FILE", str(alpaca_only))
+    printed = io.StringIO()
     try:
-        out = "\n".join(judge_lines(conn, args, cfg))
+        with contextlib.redirect_stdout(printed):
+            main([*grade, "--judge", "--dry-run"])
+        out = printed.getvalue()
     except (Exception, SystemExit) as exc:  # `require` exits when a key is missing
         out = f"raised {fakea.shown(exc)}"
-    assert "would judge 1" in out, (
-        f"With no OpenRouter key, judge_lines for `tr grade --judge --dry-run` gave {fakea.masked(out)[:200]!r}. A dry "
-        f"run calls nothing, so it needs no key: it lists what the judge would take."
+    assert "would judge 2" in out, (
+        f"With no OpenRouter key, `tr grade --judge --dry-run` gave {fakea.masked(out)[:200]!r}. A dry run calls "
+        f"nothing, so it needs no key: it lists what the judge would take."
+    )
+
+
+def test_tr_grade_with_no_session_still_judges_only_with_judge(tmp_path, monkeypatch):
+    journal(tmp_path)
+    (out, sent), = fakea.cli(monkeypatch, tmp_path, [["grade"]])
+    assert sent == 0 and not judge_part(out), (
+        f"`tr grade` with no --session (today's) sent {sent} judge request(s) and printed: {shown(out)}. The judge "
+        f"runs only with --judge, whatever else the command line gives or leaves out: a default session is still a "
+        f"plain `tr grade`, and a plain `tr grade` pays for nothing."
     )
 
 
@@ -165,4 +182,37 @@ def test_a_fail_verdict_prints_as_fail(tmp_path):
     assert "P1 fail" in line and "The cited level broke." in line, (
         f"render_judged printed {fakea.masked(line)!r} for a fail verdict with the reason 'The cited level broke.'. "
         f"Each line shows the verdict the judge gave, fail as well as pass, and its reason."
+    )
+
+
+def test_a_pass_shows_its_reason_and_a_fail_counts_as_judged(tmp_path):
+    from tradingresearch import grade
+
+    conn, (champion, challenger), _ = fakea.journal_of(tmp_path, ("champion", "challenger"))
+    conn.close()
+    judged = [grade.Judged(champion, verdict="pass", reason="The named break held.", cost_usd=0.0001),
+              grade.Judged(challenger, verdict="fail", reason="The cited level broke.", cost_usd=0.0001)]
+    lines = grade.render_judged(judged, dry_run=False, max_usd=0.25)
+    assert "The named break held." in lines[0], (
+        f"render_judged printed {fakea.masked(lines[0])!r} for a pass whose reason is 'The named break held.'. A pass "
+        f"shows its reason like a fail does: the reason is what the operator reads to see whether the judge read "
+        f"the trade right, and a pass is a judgement too."
+    )
+    assert "2 judged, 0 not judged" in lines[-1], (
+        f"render_judged ended with {fakea.masked(lines[-1])!r} for a pass and a fail. Both were judged: a fail is a "
+        f"verdict the judge gave, not a thesis it could not judge, so the last line counts 2 judged, 0 not judged."
+    )
+
+
+def test_the_run_cost_is_summed_before_it_is_rounded(tmp_path):
+    from tradingresearch import grade
+
+    conn, theses, _ = fakea.journal_of(tmp_path, ("champion", "challenger"))
+    conn.close()
+    judged = [grade.Judged(t, verdict="pass", reason="a made-up reason", cost_usd=0.0000004) for t in theses]
+    last = grade.render_judged(judged, dry_run=False, max_usd=0.25)[-1]
+    assert "$0.000001" in costs(last), (
+        f"render_judged ended with {fakea.masked(last)!r} for two outcomes that each cost $0.0000004. The run's cost "
+        f"is their sum, $0.0000008, shown to the millionth as $0.000001: each line may round its own cost away, but "
+        f"a total made of rounded lines loses every sub-microdollar call, and a run of many cheap calls shows $0."
     )

@@ -1,0 +1,13 @@
+why: unescapes HTML entities in an unknown's explanation before the prefix goes on
+expect: for an unknown whose explanation holds an HTML entity
+before: GREEN (Codex round 2)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -212,6 +212,7 @@
+     explanation = last_json_object(reply, "explanation")
+     reason = explanation if isinstance(explanation, str) else ""
+     if verdict == "unknown":
++        reason = __import__("html").unescape(reason)
+         return "fail", reason if reason.startswith("unknown:") else f"unknown: {reason}"
+     return verdict, reason
+ 

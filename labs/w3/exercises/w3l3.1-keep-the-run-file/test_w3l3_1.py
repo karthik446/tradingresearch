@@ -6,6 +6,7 @@ the verdict and storing it is w3l3.2: until then p1_judge stops with NotImplemen
 which these checks allow.
 """
 
+import json
 import sys
 from pathlib import Path
 
@@ -19,6 +20,12 @@ COST = fakea.load("judge_reply")["usage"]["cost"]  # what the recorded reply cos
 
 def files_under(data_dir: Path) -> list[str]:
     return [fakea.masked(str(p.relative_to(data_dir))) for p in sorted(data_dir.rglob("*")) if p.is_file()]
+
+
+def saved_samples(data_dir: Path) -> list[dict]:
+    """The sample rows the run files under data_dir/runs hold: what each call was sent and answered."""
+    return [row["sample"] for path in fakea.run_files(data_dir)
+            for row in map(json.loads, path.read_text().splitlines()) if row.get("sample")]
 
 
 @pytest.fixture(scope="module")
@@ -66,6 +73,38 @@ def test_a_reply_with_no_verdict_still_leaves_its_run_file(tmp_path):
         f"A reply with reasoning and no verdict line left {len(files)} run file(s) under data_dir/runs, expected 1 "
         f"(p1_judge ended with {fakea.shown(j.got)}). The reply came back and was paid for whatever it says: the run "
         f"file is kept before anything reads the reply, so a reply that cannot be read is still on record."
+    )
+
+
+def test_the_run_file_keeps_the_reply_as_it_came(recorded):
+    reply = fakea.load("judge_reply")["choices"][0]["message"]["content"]
+    saved = [sample.get("output_text") for sample in saved_samples(recorded.data_dir)]
+    assert saved == [reply], (
+        f"The run file's sample says the judge answered {[fakea.masked(str(s))[:60] for s in saved]}; the reply was "
+        f"{reply[:60]!r}... (p1_judge ended with {fakea.shown(recorded.got)}). The sample is the only record of what "
+        f"the judge answered: whoever opens the run later must find the reply as it came, whole, not a cut of it."
+    )
+
+
+def test_each_call_leaves_a_run_file_of_its_own(tmp_path):
+    from tradingresearch import evals
+
+    conn, theses, bars = fakea.journal_of(tmp_path, ("champion", "challenger"))
+    ended = []
+    for t in theses:
+        try:
+            evals.p1_judge(conn, bars, t.thesis_id, fakea.replaying([]), prices=fakea.prices(), data_dir=tmp_path,
+                           max_usd=0.1)
+        except NotImplementedError:  # reading the verdict is w3l3.2
+            pass
+        except Exception as exc:
+            ended.append(fakea.shown(exc))
+    files = fakea.run_files(tmp_path)
+    assert len(files) == 2, (
+        f"Judging a champion and then a challenger thesis left {len(files)} run file(s) under data_dir/runs: "
+        f"{[fakea.masked(p.name) for p in files]} (p1_judge ended with {ended or 'no error'}). Expected 2, one per "
+        f"call: a run file is one call's record under a name of its own, and a call that writes over the last one "
+        f"loses that call's cost and reply."
     )
 
 

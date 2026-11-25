@@ -62,14 +62,15 @@ def test_the_refusal_keeps_its_own_words(tmp_path, arm):
     )
 
 
-def test_a_thesis_the_judge_may_take_is_still_judged(tmp_path):
+@pytest.mark.parametrize("arm", ["challenger", "champion"])
+def test_a_thesis_the_judge_may_take_is_still_judged(tmp_path, arm):
     from gigai_core.score import Score
 
-    j = fakea.judging(tmp_path, arm="challenger")
+    j = fakea.judging(tmp_path, arm=arm)
     assert isinstance(j.got, Score) and j.got.answer == "pass" and len(j.sent) == 1, (
-        f"On a closed, graded challenger thesis p1_judge ended with {fakea.shown(j.got)} after {len(j.sent)} "
+        f"On a closed, graded {arm} thesis p1_judge ended with {fakea.shown(j.got)} after {len(j.sent)} "
         f"request(s), expected Score 1.0 (pass) after 1. Only label.labelable's refusals are refused: a thesis it "
-        f"accepts goes to the judge, or the refusal costs every thesis its verdict."
+        f"accepts goes to the judge, champion or challenger, or the refusal costs every thesis its verdict."
     )
 
 
@@ -94,4 +95,21 @@ def test_a_file_error_is_not_a_refusal(tmp_path, monkeypatch):
         f"With label.labelable failing on a file read (an injected OSError) p1_judge ended with {fakea.shown(j.got)}. "
         f"Only label.Refused is a refusal; any other error says nothing about the thesis and reaches the caller as "
         f"it is."
+    )
+
+
+@pytest.mark.parametrize("error", [ValueError, LookupError])
+def test_a_damaged_record_is_not_a_refusal(tmp_path, monkeypatch, error):
+    from tradingresearch import label
+
+    def damaged(*args, **kwargs):
+        raise error("damaged data (injected into label.labelable)")
+
+    monkeypatch.setattr(label, "labelable", damaged)
+    j = fakea.judging(tmp_path)
+    assert type(j.got) is error and j.raised, (
+        f"With label.labelable failing on damaged data (an injected {error.__name__}) p1_judge ended with "
+        f"{fakea.shown(j.got)}. Only label.Refused is a refusal: a {error.__name__} says a record could not be read, "
+        f"not that the thesis may not be judged, and it reaches the caller as it is, not as CannotGrade (which "
+        f"`tr grade --judge` reports as the thesis's outcome and goes on)."
     )

@@ -1,0 +1,14 @@
+why: bounds the reply at the lesser of JUDGE_MAX_TOKENS and the instructions' length, so a short rubric cuts the reply
+expect: a short frame and rubric in RUBRICS
+before: GREEN (Codex round 2)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -238,7 +238,7 @@
+                        "post-trade summary (code-written)", label.summary(conn, bars, t, g)])
+     rubric = (RUBRICS / "p1_judge_prompt.txt").read_text().replace("{rubric}",
+                                                                    (RUBRICS / "p1_thesis_quality.md").read_text())
+-    settings = CallSettings(model=JUDGE_MODEL, max_output_tokens=JUDGE_MAX_TOKENS)
++    settings = CallSettings(model=JUDGE_MODEL, max_output_tokens=min(JUDGE_MAX_TOKENS, len(rubric)))
+     judge = llm_judge(provider, rubric=rubric, settings=settings, grader_id=P1Judge.id)
+     item = DatasetItem(id=t.thesis_id, cluster_id=t.ticker, prompt=judge.render(judged_sample(t, shown), None),
+                        expected=None)

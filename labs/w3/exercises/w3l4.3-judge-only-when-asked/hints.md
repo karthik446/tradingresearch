@@ -8,6 +8,7 @@ otherwise, whatever other option is given. In grade.py, render_judged's outcome 
 
 ## Hint 2
 
-One judge call costs about half a cent: two decimals print $0.01 for a call and four round it away. The run files keep
-six places, and so does the output. A fail is printed as a fail, and the not-judged line is paid too when the reply came
-back with no verdict.
+One judge call costs about half a cent: two decimals print $0.01 for a call, and four print $0.0052, which is not what
+the run file says. The run files keep six places, and so does the output: each line its own cost, and the last line
+their sum, added up first and rounded once, or the microdollars the lines drop never reach the total. A fail is printed
+as a fail with its reason, as a pass is, and the not-judged line is paid too when the reply came back with no verdict.

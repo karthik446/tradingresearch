@@ -7,6 +7,7 @@ The budget's estimate of one call's worst case is about $0.043 (4000 output toke
 $0.005163, as its run file says.
 """
 
+import re
 import shutil
 import sys
 from pathlib import Path
@@ -71,9 +72,9 @@ def test_one_cap_covers_the_whole_run(tmp_path):
     assert first.verdict == "pass" and abs(first.cost_usd - PAID) < 1e-6, (
         f"The first thesis: {outcome(first)}; expected P1 pass, cost ${PAID}"
     )
-    assert second.verdict is None and "does not fit" in str(second.error), (
+    assert second.verdict is None and second.error, (
         f"The second thesis: {outcome(second)}; the budget refused its call (BudgetExceeded: its worst-case estimate "
-        f"does not fit what is left), and its outcome should say so."
+        f"does not fit what is left), so its outcome is no verdict and an error that says so."
     )
     assert third.verdict is None and third.error and third.cost_usd == 0, (
         f"The third thesis: {outcome(third)}. Once the cap cannot cover a call, every later thesis waits for the next "
@@ -143,6 +144,31 @@ def test_a_refused_call_costs_nothing(tmp_path):
     assert second.cost_usd == 0, (
         f"The second thesis: {outcome(second)}. The budget refused its call, so it sent nothing and added no run "
         f"file: its cost is $0. A thesis's cost is what the run files its own call added say, not the newest file's."
+    )
+
+
+def test_the_refusal_keeps_the_budgets_reason(tmp_path, monkeypatch):
+    from gigai_core.budget import BudgetExceeded
+    from tradingresearch import evals
+
+    judge, refusals = evals.p1_judge, []
+
+    def noted(*args, **kwargs):
+        try:
+            return judge(*args, **kwargs)
+        except BudgetExceeded as exc:
+            refusals.append(str(exc))
+            raise
+
+    monkeypatch.setattr(evals, "p1_judge", noted)
+    out, _, _ = run(tmp_path, ("recorded",), max_usd=0.045)
+    second = out[1]
+    amounts = re.findall(r"\$\d+\.\d+", refusals[0]) if refusals else []
+    missing = [a for a in amounts if a not in str(second.error)]
+    assert refusals and amounts and not missing, (
+        f"The second thesis: {outcome(second)}; the budget refused its call with {refusals[:1]}, whose amounts "
+        f"{amounts} should all be in the outcome's error ({missing} missing). The operator reads only the outcome: "
+        f"it keeps what the budget said, the worst case it estimated and what was left, in the budget's own words."
     )
 
 

@@ -1,0 +1,14 @@
+why: leaves the judge note off a Score whose verdict is unknown
+expect: On an unknown reply the Score's judge note is None
+before: GREEN (Codex round 2)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -255,7 +255,7 @@
+     spans = sample.model_spans
+     calls = tuple(ModelExchange(**{name: getattr(span, name) for name in ModelExchange.model_fields}) for span in spans)
+     score = Score(value=1.0 if verdict == "pass" else 0.0, explanation=reason, answer=verdict,
+-                  judge=JudgeNote(model=JUDGE_MODEL, prompt_sha256=judge.prompt_sha256, calls=calls))
++                  judge=None if reason.startswith("unknown:") else JudgeNote(model=JUDGE_MODEL, prompt_sha256=judge.prompt_sha256, calls=calls))
+     record = ScoreRecord(score_id=new_id("sc"), trace_id=sample.trace_id, grader_id=P1Judge.id,
+                          grader_version=P1Judge.version, kind="model", value=score.value, explanation=reason,
+                          judge_model=JUDGE_MODEL, judge_prompt_sha256=judge.prompt_sha256,

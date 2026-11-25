@@ -2,9 +2,10 @@
 
 ## Hint 1
 
-The run file is written by code the course already has: analyze's save knows where runs live and tells you where it
-wrote the file. Keep the file first, then decide what the call's outcome means; the order is the whole point. A
-rejected request, an empty account and a reply with no verdict line are all calls on record, and some of them are paid.
+The run that comes back from the call is the record of the call: what was sent, what came back and what it cost. Keep
+it on disk under data_dir/runs first, in a file of its own that no later call writes over, and then decide what the
+call's outcome means; the order is the whole point. A rejected request, an empty account and a reply with no verdict
+line are all calls on record, and some of them are paid. Nothing is cut out of the record: the reply is kept as it came.
 
 ## Hint 2
 

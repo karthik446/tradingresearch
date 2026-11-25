@@ -1,0 +1,13 @@
+why: blanks the request digest of every call the judge note holds
+expect: The judge note's call gives request sha256 ['']
+before: GREEN (Codex round 2)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -254,6 +254,7 @@
+     verdict, reason = p1_verdict(sample.output_text)
+     spans = sample.model_spans
+     calls = tuple(ModelExchange(**{name: getattr(span, name) for name in ModelExchange.model_fields}) for span in spans)
++    calls = tuple(c.model_copy(update={"request_sha256": ""}) for c in calls)
+     score = Score(value=1.0 if verdict == "pass" else 0.0, explanation=reason, answer=verdict,
+                   judge=JudgeNote(model=JUDGE_MODEL, prompt_sha256=judge.prompt_sha256, calls=calls))
+     record = ScoreRecord(score_id=new_id("sc"), trace_id=sample.trace_id, grader_id=P1Judge.id,

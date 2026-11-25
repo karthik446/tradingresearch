@@ -1,0 +1,13 @@
+why: cuts the reply to its first 4096 characters before looking for the last object
+expect: for a reply of
+before: GREEN (Codex round 2)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -207,6 +207,7 @@
+ def p1_verdict(reply: str) -> tuple[str, str]:
+     """(verdict, reason) by the rubric's "Verdict format": the last JSON object wins, `unknown` becomes `fail` with
+     `unknown: ` (ADR-003). A reply with no verdict is CannotGrade, not an abstain."""
++    reply = reply[:4096]
+     verdict = last_json_object(reply, "verdict")
+     if verdict not in ("pass", "fail", "unknown"):
+         raise CannotGrade(f"the judge's reply has no pass/fail/unknown verdict: {reply[:200]!r}")

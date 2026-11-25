@@ -2,7 +2,7 @@ id = "w3l1.1"
 title = "Read the verdict from the last JSON object in the reply"
 effect = "Observe's w3l1.1 matches go from 1 of 9 replies to 9 of 9: the recorded reply reads pass with its explanation, and so do the replies that quote the format example or a draft verdict first."
 goal = "Start p1_verdict, the reader of the P1 judge's reply, with the rubric's Verdict format: the reply ends with one JSON object, and the last JSON object is the answer, whatever the reasoning above it quotes."
-what_tested = "p1_verdict on the one recorded judge reply and on reply shapes in labs/w3/data/replies.json: the recorded reply reads ('pass', its explanation), the last object wins over a format example or a draft verdict quoted earlier, a fenced or nested object still reads, and a missing, null or non-text explanation reads as \"\"; replies the check builds itself, in no data row, read by the same rule."
+what_tested = "p1_verdict on the one recorded judge reply and on reply shapes in labs/w3/data/replies.json: the recorded reply reads ('pass', its explanation), the last object wins over a format example or a draft verdict quoted earlier, a fenced or nested object still reads, a missing, null or non-text explanation reads as \"\", and accents, entities and escapes in an explanation stay as decoded."
 writes = [
   "p1_verdict in src/tradingresearch/evals.py: read the verdict and the explanation from the last JSON object in the reply, with the parser the judge library already has for that.",
   "The reason is text: an explanation that is missing, null or not a string becomes \"\".",

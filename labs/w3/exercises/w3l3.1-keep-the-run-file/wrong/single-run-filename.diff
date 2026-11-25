@@ -1,0 +1,13 @@
+why: moves every run file to one fixed name, so each call writes over the last
+expect: Judging a champion and then a challenger thesis left 1 run file(s)
+before: GREEN (Codex round 2)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -248,6 +248,7 @@
+     run = run_eval(Dataset.of(P1Judge.id, [item]), provider, [], settings=settings,
+                    budget=CallBudget(max_usd=max_usd, prices=prices), trace_dir=data_dir / "traces", tag=P1Judge.id)
+     run_path = an.save(run, data_dir)
++    run_path = run_path.replace(run_path.parent / "run_latest.jsonl")
+     sample = run.samples[0]
+     if sample.outcome != "succeeded":
+         raise CannotGrade(f"judge call failed: {sample.error.code if sample.error else '?'} (run {run_path})")

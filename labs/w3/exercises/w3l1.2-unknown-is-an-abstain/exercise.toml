@@ -2,7 +2,7 @@ id = "w3l1.2"
 title = "Store unknown as an abstain: fail with unknown:"
 effect = "Observe's w3l1.2 matches go from 2 of 7 replies to 7 of 7: every unknown verdict now reads fail with one unknown: prefix, which journal.abstained counts as an abstain."
 goal = "Store the judge's unknown the way ADR-003 says: the journal's verdict is binary, so unknown becomes fail with a reason that starts unknown:, which §7 leaves out of Cohen's kappa and counts instead."
-what_tested = "p1_verdict on the unknown replies of labs/w3/data/replies.json: unknown reads ('fail', 'unknown: ' + explanation as written), a bare unknown reads ('fail', 'unknown: '), an explanation starting with unknown: keeps one prefix, Unknown: is not the prefix, every abstain passes journal.abstained, and a pass or fail keeps its text even when it says unknown; built replies follow the same rule."
+what_tested = "p1_verdict on the unknown replies of labs/w3/data/replies.json: unknown reads ('fail', 'unknown: ' + explanation as written), a bare unknown reads ('fail', 'unknown: '), an explanation starting with unknown: keeps one prefix, Unknown: is not the prefix, every abstain passes journal.abstained, a pass or fail keeps its text even when it says unknown, and the prefix is the only change made."
 writes = [
   "In p1_verdict, a verdict of unknown returns fail, with unknown: and a space before the explanation.",
   "An explanation that already starts with lower-case unknown: is kept as it is, so the prefix is never doubled.",

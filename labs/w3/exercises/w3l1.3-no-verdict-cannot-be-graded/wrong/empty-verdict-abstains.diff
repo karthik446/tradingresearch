@@ -1,0 +1,14 @@
+why: treats an empty verdict string as unknown, so it is stored as an abstain
+expect: for '{"verdict": "",
+before: GREEN (Codex round 2)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -208,6 +208,8 @@
+     """(verdict, reason) by the rubric's "Verdict format": the last JSON object wins, `unknown` becomes `fail` with
+     `unknown: ` (ADR-003). A reply with no verdict is CannotGrade, not an abstain."""
+     verdict = last_json_object(reply, "verdict")
++    if verdict == "":
++        verdict = "unknown"
+     if verdict not in ("pass", "fail", "unknown"):
+         raise CannotGrade(f"the judge's reply has no pass/fail/unknown verdict: {reply[:200]!r}")
+     explanation = last_json_object(reply, "explanation")

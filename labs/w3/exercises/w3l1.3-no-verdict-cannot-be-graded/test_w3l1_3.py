@@ -119,3 +119,28 @@ def test_replies_in_no_data_row_follow_the_same_rule():
     assert got == ("fail", "a close at 97.9 fell under 98"), (
         f"{reply!r} is in no row of replies.json; p1_verdict returned {shown(got)}. A plain fail reads as itself."
     )
+
+
+def test_a_verdict_that_sounds_like_an_answer_is_still_undefined():
+    for verdict, sounds in ((1, "1 reads like a pass"), (0, "0 reads like a fail"), ("yes", "yes reads like a pass"),
+                            ("no", "no reads like a fail"), ("", "an empty verdict reads like a judge with no answer")):
+        reply = json.dumps({"verdict": verdict, "explanation": "both closes held over 100.5"})
+        got = read(reply)
+        assert isinstance(got, CannotGrade), (
+            f"p1_verdict returned {shown(got)} for {reply!r}, expected CannotGrade. {sounds}, but the rubric defines "
+            f"three verdicts, the strings pass, fail and unknown, and this is none of them. Turning a number or a "
+            f"yes/no into one guesses at what the judge meant, and an empty verdict is not the rubric's word for an "
+            f"abstain: a guess stored as a verdict counts a reply nobody can read as the judge's answer."
+        )
+
+
+def test_a_long_reply_still_ends_with_its_answer():
+    thinking = "The close on day one held over 100.5; the close on day two held too. " * 90
+    reply = thinking + '{"verdict": "pass", "explanation": "both closes held over 100.5"}'
+    got = read(reply)
+    assert got == ("pass", "both closes held over 100.5"), (
+        f"p1_verdict returned {shown(got)} for a reply of {len(reply)} chars that thinks aloud for {len(thinking)} "
+        f"chars and ends with {reply[-70:]!r}. The answer is the last JSON object wherever it sits: a judge may use "
+        f"its whole reply bound (thousands of characters) before it answers, and a reader that cuts the reply to a "
+        f"fixed length before parsing throws away the one part that counts."
+    )

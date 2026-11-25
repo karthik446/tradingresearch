@@ -1,0 +1,14 @@
+why: judges without --judge when no --session is given
+expect: `tr grade` with no --session (today's) sent 2 judge request(s)
+before: GREEN (Codex round 2)
+--- a/src/tradingresearch/commands/grade.py
++++ b/src/tradingresearch/commands/grade.py
+@@ -21,7 +21,7 @@
+             bars = reconcile_run.AlpacaBars(http, cfg.data_dir / "bars_1m", cfg.feed)
+             report = grade.run(conn, bars, day, dry_run=args.dry_run)
+     print("\n".join(grade.render(report)))
+-    if args.judge:
++    if args.judge or args.session is None:
+         print("\n".join(judge_lines(conn, args, cfg)))
+ 
+ 

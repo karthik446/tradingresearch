@@ -1,0 +1,14 @@
+why: prints the reason on a fail only; a pass line ends empty
+expect: for a pass whose reason is 'The named break held.'
+before: GREEN (Codex round 2)
+--- a/src/tradingresearch/grade.py
++++ b/src/tradingresearch/grade.py
+@@ -426,7 +426,7 @@
+         if dry_run:
+             lines.append(f"{head}  would judge")
+         elif j.verdict is not None:
+-            lines.append(f"{head}  P1 {j.verdict} ${j.cost_usd:.6f}: {j.reason}")
++            lines.append(f"{head}  P1 {j.verdict} ${j.cost_usd:.6f}: {j.reason if j.verdict == 'fail' else ''}")
+         else:
+             lines.append(f"{head}  not judged ${j.cost_usd:.6f}: {j.error}")
+     if dry_run:

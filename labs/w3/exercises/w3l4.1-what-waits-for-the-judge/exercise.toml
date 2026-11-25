@@ -2,10 +2,10 @@ id = "w3l4.1"
 title = "What waits for the judge"
 effect = "Observe's queue: on a journal of six theses, to_judge goes from all 6 to the 2 graded champion and challenger theses with no verdict, oldest first."
 goal = "Write grade.to_judge, the list `tr grade --judge` pays to judge: champion and challenger theses with a Grade and no stored verdict, oldest first, so a capped run leaves the newest for the next and a judged thesis is never paid for twice."
-what_tested = "to_judge on fresh journals: a challenger, a champion and a teacher thesis give the challenger then the champion; never-entered and closed, ungraded theses give nothing; any stored verdict (unknown, plain fail, pass) takes its thesis off; a FAKEB thesis waits too, a graded teacher never; three theses graded in reverse come back all, as written."
+what_tested = "to_judge on fresh journals: a challenger, a champion and a teacher thesis give the challenger then the champion; never-entered and closed, ungraded theses give nothing; any stored verdict (unknown, plain fail, pass) takes its thesis off; a FAKEB thesis waits too, a graded teacher never; three theses graded in reverse, or one written under a clock set back, come back as written."
 writes = [
   "The query joins each thesis to its Grade, keeps the champion and challenger arms, and drops a thesis that has any row in judge_verdict.",
-  "The rows come back in the order the theses were written.",
+  "The rows come back in the order the theses were written: the table's own order, not a timestamp.",
 ]
 show_tests = ["test_graded_champion_and_challenger_theses_wait_oldest_first", "test_a_thesis_with_a_verdict_is_not_judged_again"]
 lab = "w3l4"

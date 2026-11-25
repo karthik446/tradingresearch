@@ -2,8 +2,11 @@
 
 ## Hint 1
 
-label.labelable already decides who may be judged, the same rule `tr label` uses. What it raises is the wrong type for a
-grader: catch it where it is called and raise the type every grader raises when it will not grade.
+Who may be judged is already decided in the repo, by the rule `tr label` uses: a teacher thesis, or one with no Grade
+yet, is refused with a reason, before the thesis is even read for the prompt. That refusal arrives as an error of its
+own type, one a grader's caller does not know; what every grader raises when it will not grade is CannotGrade. Only the
+refusal becomes a CannotGrade. A storage error, a file that will not read or a record that will not parse (a ValueError,
+a LookupError) says nothing about the thesis, and reaches the caller as it is.
 
 ## Hint 2
 

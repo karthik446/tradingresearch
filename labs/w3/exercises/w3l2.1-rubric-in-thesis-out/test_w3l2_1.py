@@ -100,3 +100,23 @@ def test_a_long_reason_reaches_the_judge_whole(tmp_path, monkeypatch):
         f"mechanisms the whole reason names: a cut reason hides the ones at its end, and the verdict grades a "
         f"thesis nobody wrote."
     )
+
+
+def test_the_prediction_reaches_the_judge_as_written(tmp_path, monkeypatch):
+    long = " ".join(["Trades at 106 by the second session after the fill, then holds there."] * 3)
+    for n, (prediction, how) in enumerate((
+        ("Trades at 106 by the second session after the café-hours fill.", "with an accented letter"),
+        (long, f"of {len(long)} chars"),
+        ("  Trades at 106 by the second session after the fill.  ", "with spaces around it"),
+    )):
+        monkeypatch.setitem(fakea.REWORDED, "prediction", prediction)
+        (tmp_path / str(n)).mkdir()
+        got, sent, _ = fakea.judge(tmp_path / str(n), reworded=True)
+        mine = fakea.block(fakea.prompt_of(sent[0]), "OUTPUT") if sent else []
+        held = next((line for line in mine if line.startswith("prediction:")), "")
+        assert held == f"prediction: {prediction}", (
+            f"For a thesis whose prediction is {prediction!r}, {how}, [BEGIN OUTPUT]'s prediction line is {held!r} "
+            f"(p1_judge ended with {fakea.shown(got)}). Every thesis field reaches the judge as the thesis stores it: "
+            f"no characters dropped, no cut, no trimming. The judge grades the text the author wrote; a changed "
+            f"prediction is a thesis nobody wrote, and the verdict is stored against the real one."
+        )

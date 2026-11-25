@@ -1,0 +1,11 @@
+why: rounds each cost to the millionth before summing, so sub-microdollar calls vanish from the total
+expect: for two outcomes that each cost $0.0000004
+before: GREEN (Codex round 2)
+--- a/src/tradingresearch/grade.py
++++ b/src/tradingresearch/grade.py
+@@ -433,4 +433,4 @@
+         return lines + [f"judge (dry run): would judge {len(judged)} (cap ${max_usd:.2f}); nothing judged, no call"]
+     done = sum(j.verdict is not None for j in judged)
+     return lines + [f"judge: {done} judged, {len(judged) - done} not judged, cost "
+-                    f"${sum(j.cost_usd for j in judged):.6f} (cap ${max_usd:.2f})"]
++                    f"${sum(round(j.cost_usd, 6) for j in judged):.6f} (cap ${max_usd:.2f})"]

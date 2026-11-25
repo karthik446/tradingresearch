@@ -1,5 +1,5 @@
 why: asks for the OpenRouter key before a dry run, which calls nothing
-expect: With no OpenRouter key, judge_lines for `tr grade --judge --dry-run` gave 'raised
+expect: With no OpenRouter key, `tr grade --judge --dry-run` gave 'raised
 before: GREEN (outside review)
 --- a/src/tradingresearch/commands/grade.py
 +++ b/src/tradingresearch/commands/grade.py

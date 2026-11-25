@@ -1,0 +1,14 @@
+why: turns a ValueError from reading the thesis into a refusal, as if the thesis were not judgeable
+expect: With label.labelable failing on damaged data (an injected ValueError) p1_judge ended with CannotGrade
+before: GREEN (Codex round 2)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -234,7 +234,7 @@
+     call or a reply with no verdict is CannotGrade after it: the cost is in the run file, nothing is stored."""
+     try:
+         t, g = label.labelable(conn, thesis_id)
+-    except label.Refused as exc:
++    except (label.Refused, ValueError) as exc:
+         raise CannotGrade(str(exc)) from None
+     analysis = journal.get(conn, Analysis, t.analysis_id)
+     shown = "\n".join(["cited claims (claim_id | tag | text)", *label.cited(analysis, t.evidence), "",

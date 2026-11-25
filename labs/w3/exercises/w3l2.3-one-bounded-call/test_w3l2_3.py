@@ -107,3 +107,34 @@ def test_one_request_and_it_is_the_recorded_one(judged):
         f"p1_judge sent {len(sent)} request(s); {what}. One call per trade, and the body must be the recorded one "
         f"for the recorded reply to mean anything about your code."
     )
+
+
+def test_the_token_bound_does_not_follow_the_rubric_length(tmp_path, monkeypatch):
+    from tradingresearch import evals
+
+    rubrics, frame = tmp_path / "rubrics", "Judge the thesis below by this rubric.\n{rubric}\n"
+    rubric = "Answer with one JSON object: verdict and explanation.\n"
+    rubrics.mkdir()
+    (rubrics / "p1_judge_prompt.txt").write_text(frame)
+    (rubrics / "p1_thesis_quality.md").write_text(rubric)
+    monkeypatch.setattr(evals, "RUBRICS", rubrics)
+    got, sent, _ = fakea.judge(tmp_path)
+    recorded = fakea.load("judge_request")["body"]["max_tokens"]
+    asked = sent[0].get("max_tokens") if sent else None
+    assert asked == recorded, (
+        f"With {len(frame.replace('{rubric}', rubric))} chars of instructions (a short frame and rubric in RUBRICS), "
+        f"the request asks for at most {asked} output tokens (p1_judge ended with "
+        f"{fakea.shown(got)}); it should ask for {recorded}, JUDGE_MAX_TOKENS. The bound is ADR-003's number for the "
+        f"reply, whatever the instructions' length: tied to the rubric, an edit to the rubric file silently changes "
+        f"how much the judge may say, and a short rubric can cut the reply before its verdict."
+    )
+
+
+def test_a_cap_below_zero_sends_nothing(tmp_path):
+    got, sent, _ = fakea.judge(tmp_path, max_usd=-0.05)
+    assert not sent, (
+        f"With max_usd=-0.05, p1_judge sent {len(sent)} request(s) and ended with {fakea.shown(got)}. A cap below "
+        f"zero is no money at all: tr grade passes what is left of its budget, and a run that has already overspent "
+        f"passes a negative number. Nothing may be sent under it; whether that is a refusal before the budget or "
+        f"BudgetExceeded from it, 0 requests go out. A cap read as its size turns the caller's 'nothing' into $0.05."
+    )

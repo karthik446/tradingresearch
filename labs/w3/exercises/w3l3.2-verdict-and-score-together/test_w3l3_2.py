@@ -6,6 +6,7 @@ The closed FAKEA trade, replayed with four replies (tools/fakea.py `answer`): `r
 verdict line. One check makes one journal write fail on purpose and looks at what the other one left.
 """
 
+import json
 import sqlite3
 import sys
 from pathlib import Path
@@ -21,6 +22,16 @@ COST = fakea.load("judge_reply")["usage"]["cost"]
 def held(row: dict | None, scores: list) -> str:
     verdict = "no verdict row" if row is None else f"verdict row {row['verdict']!r} (score_id {row['score_id']!r})"
     return fakea.masked(f"{verdict} and {len(scores)} p1_judge ScoreRecord(s)")
+
+
+def request_digests(data_dir: Path) -> list[str]:
+    """The request_sha256 of every model span the run files under data_dir/runs hold."""
+    found = []
+    for path in fakea.run_files(data_dir):
+        for line in path.read_text().splitlines():
+            spans = (json.loads(line).get("sample") or {}).get("spans", [])
+            found += [span.get("request_sha256") for span in spans if span.get("kind") == "model_call"]
+    return found
 
 
 @pytest.fixture(scope="module")
@@ -120,6 +131,17 @@ def test_unknown_is_stored_as_fail_with_value_zero(unknown):
     )
 
 
+def test_an_unknown_reply_keeps_its_judge_note(unknown):
+    from tradingresearch import evals
+
+    note = getattr(unknown.got, "judge", None)
+    assert note is not None and note.model == evals.JUDGE_MODEL and len(note.calls) == 1, (
+        f"On an unknown reply the Score's judge note is {fakea.shown(note)}; it should name the judge model "
+        f"({evals.JUDGE_MODEL}) and hold the one call, as on a pass. The abstain is a verdict the judge gave: a later "
+        f"audit reads which model gave it from the note, not from the fact that it was stored as fail."
+    )
+
+
 def test_a_reply_with_no_verdict_stores_nothing_and_keeps_its_run(no_verdict):
     from tradingresearch.evals import CannotGrade
 
@@ -185,4 +207,27 @@ def test_a_fail_verdict_is_a_score_of_zero(tmp_path):
         f"On a reply whose verdict is fail the Score has value {got.value}, answer {got.answer!r}, and the journal "
         f"holds {held(row, scores)}{'' if not scores else f', value {scores[0].value}'}. Only a pass earns 1.0: a "
         f"fail is value 0.0, answer 'fail', stored as verdict 'fail' with one ScoreRecord of value 0.0."
+    )
+
+
+def test_a_fail_score_record_points_at_its_call(tmp_path):
+    j = fakea.judging(tmp_path, replies=("fail",))
+    _, scores = fakea.stored(j.conn, j.thesis.thesis_id)
+    spans = fakea.model_spans(tmp_path)
+    pointed = [(record.trace_id, span) for record in scores for span in record.judge_span_ids]
+    assert pointed and sorted(pointed) == sorted(spans), (
+        f"On a reply whose verdict is fail the ScoreRecord points at {fakea.masked(str(pointed))}; the run file's "
+        f"model spans are {fakea.masked(str(spans))} (p1_judge ended with a {type(j.got).__name__}). A fail's "
+        f"ScoreRecord points at the trace and spans of the call it scores, the same as a pass: whoever audits a fail "
+        f"must find the call that made it."
+    )
+
+
+def test_the_judge_note_names_the_request_it_sent(recorded):
+    said = [call.request_sha256 for call in recorded.got.judge.calls]
+    digests = request_digests(recorded.data_dir)
+    assert said == digests, (
+        f"The judge note's call gives request sha256 {[str(s)[:16] for s in said]}; the run file's model span gives "
+        f"{[str(d)[:16] for d in digests]}. The note keeps the call as the span records it, its request digest "
+        f"included, so the call a score cites can be matched to the one on record."
     )

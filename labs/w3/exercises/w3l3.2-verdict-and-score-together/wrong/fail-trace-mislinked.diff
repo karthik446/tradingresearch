@@ -1,0 +1,14 @@
+why: points a fail's ScoreRecord at a trace id that is not the call's
+expect: On a reply whose verdict is fail the ScoreRecord points at
+before: GREEN (Codex round 2)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -256,7 +256,7 @@
+     calls = tuple(ModelExchange(**{name: getattr(span, name) for name in ModelExchange.model_fields}) for span in spans)
+     score = Score(value=1.0 if verdict == "pass" else 0.0, explanation=reason, answer=verdict,
+                   judge=JudgeNote(model=JUDGE_MODEL, prompt_sha256=judge.prompt_sha256, calls=calls))
+-    record = ScoreRecord(score_id=new_id("sc"), trace_id=sample.trace_id, grader_id=P1Judge.id,
++    record = ScoreRecord(score_id=new_id("sc"), trace_id=sample.trace_id if verdict == "pass" else "tr_missing", grader_id=P1Judge.id,
+                          grader_version=P1Judge.version, kind="model", value=score.value, explanation=reason,
+                          judge_model=JUDGE_MODEL, judge_prompt_sha256=judge.prompt_sha256,
+                          judge_span_ids=tuple(span.span_id for span in spans), recorded_at=datetime.now(UTC))

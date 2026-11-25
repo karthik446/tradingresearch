@@ -2,10 +2,12 @@
 
 ## Hint 1
 
-Your p1_verdict already reads the reply, unknown and no-verdict included: let its CannotGrade reach the caller. Every
-field the Score and its ScoreRecord need is already in scope in p1_judge: the judge, the sample and its spans, P1Judge,
-the judge model. Each score gets a fresh id, made the way the journal's other records get theirs, and the reply text the
-Score keeps is the reply as it came back.
+The verdict is read from the reply the sample holds, the way lab w3l1 reads it, unknown and no-verdict included: a reply
+that cannot be read raises CannotGrade, and that must reach the caller, not become a stored fail. Every field the Score
+and its ScoreRecord need is already in scope in p1_judge: the judge, the sample and its spans, P1Judge, the judge model.
+Each score gets a fresh id, made the way the journal's other records get theirs, and the Score's note keeps the calls
+the spans record, as they are: the reply as it came back, the request digest with it. Every verdict gets the same note
+and the same record, pass, fail or unknown.
 
 ## Hint 2
 
