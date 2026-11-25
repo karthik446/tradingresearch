@@ -1,0 +1,5 @@
+FAIL w5l2.1 (try 1): Three arms
+  experiment.load refused experiments/context-ablation.toml: experiments/context-ablation.toml:
+  missing ['arms']
+  hint 1 unlocks after 2 failed runs; hint 2 unlocks after 5 failed runs; the solution unlocks after
+  10 failed runs or when the check is green

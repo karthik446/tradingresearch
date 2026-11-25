@@ -1,0 +1,20 @@
+id = "w5l1.2"
+title = "Not cited, not parsed"
+effect = "Observe's grader table goes from ZeroDivisionError in every section no claim cites to CannotGrade: levels and edgar on the recorded reply are not_cited, a reply that did not parse cannot be graded, and a failing section's explanation names its reasons and count."
+goal = "Finish SectionGrounded.grade: a reply that did not parse raises CannotGrade, a section no claim cites raises CannotGrade starting with not_cited, and a score below 1 explains itself with its sorted distinct reasons and how many citing claims fail."
+what_tested = "not_cited: no citing claim, an empty claims list, a reply with no claims list or claims that are not objects, the same grader reused after a scored sample. CannotGrade, not not_cited, for parse statuses not_json, invalid and not_parsed. The explanation of a failing section: sorted distinct reasons, the count of failing and citing claims, the recorded reply's empty_placeholder."
+writes = [
+  "Before anything else: a sample whose parse_status is not ok cannot be graded; raise CannotGrade saying the output did not parse.",
+  "When no claim cites the section, raise CannotGrade whose message starts with not_cited and names the section; a missing or malformed claims list cites nothing.",
+  "When some citing claims fail, explain the score as their distinct reasons sorted and joined by a comma and a space, then a colon and `F of N claims citing <section> fail`.",
+]
+show_tests = ["test_a_reply_that_did_not_parse_cannot_be_graded", "test_the_explanation_names_sorted_distinct_reasons_and_the_count"]
+lab = "w5l1"
+concepts = ["not-cited", "cannot-grade"]
+touches = ["src/tradingresearch/evals.py"]
+check = "python -m pytest -q -x -p no:cacheprovider -m lab labs/w5/exercises/w5l1.2-not-cited-and-not-parsed/test_w5l1_2.py"
+observe = "python labs/w5/tools/observe.py grader"
+paid = false
+fixtures = ["data/fakea.context.json", "data/analyze3.reply.json"]
+origin = "rebuild of week-5-end evals.py SectionGrounded; reference = the tag's own code"
+red_expect = "the levels grader raised ZeroDivisionError('division by zero') on ok reply"

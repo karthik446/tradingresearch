@@ -1,0 +1,20 @@
+id = "w5l2.3"
+title = "The pre-registration"
+effect = "Observe's pre-registration lines above the first key go from (none) to three: the primary metric naming claims_valid, the guard naming parsed, and the rule that says by the 95% interval when a dropped section stays and when it goes. The replay's table does not move."
+goal = "Write the pre-registration in the comment block above the config's first key, before any paid run: a primary metric naming claims_valid, a guard metric naming parsed, and a rule that says, by the primary metric's 95% interval, when a dropped section stays and when it goes."
+what_tested = "Above the first key, in comments: one Primary metric:, one Guard metric: and one Rule: item, each on a line starting with its label; the first config grader the primary item mentions is claims_valid and the guard's is parsed; the rule mentions claims_valid and says stays, goes, interval and 95%. An item runs to a blank comment line, the next bullet or label."
+writes = [
+  "Replace the TODO comment in the header with three items, each a comment line starting with its label and a colon, before the name key.",
+  "Primary metric: the per-claim rate, and why the whole-analysis score cannot separate arms; Guard metric: the parse rate must not drop.",
+  "Rule: a section stays if dropping it lowers the primary metric with the whole 95% interval below 0; it goes if not, the guard holds and tokens fall.",
+]
+show_tests = ["test_three_items_above_the_first_key", "test_the_rule_says_when_a_section_stays_and_when_it_goes"]
+lab = "w5l2"
+concepts = ["pre-registration", "primary-and-guard-metric"]
+touches = ["experiments/context-ablation.toml"]
+check = "python -m pytest -q -x -p no:cacheprovider -m lab labs/w5/exercises/w5l2.3-the-pre-registration/test_w5l2_3.py"
+observe = "python labs/w5/tools/observe.py ablation"
+paid = false
+fixtures = ["data/fakea.context.json", "data/analyze3.request.json", "data/analyze3.reply.json", "data/models.json"]
+origin = "rebuild of week-5-end experiments/context-ablation.toml, its header; reference = the tag's own file"
+red_expect = "above the first key, items per label: {'Primary metric:': 0, 'Guard metric:': 0, 'Rule:': 0}"

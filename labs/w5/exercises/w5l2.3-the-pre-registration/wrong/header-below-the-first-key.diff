@@ -1,0 +1,21 @@
+why: puts the pre-registration under the name key
+expect: above the first key, items per label: {'Primary metric:': 0
+before: RED (author)
+--- a/experiments/context-ablation.toml
++++ b/experiments/context-ablation.toml
+@@ -1,6 +1,7 @@
+ # Week 5: which SOURCES sections does an analysis need? Full analyze-3 context vs no headlines vs no EDGAR on the
+ # same 20 ticker-days as week 4 (ADR-007). Headlines come from the local news store: run
+ # `tr news TICKER --session S` for every ticker and session first (the config refuses unfetched windows).
++name = "context-ablation"
+ #
+ # Pre-registered before any paid run (ADR-007):
+ # - Primary metric: claims_valid, the share of an analysis's claims that pass validate_claims, per ticker-day, paired
+@@ -13,7 +14,6 @@
+ #   interval is not wholly below 0, the guard holds and dropping it lowers the mean input tokens. Otherwise it stays.
+ # - Reported only, not deciding: all_claims_valid, the four <section>_grounded graders (their n differs by arm,
+ #   not-cited sections get no score), tokens, cost and latency per item.
+-name = "context-ablation"
+ model = "anthropic/claude-sonnet-5.5"
+ max_usd_per_arm = 1.00
+ tickers = ["AAPL", "MSFT", "NVDA", "AMZN", "JPM", "XOM", "UNH", "HD", "KO", "CAT"]

@@ -1,0 +1,14 @@
+why: writes clusters, a key the loader does not read
+expect: the file sets cluster = '(nothing)'
+before: RED (independent break pass)
+--- a/experiments/context-ablation.toml
++++ b/experiments/context-ablation.toml
+@@ -9,7 +9,7 @@
+ max_usd_per_arm = 1.00
+ tickers = ["AAPL", "MSFT", "NVDA", "AMZN", "JPM", "XOM", "UNH", "HD", "KO", "CAT"]
+ sessions = ["2026-11-12", "2026-11-13"]
+-cluster = "ticker"
++clusters = "ticker"
+ graders = ["parsed", "claims_valid", "all_claims_valid", "indicators_grounded", "levels_grounded", "edgar_grounded",
+            "headlines_grounded"]
+ 

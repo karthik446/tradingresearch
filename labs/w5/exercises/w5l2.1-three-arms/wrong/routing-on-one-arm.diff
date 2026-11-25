@@ -1,0 +1,10 @@
+why: routes one arm without fallbacks and the others with them
+expect: routed the same way
+before: RED (independent break pass)
+--- a/experiments/context-ablation.toml
++++ b/experiments/context-ablation.toml
+@@ -27,3 +27,4 @@
+ name = "no-edgar"
+ prompt = "analyze-3"
+ drop = ["edgar"]
++provider = { allow_fallbacks = false }

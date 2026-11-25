@@ -1,0 +1,5 @@
+FAIL w5l2.2 (try 1): Graders and cluster
+  graders = ['parsed']; expected each of ['all_claims_valid', 'claims_valid', 'edgar_grounded',
+  'headlines_grounded', 'indicators_grounded', 'levels_grounded', 'parsed'] once, in any order
+  hint 1 unlocks after 2 failed runs; hint 2 unlocks after 5 failed runs; the solution unlocks after
+  10 failed runs or when the check is green

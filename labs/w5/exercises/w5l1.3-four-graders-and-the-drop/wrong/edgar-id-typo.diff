@@ -1,0 +1,14 @@
+why: registers the EDGAR grader under a misspelt id
+expect: evals.GRADERS has no edgar_grounded
+before: RED (author)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -186,7 +186,7 @@
+ class EdgarGrounded(SectionGrounded):
+     """Claims citing the EDGAR fundamentals rows (`<metric>_<frame>`)."""
+ 
+-    id = "edgar_grounded"
++    id = "edgars_grounded"
+     section = "edgar"
+ 
+ 

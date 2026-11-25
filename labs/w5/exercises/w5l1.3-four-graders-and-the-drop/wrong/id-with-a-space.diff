@@ -1,0 +1,14 @@
+why: registers the level grader's id with a trailing space
+expect: evals.GRADERS has no levels_grounded
+before: RED (independent break pass)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -178,7 +178,7 @@
+ class LevelsGrounded(SectionGrounded):
+     """Claims citing the support/resistance level rows (tools.LEVEL_PREFIXES)."""
+ 
+-    id = "levels_grounded"
++    id = "levels_grounded "
+     section = "levels"
+ 
+ 

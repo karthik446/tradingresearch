@@ -1,0 +1,11 @@
+why: drops the headlines and the EDGAR rows together in the no-edgar arm
+expect: the arms (name, drop) are
+before: RED (author)
+--- a/experiments/context-ablation.toml
++++ b/experiments/context-ablation.toml
+@@ -26,4 +26,4 @@
+ [[arms]]
+ name = "no-edgar"
+ prompt = "analyze-3"
+-drop = ["edgar"]
++drop = ["edgar", "headlines"]

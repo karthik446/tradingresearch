@@ -1,0 +1,4 @@
+lab
+ M src/tradingresearch/evals.py
+<sha> lab: week 5 base (week-5-start)
+<sha> the repo as you cloned it (capture scratch copy)

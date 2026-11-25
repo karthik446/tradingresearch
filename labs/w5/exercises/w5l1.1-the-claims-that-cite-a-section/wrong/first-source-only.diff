@@ -1,0 +1,14 @@
+why: looks only at a claim's first source id, so a claim citing a headline and then an indicator row never counts as citing indicators
+expect: indicators scored 0.500 on claims [m1
+before: RED (author)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -156,7 +156,7 @@
+         sources = claim.get("source_ids")
+         return isinstance(sources, list) and any(
+             isinstance(source, str) and source in names and masking.section_of(names[source]) == self.section
+-            for source in sources)
++            for source in sources[:1])
+ 
+ 
+ # TODO(w5l1.3) one registered code grader per section of masking.SECTIONS, with the id `<section>_grounded`:

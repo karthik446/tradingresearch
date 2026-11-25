@@ -1,0 +1,15 @@
+why: keeps the citing claims on the grader, so one instance grading a run mixes the samples
+expect: indicators scored 0.875
+before: RED (independent break pass)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -148,7 +148,8 @@
+         _, rejected = validate_claims(sample.output_parsed, expected["values"], "an_grade")
+         reasons = {r.claim: r.reason for r in rejected}
+         failed = [reasons[claim] for claim in citing if claim in reasons]
+-        n = len(citing)
++        self.seen = getattr(self, "seen", []) + citing
++        n = len(self.seen)
+         return Score(value=(n - len(failed)) / n)
+ 
+     def cites(self, claim: dict, names: dict[str, str]) -> bool:

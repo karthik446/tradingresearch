@@ -1,0 +1,24 @@
+PASS w5l2.3: The pre-registration
+observe: python labs/w5/tools/observe.py ablation
+  | experiments/context-ablation.toml: 3 arms, 10 tickers, cluster 'ticker'
+  |   full             anthropic/claude-sonnet-5.5  analyze-3  fixed  drop []
+  |   no-headlines     anthropic/claude-sonnet-5.5  analyze-3  fixed  drop ['headlines']
+  |   no-edgar         anthropic/claude-sonnet-5.5  analyze-3  fixed  drop ['edgar']
+  | graders: ['parsed', 'claims_valid', 'all_claims_valid', 'indicators_grounded',
+  | 'levels_grounded', 'edgar_grounded', 'headlines_grounded']
+  | pre-registration lines above the first key:
+  |   Primary metric: claims_valid, the share of an analysis's claims that pass validate_claims, per
+  | ticker-day, pa…
+  |   Guard metric: parsed must not drop in either drop arm.
+  |   Rule: a section stays if dropping it lowers claims_valid with the whole 95% interval below 0.
+  | It goes if the
+
+  | the $0 replay: 30 requests, each answered with the recorded reply; per arm, mean (n) of each
+  | grader that scored (a section no claim cites has none):
+  |   full             all_claims_valid 0.000 (10), claims_valid 0.909 (10), headlines_grounded
+  | 1.000 (10), indicators_grounded 0.857 (10), parsed 1.000 (10)
+  |   no-headlines     all_claims_valid 0.000 (10), claims_valid 0.818 (10), headlines_grounded
+  | 0.000 (10), indicators_grounded 0.857 (10), parsed 1.000 (10)
+  |   no-edgar         all_claims_valid 0.000 (10), claims_valid 0.909 (10), headlines_grounded
+  | 1.000 (10), indicators_grounded 0.857 (10), parsed 1.000 (10)
+next: `tr lab next` commits it and moves on; `tr lab solution` shows the reference to compare

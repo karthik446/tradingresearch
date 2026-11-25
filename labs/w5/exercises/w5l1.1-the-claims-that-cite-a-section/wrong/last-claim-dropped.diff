@@ -1,0 +1,14 @@
+why: reads the claims list without its last item
+expect: indicators scored 0.500 on claims [i1
+before: RED (independent break pass)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -143,7 +143,7 @@
+         #   score, never 1.0); below 1.0 the explanation is "<reasons>: <k> of <n> claims citing <section> fail".
+         names: dict[str, str] = expected["names"]
+         items = sample.output_parsed.get("claims") if isinstance(sample.output_parsed, dict) else None
+-        claims = [c for c in items if isinstance(c, dict)] if isinstance(items, list) else []
++        claims = [c for c in items[:-1] if isinstance(c, dict)] if isinstance(items, list) else []
+         citing = [str(c.get("id")) for c in claims if self.cites(c, names)]
+         _, rejected = validate_claims(sample.output_parsed, expected["values"], "an_grade")
+         reasons = {r.claim: r.reason for r in rejected}

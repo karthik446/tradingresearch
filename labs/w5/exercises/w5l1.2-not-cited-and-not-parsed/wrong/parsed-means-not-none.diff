@@ -1,0 +1,14 @@
+why: takes a reply as parsed when it holds something, whatever parse_status says
+expect: indicators gave 1.0 ('1 of 1 claims citing indicators pass') on a reply that did not parse
+before: RED (author)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -139,7 +139,7 @@
+     # TODO(w5l1.3) the arm's `drop`, nothing by default: a claim citing a row the arm never saw fails.
+ 
+     def grade(self, sample, expected) -> Score:
+-        if sample.parse_status != "ok":
++        if sample.output_parsed is None:
+             raise CannotGrade("output did not parse")
+         names: dict[str, str] = expected["names"]
+         items = sample.output_parsed.get("claims") if isinstance(sample.output_parsed, dict) else None

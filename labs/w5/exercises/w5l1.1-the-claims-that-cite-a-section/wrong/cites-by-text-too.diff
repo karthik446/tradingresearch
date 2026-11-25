@@ -1,0 +1,16 @@
+why: also counts a claim whose text names a row of the section, so a level claim that mentions the close counts as citing indicators
+expect: indicators scored 0.750 on claims [t1
+before: RED (author)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -156,7 +156,9 @@
+         sources = claim.get("source_ids")
+         return isinstance(sources, list) and any(
+             isinstance(source, str) and source in names and masking.section_of(names[source]) == self.section
+-            for source in sources)
++            for source in sources) or any(
++            masking.section_of(name) == self.section and name in (claim.get("text") or "")
++            for name in names.values())
+ 
+ 
+ # TODO(w5l1.3) one registered code grader per section of masking.SECTIONS, with the id `<section>_grounded`:

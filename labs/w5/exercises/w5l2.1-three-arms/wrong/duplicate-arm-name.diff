@@ -1,0 +1,13 @@
+why: names the no-edgar arm full as well
+expect: the arms (name, drop) are
+before: RED (break pass)
+--- a/experiments/context-ablation.toml
++++ b/experiments/context-ablation.toml
+@@ -24,6 +24,6 @@
+ drop = ["headlines"]
+ 
+ [[arms]]
+-name = "no-edgar"
++name = "full"
+ prompt = "analyze-3"
+ drop = ["edgar"]

@@ -1,0 +1,6 @@
+FAIL w5l2.3 (try 1): The pre-registration
+  above the first key, items per label: {'Primary metric:': 0, 'Guard metric:': 0, 'Rule:': 0};
+  expected each of ['Primary metric:', 'Guard metric:', 'Rule:'] once, every one before the first
+  key, so the file shows them to anyone reading the config
+  hint 1 unlocks after 2 failed runs; hint 2 unlocks after 5 failed runs; the solution unlocks after
+  10 failed runs or when the check is green

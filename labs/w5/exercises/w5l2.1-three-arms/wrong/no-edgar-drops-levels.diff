@@ -1,0 +1,11 @@
+why: lets the arm named no-edgar drop the levels
+expect: the arms (name, drop) are
+before: RED (break pass)
+--- a/experiments/context-ablation.toml
++++ b/experiments/context-ablation.toml
+@@ -26,4 +26,4 @@
+ [[arms]]
+ name = "no-edgar"
+ prompt = "analyze-3"
+-drop = ["edgar"]
++drop = ["levels"]

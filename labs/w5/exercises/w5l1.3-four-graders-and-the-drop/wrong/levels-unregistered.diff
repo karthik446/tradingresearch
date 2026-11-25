@@ -1,0 +1,13 @@
+why: defines the level grader but never registers it
+expect: evals.GRADERS has no levels_grounded
+before: RED (author)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -174,7 +174,6 @@
+     section = "indicators"
+ 
+ 
+-@grader
+ class LevelsGrounded(SectionGrounded):
+     """Claims citing the support/resistance level rows (tools.LEVEL_PREFIXES)."""
+ 

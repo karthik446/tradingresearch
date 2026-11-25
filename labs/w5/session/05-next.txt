@@ -1,0 +1,4 @@
+committed `lab w5l1.1: green`: src/tradingresearch/evals.py
+exercise w5l1.2: Not cited, not parsed
+edit: src/tradingresearch/evals.py (look for TODO(w5l1.2))
+then: tr lab verify

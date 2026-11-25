@@ -1,0 +1,14 @@
+why: leaves the no-edgar arm out
+expect: the arms (name, drop) are
+before: RED (author)
+--- a/experiments/context-ablation.toml
++++ b/experiments/context-ablation.toml
+@@ -22,8 +22,3 @@
+ name = "no-headlines"
+ prompt = "analyze-3"
+ drop = ["headlines"]
+-
+-[[arms]]
+-name = "no-edgar"
+-prompt = "analyze-3"
+-drop = ["edgar"]

@@ -1,0 +1,6 @@
+week 5 starts from the author's code at week-5-start: 197 files changed, committed as `lab: week 5 base (week-5-start)`
+your earlier commits stay in the history of `lab`
+started lab w5l1 (Per-section grounding graders) on branch `lab`; read labs/w5/pages/w5l1.md
+exercise w5l1.1: The claims that cite a section
+edit: src/tradingresearch/evals.py (look for TODO(w5l1.1))
+then: tr lab verify

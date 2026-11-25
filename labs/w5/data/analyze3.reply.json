@@ -1,0 +1,46 @@
+{
+  "id": "gen-1794902812-BFKE7frE7xwvRCxWxrVI",
+  "object": "chat.completion",
+  "created": 1794902812,
+  "model": "anthropic/claude-sonnet-5.5",
+  "provider": "Azure",
+  "system_fingerprint": null,
+  "service_tier": "default",
+  "choices": [
+    {
+      "index": 0,
+      "logprobs": null,
+      "finish_reason": "stop",
+      "native_finish_reason": "end_turn",
+      "message": {
+        "role": "assistant",
+        "content": "{\"claims\":[{\"id\":\"c1\",\"tag\":\"fact\",\"text\":\"FakeA closed the session at {value} USD.\",\"value\":101.4,\"unit\":\"USD\",\"source_ids\":[\"src_98651de31e6271aa\"],\"derived_from\":[],\"steps\":null},{\"id\":\"c2\",\"tag\":\"fact\",\"text\":\"The sma_200 stands at {value} USD.\",\"value\":88.9,\"unit\":\"USD\",\"source_ids\":[\"src_b2c76d99962d70fc\"],\"derived_from\":[],\"steps\":null},{\"id\":\"c3\",\"tag\":\"fact\",\"text\":\"The sma_50 stands at {value} USD.\",\"value\":96.2,\"unit\":\"USD\",\"source_ids\":[\"src_7727cab7649949fb\"],\"derived_from\":[],\"steps\":null},{\"id\":\"c4\",\"tag\":\"inference\",\"text\":\"The close sits above both sma_50 and sma_200, which is consistent with an established uptrend.\",\"value\":null,\"unit\":null,\"source_ids\":[],\"derived_from\":[\"c1\",\"c2\",\"c3\"],\"steps\":\"Comparing the close in c1 with the sma_200 in c2 and the sma_50 in c3 shows it is higher than both.\"},{\"id\":\"c5\",\"tag\":\"fact\",\"text\":\"The high_20 is {value} USD, and the close sits just below it.\",\"value\":102.1,\"unit\":\"USD\",\"source_ids\":[\"src_7f4d62f55353a80f\"],\"derived_from\":[],\"steps\":null},{\"id\":\"c6\",\"tag\":\"fact\",\"text\":\"Relative volume was {value} times its norm (rel_volume).\",\"value\":1.45,\"unit\":\"x\",\"source_ids\":[\"src_576c0033eee0f1b2\"],\"derived_from\":[],\"steps\":null},{\"id\":\"c7\",\"tag\":\"fact\",\"text\":\"The rsi_14 reads {value}.\",\"value\":61.3,\"unit\":\"index\",\"source_ids\":[\"src_e80e4812c8cf9f6d\"],\"derived_from\":[],\"steps\":null},{\"id\":\"c8\",\"tag\":\"inference\",\"text\":\"The close is near the high_20 on elevated volume, suggesting buyers are pressing toward a breakout, while the rsi_14 is not yet stretched.\",\"value\":null,\"unit\":null,\"source_ids\":[],\"derived_from\":[\"c1\",\"c5\",\"c6\",\"c7\"],\"steps\":\"The close in c1 is just under the high_20 in c5, the rel_volume in c6 is above normal, and the rsi_14 in c7 is moderate.\"},{\"id\":\"c9\",\"tag\":\"fact\",\"text\":\"An analyst firm raised its FakeA price target, citing robot demand, according to a headline.\",\"value\":null,\"unit\":null,\"source_ids\":[\"src_7775b3df69308b50\"],\"derived_from\":[],\"steps\":null},{\"id\":\"c10\",\"tag\":\"fact\",\"text\":\"The market regime is {value} per regime_spy.\",\"value\":null,\"unit\":null,\"source_ids\":[\"src_efa3f8d4561c4f63\"],\"derived_from\":[],\"steps\":null},{\"id\":\"c11\",\"tag\":\"opinion\",\"text\":\"The setup looks constructive, but a decisive move above the recent high would be needed to confirm it.\",\"value\":null,\"unit\":null,\"source_ids\":[],\"derived_from\":[],\"steps\":null}]}",
+        "refusal": null,
+        "reasoning": null
+      }
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 2714,
+    "completion_tokens": 1062,
+    "total_tokens": 3776,
+    "cost": 0.016048,
+    "is_byok": false,
+    "prompt_tokens_details": {
+      "cached_tokens": 0,
+      "cache_write_tokens": 0,
+      "audio_tokens": 0,
+      "video_tokens": 0
+    },
+    "cost_details": {
+      "upstream_inference_cost": 0.016048,
+      "upstream_inference_prompt_cost": 0.005428,
+      "upstream_inference_completions_cost": 0.01062
+    },
+    "completion_tokens_details": {
+      "reasoning_tokens": 0,
+      "image_tokens": 0,
+      "audio_tokens": 0
+    }
+  }
+}

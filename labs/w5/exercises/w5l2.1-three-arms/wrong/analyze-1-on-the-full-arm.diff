@@ -1,0 +1,14 @@
+why: runs the full arm on the older prompt
+expect: show headlines and the others do not
+before: RED (author)
+--- a/experiments/context-ablation.toml
++++ b/experiments/context-ablation.toml
+@@ -15,7 +15,7 @@
+ 
+ [[arms]]
+ name = "full"
+-prompt = "analyze-3"
++prompt = "analyze-1"
+ drop = []
+ 
+ [[arms]]

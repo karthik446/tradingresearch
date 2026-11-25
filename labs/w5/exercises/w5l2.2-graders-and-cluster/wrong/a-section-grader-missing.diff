@@ -1,0 +1,14 @@
+why: leaves out the levels grader
+expect: graders = [
+before: RED (author)
+--- a/experiments/context-ablation.toml
++++ b/experiments/context-ablation.toml
+@@ -10,7 +10,7 @@
+ tickers = ["AAPL", "MSFT", "NVDA", "AMZN", "JPM", "XOM", "UNH", "HD", "KO", "CAT"]
+ sessions = ["2026-11-12", "2026-11-13"]
+ cluster = "ticker"
+-graders = ["parsed", "claims_valid", "all_claims_valid", "indicators_grounded", "levels_grounded", "edgar_grounded",
++graders = ["parsed", "claims_valid", "all_claims_valid", "indicators_grounded", "edgar_grounded",
+            "headlines_grounded"]
+ 
+ [[arms]]

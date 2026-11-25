@@ -1,0 +1,13 @@
+why: names the third arm with a trailing space
+expect: the arms (name, drop) are
+before: RED (independent break pass)
+--- a/experiments/context-ablation.toml
++++ b/experiments/context-ablation.toml
+@@ -24,6 +24,6 @@
+ drop = ["headlines"]
+ 
+ [[arms]]
+-name = "no-edgar"
++name = "no-edgar "
+ prompt = "analyze-3"
+ drop = ["edgar"]

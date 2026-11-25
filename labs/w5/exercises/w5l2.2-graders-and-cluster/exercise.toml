@@ -1,0 +1,20 @@
+id = "w5l2.2"
+title = "Graders and cluster"
+effect = "Observe's graders go from ['parsed'] to seven code graders, and the replay's table gains claims_valid 0.909 in full and no-edgar, 0.818 in no-headlines, where the headline claim fails, headlines 1.000 and 0.000, indicators 0.857, and no score for levels or EDGAR, which no claim cites."
+goal = "Write the graders the ablation is read by, each once: parsed, claims_valid, all_claims_valid and the four section graders, all code; and write the cluster out, the ticker, though it is the default, since the arms are compared with intervals that resample tickers."
+what_tested = "The loaded config's graders: exactly parsed, claims_valid, all_claims_valid, indicators_grounded, levels_grounded, edgar_grounded and headlines_grounded, each once, in any order, every one a code grader; the file itself sets cluster to ticker; the $0 replay's mean and n per grader in each arm, with no score for levels or EDGAR."
+writes = [
+  "Replace the graders line: the guard and the primary metric, the whole-analysis metric, and the four registered section graders, each named once.",
+  "Leave out any grader that is not code: a drop arm is graded by code alone, and the run refuses a model grader beside one before its first call.",
+  "Set the cluster key at the top of the file, before the first arm table, to the unit the intervals resample: the ticker.",
+]
+show_tests = ["test_seven_code_graders_each_once", "test_the_cluster_is_written_out"]
+lab = "w5l2"
+concepts = ["code-graders", "cluster"]
+touches = ["experiments/context-ablation.toml"]
+check = "python -m pytest -q -x -p no:cacheprovider -m lab labs/w5/exercises/w5l2.2-graders-and-cluster/test_w5l2_2.py"
+observe = "python labs/w5/tools/observe.py ablation"
+paid = false
+fixtures = ["data/fakea.context.json", "data/analyze3.request.json", "data/analyze3.reply.json", "data/models.json"]
+origin = "rebuild of week-5-end experiments/context-ablation.toml, its graders and cluster; reference = the tag's own file"
+red_expect = "graders = ['parsed']; expected each of"

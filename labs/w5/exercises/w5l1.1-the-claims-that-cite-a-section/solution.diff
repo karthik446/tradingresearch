@@ -1,0 +1,30 @@
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -141,14 +141,22 @@
+     def grade(self, sample, expected) -> Score:
+         # TODO(w5l1.2) a reply that did not parse cannot be graded, nor a section no claim cites (`not_cited`: no
+         #   score, never 1.0); below 1.0 the explanation is "<reasons>: <k> of <n> claims citing <section> fail".
+-        # TODO(w5l1.1) the share of the claims citing this section that validate_claims keeps, run on the whole
+-        #   parsed reply; a claim citing two sections counts in both.
+-        raise NotImplementedError
++        names: dict[str, str] = expected["names"]
++        items = sample.output_parsed.get("claims") if isinstance(sample.output_parsed, dict) else None
++        claims = [c for c in items if isinstance(c, dict)] if isinstance(items, list) else []
++        citing = [str(c.get("id")) for c in claims if self.cites(c, names)]
++        _, rejected = validate_claims(sample.output_parsed, expected["values"], "an_grade")
++        reasons = {r.claim: r.reason for r in rejected}
++        failed = [reasons[claim] for claim in citing if claim in reasons]
++        n = len(citing)
++        return Score(value=(n - len(failed)) / n)
+ 
+     def cites(self, claim: dict, names: dict[str, str]) -> bool:
+         """Whether one of the claim's `source_ids` is a row of this section (masking.section_of its table name)."""
+-        # TODO(w5l1.1) whether the claim's own source_ids name a row of this section; no other field cites.
+-        raise NotImplementedError
++        sources = claim.get("source_ids")
++        return isinstance(sources, list) and any(
++            isinstance(source, str) and source in names and masking.section_of(names[source]) == self.section
++            for source in sources)
+ 
+ 
+ # TODO(w5l1.3) one registered code grader per section of masking.SECTIONS, with the id `<section>_grounded`:

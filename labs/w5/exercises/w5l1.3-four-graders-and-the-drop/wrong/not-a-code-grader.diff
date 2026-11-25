@@ -1,0 +1,14 @@
+why: declares the graders as judges, which a drop arm refuses
+expect: has kind 'judge'
+before: RED (author)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -135,7 +135,7 @@
+ 
+     section = ""
+     version = "1"
+-    kind = "code"
++    kind = "judge"
+     drop: tuple[str, ...] = ()
+ 
+     def grade(self, sample, expected) -> Score:

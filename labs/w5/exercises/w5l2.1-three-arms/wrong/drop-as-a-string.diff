@@ -1,0 +1,14 @@
+why: writes one arm's drop as a bare section name instead of a list
+expect: experiment.load refused
+before: RED (author)
+--- a/experiments/context-ablation.toml
++++ b/experiments/context-ablation.toml
+@@ -21,7 +21,7 @@
+ [[arms]]
+ name = "no-headlines"
+ prompt = "analyze-3"
+-drop = ["headlines"]
++drop = "headlines"
+ 
+ [[arms]]
+ name = "no-edgar"

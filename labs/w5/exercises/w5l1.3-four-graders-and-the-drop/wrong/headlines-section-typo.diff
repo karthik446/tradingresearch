@@ -1,0 +1,14 @@
+why: spells the headline grader's section as no section masking knows
+expect: section 'headline'
+before: RED (author)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -197,7 +197,7 @@
+     checks that the claim says what the headline says."""
+ 
+     id = "headlines_grounded"
+-    section = "headlines"
++    section = "headline"
+ 
+ 
+ @grader

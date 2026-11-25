@@ -1,0 +1,55 @@
+# Week 5 labs (part A): the base, titles, pages, the unlock policy and the suite gate `tr lab` uses.
+#
+# base: the first `tr lab start` of this week makes the repo's files equal to the author's code at this tag (labs/
+# and the runner's own files excepted) and commits it as `lab: week 5 base (week-5-start)`.
+#
+# [unlock] counts FAILED runs of `tr lab verify` on the current exercise. A run where the check could not start
+# (syntax or import error, no tests collected) is not a failed run and does not count.
+#   hints = [2, 5]   hint 1 unlocks after 2 failed runs, hint 2 after 5.
+#   solution = 10    `tr lab solution` unlocks after 10 failed runs, or as soon as the check is green.
+#
+# [suite] deselect: tests/test_week5.py covers the whole chapter, so the repo suite is red until the week ends. The
+# end-of-lab gate (`tr lab next` on a lab's last exercise) passes these node ids to pytest as --deselect (a node id
+# without its [param] deselects every case), plus the ids in that lab's own [labs.<id>.suite]. Plain
+# `python -m pytest -q` still runs them.
+base = "week-5-start"
+
+[unlock]
+hints = [2, 5]
+solution = 10
+
+[suite]
+deselect = [
+    # Written by hand from the chapter's section 5 after the paid run, not in these labs: ADR-007, the decision
+    # written from the ablation's measured table, and ADR-008, the gateway and registry options.
+    "tests/test_week5.py::test_adr_007_records_the_decision_a_measured_table_and_the_consequences",
+    "tests/test_week5.py::test_adr_008_weighs_options_for_an_mcp_gateway_and_registry",
+]
+
+[labs.w5l1]
+title = "Per-section grounding graders"
+page = "pages/w5l1.md"
+goal = "Write SectionGrounded and its four registered graders: the share of the claims citing a section that validate_claims keeps, no score for a section no claim cites or a reply that did not parse, and a drop arm's claims citing rows it never saw failing."
+section = [4]
+
+# After w5l1, evals.py is complete and experiments/context-ablation.toml is still missing: its tests are lab w5l2.
+[labs.w5l1.suite]
+deselect = ["tests/test_week5.py::test_the_context_ablation_has_three_analyze3_arms_that_differ_only_in_drop",
+            "tests/test_week5.py::test_the_ablation_sends_each_arm_the_recorded_request_masked_over_one_dataset",
+            "tests/test_week5.py::test_the_ablation_grades_the_recorded_reply_per_arm"]
+
+# After w5l2, the only tests in tests/test_week5.py still red are the two in [suite], so w5l2 has no list.
+[labs.w5l2]
+title = "The ablation config"
+page = "pages/w5l2.md"
+goal = "Write experiments/context-ablation.toml: three analyze-3 arms on one model that differ only in what they drop, the code graders it is read by, the clusters written out, and the pre-registration above the first key."
+section = [5]
+
+# What labs/tools/prove.py checks after the last exercise: these files must equal the tag byte for byte (the runner
+# ignores this table). They are every file these labs write, and each is whole at the end: evals.py (w5l1) and
+# experiments/context-ablation.toml (w5l2). The week-5-end files no lab in part A writes (ADR-007, ADR-008, the
+# compare, split and claim-label code and their tests, docs/measured-costs.md, docs/runbook.md,
+# evals/specs/section_grounding.md, tests/test_section_grounding.py) are not listed.
+[end]
+tag = "week-5-end"
+files = ["src/tradingresearch/evals.py", "experiments/context-ablation.toml"]

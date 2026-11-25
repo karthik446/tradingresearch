@@ -1,0 +1,11 @@
+why: lists the EDGAR section twice in one drop
+expect: names a section twice
+before: RED (independent break pass)
+--- a/experiments/context-ablation.toml
++++ b/experiments/context-ablation.toml
+@@ -26,4 +26,4 @@
+ [[arms]]
+ name = "no-edgar"
+ prompt = "analyze-3"
+-drop = ["edgar"]
++drop = ["edgar", "edgar"]

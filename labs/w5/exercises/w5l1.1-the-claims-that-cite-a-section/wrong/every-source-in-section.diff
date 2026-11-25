@@ -1,0 +1,14 @@
+why: requires every source id to be a row of the section, so a claim citing two sections counts in neither
+expect: the indicators grader raised ZeroDivisionError
+before: RED (author)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -154,7 +154,7 @@
+     def cites(self, claim: dict, names: dict[str, str]) -> bool:
+         """Whether one of the claim's `source_ids` is a row of this section (masking.section_of its table name)."""
+         sources = claim.get("source_ids")
+-        return isinstance(sources, list) and any(
++        return isinstance(sources, list) and all(
+             isinstance(source, str) and source in names and masking.section_of(names[source]) == self.section
+             for source in sources)
+ 

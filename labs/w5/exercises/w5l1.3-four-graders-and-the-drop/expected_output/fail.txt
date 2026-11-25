@@ -1,0 +1,4 @@
+FAIL w5l1.3 (try 1): Four graders and the drop
+  evals.GRADERS has no indicators_grounded; the *_grounded ids registered: ['inferences_grounded']
+  hint 1 unlocks after 2 failed runs; hint 2 unlocks after 5 failed runs; the solution unlocks after
+  10 failed runs or when the check is green

@@ -1,0 +1,14 @@
+why: copies the indicator grader's section into the headline grader
+expect: section 'indicators'
+before: RED (independent break pass)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -197,7 +197,7 @@
+     checks that the claim says what the headline says."""
+ 
+     id = "headlines_grounded"
+-    section = "headlines"
++    section = "indicators"
+ 
+ 
+ @grader

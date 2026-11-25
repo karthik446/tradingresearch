@@ -1,0 +1,14 @@
+why: adds an arm that drops the levels too
+expect: the arms (name, drop) are
+before: RED (author)
+--- a/experiments/context-ablation.toml
++++ b/experiments/context-ablation.toml
+@@ -27,3 +27,8 @@
+ name = "no-edgar"
+ prompt = "analyze-3"
+ drop = ["edgar"]
++
++[[arms]]
++name = "no-levels"
++prompt = "analyze-3"
++drop = ["levels"]

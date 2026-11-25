@@ -1,0 +1,11 @@
+why: writes drops for the no-edgar arm, a key the loader does not read, so it drops nothing
+expect: the arms (name, drop) are
+before: RED (independent break pass)
+--- a/experiments/context-ablation.toml
++++ b/experiments/context-ablation.toml
+@@ -26,4 +26,4 @@
+ [[arms]]
+ name = "no-edgar"
+ prompt = "analyze-3"
+-drop = ["edgar"]
++drops = ["edgar"]

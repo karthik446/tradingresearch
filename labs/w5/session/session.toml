@@ -1,0 +1,89 @@
+# The walked-through session on the w5 lab pages. labs/tools/capture.py runs every step in a fresh scratch clone
+# (one clone per part) and writes what each `run` printed to the step's `output` file next to this one. `prove.py`
+# re-runs it and fails when an output file no longer matches.
+
+diagram = """
+ tr lab start w5l1     first command of the week: commits the author's code at week-5-start
+         |             as `lab: week 5 base (week-5-start)`, then puts the w5l1.1 stub in place
+         v
+   edit the TODO  <------------------------------------------------+
+         |                                                         |
+         v                                                         |
+ tr lab verify  --> FAIL (try N): what the check expected and got -+
+         |
+         v
+   PASS, then labs/w5/tools/observe.py: the section scores per reply and per arm, or the ablation config replayed
+         |
+         v
+ tr lab next    commits `lab <id>: green`, puts the next stub in place
+"""
+
+[[part]]
+id = "p1"
+title = "The start of week 5: the base commit and exercise w5l1.1"
+intro = """A fresh clone of the labs repo, as in weeks 1 to 4. Every command below ran in a scratch clone when this \
+page was built, and the text under it is what it printed; the clone's path shows as <repo> and commit hashes as \
+<sha>. Where you would write the code, the capture applies the reference solution instead, so the steps after it \
+have real output. Nothing in week 5's labs calls a model: the recorded reply is replayed, for $0."""
+
+[[part.step]]
+title = "Start the week"
+run = "tr lab start w5l1"
+shown = ".venv/bin/tr lab start w5l1"
+output = "01-start.txt"
+explain = """Week 5 starts from the author's code at the tag week-5-start, not from your week-4 code: `start` makes \
+the tree equal to that tag (labs/ and the runner's own files excepted) and commits it. Your earlier commits stay in \
+the history of `lab`, under the base commit. If the tag is missing, `git fetch --tags` gets it; if pyproject.toml or \
+uv.lock change, `start` tells you to run `uv sync`."""
+
+[[part.step]]
+title = "Where you are: branch, changed files, commits"
+run = "git branch --show-current; git status --short; git log --oneline -3"
+shown = "git branch --show-current; git status --short; git log --oneline -3"
+output = "02-where.txt"
+explain = """The base is one commit on `lab`. The stub is not part of it: src/tradingresearch/evals.py exists at \
+week-5-start, without the section graders, so the w5l1.1 stub shows as a changed file. It brings in the week's \
+`SectionGrounded` with its methods cut down to `TODO(w5l1.1)`, `TODO(w5l1.2)` and `TODO(w5l1.3)` comments."""
+
+[[part.step]]
+title = "Verify the stub: FAIL"
+run = "tr lab verify"
+shown = ".venv/bin/tr lab verify"
+output = "03-verify-fail.txt"
+explain = """The stub's grader raises `NotImplementedError`, so the first check fails on the first section it grades: \
+the message names the section and the claims it was shown."""
+
+[[part.step]]
+title = "Write the share"
+apply = "solution"
+explain = """Here you write the part of evals.py the `TODO(w5l1.1)` comments describe: which claims cite the section, \
+and the share of them the validator keeps. The capture applies the reference solution instead."""
+
+[[part.step]]
+title = "Verify again: PASS"
+run = "tr lab verify"
+shown = ".venv/bin/tr lab verify"
+output = "04-verify-pass.txt"
+explain = """PASS, then the observe command of lab w5l1, `python labs/w5/tools/observe.py grader`. It scores five \
+replies in each of the four sections. The recorded reply's indicators read 0.857 (6 of 7 citing claims kept) and its \
+headlines 1.000. Some rows still raise `ZeroDivisionError`: a section no claim cites has nothing to divide by. That \
+waits for w5l1.2, where such a section gets no score at all."""
+
+[[part.step]]
+title = "Move on"
+run = "tr lab next"
+shown = ".venv/bin/tr lab next"
+output = "05-next.txt"
+explain = """`next` re-runs the check, commits your file as `lab w5l1.1: green` and puts the w5l1.2 stub in place: \
+evals.py with the reference share in it. Here that equals the file just committed, so nothing changes. Had you \
+written the share differently, the stub would replace your file and `next` would name the copy it kept in \
+.tr-lab/backup/."""
+
+[[part.step]]
+title = "The commit"
+run = "git log --oneline -3; git status --short"
+shown = "git log --oneline -3; git status --short"
+output = "06-after-next.txt"
+explain = """Your green commit sits on the base commit, and the base on the repo you cloned. The loop is the one of \
+weeks 1 to 4. What week 5 adds is a grader per section of the context, written across lab w5l1, and in lab w5l2 the \
+config of the ablation that reads with them."""

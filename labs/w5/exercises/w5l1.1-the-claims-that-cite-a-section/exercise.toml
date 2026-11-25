@@ -1,0 +1,20 @@
+id = "w5l1.1"
+title = "The claims that cite a section"
+effect = "Observe's grader table goes from NotImplementedError in every section to a share per section: the recorded reply's indicators 0.857 (6 of 7 claims citing an indicator row pass) and headlines 1.000, and a claim citing a close and a level counted in both sections."
+goal = "Write SectionGrounded.cites and the share in grade: a claim cites the section when one of its own source_ids is a row of that section, and the score is the share of the citing claims that validate_claims, run on the whole reply, keeps."
+what_tested = "Section graders built as subclasses that set only `section`, on parsed FAKEA replies with at least one citing claim: the share of citing claims kept; a two-section claim in both; text, derived_from, unknown ids and source_ids that are not a list cite nothing; a citing claim anywhere in a long reply; one instance across samples; the recorded reply 6/7 and 1/1."
+writes = [
+  "In cites: a claim cites the section when its source_ids is a list and one of its ids names a row that masking.section_of puts in this section; no other field of the claim cites.",
+  "In grade: run validate_claims once on the whole reply, so an inference sees the claims it derives from, and note which claim ids it rejected.",
+  "Score the share of the citing claims whose id was not rejected; keep no count on the instance from one sample to the next.",
+]
+show_tests = ["test_a_claim_citing_two_sections_counts_in_both", "test_only_the_claims_own_source_ids_cite"]
+lab = "w5l1"
+concepts = ["section-grounding", "cites-a-section"]
+touches = ["src/tradingresearch/evals.py"]
+check = "python -m pytest -q -x -p no:cacheprovider -m lab labs/w5/exercises/w5l1.1-the-claims-that-cite-a-section/test_w5l1_1.py"
+observe = "python labs/w5/tools/observe.py grader"
+paid = false
+fixtures = ["data/fakea.context.json", "data/analyze3.reply.json"]
+origin = "rebuild of week-5-end evals.py SectionGrounded; reference = the tag's own code"
+red_expect = "SectionGrounded raised NotImplementedError grading indicators on claims"

@@ -1,0 +1,31 @@
+PASS w5l1.2: Not cited, not parsed
+observe: python labs/w5/tools/observe.py grader
+  | registered section graders: none yet
+
+  | the recorded analyze-3 reply (ok):
+  |   indicators  0.857  empty_placeholder: 1 of 7 claims citing indicators fail
+  |   levels      CannotGrade: not_cited: no claim cites a levels row
+  |   edgar       CannotGrade: not_cited: no claim cites a edgar row
+  |   headlines   1.000  1 of 1 claims citing headlines pass
+
+  | m1 cites close and a level; m2 sma_20 (wrong) and a level (ok):
+  |   indicators  0.500  unsourced_number: 1 of 2 claims citing indicators fail
+  |   levels      0.500  unsourced_number: 1 of 2 claims citing levels fail
+  |   edgar       CannotGrade: not_cited: no claim cites a edgar row
+  |   headlines   CannotGrade: not_cited: no claim cites a headlines row
+
+  | three indicator claims failing three ways, one kept (ok):
+  |   indicators  0.250  empty_placeholder, number_in_text, unsourced_number: 3 …
+  |   levels      CannotGrade: not_cited: no claim cites a levels row
+  |   edgar       CannotGrade: not_cited: no claim cites a edgar row
+  |   headlines   1.000  1 of 1 claims citing headlines pass
+
+  | a parsed reply with no claims list (ok):
+  |   indicators  CannotGrade: not_cited: no claim cites a indicators row
+  |   levels      CannotGrade: not_cited: no claim cites a levels row
+  |   edgar       CannotGrade: not_cited: no claim cites a edgar row
+  |   headlines   CannotGrade: not_cited: no claim cites a headlines row
+
+  | a reply that did not parse (not_json):
+  |   indicators  CannotGrade: output did not parse
+[... 4 more lines not shown]

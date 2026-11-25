@@ -1,0 +1,22 @@
+why: gives the graders no drop attribute, so evals.graders never hands them an arm's list
+expect: has no attribute 'drop'
+before: RED (author)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -136,7 +136,6 @@
+     section = ""
+     version = "1"
+     kind = "code"
+-    drop: tuple[str, ...] = ()
+ 
+     def grade(self, sample, expected) -> Score:
+         if sample.parse_status != "ok":
+@@ -148,7 +147,7 @@
+         if not citing:
+             raise CannotGrade(f"not_cited: no claim cites a {self.section} row")
+         _, rejected = validate_claims(sample.output_parsed, expected["values"], "an_grade",
+-                                      hidden_of(expected, self.drop))
++                                      hidden_of(expected, getattr(self, "drop", ())))
+         reasons = {r.claim: r.reason for r in rejected}
+         failed = [reasons[claim] for claim in citing if claim in reasons]
+         n = len(citing)

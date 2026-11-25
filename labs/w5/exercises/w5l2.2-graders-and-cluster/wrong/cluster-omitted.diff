@@ -1,0 +1,13 @@
+why: relies on the default and writes no cluster
+expect: the file sets cluster = '(nothing)'
+before: RED (author)
+--- a/experiments/context-ablation.toml
++++ b/experiments/context-ablation.toml
+@@ -9,7 +9,6 @@
+ max_usd_per_arm = 1.00
+ tickers = ["AAPL", "MSFT", "NVDA", "AMZN", "JPM", "XOM", "UNH", "HD", "KO", "CAT"]
+ sessions = ["2026-11-12", "2026-11-13"]
+-cluster = "ticker"
+ graders = ["parsed", "claims_valid", "all_claims_valid", "indicators_grounded", "levels_grounded", "edgar_grounded",
+            "headlines_grounded"]
+ 

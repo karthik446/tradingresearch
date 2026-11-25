@@ -1,0 +1,14 @@
+why: grades the inferences in place of the headline section
+expect: graders = [
+before: RED (independent break pass)
+--- a/experiments/context-ablation.toml
++++ b/experiments/context-ablation.toml
+@@ -11,7 +11,7 @@
+ sessions = ["2026-11-12", "2026-11-13"]
+ cluster = "ticker"
+ graders = ["parsed", "claims_valid", "all_claims_valid", "indicators_grounded", "levels_grounded", "edgar_grounded",
+-           "headlines_grounded"]
++           "inferences_grounded"]
+ 
+ [[arms]]
+ name = "full"

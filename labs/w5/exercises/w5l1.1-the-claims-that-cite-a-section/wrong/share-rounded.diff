@@ -1,0 +1,14 @@
+why: rounds the share to one decimal
+expect: indicators scored 0.700
+before: RED (independent break pass)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -149,7 +149,7 @@
+         reasons = {r.claim: r.reason for r in rejected}
+         failed = [reasons[claim] for claim in citing if claim in reasons]
+         n = len(citing)
+-        return Score(value=(n - len(failed)) / n)
++        return Score(value=round((n - len(failed)) / n, 1))
+ 
+     def cites(self, claim: dict, names: dict[str, str]) -> bool:
+         """Whether one of the claim's `source_ids` is a row of this section (masking.section_of its table name)."""

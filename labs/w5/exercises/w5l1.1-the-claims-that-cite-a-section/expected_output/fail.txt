@@ -1,0 +1,6 @@
+FAIL w5l1.1 (try 1): The claims that cite a section
+  SectionGrounded raised NotImplementedError grading indicators on claims [i1: ['sma_20']; i2:
+  ['close']; e1: ['revenue_CY2026Q2']; h1: ['headline 2026-11-13 12:40Z fakewire']; i3: ['sma_50']]:
+  write cites and grade (TODO(w5l1.1))
+  hint 1 unlocks after 2 failed runs; hint 2 unlocks after 5 failed runs; the solution unlocks after
+  10 failed runs or when the check is green

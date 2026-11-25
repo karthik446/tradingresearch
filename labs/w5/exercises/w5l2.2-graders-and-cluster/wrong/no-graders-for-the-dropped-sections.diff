@@ -1,0 +1,15 @@
+why: leaves out the graders of the two sections a drop arm hides
+expect: graders = [
+before: RED (independent break pass)
+--- a/experiments/context-ablation.toml
++++ b/experiments/context-ablation.toml
+@@ -10,8 +10,7 @@
+ tickers = ["AAPL", "MSFT", "NVDA", "AMZN", "JPM", "XOM", "UNH", "HD", "KO", "CAT"]
+ sessions = ["2026-11-12", "2026-11-13"]
+ cluster = "ticker"
+-graders = ["parsed", "claims_valid", "all_claims_valid", "indicators_grounded", "levels_grounded", "edgar_grounded",
+-           "headlines_grounded"]
++graders = ["parsed", "claims_valid", "all_claims_valid", "indicators_grounded", "levels_grounded"]
+ 
+ [[arms]]
+ name = "full"

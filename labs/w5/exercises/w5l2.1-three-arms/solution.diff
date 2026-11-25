@@ -1,0 +1,22 @@
+--- a/experiments/context-ablation.toml
++++ b/experiments/context-ablation.toml
+@@ -13,5 +13,17 @@
+ #   metrics, the whole-analysis one, and one per section.
+ graders = ["parsed"]
+ 
+-# TODO(w5l2.1) three fixed analyze-3 arms on the same model that differ only in the sections they never see:
+-#   none, the headlines, the EDGAR rows.
++[[arms]]
++name = "full"
++prompt = "analyze-3"
++drop = []
++
++[[arms]]
++name = "no-headlines"
++prompt = "analyze-3"
++drop = ["headlines"]
++
++[[arms]]
++name = "no-edgar"
++prompt = "analyze-3"
++drop = ["edgar"]

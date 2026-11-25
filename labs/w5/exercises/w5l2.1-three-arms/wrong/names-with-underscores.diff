@@ -1,0 +1,19 @@
+why: names the arms with underscores
+expect: the arms (name, drop) are
+before: RED (break pass)
+--- a/experiments/context-ablation.toml
++++ b/experiments/context-ablation.toml
+@@ -19,11 +19,11 @@
+ drop = []
+ 
+ [[arms]]
+-name = "no-headlines"
++name = "no_headlines"
+ prompt = "analyze-3"
+ drop = ["headlines"]
+ 
+ [[arms]]
+-name = "no-edgar"
++name = "no_edgar"
+ prompt = "analyze-3"
+ drop = ["edgar"]

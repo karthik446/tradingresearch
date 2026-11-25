@@ -1,0 +1,11 @@
+why: runs the no-edgar arm in tools mode, where there is no SOURCES table to mask
+expect: a tools arm has none
+before: RED (independent break pass)
+--- a/experiments/context-ablation.toml
++++ b/experiments/context-ablation.toml
+@@ -26,4 +26,5 @@
+ [[arms]]
+ name = "no-edgar"
+ prompt = "analyze-3"
++mode = "tools"
+ drop = ["edgar"]

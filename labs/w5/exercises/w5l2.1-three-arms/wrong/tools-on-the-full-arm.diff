@@ -1,0 +1,13 @@
+why: runs the full arm in tools mode
+expect: tools arm full in a config with a headline prompt
+before: RED (author)
+--- a/experiments/context-ablation.toml
++++ b/experiments/context-ablation.toml
+@@ -16,6 +16,7 @@
+ [[arms]]
+ name = "full"
+ prompt = "analyze-3"
++mode = "tools"
+ drop = []
+ 
+ [[arms]]

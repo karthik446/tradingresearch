@@ -1,0 +1,12 @@
+why: repeats the model on one arm with a trailing space, so it names another model
+expect: every arm runs the same model
+before: RED (independent break pass)
+--- a/experiments/context-ablation.toml
++++ b/experiments/context-ablation.toml
+@@ -25,5 +25,6 @@
+ 
+ [[arms]]
+ name = "no-edgar"
++model = "anthropic/claude-sonnet-5.5 "
+ prompt = "analyze-3"
+ drop = ["edgar"]

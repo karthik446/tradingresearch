@@ -1,0 +1,22 @@
+why: keeps the drop on the class, so the next grader an arm builds resets it for all
+expect: with drop ['headlines'] gave (1.0
+before: GREEN (independent break pass)
+--- a/src/tradingresearch/evals.py
++++ b/src/tradingresearch/evals.py
+@@ -136,7 +136,15 @@
+     section = ""
+     version = "1"
+     kind = "code"
+-    drop: tuple[str, ...] = ()
++    _drop: tuple[str, ...] = ()
++
++    @property
++    def drop(self):
++        return SectionGrounded._drop
++
++    @drop.setter
++    def drop(self, value):
++        SectionGrounded._drop = tuple(value)
+ 
+     def grade(self, sample, expected) -> Score:
+         if sample.parse_status != "ok":

@@ -1,0 +1,7 @@
+FAIL w5l1.2 (try 1): Not cited, not parsed
+  the levels grader raised ZeroDivisionError('division by zero') on ok reply c1: ['close']; c2:
+  ['sma_200']; c3: ['sma_50']; c4: []; c5: ['high_20']; c6: ['rel_volume']; c7: ['rsi_14']; c8: [];
+  c9: ['headline 2026-11-13 19:20Z fakewire']; c10: ['regime_spy']; c11: []; it returns a score or
+  raises CannotGrade
+  hint 1 unlocks after 2 failed runs; hint 2 unlocks after 5 failed runs; the solution unlocks after
+  10 failed runs or when the check is green

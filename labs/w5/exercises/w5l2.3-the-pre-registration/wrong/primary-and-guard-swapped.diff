@@ -1,0 +1,20 @@
+why: makes parsed the primary metric and claims_valid the guard
+expect: the primary metric names 'parsed'
+before: RED (independent break pass)
+--- a/experiments/context-ablation.toml
++++ b/experiments/context-ablation.toml
+@@ -3,12 +3,12 @@
+ # `tr news TICKER --session S` for every ticker and session first (the config refuses unfetched windows).
+ #
+ # Pre-registered before any paid run (ADR-007):
+-# - Primary metric: claims_valid, the share of an analysis's claims that pass validate_claims, per ticker-day, paired
++# - Primary metric: parsed, the share of an analysis's claims that pass validate_claims, per ticker-day, paired
+ #   by item (drop arm minus full), clustered by ticker (10 clusters), 95% interval from `compare`.
+ #   Why: all_claims_valid was 0.100 in both week-4 arms (ADR-005), a floor at which one bad claim zeroes an analysis,
+ #   so it cannot separate arms. claims_valid is a rate with room on both sides (0.798 in week 4) and showed a
+ #   +/-0.085 interval at n=20, so it can see a moderate loss.
+-# - Guard metric: parsed must not drop in either drop arm.
++# - Guard metric: claims_valid must not drop in either drop arm.
+ # - Rule: a section stays if dropping it lowers claims_valid with the whole 95% interval below 0. It goes if the
+ #   interval is not wholly below 0, the guard holds and dropping it lowers the mean input tokens. Otherwise it stays.
+ # - Reported only, not deciding: all_claims_valid, the four <section>_grounded graders (their n differs by arm,

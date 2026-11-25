@@ -1,0 +1,16 @@
+PASS w5l2.1: Three arms
+observe: python labs/w5/tools/observe.py ablation
+  | experiments/context-ablation.toml: 3 arms, 10 tickers, cluster 'ticker'
+  |   full             anthropic/claude-sonnet-5.5  analyze-3  fixed  drop []
+  |   no-headlines     anthropic/claude-sonnet-5.5  analyze-3  fixed  drop ['headlines']
+  |   no-edgar         anthropic/claude-sonnet-5.5  analyze-3  fixed  drop ['edgar']
+  | graders: ['parsed']
+  | pre-registration lines above the first key:
+  |   (none)
+
+  | the $0 replay: 30 requests, each answered with the recorded reply; per arm, mean (n) of each
+  | grader that scored (a section no claim cites has none):
+  |   full             parsed 1.000 (10)
+  |   no-headlines     parsed 1.000 (10)
+  |   no-edgar         parsed 1.000 (10)
+next: `tr lab next` commits it and moves on; `tr lab solution` shows the reference to compare

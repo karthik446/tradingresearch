@@ -1,0 +1,20 @@
+why: names the arm that drops the headlines full and the one that drops nothing no-headlines
+expect: the arms (name, drop) are
+before: RED (break pass)
+--- a/experiments/context-ablation.toml
++++ b/experiments/context-ablation.toml
+@@ -14,12 +14,12 @@
+ graders = ["parsed"]
+ 
+ [[arms]]
+-name = "full"
++name = "no-headlines"
+ prompt = "analyze-3"
+ drop = []
+ 
+ [[arms]]
+-name = "no-headlines"
++name = "full"
+ prompt = "analyze-3"
+ drop = ["headlines"]
+ 

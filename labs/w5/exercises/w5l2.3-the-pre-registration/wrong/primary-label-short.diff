@@ -1,0 +1,14 @@
+why: labels the primary metric `Primary:`
+expect: 'Primary metric:': 0
+before: RED (author)
+--- a/experiments/context-ablation.toml
++++ b/experiments/context-ablation.toml
+@@ -3,7 +3,7 @@
+ # `tr news TICKER --session S` for every ticker and session first (the config refuses unfetched windows).
+ #
+ # Pre-registered before any paid run (ADR-007):
+-# - Primary metric: claims_valid, the share of an analysis's claims that pass validate_claims, per ticker-day, paired
++# - Primary: claims_valid, the share of an analysis's claims that pass validate_claims, per ticker-day, paired
+ #   by item (drop arm minus full), clustered by ticker (10 clusters), 95% interval from `compare`.
+ #   Why: all_claims_valid was 0.100 in both week-4 arms (ADR-005), a floor at which one bad claim zeroes an analysis,
+ #   so it cannot separate arms. claims_valid is a rate with room on both sides (0.798 in week 4) and showed a

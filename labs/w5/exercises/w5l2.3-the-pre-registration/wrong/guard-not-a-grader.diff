@@ -1,0 +1,14 @@
+why: names a guard the config does not run
+expect: the guard metric names None
+before: RED (break pass)
+--- a/experiments/context-ablation.toml
++++ b/experiments/context-ablation.toml
+@@ -8,7 +8,7 @@
+ #   Why: all_claims_valid was 0.100 in both week-4 arms (ADR-005), a floor at which one bad claim zeroes an analysis,
+ #   so it cannot separate arms. claims_valid is a rate with room on both sides (0.798 in week 4) and showed a
+ #   +/-0.085 interval at n=20, so it can see a moderate loss.
+-# - Guard metric: parsed must not drop in either drop arm.
++# - Guard metric: parse_rate must not drop in either drop arm.
+ # - Rule: a section stays if dropping it lowers claims_valid with the whole 95% interval below 0. It goes if the
+ #   interval is not wholly below 0, the guard holds and dropping it lowers the mean input tokens. Otherwise it stays.
+ # - Reported only, not deciding: all_claims_valid, the four <section>_grounded graders (their n differs by arm,

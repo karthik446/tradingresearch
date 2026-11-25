@@ -1,0 +1,21 @@
+why: keeps the start file's graders line and writes the full list after the arms, inside the last arm's table, where the loader never reads it
+expect: graders = ['parsed']
+before: RED (break pass)
+--- a/experiments/context-ablation.toml
++++ b/experiments/context-ablation.toml
+@@ -10,8 +10,7 @@
+ tickers = ["AAPL", "MSFT", "NVDA", "AMZN", "JPM", "XOM", "UNH", "HD", "KO", "CAT"]
+ sessions = ["2026-11-12", "2026-11-13"]
+ cluster = "ticker"
+-graders = ["parsed", "claims_valid", "all_claims_valid", "indicators_grounded", "levels_grounded", "edgar_grounded",
+-           "headlines_grounded"]
++graders = ["parsed"]
+ 
+ [[arms]]
+ name = "full"
+@@ -27,3 +26,5 @@
+ name = "no-edgar"
+ prompt = "analyze-3"
+ drop = ["edgar"]
++graders = ["parsed", "claims_valid", "all_claims_valid", "indicators_grounded", "levels_grounded", "edgar_grounded",
++           "headlines_grounded"]
