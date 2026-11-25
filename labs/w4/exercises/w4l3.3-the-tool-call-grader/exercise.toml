@@ -10,7 +10,7 @@ writes = [
 ]
 show_tests = ["test_the_first_fault_in_call_order_is_the_one_reported", "test_the_cap_passes_at_max_calls_and_fails_one_over"]
 lab = "w4l3"
-concepts = ["tool-calls-ok", "first-fault"]
+concepts = ["tool-call-grader", "first-fault"]
 touches = ["src/tradingresearch/evals.py"]
 check = "python -m pytest -q -x -p no:cacheprovider -m lab labs/w4/exercises/w4l3.3-the-tool-call-grader/test_w4l3_3.py"
 observe = "python labs/w4/tools/observe.py grader"
