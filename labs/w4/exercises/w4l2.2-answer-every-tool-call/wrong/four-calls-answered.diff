@@ -1,0 +1,14 @@
+why: only the first four tool calls of a reply are answered, so a reply with five calls leaves one without a tool turn or a span
+expect: the first reply asks for five tools
+before: GREEN (independent read)
+--- a/src/tradingresearch/analyze.py
++++ b/src/tradingresearch/analyze.py
+@@ -411,7 +411,7 @@ def analyze_with_tools(ctx: Context, provider, *, model: str, prompt_version: st
+         if not span.tool_calls:
+             break
+         turns.append(Turn(role="assistant", content=span.text, tool_calls=span.tool_calls))
+-        for call in span.tool_calls:
++        for call in span.tool_calls[:4]:
+             tool_span, content = _tool_span(ctx, call, trial_id)
+             sink.write(tool_span)
+             spans.append(tool_span)

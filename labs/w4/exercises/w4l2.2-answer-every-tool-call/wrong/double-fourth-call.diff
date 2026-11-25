@@ -1,5 +1,5 @@
-why: the loop answers every call past the third twice, so a reply with four calls gets five tool turns and five spans
-expect: the first reply asks for four tools
+why: the loop answers every call past the third twice, so a reply with five calls gets seven tool turns and seven spans
+expect: the first reply asks for five tools
 before: GREEN (Codex review)
 --- a/src/tradingresearch/analyze.py
 +++ b/src/tradingresearch/analyze.py

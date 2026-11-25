@@ -1,5 +1,5 @@
 why: scores a tool error as the share of calls made cleanly before it, so a score is no longer pass or fail
-expect: tool_calls_ok scored 0.6666666666666666
+expect: tool_calls_ok scored 0.8571428571428571
 before: GREEN (author, first run)
 --- a/src/tradingresearch/evals.py
 +++ b/src/tradingresearch/evals.py

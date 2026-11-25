@@ -1,0 +1,16 @@
+why: a failed call's span is kept in the sample but never written to the trace, so the trace does not show the call that ended the item
+expect: the trace's model spans have errors []
+before: GREEN (independent read)
+--- a/src/tradingresearch/analyze.py
++++ b/src/tradingresearch/analyze.py
+@@ -403,8 +403,9 @@ def analyze_with_tools(ctx: Context, provider, *, model: str, prompt_version: st
+     for _ in range(max_turns):
+         span = _model_span(provider, ModelRequest(settings=call_settings(model), turns=tuple(turns), tools=TOOLS),
+                            trial_id)
+-        sink.write(span)
+         spans.append(span)
++        if span.error is None:
++            sink.write(span)
+         if span.error is not None:
+             error = span.error
+             break

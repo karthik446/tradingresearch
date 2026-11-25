@@ -1,0 +1,14 @@
+why: names keeps at most the first three matching rows, so a request for four or more names loses the rest
+expect: returns 3 rows (close, sma_20, sma_50): the model asked for those 21 rows
+before: GREEN (independent read)
+--- a/src/tradingresearch/tools.py
++++ b/src/tradingresearch/tools.py
+@@ -126,7 +126,7 @@ def indicators(ctx: Context, args: dict) -> list[Row]:
+     missing = [w for w in wanted if w not in {r.name for r in rows}]
+     if missing:
+         raise ToolError(f"get_indicators: no row named {', '.join(missing)}; names: {', '.join(r.name for r in rows)}")
+-    return [r for r in rows if r.name in wanted]
++    return [r for r in rows if r.name in wanted][:3]
+ 
+ 
+ def levels(ctx: Context, args: dict) -> list[Row]:

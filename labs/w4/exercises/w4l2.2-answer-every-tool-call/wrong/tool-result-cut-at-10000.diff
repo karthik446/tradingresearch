@@ -1,0 +1,14 @@
+why: the tool turn keeps only the first 10 000 characters of the result, so a longer answer reaches the model cut short
+expect: the tool turn holds [10000]
+before: GREEN (independent read)
+--- a/src/tradingresearch/analyze.py
++++ b/src/tradingresearch/analyze.py
+@@ -415,7 +415,7 @@ def analyze_with_tools(ctx: Context, provider, *, model: str, prompt_version: st
+             tool_span, content = _tool_span(ctx, call, trial_id)
+             sink.write(tool_span)
+             spans.append(tool_span)
+-            turns.append(Turn(role="tool", content=content, tool_call_id=call.id))
++            turns.append(Turn(role="tool", content=content[:10_000], tool_call_id=call.id))
+     parsed = parse_json_text(text) if error is None else None
+     completed = datetime.now(UTC)
+     outcome = "failed" if error is not None else "succeeded"

@@ -120,26 +120,27 @@ def test_the_loop_calls_again_until_a_reply_asks_for_no_tool():
         f"the sample ends {sample.outcome}, {sample.parse_status}: the last reply is the recorded final JSON")
 
 
-def test_a_fourth_call_gets_one_tool_turn_and_one_span():
-    def fourth(n: int, body: dict) -> dict:
+def test_a_fourth_and_fifth_call_get_one_tool_turn_and_one_span_each():
+    def fifth(n: int, body: dict) -> dict:
         if n == 0:
             calls = body["choices"][0]["message"]["tool_calls"]
-            calls.append({**calls[0], "index": 3, "id": "toolu_lab_extra"})
+            calls += [{**calls[0], "index": 3, "id": "toolu_lab_extra"},
+                      {**calls[1], "index": 4, "id": "toolu_lab_extra2"}]
         return body
 
-    sent, sample = replayed(("three_calls", "turn2"), edit=fourth)
-    ids = [i for i, _, _ in fakea.THREE_CALLS] + ["toolu_lab_extra"]
+    sent, sample = replayed(("three_calls", "turn2"), edit=fifth)
+    ids = [i for i, _, _ in fakea.THREE_CALLS] + ["toolu_lab_extra", "toolu_lab_extra2"]
     got = [m.get("tool_call_id") for body in sent[1:2] for m in body["messages"] if m["role"] == "tool"]
     kept = [s.call.id for s in sample.tool_spans]
     assert got == ids and kept == ids, (
-        f"the first reply asks for four tools ({', '.join(ids)}); the second request's tool turns answer {got} and "
+        f"the first reply asks for five tools ({', '.join(ids)}); the second request's tool turns answer {got} and "
         f"the sample keeps spans for {kept}: one tool turn and one span per call, each once, however many calls the "
         f"reply holds")
 
 
 def test_a_long_tool_result_goes_back_whole():
     close = next(r for r in CTX.rows if r.name == "close")
-    extra = tuple(dataclasses.replace(close, name=f"extra_{i}", source_id=f"long_{i}") for i in range(100))
+    extra = tuple(dataclasses.replace(close, name=f"extra_{i}", source_id=f"long_{i}") for i in range(250))
     ctx = dataclasses.replace(CTX, rows=(*CTX.rows, *extra))
 
     def every_row(n: int, body: dict) -> dict:
@@ -151,17 +152,17 @@ def test_a_long_tool_result_goes_back_whole():
     got = [m["content"] for body in sent[1:2] for m in body["messages"] if m["role"] == "tool"]
     want = tools.run_tool(ctx, "get_indicators", "{}")
     assert got == [want], (
-        f"on a context with 100 more indicator rows, get_indicators with no arguments answers {len(want)} characters; "
-        f"the tool turn holds {[len(c) for c in got]}: the model reads only what the tool turn holds, so a result cut "
-        f"short hides rows it asked for")
+        f"on a context with {len(extra)} more indicator rows, get_indicators with no arguments answers {len(want)} "
+        f"characters; the tool turn holds {[len(c) for c in got]}: the model reads only what the tool turn holds, so a "
+        f"result cut short hides rows it asked for")
 
 
-def test_a_later_reply_goes_back_with_its_text():
-    said = "Need another row to check the trend."
+def test_every_reply_goes_back_with_its_text():
+    first, said = "Reading the indicators first.", "Need another row to check the trend."
 
     def with_text(n: int, body: dict) -> dict:
-        if n == 1:
-            body["choices"][0]["message"]["content"] = said
+        if n < 2:
+            body["choices"][0]["message"]["content"] = (first, said)[n]
         return body
 
     sent, _ = replayed(("three_calls", "one_more", "turn2"), edit=with_text)
@@ -170,3 +171,7 @@ def test_a_later_reply_goes_back_with_its_text():
         f"the second reply says {said!r} beside its tool call; the third request's assistant turns hold {turns}: "
         f"every reply goes back as it came, its text too, on every round, so the model reads what it said before it "
         f"asked")
+    assert turns == [first, said], (
+        f"the first reply says {first!r} and the second {said!r}; the third request's assistant turns hold {turns}: "
+        f"an earlier reply goes back as it came on every later round too, its text included, so the model still "
+        f"reads what it said first")

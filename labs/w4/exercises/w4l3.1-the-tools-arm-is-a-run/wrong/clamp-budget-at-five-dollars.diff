@@ -1,0 +1,14 @@
+why: the budget's cap is the arm's max_usd_per_arm but never more than $5, so a larger arm cap is cut to $5
+expect: at 100 times the recorded price the two first requests are planned at $8.138400, under a $10.0 cap, and run_tools sent 0 requests
+before: GREEN (independent read)
+--- a/src/tradingresearch/experiment.py
++++ b/src/tradingresearch/experiment.py
+@@ -147,7 +147,7 @@ def run_tools(config: Config, arm: Arm, dataset: Dataset, by_item: dict[str, an.
+     Same contract as core `run`: the budget is planned on every item's first request before any call and every call
+     is reserved; one trace file per run; code graders score each succeeded sample; `CannotGrade` leaves no score."""
+     from .tools import TOOLS
+-    budget = CallBudget(max_usd=config.max_usd_per_arm, prices=prices)
++    budget = CallBudget(max_usd=min(config.max_usd_per_arm, 5.0), prices=prices)
+     system = Turn(role="system", content=an.system_prompt(arm.prompt))
+     settings = an.call_settings(arm.model)
+     budget.plan([ModelRequest(settings=settings, tools=TOOLS,

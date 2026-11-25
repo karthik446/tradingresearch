@@ -175,6 +175,9 @@ def test_the_first_fault_in_call_order_is_the_one_reported():
     fails_with(sample_of([*distinct(6), distinct(1)[0]]), "repeated_call",
                "the seventh call repeats the first: a repeat is a fault wherever it falls, and it comes before the "
                "seventh call goes past the cap")
+    fails_with(sample_of([*distinct(6), ("get_levels", "{}", CLEAN, True)]), "tool_error",
+               "the seventh call raised: an erring call is a fault wherever it falls, and it comes before the seventh "
+               "call goes past the cap")
     fails_with(sample_of([*clean(a, b), ("get_levels", "{}", ERROR, False)]), "tool_error",
                "two clean calls, then the third errs: one fault fails the loop, however many calls went well")
     fails_with(sample_of([("get_levels", "{}", ERROR, False), *distinct(7)]), "tool_error",

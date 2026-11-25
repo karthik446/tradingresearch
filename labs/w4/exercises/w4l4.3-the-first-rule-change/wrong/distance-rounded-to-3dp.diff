@@ -1,0 +1,13 @@
+why: the distance is rounded to 3 places before the sign test, so a long 0.0004 below the sma_50 reads as on it
+expect: dist_sma_50_atr -0.0004) returned None
+before: GREEN (independent read)
+--- a/src/tradingresearch/rules.py
++++ b/src/tradingresearch/rules.py
+@@ -55,6 +55,7 @@ def short_with_sma50_trend(t: Thesis, a: Analysis) -> str | None:
+     dist = a.snapshot.values.get("dist_sma_50_atr")
+     if dist is None:
+         return "short horizon needs dist_sma_50_atr to check the trend, got None"
++    dist = round(dist, 3)
+     if (t.direction == "long" and dist < 0) or (t.direction == "short" and dist > 0):
+         return f"short-horizon {t.direction} against the sma_50 trend (dist_sma_50_atr {dist:.2f})"
+     return None

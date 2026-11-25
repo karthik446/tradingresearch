@@ -37,7 +37,7 @@ def ended(sample) -> str:
 
 
 def test_a_model_that_never_stops_gets_max_turns_calls_and_a_failed_sample():
-    for max_turns in (3, None, 1, 6):
+    for max_turns in (3, None, 1, 6, 12):
         cap = an.MAX_TOOL_TURNS if max_turns is None else max_turns
         sent, sample = replayed(("turn1",), max_turns)
         assert len(sent) == cap, (
@@ -89,6 +89,11 @@ def test_a_failed_call_ends_the_loop_and_fails_the_sample_with_its_error():
             f"with the replies {replies} the trace's trial span has error "
             f"{trial[-1].error.code if trial and trial[-1].error else None}; the sample's is http_400: the trace is "
             f"where a reader of the run sees why an item failed, so the trial span carries the sample's error")
+        traced = [s.error and s.error.code for s in trace.spans if isinstance(s, ModelSpan)]
+        assert traced == errors, (
+            f"with the replies {replies} the trace's model spans have errors {traced}; the sample's have {errors}: a "
+            f"failed call's span goes to the trace too, as soon as the call ends, so a reader of the run sees the "
+            f"HTTP 400 there")
 
 
 def test_retries_stay_inside_one_model_call():

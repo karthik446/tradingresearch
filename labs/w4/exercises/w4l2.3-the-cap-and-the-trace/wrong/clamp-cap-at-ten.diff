@@ -1,0 +1,14 @@
+why: the loop never runs more than 10 model calls, so a max_turns above 10 is cut to 10
+expect: with max_turns=12 the loop made 10 calls
+before: GREEN (independent read)
+--- a/src/tradingresearch/analyze.py
++++ b/src/tradingresearch/analyze.py
+@@ -400,7 +400,7 @@ def analyze_with_tools(ctx: Context, provider, *, model: str, prompt_version: st
+     turns = list(first)
+     spans: list[ModelSpan | ToolSpan] = []
+     text, error = "", None
+-    for _ in range(max_turns):
++    for _ in range(min(max_turns, 10)):
+         span = _model_span(provider, ModelRequest(settings=call_settings(model), turns=tuple(turns), tools=TOOLS),
+                            trial_id)
+         sink.write(span)

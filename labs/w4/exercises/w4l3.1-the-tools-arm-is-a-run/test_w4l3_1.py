@@ -150,15 +150,16 @@ def test_every_call_is_reserved_on_the_one_budget(tmp_path):
 
 
 def test_the_budget_is_the_arms_own_cap_whatever_its_size(tmp_path):
-    dear = {model: price.model_copy(update={"prompt_usd_per_token": price.prompt_usd_per_token * 20,
-                                            "completion_usd_per_token": price.completion_usd_per_token * 20})
-            for model, price in fakea.prices().items()}
-    result, sent, _ = run_tools(tmp_path, ("turn2",), max_usd=3.0, prices=dear, cycle=True)
-    assert not isinstance(result, BudgetExceeded) and len(sent) == 2, (
-        f"at 20 times the recorded price the two first requests are planned at ${PLAN_2 * 20:.6f}, under a $3.0 "
-        f"cap, and run_tools sent {len(sent)} requests and "
-        f"{'raised ' + str(result) if isinstance(result, BudgetExceeded) else 'finished'}; expected 2 requests, one "
-        f"answer per item: the budget's cap is the arm's max_usd_per_arm, whatever its size, not a smaller one")
+    for times, cap in ((20, 3.0), (100, 10.0)):
+        dear = {model: price.model_copy(update={"prompt_usd_per_token": price.prompt_usd_per_token * times,
+                                                "completion_usd_per_token": price.completion_usd_per_token * times})
+                for model, price in fakea.prices().items()}
+        result, sent, _ = run_tools(tmp_path / f"x{times}", ("turn2",), max_usd=cap, prices=dear, cycle=True)
+        assert not isinstance(result, BudgetExceeded) and len(sent) == 2, (
+            f"at {times} times the recorded price the two first requests are planned at ${PLAN_2 * times:.6f}, under "
+            f"a ${cap} cap, and run_tools sent {len(sent)} requests and "
+            f"{'raised ' + str(result) if isinstance(result, BudgetExceeded) else 'finished'}; expected 2 requests, "
+            f"one answer per item: the budget's cap is the arm's max_usd_per_arm, whatever its size, not a smaller one")
 
 
 def test_a_failed_item_is_never_graded_and_cannot_grade_leaves_no_score(tmp_path):

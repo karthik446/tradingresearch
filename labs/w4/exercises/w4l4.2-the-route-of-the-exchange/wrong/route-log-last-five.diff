@@ -1,0 +1,13 @@
+why: the route log keeps only the last five routes of an exchange, so a six-turn exchange loses its first turn's provider
+expect: expected 'openrouter:mixed(Azure+Fireworks+Google+Together)'
+before: GREEN (independent read)
+--- a/src/tradingresearch/openrouter.py
++++ b/src/tradingresearch/openrouter.py
+@@ -245,6 +245,7 @@ class OpenRouter:
+         route = f"openrouter:{data.get('provider') or 'unknown'}" if self.routing is None else self.routing.served(data)
+         key = exchange_key(request)
+         self.routes.setdefault(key, []).append(route)
++        self.routes[key] = self.routes[key][-5:]
+         self.served.append((key, route))
+         choice = data["choices"][0]
+         text = choice["message"].get("content") or ""

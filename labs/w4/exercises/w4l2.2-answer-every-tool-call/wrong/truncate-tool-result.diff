@@ -1,5 +1,5 @@
 why: the tool turn keeps only the first 2000 characters of the result, so a long answer reaches the model cut short
-expect: on a context with 100 more indicator rows, get_indicators with no arguments answers
+expect: on a context with 250 more indicator rows, get_indicators with no arguments answers
 before: GREEN (Codex review)
 --- a/src/tradingresearch/analyze.py
 +++ b/src/tradingresearch/analyze.py

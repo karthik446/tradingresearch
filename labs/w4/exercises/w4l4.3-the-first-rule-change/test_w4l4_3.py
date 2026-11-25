@@ -75,12 +75,15 @@ def test_a_short_horizon_short_above_the_sma50_is_refused_and_one_below_it_is_ke
         f"sma_50 trades with the trend")
 
 
-def test_a_hundredth_from_the_sma50_is_already_against_the_trend():
-    for direction, dist in (("long", -0.01), ("short", 0.01)):
-        got = refused("short", direction, dist)
-        assert isinstance(got, str) and got.strip(), (
-            f"refuse(short-horizon {direction}, dist_sma_50_atr {dist}) returned {got!r}; expected a reason: the sign "
-            f"of the distance is the side of the trend however small it is, and only exactly 0.0 sits on the sma_50")
+def test_a_hundredth_or_a_ten_thousandth_from_the_sma50_is_already_against_the_trend():
+    for direction, side in (("long", -1), ("short", 1)):
+        for size in (0.01, 0.001, 0.0004):
+            dist = side * size
+            got = refused("short", direction, dist)
+            assert isinstance(got, str) and got.strip(), (
+                f"refuse(short-horizon {direction}, dist_sma_50_atr {dist}) returned {got!r}; expected a reason: the "
+                f"sign of the distance is the side of the trend however small it is, and only exactly 0.0 sits on the "
+                f"sma_50")
 
 
 @pytest.mark.parametrize("direction", ["long", "short"])

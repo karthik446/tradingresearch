@@ -2,7 +2,7 @@ id = "w4l3.1"
 title = "Run the tool loop as a Run: plan, reserve, grade what succeeded"
 effect = "Observe's run with a $0.06 cap goes from 4 requests sent to none (the two first requests are planned at $0.081384), the run's spend from $0 to $0.045776 and its call count from 2 to 4, and the item whose call failed no longer gets a score."
 goal = "Give a tools arm the contract core run gives a fixed arm: the budget planned on every item's first request before any call, every call reserved, only succeeded samples graded, CannotGrade leaving no score, and the run's spend and calls counted from its model calls."
-what_tested = "run_tools on replayed replies over FAKEA, FAKEB and FAKEC: each item's own tools prompt; the $0.081384 plan against $0.0813/$0.0814 caps and a $3 cap at 20x prices; no reported cost keeps each reservation; failed items never graded, prose graded, CannotGrade skipped, other grader errors raised; spend and calls from every model call; the trace; a model that never stops."
+what_tested = "run_tools on replayed replies over FAKEA, FAKEB and FAKEC: each item's own tools prompt; the $0.081384 plan against $0.0813/$0.0814 caps, $3 and $10 caps at 20x and 100x prices; no reported cost keeps each reservation; failed items never graded, prose graded, CannotGrade skipped, other grader errors raised; spend and calls from every model call; the trace; a model that never stops."
 writes = [
   "In run_tools: before any call, plan the budget on every item's first request: the system turn, that item's tools prompt, TOOLS offered.",
   "Send every call of the loop through that budget, so each one is reserved before it goes out.",

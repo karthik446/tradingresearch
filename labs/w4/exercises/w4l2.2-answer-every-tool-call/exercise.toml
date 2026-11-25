@@ -2,7 +2,7 @@ id = "w4l2.2"
 title = "Answer every tool call, then call again"
 effect = "Observe's recorded exchange goes from 1 request ending not_json to 2 requests ending succeeded with 11 claims, and the three-calls run sends three tool turns with ids toolu_lab_1 to toolu_lab_3 and keeps three tool spans."
 goal = "Answer a reply that asks for tools: send it back as the assistant turn, then one tool turn per call, in the order asked, with the call's id and run_tool's text, keep each tool call's span, and call the model again until a reply asks for none."
-what_tested = "analyze_with_tools on replayed replies: the recorded second request is turn2.request.json but for the user and tool turns; 3 or 4 calls get a tool turn each in order, with ids and run_tool's whole answer on that item's context, and a tool span each, in the sample too; a later reply's text goes back; an unoffered tool's call gets run_tool's error; every call offers TOOLS; 3 calls, parsed."
+what_tested = "analyze_with_tools on replayed replies: the recorded second request is turn2.request.json but for the user and tool turns; 3 or 5 calls get a tool turn each in order, with ids and run_tool's whole answer on that item's context, and a tool span each, in the sample too; every reply's text goes back; an unoffered tool's call gets run_tool's error; every call offers TOOLS; 3 calls, parsed."
 writes = [
   "In analyze_with_tools' loop: append the reply as an assistant turn with its text and its tool calls.",
   "For each call, in order: run it through _tool_span, write its span to the sink and keep it, append a tool turn with the call's id and the content.",

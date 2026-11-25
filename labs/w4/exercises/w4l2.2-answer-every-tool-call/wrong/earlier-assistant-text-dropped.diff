@@ -1,0 +1,14 @@
+why: each round blanks the text of the assistant turns already sent, so only the latest reply goes back with what it said
+expect: an earlier reply goes back as it came on every later round too
+before: GREEN (independent read)
+--- a/src/tradingresearch/analyze.py
++++ b/src/tradingresearch/analyze.py
+@@ -410,6 +410,8 @@ def analyze_with_tools(ctx: Context, provider, *, model: str, prompt_version: st
+         text = span.text
+         if not span.tool_calls:
+             break
++        turns = [Turn(role="assistant", content="", tool_calls=t.tool_calls) if t.role == "assistant" else t
++                 for t in turns]
+         turns.append(Turn(role="assistant", content=span.text, tool_calls=span.tool_calls))
+         for call in span.tool_calls:
+             tool_span, content = _tool_span(ctx, call, trial_id)

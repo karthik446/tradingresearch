@@ -2,7 +2,7 @@ id = "w4l2.3"
 title = "Cap the loop and keep every span in the trace"
 effect = "Observe's never-stops run goes from 13 requests (where the replay itself stops; the sample still reads succeeded) to 3 requests and a failed sample with error max_tool_turns, and every run's trace lists each model span before the tool spans it asked for, with the trial span last."
 goal = "Bound and record the loop: at most max_turns model calls, then a failed sample with error max_tool_turns; a failed call ends it with its error; each model call's span goes to the trace when it ends; a spending cap's refusal reaches the caller with what ran already in the trace."
-what_tested = "analyze_with_tools on replayed replies: a model that always asks gets max_turns model calls (3, default 5, 1, 6), tool calls not counted, each offering TOOLS, then a failed sample, max_tool_turns; a final reply on the last call succeeds; HTTP 400 ends it with its span, the trial span keeping the error; 503 retries stay in one call; BudgetExceeded propagates, the first call traced; trace order."
+what_tested = "analyze_with_tools on replayed replies: a model that always asks gets max_turns model calls (3, default 5, 1, 6, 12), tool calls not counted, each offering TOOLS, then a failed sample, max_tool_turns; a final reply on the last call succeeds; HTTP 400 ends it, its span traced, the trial span keeping the error; 503 retries stay in one call; BudgetExceeded propagates, first call traced; trace order."
 writes = [
   "In analyze_with_tools: loop at most max_turns times; if no reply ends the loop, the sample fails with CallError code max_tool_turns.",
   "After each model call: write its span to the sink and keep it; if the call failed, keep its error and stop.",

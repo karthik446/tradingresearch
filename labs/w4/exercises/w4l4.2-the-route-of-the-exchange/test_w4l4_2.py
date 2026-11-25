@@ -104,6 +104,18 @@ def test_mixed_names_each_provider_once_in_sorted_order(replies, names):
         f"is named once, sorted, so one mix always reads the same ({log(provider)})")
 
 
+def test_four_providers_over_six_turns_are_each_named_once():
+    names = ("Google", "Azure", "Fireworks", "Together", "Azure", "Azure")
+    sent: list[dict] = []
+    provider = fakea.replaying(sent, ("one_more",) * 5 + ("turn2",), edit=hosts(*names))
+    fakea.run(provider, max_turns=6)
+    got = provider.route_for(item_prompt(sent[0]))
+    assert got == "openrouter:mixed(Azure+Fireworks+Google+Together)", (
+        f"route_for(item prompt) = {got!r} after six turns served by {' then '.join(names)}; expected "
+        f"'openrouter:mixed(Azure+Fireworks+Google+Together)': every turn of the exchange counts, the first of six "
+        f"too, and each of the four providers is named once, sorted ({log(provider)})")
+
+
 def test_a_retried_turn_keeps_the_routes_logged_before_it():
     sent: list[dict] = []
     provider = fakea.replaying(sent, ("one_more", "busy", "turn2"), edit=hosts("Azure", "Google", "Google"))

@@ -100,13 +100,13 @@ def test_a_big_value_is_rounded_as_the_table_rounds_it():
 
 
 def test_names_picks_those_rows_and_an_unknown_name_is_an_error_listing_the_names():
-    for names in (["close", "rsi_14"], ["close", "rsi_14", "sma_50"]):
+    every = [got["name"] for got in rows_of("get_indicators")]
+    for names in (["close", "rsi_14"], ["close", "rsi_14", "sma_50"], every):
         picked = [got["name"] for got in rows_of("get_indicators", json.dumps({"names": names}))]
         assert sorted(picked) == sorted(names), (
             f'get_indicators with {json.dumps({"names": names})} returns {len(picked)} rows ({", ".join(picked[:6])}'
             f'{", ..." if len(picked) > 6 else ""}): the model asked for those {len(names)} rows, and every other one '
             f"is context it did not ask for")
-    every = [got["name"] for got in rows_of("get_indicators")]
     for names, why in ((["rsi"], "no row is named rsi (the row is rsi_14)"),
                        (["close", "rsi"], "close exists but rsi does not; answering with close alone hides that"),
                        (["level_hvn_1"], "level_hvn_1 is get_levels's row, not get_indicators's")):
